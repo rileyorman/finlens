@@ -11,13 +11,13 @@ load_dotenv()
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 st.set_page_config(
-    page_title="Financial Statement Analyzer",
+    page_title="FinLens",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("Financial Statement Analyzer")
-st.caption("Upload a company's financial statements PDF to extract and download a structured Excel report.")
+st.title("FinLens")
+st.caption("AI-powered financial statement analysis. Upload a PDF to extract key financials and download a structured Excel report.")
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
@@ -121,7 +121,7 @@ if uploaded_file:
         st.divider()
         try:
             excel_bytes = create_excel_file(financial_data)
-            filename = f"{company.replace(' ', '_')}_financials.xlsx"
+            filename = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
             st.download_button(
                 label="Download Excel Report",
                 data=excel_bytes,

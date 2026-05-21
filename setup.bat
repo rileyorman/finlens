@@ -1,5 +1,5 @@
 @echo off
-echo Setting up Financial Statement Analyzer...
+echo Setting up FinLens...
 python -m venv venv
 call venv\Scripts\activate
 pip install -r requirements.txt
