@@ -10,34 +10,44 @@ import re
 # ===========================================================================
 
 SYSTEM_PROMPT = """You are a financial analyst assistant. Extract financial statements
-from raw document text and return them as a single JSON object with this exact structure:
+from raw document text and return them as a single JSON object.
 
+Required structure:
 {
   "company_name": "string",
-  "period": "string — e.g. 'Year ended December 31, 2024'",
-  "fiscal_year": "string — short column label, e.g. 'FY2024' or 'Dec 31, 2024'",
+  "period": "string — the most recent period, e.g. 'Year ended December 31, 2024'",
+  "fiscal_year": "string — short label for the current year column, e.g. 'FY2024'",
+  "fiscal_year_prior": "string — short label for the prior year column, e.g. 'FY2023'",
   "currency": "string — e.g. 'USD, in thousands'",
   "income_statement": [ <row objects> ],
   "balance_sheet": [ <row objects> ],
   "cash_flow_statement": [ <row objects> ]
 }
 
-Each row object has three fields:
-  {"line_item": "string", "value": number or null, "row_type": "data" | "section_header" | "subtotal" | "total"}
+Each row object:
+  {
+    "line_item": "string — label from the document",
+    "value": number or null,        — current year figure
+    "value_prior": number or null,  — prior year comparative figure
+    "row_type": "data" | "section_header" | "subtotal" | "total"
+  }
 
 row_type rules:
-- "section_header": a major section label. Value must be null.
-    Balance sheet MUST include headers: "ASSETS", "LIABILITIES", "SHAREHOLDERS' EQUITY" (or equivalent wording).
-    Cash flow MUST include headers: "OPERATING ACTIVITIES", "INVESTING ACTIVITIES", "FINANCING ACTIVITIES" (or equivalent).
+- "section_header": a major section label. Both value and value_prior must be null.
+    Balance sheet MUST include: "ASSETS", "LIABILITIES", "SHAREHOLDERS' EQUITY" (or equivalent).
+    Cash flow MUST include: "OPERATING ACTIVITIES", "INVESTING ACTIVITIES", "FINANCING ACTIVITIES" (or equivalent).
     Income statement: include section headers only if clearly labelled in the source document.
-- "subtotal": an intermediate total within a section (e.g. Total current assets, Gross profit, Net cash from operating activities).
-- "total": a final total for the whole statement (e.g. Total assets, Total liabilities and equity, Net income, Net change in cash).
+- "subtotal": an intermediate total within a section (e.g. Total current assets, Gross profit).
+- "total": a final total for the whole statement (e.g. Total assets, Net income, Net change in cash).
 - "data": all other line items.
 
 Additional rules:
-- Values must be plain numbers — no commas, currency symbols, or parentheses.
+- Most SEC filings show two years side by side. Extract BOTH columns.
+  "value" is the more recent (current) year. "value_prior" is the comparative (prior) year.
+- Values must be plain numbers — no commas, no currency symbols, no parentheses.
 - Negative numbers use a minus sign (e.g. -500). Do NOT use parentheses for negatives.
 - Zero values should be included as 0, not omitted.
+- Use null only when a figure is genuinely absent from the document.
 - Preserve the original line item names exactly as they appear in the document.
 - If a statement is not found in the document, return an empty array.
 - Return only the JSON object. No explanation, no markdown fences.
@@ -55,7 +65,7 @@ def analyze_financials(document_text: str, api_key: str) -> dict:
 
     response = client.messages.create(
         model="claude-opus-4-7",
-        max_tokens=4096,
+        max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[
             {

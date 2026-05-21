@@ -67,12 +67,29 @@ if uploaded_file:
                 st.stop()
 
         # Step 3 — Display results
-        company = financial_data.get("company_name", "Results")
-        period = financial_data.get("period", "")
-        currency = financial_data.get("currency", "")
+        company     = financial_data.get("company_name", "Results")
+        period      = financial_data.get("period", "")
+        currency    = financial_data.get("currency", "")
+        fy          = financial_data.get("fiscal_year", "Current Year")
+        fy_prior    = financial_data.get("fiscal_year_prior", "Prior Year")
 
         st.subheader(company)
         st.caption(f"{period}  ·  {currency}")
+
+        # Column config shared across all three statement tables
+        num_fmt = "%.0f"
+        col_cfg = {
+            "line_item":   st.column_config.TextColumn("Line Item"),
+            "value_prior": st.column_config.NumberColumn(fy_prior, format=num_fmt),
+            "value":       st.column_config.NumberColumn(fy,       format=num_fmt),
+        }
+
+        def _display_rows(rows):
+            # Strip row_type and enforce column order for the preview table
+            return [
+                {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
+                for r in rows
+            ]
 
         col1, col2, col3 = st.columns(3)
 
@@ -80,12 +97,7 @@ if uploaded_file:
             st.markdown("**Income Statement**")
             rows = financial_data.get("income_statement", [])
             if rows:
-                st.dataframe(
-                    rows,
-                    column_config={"value": st.column_config.NumberColumn("Value", format="%.2f")},
-                    use_container_width=True,
-                    hide_index=True,
-                )
+                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -93,12 +105,7 @@ if uploaded_file:
             st.markdown("**Balance Sheet**")
             rows = financial_data.get("balance_sheet", [])
             if rows:
-                st.dataframe(
-                    rows,
-                    column_config={"value": st.column_config.NumberColumn("Value", format="%.2f")},
-                    use_container_width=True,
-                    hide_index=True,
-                )
+                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -106,12 +113,7 @@ if uploaded_file:
             st.markdown("**Cash Flow Statement**")
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
-                st.dataframe(
-                    rows,
-                    column_config={"value": st.column_config.NumberColumn("Value", format="%.2f")},
-                    use_container_width=True,
-                    hide_index=True,
-                )
+                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
