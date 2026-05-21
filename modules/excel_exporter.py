@@ -178,6 +178,17 @@ def _lookup(rows: list, keywords: list, field: str,
     return None
 
 
+def _lookup2(rows: list, keywords: list, field: str, exclude: list = None):
+    """Prefer subtotal/total rows; fall back to any row type if not found.
+
+    This prevents partial revenue lines (e.g. 'Product revenues') from being
+    matched before the total revenue subtotal, while still handling companies
+    that label a line like 'Gross margin' as a plain data row.
+    """
+    v = _lookup(rows, keywords, field, row_types=["subtotal", "total"], exclude=exclude)
+    return v if v is not None else _lookup(rows, keywords, field, exclude=exclude)
+
+
 def _safe_div(num, den):
     if num is None or den is None or den == 0:
         return None
@@ -203,19 +214,33 @@ def _calculate_ratios(financial_data: dict) -> list:
     vals = {}
     for field in ("value", "value_prior"):
 
-        rev = _lookup(is_rows,
-                      ["revenues", "revenue", "net revenue", "net sales", "total revenues"],
-                      field)
-        gp  = _lookup(is_rows,
-                      ["gross profit", "gross margin"],
-                      field, row_types=["subtotal", "total"])
+        # Revenue — prefer the total/subtotal row so individual product lines
+        # (e.g. "Product revenues") are not matched before "Total revenues".
+        rev = _lookup2(is_rows,
+                       ["total revenues", "total revenue", "total net revenues",
+                        "total net revenue", "net revenues", "net revenue",
+                        "net sales", "total sales", "revenues", "revenue", "sales"],
+                       field)
+
+        # Gross profit — fall back to data rows so "Gross margin" (Microsoft-style)
+        # is found even when Claude doesn't tag it as a subtotal.
+        gp  = _lookup2(is_rows,
+                       ["gross profit", "gross margin", "gross earnings", "gross income"],
+                       field)
+
         oi  = _lookup(is_rows,
-                      ["income (loss) from operations", "operating income",
-                       "income from operations", "operating profit", "loss from operations"],
+                      ["income (loss) from operations", "income from operations",
+                       "operating income", "operating profit", "operating earnings",
+                       "earnings from operations", "operating loss", "loss from operations"],
                       field)
-        ni  = _lookup(is_rows,
-                      ["net income", "net loss", "net earnings"],
-                      field, row_types=["total"])
+
+        # Net income — prefer total rows; fall back for companies that label it
+        # as a data row (e.g. "Net earnings" without a "total" tag).
+        ni  = _lookup2(is_rows,
+                       ["net income", "net earnings", "net loss",
+                        "net income (loss)", "net earnings (loss)",
+                        "profit for the period", "profit for the year", "net profit"],
+                       field)
 
         # Interest expense: only treat as expense when the line is truly negative
         int_raw = _lookup(is_rows, ["interest expense"], field)
@@ -229,15 +254,18 @@ def _calculate_ratios(financial_data: dict) -> list:
         else:
             int_exp = abs(int_raw) if int_raw is not None else None
 
-        ca  = _lookup(bs_rows, ["total current assets"],      field)
-        cl  = _lookup(bs_rows, ["total current liabilities"], field)
-        inv = _lookup(bs_rows, ["inventory", "inventories"],  field) or 0
-        # Exclude "total liabilities and shareholders'/stockholders' equity"
-        tl  = _lookup(bs_rows, ["total liabilities"], field,
-                      exclude=["equity", "shareholders", "stockholders"])
-        eq  = _lookup(bs_rows,
-                      ["total shareholders' equity", "total stockholders' equity", "total equity"],
-                      field)
+        ca  = _lookup2(bs_rows, ["total current assets"],      field)
+        cl  = _lookup2(bs_rows, ["total current liabilities"], field)
+        inv = _lookup(bs_rows, ["inventories", "inventory"],   field) or 0
+        # Exclude combined "total liabilities and equity" lines
+        tl  = _lookup2(bs_rows, ["total liabilities"], field,
+                       exclude=["equity", "shareholders", "stockholders"])
+        eq  = _lookup2(bs_rows,
+                       ["total shareholders' equity", "total stockholders' equity",
+                        "total shareowners' equity", "total equity",
+                        "shareholders' equity", "stockholders' equity",
+                        "total owner", "owners' equity"],
+                       field)
 
         vals[field] = dict(rev=rev, gp=gp, oi=oi, ni=ni, int_exp=int_exp,
                            ca=ca, cl=cl, inv=inv, tl=tl, eq=eq)
