@@ -33,12 +33,28 @@ if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
 
+# --- Session state — persists results across Streamlit reruns ----------
+# Without this, results (including the download button) disappear the
+# moment the user interacts with anything on the page after analysis.
+if "financial_data" not in st.session_state:
+    st.session_state.financial_data = None
+    st.session_state.excel_bytes    = None
+    st.session_state.last_filename  = None
+
 # --- Main area ---------------------------------------------------------
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
     type=["pdf"],
     help="Annual reports, 10-K filings, or standalone financial statement PDFs work best.",
 )
+
+# Clear stored results when a new file is uploaded
+if uploaded_file is None or (
+    st.session_state.last_filename and
+    uploaded_file.name != st.session_state.last_filename
+):
+    st.session_state.financial_data = None
+    st.session_state.excel_bytes    = None
 
 if uploaded_file:
     if st.button("Analyze Financials", type="primary", use_container_width=True):
@@ -66,71 +82,81 @@ if uploaded_file:
                 st.error(f"Claude analysis failed: {e}")
                 st.stop()
 
-        # Step 3 — Display results
-        company     = financial_data.get("company_name", "Results")
-        period      = financial_data.get("period", "")
-        currency    = financial_data.get("currency", "")
-        fy          = financial_data.get("fiscal_year", "Current Year")
-        fy_prior    = financial_data.get("fiscal_year_prior", "Prior Year")
-
-        st.subheader(company)
-        st.caption(f"{period}  ·  {currency}")
-
-        # Column config shared across all three statement tables
-        num_fmt = "%.0f"
-        col_cfg = {
-            "line_item":   st.column_config.TextColumn("Line Item"),
-            "value_prior": st.column_config.NumberColumn(fy_prior, format=num_fmt),
-            "value":       st.column_config.NumberColumn(fy,       format=num_fmt),
-        }
-
-        def _display_rows(rows):
-            # Strip row_type and enforce column order for the preview table
-            return [
-                {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
-                for r in rows
-            ]
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.markdown("**Income Statement**")
-            rows = financial_data.get("income_statement", [])
-            if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
-            else:
-                st.info("Not found in document.")
-
-        with col2:
-            st.markdown("**Balance Sheet**")
-            rows = financial_data.get("balance_sheet", [])
-            if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
-            else:
-                st.info("Not found in document.")
-
-        with col3:
-            st.markdown("**Cash Flow Statement**")
-            rows = financial_data.get("cash_flow_statement", [])
-            if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
-            else:
-                st.info("Not found in document.")
-
-        # Step 4 — Excel download
-        st.divider()
+        # Step 3 — Build Excel and store everything in session state
         try:
             excel_bytes = create_excel_file(financial_data)
-            filename = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
-            st.download_button(
-                label="Download Excel Report",
-                data=excel_bytes,
-                file_name=filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-            )
         except Exception as e:
             st.error(f"Could not generate Excel file: {e}")
+            st.stop()
+
+        st.session_state.financial_data = financial_data
+        st.session_state.excel_bytes    = excel_bytes
+        st.session_state.last_filename  = uploaded_file.name
+
+# --- Display results (runs on every rerun as long as data is in state) -
+if st.session_state.financial_data:
+    financial_data = st.session_state.financial_data
+    excel_bytes    = st.session_state.excel_bytes
+
+    company  = financial_data.get("company_name", "Results")
+    period   = financial_data.get("period", "")
+    currency = financial_data.get("currency", "")
+    fy       = financial_data.get("fiscal_year", "Current Year")
+    fy_prior = financial_data.get("fiscal_year_prior", "Prior Year")
+
+    st.subheader(company)
+    st.caption(f"{period}  ·  {currency}")
+
+    col_cfg = {
+        "line_item":   st.column_config.TextColumn("Line Item"),
+        "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
+        "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
+    }
+
+    def _display_rows(rows):
+        return [
+            {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
+            for r in rows
+        ]
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("**Income Statement**")
+        rows = financial_data.get("income_statement", [])
+        if rows:
+            st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+        else:
+            st.info("Not found in document.")
+
+    with col2:
+        st.markdown("**Balance Sheet**")
+        rows = financial_data.get("balance_sheet", [])
+        if rows:
+            st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+        else:
+            st.info("Not found in document.")
+
+    with col3:
+        st.markdown("**Cash Flow Statement**")
+        rows = financial_data.get("cash_flow_statement", [])
+        if rows:
+            st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+        else:
+            st.info("Not found in document.")
+
+    # --- Download button -----------------------------------------------
+    st.divider()
+    filename = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
+    st.download_button(
+        label="⬇ Download FinLens Report",
+        data=excel_bytes,
+        file_name=filename,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+        type="primary",
+    )
 
 else:
-    st.info("Upload a PDF above to get started.")
+    if not uploaded_file:
+        st.info("Upload a PDF above to get started.")
