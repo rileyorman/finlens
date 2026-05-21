@@ -12,10 +12,10 @@ _WHITE      = "FFFFFF"
 _GREY       = "595959"
 
 # ── Number formats ─────────────────────────────────────────────────────────────
-_FMT_STD       = '#,##0;(#,##0);"-"'         # whole numbers, parens for negatives
-_FMT_PER_SHARE = '#,##0.00;(#,##0.00);"-"'   # two decimals for per-share figures
-_FMT_PCT       = '0.0%'                       # e.g. 0.279 stored → displays "27.9%"
-_FMT_MULT      = '0.00"x"'                   # e.g. 3.21 stored  → displays "3.21x"
+_FMT_STD       = '#,##0;(#,##0);"-"'                   # whole numbers, parens for negatives
+_FMT_PER_SHARE = '#,##0.00;(#,##0.00);"-"'           # two decimals for per-share figures
+_FMT_PCT       = '0.0"%";(0.0"%");"-"'               # literal %, value already multiplied by 100
+_FMT_MULT      = '0.00"x";(0.00"x");"-"'             # multiples, parens for negatives
 _PER_SHARE_KW  = ("per share", "earnings per", " eps")
 
 # ── Border pieces ──────────────────────────────────────────────────────────────
@@ -178,6 +178,11 @@ def _safe_div(num, den):
     return num / den
 
 
+def _pct(v):
+    """Convert a decimal fraction (0.2537) to a display percentage (25.37)."""
+    return round(v * 100, 4) if v is not None else None
+
+
 def _calculate_ratios(financial_data: dict) -> list:
     """
     Derive key financial ratios from the already-extracted statement data.
@@ -253,10 +258,10 @@ def _calculate_ratios(financial_data: dict) -> list:
         {
             "header": "PROFITABILITY",
             "rows": [
-                ("Gross Margin",     "pct",  gm_c,  gm_p),
-                ("Operating Margin", "pct",  om_c,  om_p),
-                ("Net Margin",       "pct",  nm_c,  nm_p),
-                ("Return on Equity", "pct",  roe_c, roe_p),
+                ("Gross Margin",     "pct",  _pct(gm_c),  _pct(gm_p)),
+                ("Operating Margin", "pct",  _pct(om_c),  _pct(om_p)),
+                ("Net Margin",       "pct",  _pct(nm_c),  _pct(nm_p)),
+                ("Return on Equity", "pct",  _pct(roe_c), _pct(roe_p)),
             ],
         },
         {
