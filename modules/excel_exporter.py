@@ -10,6 +10,7 @@ _SECTION_BG = "D9E1F2"   # light periwinkle — section header rows
 _TITLE_BG   = "EBF2FF"   # very light blue  — title block
 _WHITE      = "FFFFFF"
 _GREY       = "595959"
+_RED        = "FF0000"
 
 # ── Number formats ─────────────────────────────────────────────────────────────
 _FMT_STD       = '#,##0;(#,##0);"-"'                   # whole numbers, parens for negatives
@@ -34,6 +35,8 @@ _FONT_CURRENCY = Font(italic=True, color=_GREY, size=10)
 _FONT_HEADER   = Font(bold=True, color=_WHITE, size=11)
 _FONT_SECTION  = Font(bold=True, color=_NAVY, size=10)
 _FONT_BOLD     = Font(bold=True)
+_FONT_RED      = Font(color=_RED)
+_FONT_BOLD_RED = Font(bold=True, color=_RED)
 _FONT_NOTE     = Font(italic=True, color=_GREY, size=9)
 
 _NUM_COLS = 3  # A = label, B = prior year, C = current year
@@ -97,12 +100,15 @@ def _write_value_cell(ws, row: int, col: int, value, line_item: str, row_type: s
     cell = ws.cell(row=row, column=col, value=value)
     cell.number_format = _fmt_for_line(line_item)
     cell.alignment = Alignment(horizontal="right")
+    negative = isinstance(value, (int, float)) and value < 0
     if row_type == "subtotal":
-        cell.font   = _FONT_BOLD
+        cell.font   = _FONT_BOLD_RED if negative else _FONT_BOLD
         cell.border = _BORDER_SUBTOTAL
     elif row_type == "total":
-        cell.font   = _FONT_BOLD
+        cell.font   = _FONT_BOLD_RED if negative else _FONT_BOLD
         cell.border = _BORDER_TOTAL
+    elif negative:
+        cell.font = _FONT_RED
 
 
 def _write_statement_sheet(
@@ -295,6 +301,8 @@ def _write_ratio_cell(ws, row: int, col: int, value, fmt_type: str) -> None:
         cell = ws.cell(row=row, column=col, value=value)
         cell.number_format = _FMT_PCT if fmt_type == "pct" else _FMT_MULT
         cell.alignment     = Alignment(horizontal="right")
+        if isinstance(value, (int, float)) and value < 0:
+            cell.font = _FONT_RED
 
 
 def _write_ratios_sheet(
