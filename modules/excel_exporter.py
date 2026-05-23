@@ -1,6 +1,7 @@
 import io
 import re
 import openpyxl
+from openpyxl.cell.cell import MergedCell
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
@@ -93,6 +94,21 @@ def _write_column_headers(ws, col_b_label: str, col_c_label: str, row: int = 6) 
         cell.font      = _FONT_HEADER
         cell.fill      = header_fill
         cell.alignment = Alignment(horizontal=align)
+
+
+def _autofit_columns(ws, min_width: int = 12, max_width: int = 60, padding: int = 4) -> None:
+    """Set each column width to fit the widest non-merged cell value."""
+    col_widths = {}
+    for row in ws.iter_rows():
+        for cell in row:
+            if isinstance(cell, MergedCell) or cell.value is None:
+                continue
+            col = cell.column_letter
+            content_len = len(str(cell.value))
+            if content_len > col_widths.get(col, 0):
+                col_widths[col] = content_len
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = min(max(width + padding, min_width), max_width)
 
 
 def _extract_fiscal_year(period: str, offset: int = 0) -> str:
@@ -518,13 +534,6 @@ def _write_summary_sheet(
     """Insert a Summary sheet at index=0 (first tab), populated from Call 2 + derived metrics."""
     ws = wb.create_sheet(title="Summary", index=0)
 
-    ws.column_dimensions["A"].width = 30
-    ws.column_dimensions["B"].width = 16
-    ws.column_dimensions["C"].width = 14
-    ws.column_dimensions["D"].width = 16
-    ws.column_dimensions["E"].width = 16
-    ws.column_dimensions["F"].width = 14
-
     signal = (summary_data.get("signal") or "PASS").upper()
     thesis = summary_data.get("thesis") or ""
     cats   = summary_data.get("catalysts") or []
@@ -561,8 +570,8 @@ def _write_summary_sheet(
     th = ws.cell(row=3, column=1, value=thesis)
     th.font      = Font(italic=True, size=10, color=_NAVY)
     th.alignment = Alignment(wrap_text=True, vertical="top")
-    ws.row_dimensions[3].height = 18
-    ws.row_dimensions[4].height = 18
+    ws.row_dimensions[3].height = 50
+    ws.row_dimensions[4].height = 20
 
     # row 5 = blank spacer
     row = 6
@@ -706,6 +715,9 @@ def _write_summary_sheet(
         row += 1
 
     row += 1  # spacer
+
+    # ── Auto-fit columns based on actual cell content ─────────────────────────
+    _autofit_columns(ws)
 
     # ── Footer ────────────────────────────────────────────────────────────────
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
