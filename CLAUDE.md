@@ -43,3 +43,8 @@ Or double-click `run.bat`.
 
 ## Notes
 - This is the standalone original app. It has also been merged into Orman Intelligence (`C:\Users\riley\OneDrive\Documents\orman_intelligence\`).
+
+## Next Session
+1. **MHH market data** — yfinance unreliable for small-caps. Investigate alternatives: try `yf.download()` for price, or Alpha Vantage free tier as a fallback source.
+2. **Summary tab metrics showing — / N/A** — keyword mismatch between Haiku extraction labels and `_calc_summary_metrics()` lookup. Need to debug with a real MHH output: log what Haiku returns vs. what the function expects.
+3. **Test on bank and insurance filings** — USB 10-K (bank mode) and Aflac 10-K (insurance mode) before June meeting. Expect broken metrics; sector detection logic needed to suppress them gracefully.
