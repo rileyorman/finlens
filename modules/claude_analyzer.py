@@ -1,4 +1,8 @@
+import sys
+import ssl
 import anthropic
+import httpx
+import certifi
 import json
 import re
 
@@ -61,10 +65,18 @@ USER_PROMPT_TEMPLATE = """Extract the financial statements from the following do
 
 def analyze_financials(document_text: str, api_key: str) -> dict:
     """Send extracted PDF text to Claude and return structured financial data."""
-    client = anthropic.Anthropic(api_key=api_key)
+    if sys.platform == "win32":
+        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ssl_ctx.load_verify_locations(certifi.where())
+        client = anthropic.Anthropic(
+            api_key=api_key,
+            http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
+        )
+    else:
+        client = anthropic.Anthropic(api_key=api_key)
 
     response = client.messages.create(
-        model="claude-opus-4-7",
+        model="claude-sonnet-4-6",
         max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[
