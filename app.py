@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary
 from modules.excel_exporter import create_excel_file
-from modules.market_data import get_market_data
+from modules.market_data import get_market_data, search_ticker
 
 load_dotenv()
 
@@ -56,11 +56,12 @@ st.divider()
 
 # --- Session state — persists results across Streamlit reruns ----------
 if "financial_data" not in st.session_state:
-    st.session_state.financial_data = None
-    st.session_state.summary_data   = None
-    st.session_state.market_data    = None
-    st.session_state.excel_bytes    = None
-    st.session_state.last_filename  = None
+    st.session_state.financial_data  = None
+    st.session_state.summary_data    = None
+    st.session_state.market_data     = None
+    st.session_state.excel_bytes     = None
+    st.session_state.last_filename   = None
+    st.session_state.resolved_ticker = None
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -79,10 +80,11 @@ if uploaded_file is None or (
     st.session_state.last_filename and
     uploaded_file.name != st.session_state.last_filename
 ):
-    st.session_state.financial_data = None
-    st.session_state.summary_data   = None
-    st.session_state.market_data    = None
-    st.session_state.excel_bytes    = None
+    st.session_state.financial_data  = None
+    st.session_state.summary_data    = None
+    st.session_state.market_data     = None
+    st.session_state.excel_bytes     = None
+    st.session_state.resolved_ticker = None
 
 if uploaded_file:
     if st.button("Analyze Financials", type="primary", use_container_width=True):
@@ -118,14 +120,23 @@ if uploaded_file:
             except Exception as e:
                 st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
-        # Step 4 — Fetch market data from yfinance using ticker from Call 2
+        # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}
-        ticker = (summary_data or {}).get("ticker")
-        if ticker:
-            with st.spinner(f"Fetching market data for {ticker}..."):
-                market_data = get_market_data(ticker)
+        resolved_ticker = (summary_data or {}).get("ticker")
+
+        if not resolved_ticker:
+            company_name_search = financial_data.get("company_name", "")
+            if company_name_search:
+                with st.spinner(f"No ticker in filing — searching for '{company_name_search}'..."):
+                    resolved_ticker = search_ticker(company_name_search)
+                    if resolved_ticker:
+                        st.info(f"Found ticker **{resolved_ticker}** via company name search.")
+
+        if resolved_ticker:
+            with st.spinner(f"Fetching market data for {resolved_ticker}..."):
+                market_data = get_market_data(resolved_ticker)
                 if not market_data.get("current_price"):
-                    st.warning(f"Could not fetch market data for '{ticker}' — enter market cap manually below if needed.")
+                    st.warning(f"Could not fetch market data for '{resolved_ticker}'.")
 
         market_cap = market_data.get("market_cap") or 0.0
 
@@ -136,11 +147,12 @@ if uploaded_file:
             st.error(f"Could not generate Excel file: {e}")
             st.stop()
 
-        st.session_state.financial_data = financial_data
-        st.session_state.summary_data   = summary_data
-        st.session_state.market_data    = market_data
-        st.session_state.excel_bytes    = excel_bytes
-        st.session_state.last_filename  = uploaded_file.name
+        st.session_state.financial_data  = financial_data
+        st.session_state.summary_data    = summary_data
+        st.session_state.market_data     = market_data
+        st.session_state.excel_bytes     = excel_bytes
+        st.session_state.last_filename   = uploaded_file.name
+        st.session_state.resolved_ticker = resolved_ticker
 
 # --- Display results (runs on every rerun as long as data is in state) -
 if st.session_state.financial_data:
@@ -154,7 +166,7 @@ if st.session_state.financial_data:
     currency = financial_data.get("currency", "")
     fy       = financial_data.get("fiscal_year", "Current Year")
     fy_prior = financial_data.get("fiscal_year_prior", "Prior Year")
-    ticker   = summary_data.get("ticker")
+    ticker   = st.session_state.get("resolved_ticker") or summary_data.get("ticker")
 
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
@@ -178,22 +190,33 @@ if st.session_state.financial_data:
             f"  ·  *Data: yfinance, ~15-min delay*"
         )
     else:
-        st.caption("Ticker not found in filing — enter market cap manually to populate valuation multiples in Excel.")
-        mc_col, btn_col = st.columns([2, 1])
-        with mc_col:
-            manual_mc = st.number_input("Market Cap ($M)", min_value=0.0, value=0.0, step=100.0, key="manual_mc")
+        st.caption("Ticker not found — enter the exchange ticker to fetch live market data and populate valuation multiples.")
+        tk_col, btn_col = st.columns([2, 1])
+        with tk_col:
+            manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")
         with btn_col:
-            st.write("")  # vertical alignment spacer
-            if st.button("Update Excel", use_container_width=True):
-                try:
-                    st.session_state.excel_bytes = create_excel_file(
-                        st.session_state.financial_data,
-                        st.session_state.summary_data,
-                        manual_mc,
-                    )
-                    excel_bytes = st.session_state.excel_bytes
-                except Exception as e:
-                    st.error(f"Could not regenerate Excel: {e}")
+            st.write("")
+            if st.button("Fetch Market Data", use_container_width=True):
+                if manual_ticker.strip():
+                    with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
+                        fetched = get_market_data(manual_ticker.strip())
+                        if fetched.get("current_price"):
+                            st.session_state.market_data     = fetched
+                            st.session_state.resolved_ticker = manual_ticker.strip().upper()
+                            mc = fetched.get("market_cap") or 0.0
+                            try:
+                                st.session_state.excel_bytes = create_excel_file(
+                                    st.session_state.financial_data,
+                                    st.session_state.summary_data,
+                                    mc,
+                                )
+                            except Exception as e:
+                                st.error(f"Could not regenerate Excel: {e}")
+                            st.rerun()
+                        else:
+                            st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
+                else:
+                    st.warning("Enter a ticker symbol first.")
 
     # --- Financial statement tables ----------------------------------------
     col_cfg = {

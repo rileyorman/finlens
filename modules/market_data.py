@@ -2,6 +2,21 @@ import yfinance as yf
 
 # Data from yfinance — delayed ~15 mins. Verify before use in live analysis.
 
+
+def search_ticker(company_name: str):
+    """Search yfinance for a ticker by company name. Returns first symbol found, or None."""
+    if not company_name or not company_name.strip():
+        return None
+    try:
+        results = yf.Search(company_name.strip(), max_results=5)
+        quotes = results.quotes
+        if quotes:
+            return quotes[0].get("symbol")
+        return None
+    except Exception:
+        return None
+
+
 _EMPTY = {
     "market_cap":          None,
     "current_price":       None,

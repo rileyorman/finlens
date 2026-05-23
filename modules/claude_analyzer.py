@@ -45,6 +45,12 @@ row_type rules:
 - "section_header": a major section label. Both value and value_prior must be null.
     Balance sheet MUST include: "ASSETS", "LIABILITIES", "SHAREHOLDERS' EQUITY" (or equivalent).
     Cash flow MUST include: "OPERATING ACTIVITIES", "INVESTING ACTIVITIES", "FINANCING ACTIVITIES" (or equivalent).
+    The cash flow statement may be labelled any of the following — look for all variants:
+    - CONSOLIDATED STATEMENTS OF CASH FLOWS
+    - CONDENSED CONSOLIDATED STATEMENTS OF CASH FLOWS
+    - STATEMENTS OF CASH FLOWS
+    - COMBINED STATEMENTS OF CASH FLOWS
+    Include YTD figures if quarterly periods are presented.
     Income statement: include section headers only if clearly labelled in the source document.
 - "subtotal": an intermediate total within a section (e.g. Total current assets, Gross profit).
 - "total": a final total for the whole statement (e.g. Total assets, Net income, Net change in cash).
