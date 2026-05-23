@@ -34,26 +34,30 @@ def get_market_data(ticker: str) -> dict:
         return dict(_EMPTY)
 
     try:
-        info = yf.Ticker(ticker.strip()).info
+        t = yf.Ticker(ticker.strip())
+        fi = t.fast_info  # lightweight endpoint — reliable for small-caps
 
-        if not info or info.get("quoteType") is None:
+        current_price = getattr(fi, "last_price", None)
+        if not current_price:
             return dict(_EMPTY)
 
-        raw_mc = info.get("marketCap")
+        raw_mc = getattr(fi, "market_cap", None)
         market_cap = round(raw_mc / 1_000_000, 2) if raw_mc else None
 
-        current_price = (
-            info.get("currentPrice")
-            or info.get("regularMarketPrice")
-        )
+        # P/E requires the heavier info call — best-effort, won't block the rest
+        pe_ratio = None
+        try:
+            pe_ratio = t.info.get("trailingPE")
+        except Exception:
+            pass
 
         return {
             "market_cap":          market_cap,
             "current_price":       current_price,
-            "shares_outstanding":  info.get("sharesOutstanding"),
-            "pe_ratio":            info.get("trailingPE"),
-            "fifty_two_week_high": info.get("fiftyTwoWeekHigh"),
-            "fifty_two_week_low":  info.get("fiftyTwoWeekLow"),
+            "shares_outstanding":  getattr(fi, "shares", None),
+            "pe_ratio":            pe_ratio,
+            "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
+            "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
         }
 
     except Exception:
