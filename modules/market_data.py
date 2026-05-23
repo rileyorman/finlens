@@ -1,6 +1,38 @@
+import os
+import ssl
+import sys
+import tempfile
 import yfinance as yf
 
 # Data from yfinance — delayed ~15 mins. Verify before use in live analysis.
+
+
+def _patch_windows_ssl():
+    """Export Windows system cert store to a PEM file and set CURL_CA_BUNDLE /
+    REQUESTS_CA_BUNDLE so that yfinance (curl_cffi + requests) trusts the
+    Avast CA. No-op on non-Windows or if the env var is already set."""
+    if sys.platform != "win32":
+        return
+    if os.environ.get("CURL_CA_BUNDLE"):
+        return
+    try:
+        pem_parts = []
+        for store in ("ROOT", "CA"):
+            for cert, enc, _ in ssl.enum_certificates(store):
+                if enc == "x509_asn":
+                    pem_parts.append(ssl.DER_cert_to_PEM_cert(cert))
+        if not pem_parts:
+            return
+        cert_path = os.path.join(tempfile.gettempdir(), "finlens_win_certs.pem")
+        with open(cert_path, "w") as f:
+            f.write("\n".join(pem_parts))
+        os.environ["CURL_CA_BUNDLE"]    = cert_path
+        os.environ["REQUESTS_CA_BUNDLE"] = cert_path
+    except Exception:
+        pass  # fail silently — yfinance will attempt without the custom bundle
+
+
+_patch_windows_ssl()
 
 
 def search_ticker(company_name: str):
