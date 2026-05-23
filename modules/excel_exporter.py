@@ -529,7 +529,8 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
 
 
 def _write_summary_sheet(
-    wb, summary_data: dict, metrics: dict, company: str, period: str
+    wb, summary_data: dict, metrics: dict, company: str, period: str,
+    market_cap: float = 0.0,
 ) -> None:
     """Insert a Summary sheet at index=0 (first tab), populated from Call 2 + derived metrics."""
     ws = wb.create_sheet(title="Summary", index=0)
@@ -657,32 +658,62 @@ def _write_summary_sheet(
 
     row += 1  # spacer
 
-    # ── Valuation (rows ~20–26) ───────────────────────────────────────────────
+    # ── Valuation ─────────────────────────────────────────────────────────────
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
     ws.cell(row=row, column=1, value="VALUATION").font = _FONT_SECTION
     ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
     row += 1
 
-    for col, lbl in [(1, "Multiple"), (2, "Company"), (3, "Manual Input")]:
-        h = ws.cell(row=row, column=col, value=lbl)
+    # Market cap display — value cell is the denominator anchor for all formulas
+    mc_label = ws.cell(row=row, column=1, value="Market Cap ($M):")
+    mc_label.font = Font(bold=True, size=10, color=_NAVY)
+    mc_val = ws.cell(row=row, column=2, value=market_cap if market_cap > 0 else None)
+    mc_val.number_format = _FMT_STD
+    mc_val.font          = Font(bold=True, size=10, color=_NAVY)
+    mc_val.alignment     = Alignment(horizontal="center")
+    mc_ref = f"$B${row}"  # absolute reference used in formulas below
+    row += 1
+
+    # Column headers
+    for col, col_lbl in [(1, "Multiple"), (2, "Value"), (3, "Denominator")]:
+        h = ws.cell(row=row, column=col, value=col_lbl)
         h.fill      = _fill(_NAVY)
         h.font      = _FONT_HEADER
         h.alignment = Alignment(horizontal=("left" if col == 1 else "center"))
     row += 1
 
-    for multiple in ["EV / EBITDA", "P / E", "EV / Revenue", "P / FCF"]:
-        ws.cell(row=row, column=1, value=multiple)
-        nd = ws.cell(row=row, column=2, value="—")
-        nd.font      = Font(color=_GREY)
-        nd.alignment = Alignment(horizontal="center")
-        inp = ws.cell(row=row, column=3, value="Enter here")
-        inp.fill      = _fill(_INPUT_BG)
-        inp.font      = Font(italic=True, size=9, color=_GREY)
-        inp.alignment = Alignment(horizontal="center")
+    # Card values land at row 8 (fixed by the sheet structure above):
+    # A8 = Revenue, B8 = Gross Profit, C8 = EBITDA, D8 = Net Income, E8 = FCF
+    _CARD_ROW = 8
+    multiples = [
+        ("EV / EBITDA",  f"$C${_CARD_ROW}", "EBITDA"),
+        ("P / E",        f"$D${_CARD_ROW}", "Net Income"),
+        ("EV / Revenue", f"$A${_CARD_ROW}", "Revenue"),
+        ("P / FCF",      f"$E${_CARD_ROW}", "Free Cash Flow"),
+    ]
+
+    for label, denom_ref, denom_name in multiples:
+        ws.cell(row=row, column=1, value=label)
+        vc = ws.cell(row=row, column=2)
+        if market_cap > 0:
+            vc.value         = f"=IFERROR({mc_ref}/{denom_ref},\"—\")"
+            vc.number_format = _FMT_MULT
+        else:
+            vc.value = "—"
+            vc.font  = Font(color=_GREY)
+        vc.alignment = Alignment(horizontal="center")
+        nc = ws.cell(row=row, column=3, value=f"÷ {denom_name}")
+        nc.font      = Font(size=8, italic=True, color=_GREY)
+        nc.alignment = Alignment(horizontal="center")
         row += 1
 
-    note = ws.cell(row=row, column=1,
-                   value="Multiples require market cap / share price — enter manually above.")
+    note = ws.cell(
+        row=row, column=1,
+        value=(
+            "Multiples calculated using market cap entered at time of analysis. "
+            "Verify current market cap before use."
+        ),
+    )
     note.font = _FONT_NOTE
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
     row += 2  # note + spacer
@@ -734,7 +765,7 @@ def _write_summary_sheet(
 # Public entry point
 # ═════════════════════════════════════════════════════════════════════════════
 
-def create_excel_file(financial_data: dict, summary_data: dict = None) -> bytes:
+def create_excel_file(financial_data: dict, summary_data: dict = None, market_cap: float = 0.0) -> bytes:
     """Build a formatted Excel workbook and return it as bytes for Streamlit download."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -766,7 +797,7 @@ def create_excel_file(financial_data: dict, summary_data: dict = None) -> bytes:
     # pushing Key Ratios and the statement sheets to the right.
     if summary_data and "error" not in summary_data:
         metrics = _calc_summary_metrics(financial_data)
-        _write_summary_sheet(wb, summary_data, metrics, company, period)
+        _write_summary_sheet(wb, summary_data, metrics, company, period, market_cap)
 
     buffer = io.BytesIO()
     wb.save(buffer)

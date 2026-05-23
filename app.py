@@ -47,6 +47,12 @@ with vi_col2:
     ])
 with vi_col3:
     hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
+st.components.v1.html("""
+<script>
+  const inputs = window.parent.document.querySelectorAll('input[type=number]');
+  inputs.forEach(input => input.addEventListener('focus', function() { this.select(); }));
+</script>
+""", height=0)
 st.divider()
 
 # --- Session state — persists results across Streamlit reruns ----------
@@ -111,7 +117,7 @@ if uploaded_file:
 
         # Step 4 — Build Excel and store everything in session state
         try:
-            excel_bytes = create_excel_file(financial_data, summary_data)
+            excel_bytes = create_excel_file(financial_data, summary_data, market_cap)
         except Exception as e:
             st.error(f"Could not generate Excel file: {e}")
             st.stop()
