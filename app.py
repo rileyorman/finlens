@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary
 from modules.excel_exporter import create_excel_file
+from modules.market_data import get_market_data
 
 load_dotenv()
 
@@ -35,17 +36,15 @@ if not API_KEY:
 
 # --- Valuation inputs --------------------------------------------------
 st.markdown("#### Valuation Inputs")
-st.caption("Optional. These populate the Valuation section of the Summary tab in the Excel report.")
-vi_col1, vi_col2, vi_col3 = st.columns(3)
+st.caption("Market cap is fetched automatically from yfinance when the filing contains a ticker. Enter sector and hurdle rate manually.")
+vi_col1, vi_col2 = st.columns(2)
 with vi_col1:
-    market_cap = st.number_input("Market Cap ($M)", min_value=0.0, value=0.0, step=100.0)
-with vi_col2:
     sector = st.selectbox("Sector", [
         "Enterprise SaaS", "Specialty Retail", "IT Services",
         "Financial Services", "Upstream Oil & Gas", "Healthcare",
         "Consumer Staples", "Industrials", "Real Estate", "Other",
     ])
-with vi_col3:
+with vi_col2:
     hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
 st.components.v1.html("""
 <script>
@@ -59,11 +58,15 @@ st.divider()
 if "financial_data" not in st.session_state:
     st.session_state.financial_data = None
     st.session_state.summary_data   = None
+    st.session_state.market_data    = None
     st.session_state.excel_bytes    = None
     st.session_state.last_filename  = None
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
+
+if "market_data" not in st.session_state:
+    st.session_state.market_data = None
 
 # --- Main area ---------------------------------------------------------
 uploaded_file = st.file_uploader(
@@ -71,7 +74,6 @@ uploaded_file = st.file_uploader(
     type=["pdf"],
     help="Annual reports, 10-K filings, or standalone financial statement PDFs work best.",
 )
-
 # Clear stored results when a new file is uploaded
 if uploaded_file is None or (
     st.session_state.last_filename and
@@ -79,6 +81,7 @@ if uploaded_file is None or (
 ):
     st.session_state.financial_data = None
     st.session_state.summary_data   = None
+    st.session_state.market_data    = None
     st.session_state.excel_bytes    = None
 
 if uploaded_file:
@@ -99,7 +102,7 @@ if uploaded_file:
 
         st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
 
-        # Step 2 — Send to Claude
+        # Step 2 — Call 1: extract structured financials (claude-haiku)
         with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
             try:
                 financial_data = analyze_financials(raw_text, API_KEY)
@@ -115,7 +118,18 @@ if uploaded_file:
             except Exception as e:
                 st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
-        # Step 4 — Build Excel and store everything in session state
+        # Step 4 — Fetch market data from yfinance using ticker from Call 2
+        market_data = {}
+        ticker = (summary_data or {}).get("ticker")
+        if ticker:
+            with st.spinner(f"Fetching market data for {ticker}..."):
+                market_data = get_market_data(ticker)
+                if not market_data.get("current_price"):
+                    st.warning(f"Could not fetch market data for '{ticker}' — enter market cap manually below if needed.")
+
+        market_cap = market_data.get("market_cap") or 0.0
+
+        # Step 5 — Build Excel
         try:
             excel_bytes = create_excel_file(financial_data, summary_data, market_cap)
         except Exception as e:
@@ -124,6 +138,7 @@ if uploaded_file:
 
         st.session_state.financial_data = financial_data
         st.session_state.summary_data   = summary_data
+        st.session_state.market_data    = market_data
         st.session_state.excel_bytes    = excel_bytes
         st.session_state.last_filename  = uploaded_file.name
 
@@ -131,16 +146,56 @@ if uploaded_file:
 if st.session_state.financial_data:
     financial_data = st.session_state.financial_data
     excel_bytes    = st.session_state.excel_bytes
+    market_data    = st.session_state.market_data or {}
+    summary_data   = st.session_state.summary_data or {}
 
     company  = financial_data.get("company_name", "Results")
     period   = financial_data.get("period", "")
     currency = financial_data.get("currency", "")
     fy       = financial_data.get("fiscal_year", "Current Year")
     fy_prior = financial_data.get("fiscal_year_prior", "Prior Year")
+    ticker   = summary_data.get("ticker")
 
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
 
+    # --- Market data display or manual fallback ----------------------------
+    if market_data.get("current_price"):
+        price = market_data["current_price"]
+        mc    = market_data["market_cap"]
+        hi    = market_data.get("fifty_two_week_high")
+        lo    = market_data.get("fifty_two_week_low")
+        pe    = market_data.get("pe_ratio")
+
+        price_str = f"${price:,.2f}"
+        mc_str    = f"${mc:,.0f}M" if mc else "—"
+        range_str = f"${lo:,.2f} – ${hi:,.2f}" if (lo and hi) else "—"
+        pe_str    = f"{pe:.1f}x" if pe else "—"
+
+        st.info(
+            f"**{ticker}**  ·  Price: {price_str}  ·  Mkt Cap: {mc_str}"
+            f"  ·  52-week: {range_str}  ·  P/E (trailing): {pe_str}"
+            f"  ·  *Data: yfinance, ~15-min delay*"
+        )
+    else:
+        st.caption("Ticker not found in filing — enter market cap manually to populate valuation multiples in Excel.")
+        mc_col, btn_col = st.columns([2, 1])
+        with mc_col:
+            manual_mc = st.number_input("Market Cap ($M)", min_value=0.0, value=0.0, step=100.0, key="manual_mc")
+        with btn_col:
+            st.write("")  # vertical alignment spacer
+            if st.button("Update Excel", use_container_width=True):
+                try:
+                    st.session_state.excel_bytes = create_excel_file(
+                        st.session_state.financial_data,
+                        st.session_state.summary_data,
+                        manual_mc,
+                    )
+                    excel_bytes = st.session_state.excel_bytes
+                except Exception as e:
+                    st.error(f"Could not regenerate Excel: {e}")
+
+    # --- Financial statement tables ----------------------------------------
     col_cfg = {
         "line_item":   st.column_config.TextColumn("Line Item"),
         "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
@@ -179,11 +234,11 @@ if st.session_state.financial_data:
         else:
             st.info("Not found in document.")
 
-    # --- Download button -----------------------------------------------
+    # --- Download button ---------------------------------------------------
     st.divider()
     filename = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
     st.download_button(
-        label="⬇ Download FinLens Report",
+        label="Download FinLens Report",
         data=excel_bytes,
         file_name=filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -548,7 +548,7 @@ def _write_summary_sheet(
 
     # ── Signal badge + metadata (rows 1–2) ────────────────────────────────────
     ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
-    badge = ws.cell(row=1, column=1, value=f"● {signal}")
+    badge = ws.cell(row=1, column=1, value=f"[ {signal} ]")
     badge.fill      = _fill(sig_bg)
     badge.font      = Font(bold=True, size=15, color=sig_text)
     badge.alignment = Alignment(horizontal="center", vertical="center")
@@ -702,7 +702,7 @@ def _write_summary_sheet(
             vc.value = "—"
             vc.font  = Font(color=_GREY)
         vc.alignment = Alignment(horizontal="center")
-        nc = ws.cell(row=row, column=3, value=f"÷ {denom_name}")
+        nc = ws.cell(row=row, column=3, value=f"/ {denom_name}")
         nc.font      = Font(size=8, italic=True, color=_GREY)
         nc.alignment = Alignment(horizontal="center")
         row += 1
@@ -729,7 +729,7 @@ def _write_summary_sheet(
 
     for cat in cats[:2]:
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-        c = ws.cell(row=row, column=1, value=f"↑  {cat.get('text', '')}")
+        c = ws.cell(row=row, column=1, value=f"(+)  {cat.get('text', '')}")
         c.font      = Font(size=10, color=_NAVY)
         c.border    = green_border
         c.alignment = Alignment(wrap_text=True, indent=1)
@@ -738,7 +738,7 @@ def _write_summary_sheet(
 
     for risk in risks[:1]:
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-        c = ws.cell(row=row, column=1, value=f"↓  {risk.get('text', '')}")
+        c = ws.cell(row=row, column=1, value=f"(-)  {risk.get('text', '')}")
         c.font      = Font(size=10, color=_NAVY)
         c.border    = red_border
         c.alignment = Alignment(wrap_text=True, indent=1)
@@ -754,7 +754,7 @@ def _write_summary_sheet(
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
     ft = ws.cell(
         row=row, column=1,
-        value="FinLens  ·  AI-powered investment analysis  ·  Powered by Claude  ·  For internal use only",
+        value="FinLens  ·  AI-powered investment analysis  ·  Powered by Claude  ·  Market data: yfinance (15-min delay)  ·  For internal use only",
     )
     ft.font      = Font(italic=True, size=8, color=_GREY)
     ft.alignment = Alignment(horizontal="center")

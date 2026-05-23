@@ -5,6 +5,12 @@ import httpx
 import json
 import re
 
+def _sanitize(text: str) -> str:
+    """Replace non-ASCII characters with '?' — prevents charmap errors on Windows."""
+    if not text:
+        return text
+    return text.encode("ascii", "replace").decode("ascii")
+
 
 # ===========================================================================
 # PROMPT — refine this section to improve extraction accuracy.
@@ -221,7 +227,14 @@ def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) 
         raw = match.group(1)
 
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        data["thesis"] = _sanitize(data.get("thesis") or "")
+        data["sector_inferred"] = _sanitize(data.get("sector_inferred") or "")
+        for item in data.get("catalysts", []):
+            item["text"] = _sanitize(item.get("text") or "")
+        for item in data.get("risks", []):
+            item["text"] = _sanitize(item.get("text") or "")
+        return data
     except json.JSONDecodeError as e:
         return {
             "error": f"Call 2 response could not be parsed as JSON: {e}",

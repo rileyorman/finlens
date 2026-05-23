@@ -6,3 +6,4 @@ python-dotenv>=1.0.0
 pip-system-certs>=4.0
 httpx
 certifi
+yfinance
