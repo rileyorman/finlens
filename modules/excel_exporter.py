@@ -39,6 +39,23 @@ _FONT_RED      = Font(color=_RED)
 _FONT_BOLD_RED = Font(bold=True, color=_RED)
 _FONT_NOTE     = Font(italic=True, color=_GREY, size=9)
 
+# ── Summary / RAG colours ──────────────────────────────────────────────────────
+_GREEN_RAG = "70AD47"
+_AMBER_RAG = "FFC000"
+_RED_RAG   = "C00000"
+_INPUT_BG  = "FFFDE7"   # light yellow — user-editable cells in Valuation section
+
+_SIGNAL_FILL = {
+    "INVESTIGATE": _AMBER_RAG,
+    "PASS":        _GREEN_RAG,
+    "DECLINE":     _RED_RAG,
+}
+_SIGNAL_TEXT = {         # font colour on each badge background
+    "INVESTIGATE": _NAVY,
+    "PASS":        "FFFFFF",
+    "DECLINE":     "FFFFFF",
+}
+
 _NUM_COLS = 3  # A = label, B = prior year, C = current year
 
 
@@ -383,10 +400,329 @@ def _write_ratios_sheet(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# Summary sheet helpers
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _rag(metric: str, value) -> tuple:
+    """Return (PatternFill, label, text_color) for a RAG cell based on defined thresholds."""
+    if value is None:
+        return _fill(_WHITE), "N/A", _GREY
+    G = (_fill(_GREEN_RAG), "GREEN", "FFFFFF")
+    A = (_fill(_AMBER_RAG), "AMBER", _NAVY)
+    R = (_fill(_RED_RAG),   "RED",   "FFFFFF")
+    if metric == "liquidity":
+        return G if value >= 2.0 else (A if value >= 1.0 else R)
+    if metric == "leverage":
+        return G if value <= 1.5 else (A if value <= 3.0 else R)
+    if metric == "rev_growth":
+        return G if value >= 5.0 else (A if value >= 0.0 else R)
+    if metric == "fcf_conv":
+        return G if value >= 100.0 else (A if value >= 50.0 else R)
+    if metric == "int_cover":
+        return G if value >= 3.0 else (A if value >= 1.5 else R)
+    return _fill(_WHITE), "N/A", _GREY
+
+
+def _calc_summary_metrics(financial_data: dict) -> dict:
+    """Derive metric card and RAG values from Call 1 financial data."""
+    is_rows = financial_data.get("income_statement", [])
+    bs_rows = financial_data.get("balance_sheet", [])
+    cf_rows = financial_data.get("cash_flow_statement", [])
+
+    _REV = ["total revenues", "total revenue", "total net revenues", "total net revenue",
+            "net revenues", "net revenue", "net sales", "total sales", "revenues", "revenue", "sales"]
+    _GP  = ["gross profit", "gross margin", "gross earnings", "gross income"]
+    _OI  = ["income (loss) from operations", "income from operations", "operating income",
+            "operating profit", "operating earnings", "earnings from operations"]
+    _NI  = ["net income", "net earnings", "net loss", "net income (loss)",
+            "net earnings (loss)", "profit for the period", "profit for the year", "net profit"]
+
+    rev_c = _lookup2(is_rows, _REV, "value")
+    rev_p = _lookup2(is_rows, _REV, "value_prior")
+    gp_c  = _lookup2(is_rows, _GP,  "value")
+    oi_c  = _lookup(is_rows,  _OI,  "value")
+    ni_c  = _lookup2(is_rows, _NI,  "value")
+
+    da_c = _lookup(cf_rows,
+                   ["depreciation and amortization", "depreciation & amortization",
+                    "depreciation, depletion and amortization",
+                    "depreciation", "amortization"],
+                   "value")
+    if da_c is not None:
+        da_c = abs(da_c)
+
+    ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else oi_c
+
+    ocf_c = _lookup2(cf_rows,
+                     ["net cash provided by operating", "net cash from operating",
+                      "net cash used in operating", "cash provided by operating activities",
+                      "net cash provided by (used in) operating"],
+                     "value")
+
+    capex_raw = _lookup(cf_rows,
+                        ["capital expenditures", "capital expenditure",
+                         "purchases of property, plant and equipment",
+                         "purchases of property and equipment",
+                         "acquisition of property", "purchase of property"],
+                        "value")
+    capex_c = abs(capex_raw) if capex_raw is not None else None
+
+    fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else ocf_c
+
+    ca_c  = _lookup2(bs_rows, ["total current assets"],      "value")
+    cl_c  = _lookup2(bs_rows, ["total current liabilities"], "value")
+    cash_c = _lookup(bs_rows,
+                     ["cash and cash equivalents", "cash and equivalents",
+                      "cash, cash equivalents and short-term investments"],
+                     "value")
+    ltd_c = _lookup(bs_rows,
+                    ["long-term debt", "long-term notes payable", "long-term borrowings",
+                     "senior notes", "term loan"],
+                    "value") or 0
+    std_c = _lookup(bs_rows,
+                    ["short-term debt", "current portion of long-term debt",
+                     "current maturities of long-term debt", "commercial paper"],
+                    "value") or 0
+    net_debt_c = ((ltd_c + std_c) - (cash_c or 0)) if cash_c is not None else None
+
+    int_raw   = _lookup(is_rows, ["interest expense"], "value")
+    int_exp_c = abs(int_raw) if int_raw is not None else None
+
+    yoy_rev       = _pct(_safe_div(rev_c - rev_p, abs(rev_p))) if (rev_c is not None and rev_p) else None
+    gp_margin     = _pct(_safe_div(gp_c,     rev_c))
+    ebitda_margin = _pct(_safe_div(ebitda_c, rev_c))
+    ni_margin     = _pct(_safe_div(ni_c,     rev_c))
+    fcf_yield     = _pct(_safe_div(fcf_c,    rev_c))
+    current_ratio = _safe_div(ca_c, cl_c)
+    nd_ebitda     = _safe_div(net_debt_c, ebitda_c) if ebitda_c else None
+    fcf_conv      = _pct(_safe_div(fcf_c, ni_c)) if (ni_c and ni_c != 0) else None
+    int_cover     = _safe_div(oi_c, int_exp_c)
+
+    return {
+        "rev_c": rev_c,       "yoy_rev": yoy_rev,
+        "gp_c": gp_c,         "gp_margin": gp_margin,
+        "ebitda_c": ebitda_c, "ebitda_margin": ebitda_margin,
+        "ni_c": ni_c,         "ni_margin": ni_margin,
+        "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
+        "current_ratio": current_ratio,
+        "nd_ebitda": nd_ebitda,
+        "rev_growth": yoy_rev,
+        "fcf_conv": fcf_conv,
+        "int_cover": int_cover,
+    }
+
+
+def _write_summary_sheet(
+    wb, summary_data: dict, metrics: dict, company: str, period: str
+) -> None:
+    """Insert a Summary sheet at index=0 (first tab), populated from Call 2 + derived metrics."""
+    ws = wb.create_sheet(title="Summary", index=0)
+
+    ws.column_dimensions["A"].width = 30
+    ws.column_dimensions["B"].width = 16
+    ws.column_dimensions["C"].width = 14
+    ws.column_dimensions["D"].width = 16
+    ws.column_dimensions["E"].width = 16
+    ws.column_dimensions["F"].width = 14
+
+    signal = (summary_data.get("signal") or "PASS").upper()
+    thesis = summary_data.get("thesis") or ""
+    cats   = summary_data.get("catalysts") or []
+    risks  = summary_data.get("risks") or []
+    sector = summary_data.get("sector_inferred") or "—"
+    fdate  = summary_data.get("filing_date") or "—"
+    ticker = summary_data.get("ticker") or "—"
+
+    sig_bg   = _SIGNAL_FILL.get(signal, _AMBER_RAG)
+    sig_text = _SIGNAL_TEXT.get(signal, _NAVY)
+
+    # ── Signal badge + metadata (rows 1–2) ────────────────────────────────────
+    ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
+    badge = ws.cell(row=1, column=1, value=f"● {signal}")
+    badge.fill      = _fill(sig_bg)
+    badge.font      = Font(bold=True, size=15, color=sig_text)
+    badge.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 26
+    ws.row_dimensions[2].height = 16
+
+    ws.merge_cells(start_row=1, start_column=3, end_row=1, end_column=6)
+    co = ws.cell(row=1, column=3, value=company)
+    co.font      = Font(bold=True, size=12, color=_NAVY)
+    co.alignment = Alignment(horizontal="left", vertical="center")
+
+    ws.merge_cells(start_row=2, start_column=3, end_row=2, end_column=6)
+    meta = ws.cell(row=2, column=3,
+                   value=f"Ticker: {ticker}   ·   Sector: {sector}   ·   Filing date: {fdate}")
+    meta.font      = Font(italic=True, size=9, color=_GREY)
+    meta.alignment = Alignment(horizontal="left", vertical="center")
+
+    # ── Thesis (rows 3–4) ─────────────────────────────────────────────────────
+    ws.merge_cells(start_row=3, start_column=1, end_row=4, end_column=6)
+    th = ws.cell(row=3, column=1, value=thesis)
+    th.font      = Font(italic=True, size=10, color=_NAVY)
+    th.alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[3].height = 18
+    ws.row_dimensions[4].height = 18
+
+    # row 5 = blank spacer
+    row = 6
+
+    # ── Financials at a Glance (rows 6–10) ────────────────────────────────────
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    ws.cell(row=row, column=1, value="FINANCIALS AT A GLANCE").font = _FONT_SECTION
+    ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
+    row += 1
+
+    cards = [
+        ("Revenue",        metrics.get("rev_c"),     metrics.get("yoy_rev"),       "YoY"),
+        ("Gross Profit",   metrics.get("gp_c"),      metrics.get("gp_margin"),     "GP Margin"),
+        ("EBITDA",         metrics.get("ebitda_c"),  metrics.get("ebitda_margin"), "EBITDA Margin"),
+        ("Net Income",     metrics.get("ni_c"),      metrics.get("ni_margin"),     "NI Margin"),
+        ("Free Cash Flow", metrics.get("fcf_c"),     metrics.get("fcf_yield"),     "FCF / Revenue"),
+    ]
+
+    for i, (lbl, *_) in enumerate(cards, start=1):
+        c = ws.cell(row=row, column=i, value=lbl)
+        c.fill = _fill(_TITLE_BG)
+        c.font = Font(bold=True, size=9, color=_GREY)
+        c.alignment = Alignment(horizontal="center")
+    row += 1
+
+    ws.row_dimensions[row].height = 22
+    for i, (_, val, __, ___) in enumerate(cards, start=1):
+        c = ws.cell(row=row, column=i, value=val)
+        c.number_format = _FMT_STD
+        c.alignment     = Alignment(horizontal="center")
+        is_neg = isinstance(val, (int, float)) and val < 0
+        c.font = Font(bold=True, size=13, color=(_RED if is_neg else _NAVY))
+    row += 1
+
+    for i, (_, __, sub, sub_lbl) in enumerate(cards, start=1):
+        if sub is not None:
+            prefix = "+" if (sub > 0 and sub_lbl == "YoY") else ""
+            text = f"{prefix}{sub:.1f}%  {sub_lbl}"
+        else:
+            text = f"—  {sub_lbl}"
+        c = ws.cell(row=row, column=i, value=text)
+        c.font      = Font(size=8, color=_GREY)
+        c.alignment = Alignment(horizontal="center")
+    row += 2  # sub-metric row + spacer
+
+    # ── Financial Health RAG (rows ~12–18) ────────────────────────────────────
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    ws.cell(row=row, column=1, value="FINANCIAL HEALTH").font = _FONT_SECTION
+    ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
+    row += 1
+
+    for col, lbl in [(1, "Metric"), (2, "Value"), (3, "Rating")]:
+        h = ws.cell(row=row, column=col, value=lbl)
+        h.fill      = _fill(_NAVY)
+        h.font      = _FONT_HEADER
+        h.alignment = Alignment(horizontal=("left" if col == 1 else "center"))
+    row += 1
+
+    rag_rows = [
+        ("Liquidity  (Current Ratio)",           metrics.get("current_ratio"), "mult", "liquidity"),
+        ("Leverage  (Net Debt / EBITDA)",         metrics.get("nd_ebitda"),    "mult", "leverage"),
+        ("Revenue Growth  (YoY %)",              metrics.get("rev_growth"),   "pct",  "rev_growth"),
+        ("FCF Conversion  (FCF / Net Income %)", metrics.get("fcf_conv"),     "pct",  "fcf_conv"),
+        ("Interest Cover  (EBIT / Interest)",    metrics.get("int_cover"),    "mult", "int_cover"),
+    ]
+
+    for name, value, fmt, key in rag_rows:
+        ws.cell(row=row, column=1, value=name)
+        vc = ws.cell(row=row, column=2)
+        if value is None:
+            vc.value = "—"
+            vc.font  = Font(color=_GREY)
+        else:
+            vc.value         = value
+            vc.number_format = _FMT_MULT if fmt == "mult" else _FMT_PCT
+        vc.alignment = Alignment(horizontal="center")
+        rag_fill_obj, rag_label, rag_text = _rag(key, value)
+        rc = ws.cell(row=row, column=3, value=rag_label)
+        rc.fill      = rag_fill_obj
+        rc.font      = Font(bold=True, size=9, color=rag_text)
+        rc.alignment = Alignment(horizontal="center")
+        row += 1
+
+    row += 1  # spacer
+
+    # ── Valuation (rows ~20–26) ───────────────────────────────────────────────
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    ws.cell(row=row, column=1, value="VALUATION").font = _FONT_SECTION
+    ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
+    row += 1
+
+    for col, lbl in [(1, "Multiple"), (2, "Company"), (3, "Manual Input")]:
+        h = ws.cell(row=row, column=col, value=lbl)
+        h.fill      = _fill(_NAVY)
+        h.font      = _FONT_HEADER
+        h.alignment = Alignment(horizontal=("left" if col == 1 else "center"))
+    row += 1
+
+    for multiple in ["EV / EBITDA", "P / E", "EV / Revenue", "P / FCF"]:
+        ws.cell(row=row, column=1, value=multiple)
+        nd = ws.cell(row=row, column=2, value="—")
+        nd.font      = Font(color=_GREY)
+        nd.alignment = Alignment(horizontal="center")
+        inp = ws.cell(row=row, column=3, value="Enter here")
+        inp.fill      = _fill(_INPUT_BG)
+        inp.font      = Font(italic=True, size=9, color=_GREY)
+        inp.alignment = Alignment(horizontal="center")
+        row += 1
+
+    note = ws.cell(row=row, column=1,
+                   value="Multiples require market cap / share price — enter manually above.")
+    note.font = _FONT_NOTE
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    row += 2  # note + spacer
+
+    # ── Catalysts & Risks ─────────────────────────────────────────────────────
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    ws.cell(row=row, column=1, value="CATALYSTS & RISKS").font = _FONT_SECTION
+    ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
+    row += 1
+
+    green_border = Border(left=Side(style="medium", color=_GREEN_RAG))
+    red_border   = Border(left=Side(style="medium", color=_RED_RAG))
+
+    for cat in cats[:2]:
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        c = ws.cell(row=row, column=1, value=f"↑  {cat.get('text', '')}")
+        c.font      = Font(size=10, color=_NAVY)
+        c.border    = green_border
+        c.alignment = Alignment(wrap_text=True, indent=1)
+        ws.row_dimensions[row].height = 28
+        row += 1
+
+    for risk in risks[:1]:
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        c = ws.cell(row=row, column=1, value=f"↓  {risk.get('text', '')}")
+        c.font      = Font(size=10, color=_NAVY)
+        c.border    = red_border
+        c.alignment = Alignment(wrap_text=True, indent=1)
+        ws.row_dimensions[row].height = 28
+        row += 1
+
+    row += 1  # spacer
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    ft = ws.cell(
+        row=row, column=1,
+        value="FinLens  ·  AI-powered investment analysis  ·  Powered by Claude  ·  For internal use only",
+    )
+    ft.font      = Font(italic=True, size=8, color=_GREY)
+    ft.alignment = Alignment(horizontal="center")
+    ft.border    = Border(top=_THIN)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # Public entry point
 # ═════════════════════════════════════════════════════════════════════════════
 
-def create_excel_file(financial_data: dict) -> bytes:
+def create_excel_file(financial_data: dict, summary_data: dict = None) -> bytes:
     """Build a formatted Excel workbook and return it as bytes for Streamlit download."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -413,6 +749,12 @@ def create_excel_file(financial_data: dict) -> bytes:
             company, period, currency,
             fiscal_year_prior, fiscal_year,
         )
+
+    # Summary tab — created last with index=0 so it becomes the first tab,
+    # pushing Key Ratios and the statement sheets to the right.
+    if summary_data and "error" not in summary_data:
+        metrics = _calc_summary_metrics(financial_data)
+        _write_summary_sheet(wb, summary_data, metrics, company, period)
 
     buffer = io.BytesIO()
     wb.save(buffer)

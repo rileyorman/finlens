@@ -3,7 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from modules.pdf_extractor import extract_text_from_pdf
-from modules.claude_analyzer import analyze_financials
+from modules.claude_analyzer import analyze_financials, analyze_summary
 from modules.excel_exporter import create_excel_file
 
 load_dotenv()
@@ -33,13 +33,31 @@ if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
 
+# --- Valuation inputs --------------------------------------------------
+st.markdown("#### Valuation Inputs")
+st.caption("Optional. These populate the Valuation section of the Summary tab in the Excel report.")
+vi_col1, vi_col2, vi_col3 = st.columns(3)
+with vi_col1:
+    market_cap = st.number_input("Market Cap ($M)", min_value=0.0, value=0.0, step=100.0)
+with vi_col2:
+    sector = st.selectbox("Sector", [
+        "Enterprise SaaS", "Specialty Retail", "IT Services",
+        "Financial Services", "Upstream Oil & Gas", "Healthcare",
+        "Consumer Staples", "Industrials", "Real Estate", "Other",
+    ])
+with vi_col3:
+    hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
+st.divider()
+
 # --- Session state — persists results across Streamlit reruns ----------
-# Without this, results (including the download button) disappear the
-# moment the user interacts with anything on the page after analysis.
 if "financial_data" not in st.session_state:
     st.session_state.financial_data = None
+    st.session_state.summary_data   = None
     st.session_state.excel_bytes    = None
     st.session_state.last_filename  = None
+
+if "summary_data" not in st.session_state:
+    st.session_state.summary_data = None
 
 # --- Main area ---------------------------------------------------------
 uploaded_file = st.file_uploader(
@@ -54,6 +72,7 @@ if uploaded_file is None or (
     uploaded_file.name != st.session_state.last_filename
 ):
     st.session_state.financial_data = None
+    st.session_state.summary_data   = None
     st.session_state.excel_bytes    = None
 
 if uploaded_file:
@@ -82,14 +101,23 @@ if uploaded_file:
                 st.error(f"Claude analysis failed: {e}")
                 st.stop()
 
-        # Step 3 — Build Excel and store everything in session state
+        # Step 3 — Call 2: generate investment signal (claude-opus-4-7)
+        summary_data = None
+        with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
+            try:
+                summary_data = analyze_summary(raw_text, financial_data, API_KEY)
+            except Exception as e:
+                st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
+
+        # Step 4 — Build Excel and store everything in session state
         try:
-            excel_bytes = create_excel_file(financial_data)
+            excel_bytes = create_excel_file(financial_data, summary_data)
         except Exception as e:
             st.error(f"Could not generate Excel file: {e}")
             st.stop()
 
         st.session_state.financial_data = financial_data
+        st.session_state.summary_data   = summary_data
         st.session_state.excel_bytes    = excel_bytes
         st.session_state.last_filename  = uploaded_file.name
 
