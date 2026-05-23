@@ -19,7 +19,21 @@ Or double-click `run.bat`.
 - Python, Streamlit, Claude API (claude-sonnet-4-6), pdfplumber, openpyxl
 
 ## Known Issues
-- **Avast antivirus** blocks httpx's Windows cert store access. Fix: build the SSL context manually in `claude_analyzer.py` using `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` + `load_verify_locations(certifi.where())`, then pass `httpx.Client(verify=ssl_ctx, trust_env=False)`. Do NOT use `ssl.create_default_context()` — it calls `set_default_verify_paths()` which Avast intercepts.
+- **Avast antivirus — SSL CERTIFICATE_VERIFY_FAILED on Windows**
+  Avast performs HTTPS inspection (man-in-the-middle): it presents its own certificate, signed by the Avast CA, which lives in the Windows system cert store. The certifi bundle does not include the Avast CA, so `load_verify_locations(certifi.where())` fails with `unable to get local issuer certificate`.
+
+  **Fix (applied in `claude_analyzer.py`, both `analyze_financials` and `analyze_summary`):**
+  ```python
+  ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+  ssl_ctx.load_default_certs()  # Windows system cert store — includes Avast CA
+  ssl_ctx.check_hostname = True
+  client = anthropic.Anthropic(
+      api_key=api_key,
+      http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
+  )
+  ```
+  Do NOT use `ssl.create_default_context()` — it calls `set_default_verify_paths()` which Avast intercepts.
+  Do NOT use `certifi.where()` alone — certifi's bundle does not include Avast's CA.
 
 ## Coding Preferences
 - Keep code simple and beginner-friendly
