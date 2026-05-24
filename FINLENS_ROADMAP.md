@@ -72,6 +72,7 @@ ANALYSIS_MODEL = "claude-sonnet-4-6" # Student tier (current)
 | Feature | Description | Est. cost/run | Effort |
 |---|---|---|---|
 | MD&A Sentiment Delta | Compare tone vs prior filing — flags confidence shifts | +$0.03 | Medium |
+| Earnings Call Transcript Analysis | Upload transcript alongside 10-K — Claude cross-references verbal claims vs actual numbers, flags inconsistencies e.g. "CEO cited margin improvement — filing shows 3rd consecutive quarter of compression" | +$0.04–0.06 | High |
 | Earnings Quality Score | Accruals ratio, receivables creep, capex vs depreciation | +$0.01 | Medium |
 | Red Flag Radar | Auditor change, CFO departure, going concern language | +$0.01 | Medium |
 | Peer Benchmarking | Pull 3-5 competitors via yfinance, auto-compare ratios | Free (yfinance) | Medium |
