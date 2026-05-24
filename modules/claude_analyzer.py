@@ -5,6 +5,9 @@ import httpx
 import json
 import re
 
+from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS
+
+
 def _sanitize(text: str) -> str:
     """Replace non-ASCII characters with '?' — prevents charmap errors on Windows."""
     if not text:
@@ -12,8 +15,25 @@ def _sanitize(text: str) -> str:
     return text.encode("ascii", "replace").decode("ascii")
 
 
+def _make_client(api_key: str):
+    """Build an Anthropic client with Windows SSL fix for Avast HTTPS inspection.
+    Avast presents its own CA cert which is in the Windows system store but not
+    in the certifi bundle, so we load system certs instead of using certifi.
+    """
+    if sys.platform == "win32":
+        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ssl_ctx.load_default_certs()  # Windows system cert store includes Avast CA
+        ssl_ctx.check_hostname = True
+        return anthropic.Anthropic(
+            api_key=api_key,
+            http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
+        )
+    return anthropic.Anthropic(api_key=api_key)
+
+
 # ===========================================================================
-# PROMPT — refine this section to improve extraction accuracy.
+# CALL 1 — EXTRACTION
+# Model: claude-haiku (fast, cheap, structured extraction only)
 # SYSTEM_PROMPT defines Claude's role and the exact JSON shape to return.
 # USER_PROMPT_TEMPLATE injects the raw PDF text at runtime.
 # ===========================================================================
@@ -75,23 +95,11 @@ USER_PROMPT_TEMPLATE = """Extract the financial statements from the following do
 
 
 def analyze_financials(document_text: str, api_key: str) -> dict:
-    """Send extracted PDF text to Claude and return structured financial data."""
-    # Windows SSL fix: load system cert store so Avast HTTPS
-    # inspection CA is trusted. certifi bundle alone won't work
-    # on machines with Avast installed.
-    if sys.platform == "win32":
-        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_ctx.load_default_certs()  # includes Avast CA
-        ssl_ctx.check_hostname = True
-        client = anthropic.Anthropic(
-            api_key=api_key,
-            http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
-        )
-    else:
-        client = anthropic.Anthropic(api_key=api_key)
+    """Call 1: extract structured financial data from PDF text using Claude Haiku."""
+    client = _make_client(api_key)
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=EXTRACTION_MODEL,
         max_tokens=8192,
         system=SYSTEM_PROMPT,
         messages=[
@@ -114,10 +122,10 @@ def analyze_financials(document_text: str, api_key: str) -> dict:
 
 # ===========================================================================
 # CALL 2 — SUMMARY ANALYSIS
-# Model: claude-opus-4-7
+# Model: ANALYSIS_MODEL (Sonnet for dev, Opus for demo — set in config.py)
 # Reads the full filing text (including MD&A, risk factors, management
 # commentary) plus the structured financials from Call 1, and returns a
-# structured investment signal with thesis, catalysts, and risk.
+# structured investment signal with thesis, catalysts, and risks.
 # Do not modify SUMMARY_SYSTEM_PROMPT without design review.
 # ===========================================================================
 
@@ -198,20 +206,9 @@ FULL FILING TEXT (read this for MD&A, risk factors, and management commentary):
 
 
 def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) -> dict:
-    """Call 2: send full filing text + Call 1 financials to Claude Opus and return investment signal."""
-    # Windows SSL fix: load system cert store so Avast HTTPS
-    # inspection CA is trusted. certifi bundle alone won't work
-    # on machines with Avast installed.
-    if sys.platform == "win32":
-        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_ctx.load_default_certs()  # includes Avast CA
-        ssl_ctx.check_hostname = True
-        client = anthropic.Anthropic(
-            api_key=api_key,
-            http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
-        )
-    else:
-        client = anthropic.Anthropic(api_key=api_key)
+    """Call 2: send filing text + Call 1 financials to Claude and return investment signal."""
+    client = _make_client(api_key)
+    filing_text = filing_text[:MAX_FILING_CHARS]
 
     user_message = SUMMARY_USER_PROMPT_TEMPLATE.format(
         extracted_financials=json.dumps(extracted_financials, indent=2),
@@ -219,9 +216,9 @@ def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) 
     )
 
     response = client.messages.create(
-        model="claude-opus-4-7",
+        model=ANALYSIS_MODEL,
         max_tokens=1024,
-        system=SUMMARY_SYSTEM_PROMPT,
+        system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
     )
 
@@ -252,4 +249,83 @@ def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) 
             "sector_inferred": None,
             "filing_date": None,
             "ticker": None,
+        }
+
+
+# ===========================================================================
+# CALL 3 — BULL / BEAR CASE
+# Model: BEAR_BULL_MODEL (Sonnet)
+# Generates 3 specific bull points and 3 specific bear points grounded in
+# evidence from the filing. Each point has a short title + 1-2 sentence detail.
+# Prompt-cached so repeat runs within 5 minutes cost only input tokens.
+# ===========================================================================
+
+BEAR_BULL_SYSTEM_PROMPT = """You are a principal investor writing a structured bull and bear case for a financial filing.
+
+Read the filing carefully and identify the 3 strongest arguments FOR investing (bull case) and the 3 strongest arguments AGAINST investing (bear case). Ground every point in specific data, trends, or disclosures from this filing — not generic sector commentary or obvious macro risks.
+
+Return a single JSON object only. No markdown fences, no preamble.
+
+{
+  "bull_case": [
+    {"title": "5-word max title", "detail": "1-2 sentences grounded in specific filing evidence."},
+    {"title": "...", "detail": "..."},
+    {"title": "...", "detail": "..."}
+  ],
+  "bear_case": [
+    {"title": "5-word max title", "detail": "1-2 sentences grounded in specific filing evidence."},
+    {"title": "...", "detail": "..."},
+    {"title": "...", "detail": "..."}
+  ]
+}
+
+Rules:
+- Exactly 3 objects in each array. No more, no fewer.
+- Titles: 5 words or fewer, punchy and specific — not generic labels like "Strong Revenue Growth".
+- Details: reference actual numbers, named trends, or specific disclosures from the filing.
+- Bull points: catalysts, competitive advantages, improving metrics, or underappreciated assets visible in the data.
+- Bear points: specific risks, deteriorating trends, concerning disclosures, or valuation concerns grounded in the filing.
+- These points should complement — not repeat — the top-level investment signal thesis."""
+
+BEAR_BULL_USER_PROMPT_TEMPLATE = """Generate the bull and bear case for this financial filing:
+
+{filing_text}
+"""
+
+
+def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
+    """Call 3: generate 3-point bull and bear cases from filing text using Claude Sonnet."""
+    client = _make_client(api_key)
+    filing_text = filing_text[:MAX_FILING_CHARS]
+
+    user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
+
+    response = client.messages.create(
+        model=BEAR_BULL_MODEL,
+        max_tokens=1024,
+        system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+    raw = response.content[0].text
+
+    # Strip markdown code fences if Claude wraps the JSON in them
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+    if match:
+        raw = match.group(1)
+
+    try:
+        data = json.loads(raw)
+        for item in data.get("bull_case", []):
+            item["title"]  = _sanitize(item.get("title") or "")
+            item["detail"] = _sanitize(item.get("detail") or "")
+        for item in data.get("bear_case", []):
+            item["title"]  = _sanitize(item.get("title") or "")
+            item["detail"] = _sanitize(item.get("detail") or "")
+        return data
+    except json.JSONDecodeError as e:
+        return {
+            "error": f"Call 3 response could not be parsed as JSON: {e}",
+            "bull_case": [],
+            "bear_case": [],
         }

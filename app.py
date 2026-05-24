@@ -3,7 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from modules.pdf_extractor import extract_text_from_pdf
-from modules.claude_analyzer import analyze_financials, analyze_summary
+from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull
 from modules.excel_exporter import create_excel_file
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
@@ -138,6 +138,7 @@ st.divider()
 if "financial_data" not in st.session_state:
     st.session_state.financial_data  = None
     st.session_state.summary_data    = None
+    st.session_state.bear_bull_data  = None
     st.session_state.market_data     = None
     st.session_state.excel_bytes     = None
     st.session_state.last_filename   = None
@@ -163,6 +164,7 @@ if uploaded_file is None or (
 ):
     st.session_state.financial_data  = None
     st.session_state.summary_data    = None
+    st.session_state.bear_bull_data  = None
     st.session_state.market_data     = None
     st.session_state.excel_bytes     = None
     st.session_state.resolved_ticker = None
@@ -178,6 +180,7 @@ if uploaded_file:
         if cached:
             financial_data = cached["financial_data"]
             summary_data   = cached.get("summary_data")
+            bear_bull_data = cached.get("bear_bull_data")
             st.session_state.cache_hit = True
             st.success(f"Loaded **{uploaded_file.name}** from cache.")
         else:
@@ -206,7 +209,7 @@ if uploaded_file:
                     st.error(f"Claude analysis failed: {e}")
                     st.stop()
 
-            # Step 3 — Call 2: generate investment signal (claude-opus-4-7)
+            # Step 3 — Call 2: generate investment signal
             summary_data = None
             with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
                 try:
@@ -214,7 +217,15 @@ if uploaded_file:
                 except Exception as e:
                     st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
-            save_cache(cache_key, uploaded_file.name, financial_data, summary_data)
+            # Step 4 — Call 3: generate bull / bear case
+            bear_bull_data = None
+            with st.spinner("Generating bull/bear case — this may take 15–25 seconds..."):
+                try:
+                    bear_bull_data = analyze_bear_bull(raw_text, API_KEY)
+                except Exception as e:
+                    st.warning(f"Bull/bear case could not be generated: {e}.")
+
+            save_cache(cache_key, uploaded_file.name, financial_data, summary_data, bear_bull_data)
 
         # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}
@@ -238,13 +249,14 @@ if uploaded_file:
 
         # Step 5 — Build Excel
         try:
-            excel_bytes = create_excel_file(financial_data, summary_data, market_cap)
+            excel_bytes = create_excel_file(financial_data, summary_data, market_cap, bear_bull_data)
         except Exception as e:
             st.error(f"Could not generate Excel file: {e}")
             st.stop()
 
         st.session_state.financial_data  = financial_data
         st.session_state.summary_data    = summary_data
+        st.session_state.bear_bull_data  = bear_bull_data
         st.session_state.market_data     = market_data
         st.session_state.excel_bytes     = excel_bytes
         st.session_state.last_filename   = uploaded_file.name
@@ -256,6 +268,7 @@ if st.session_state.financial_data:
     excel_bytes    = st.session_state.excel_bytes
     market_data    = st.session_state.market_data or {}
     summary_data   = st.session_state.summary_data or {}
+    bear_bull_data = st.session_state.bear_bull_data or {}
 
     company  = financial_data.get("company_name", "Results")
     period   = financial_data.get("period", "")
@@ -308,6 +321,7 @@ if st.session_state.financial_data:
                                     st.session_state.financial_data,
                                     st.session_state.summary_data,
                                     mc,
+                                    st.session_state.bear_bull_data,
                                 )
                             except Exception as e:
                                 st.error(f"Could not regenerate Excel: {e}")
@@ -355,6 +369,21 @@ if st.session_state.financial_data:
             st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
         else:
             st.info("Not found in document.")
+
+    # --- Bull / Bear Case --------------------------------------------------
+    if bear_bull_data and "error" not in bear_bull_data:
+        with st.expander("Bull / Bear Case", expanded=False):
+            bull_col, bear_col = st.columns(2)
+            with bull_col:
+                st.markdown("**Bull Case**")
+                for pt in (bear_bull_data.get("bull_case") or [])[:3]:
+                    st.markdown(f"**{pt.get('title', '')}**")
+                    st.caption(pt.get("detail", ""))
+            with bear_col:
+                st.markdown("**Bear Case**")
+                for pt in (bear_bull_data.get("bear_case") or [])[:3]:
+                    st.markdown(f"**{pt.get('title', '')}**")
+                    st.caption(pt.get("detail", ""))
 
     # --- Download button ---------------------------------------------------
     st.divider()

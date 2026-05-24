@@ -569,7 +569,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
 
 def _write_summary_sheet(
     wb, summary_data: dict, metrics: dict, company: str, period: str,
-    market_cap: float = 0.0,
+    market_cap: float = 0.0, bear_bull_data: dict = None,
 ) -> None:
     """Insert a Summary sheet at index=0 (first tab), populated from Call 2 + derived metrics."""
     ws = wb.create_sheet(title="Summary", index=0)
@@ -786,6 +786,58 @@ def _write_summary_sheet(
 
     row += 1  # spacer
 
+    # ── Bull / Bear Case ─────────────────────────────────────────────────────
+    if bear_bull_data and "error" not in bear_bull_data:
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        ws.cell(row=row, column=1, value="BULL / BEAR CASE").font = _FONT_SECTION
+        ws.cell(row=row, column=1).fill = _fill(_SECTION_BG)
+        row += 1
+
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+        bh = ws.cell(row=row, column=1, value="BULL CASE")
+        bh.fill      = _fill("D6E8D4")
+        bh.font      = Font(bold=True, size=10, color="375623")
+        bh.alignment = Alignment(horizontal="center")
+
+        ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=6)
+        rh = ws.cell(row=row, column=4, value="BEAR CASE")
+        rh.fill      = _fill("F2D7D7")
+        rh.font      = Font(bold=True, size=10, color="7B0000")
+        rh.alignment = Alignment(horizontal="center")
+        row += 1
+
+        bull_pts = (bear_bull_data.get("bull_case") or [])[:3]
+        bear_pts = (bear_bull_data.get("bear_case") or [])[:3]
+        n_rows   = max(len(bull_pts), len(bear_pts), 1)
+
+        green_left = Border(left=Side(style="medium", color=_GREEN_RAG))
+        red_left   = Border(left=Side(style="medium", color=_RED_RAG))
+
+        for i in range(n_rows):
+            bp = bull_pts[i] if i < len(bull_pts) else None
+            rp = bear_pts[i] if i < len(bear_pts) else None
+
+            if bp:
+                ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+                bc = ws.cell(row=row, column=1,
+                             value=f"{bp.get('title', '')}\n{bp.get('detail', '')}")
+                bc.font      = Font(size=9, color=_NAVY)
+                bc.border    = green_left
+                bc.alignment = Alignment(wrap_text=True, vertical="top", indent=1)
+
+            if rp:
+                ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=6)
+                rc = ws.cell(row=row, column=4,
+                             value=f"{rp.get('title', '')}\n{rp.get('detail', '')}")
+                rc.font      = Font(size=9, color=_NAVY)
+                rc.border    = red_left
+                rc.alignment = Alignment(wrap_text=True, vertical="top", indent=1)
+
+            ws.row_dimensions[row].height = 42
+            row += 1
+
+        row += 1  # spacer after bear/bull
+
     # ── Auto-fit columns based on actual cell content ─────────────────────────
     _autofit_columns(ws)
 
@@ -804,7 +856,7 @@ def _write_summary_sheet(
 # Public entry point
 # ═════════════════════════════════════════════════════════════════════════════
 
-def create_excel_file(financial_data: dict, summary_data: dict = None, market_cap: float = 0.0) -> bytes:
+def create_excel_file(financial_data: dict, summary_data: dict = None, market_cap: float = 0.0, bear_bull_data: dict = None) -> bytes:
     """Build a formatted Excel workbook and return it as bytes for Streamlit download."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -836,7 +888,7 @@ def create_excel_file(financial_data: dict, summary_data: dict = None, market_ca
     # pushing Key Ratios and the statement sheets to the right.
     if summary_data and "error" not in summary_data:
         metrics = _calc_summary_metrics(financial_data)
-        _write_summary_sheet(wb, summary_data, metrics, company, period, market_cap)
+        _write_summary_sheet(wb, summary_data, metrics, company, period, market_cap, bear_bull_data)
 
     buffer = io.BytesIO()
     wb.save(buffer)

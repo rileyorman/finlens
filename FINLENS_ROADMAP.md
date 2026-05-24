@@ -48,9 +48,14 @@ ANALYSIS_MODEL = "claude-sonnet-4-6" # Student tier (current)
 - Valuation multiples (EV/EBITDA, P/E, EV/Revenue, P/FCF)
 - Two-branch Git workflow (main/dev) across all repos
 - Global and per-project CLAUDE.md files
+- Response caching (SHA-256 → cache/*.json, free repeat runs)
+- Bear/Bull Case Generator (Call 3, Sonnet, 3 points each, UI expander + Excel tab)
+- Anthropic prompt caching (cache_control on SUMMARY_SYSTEM_PROMPT + BEAR_BULL_SYSTEM_PROMPT)
+- Input truncation for Calls 2 & 3 (MAX_FILING_CHARS = 80,000)
+- Dev-mode model toggle (config.py — swap ANALYSIS_MODEL for Sonnet ↔ Opus)
 
 ### In Progress 🔄
-- Summary tab N/A fix — expanding keyword matching in _calc_summary_metrics()
+- Nothing currently in progress
 
 ---
 
@@ -60,10 +65,10 @@ ANALYSIS_MODEL = "claude-sonnet-4-6" # Student tier (current)
 
 | Feature | Description | Est. cost/run | Effort |
 |---|---|---|---|
-| Fix Summary tab N/A | Expand keyword lists, add fuzzy matching | No change | Low |
-| Response caching | Save/reload Claude API JSON — free repeat testing | Saves ~100% | Low |
+| Fix Summary tab N/A | Expand keyword lists, add fuzzy matching | No change | ✅ Done |
+| Response caching | Save/reload Claude API JSON — free repeat testing | Saves ~100% | ✅ Done |
+| Bear/Bull Case Generator | Auto 3-point bull + bear case from filing | +$0.02 | ✅ Done |
 | One-page Investment Memo | Word doc export: thesis, financials, risks, verdict | +$0.02 | Medium |
-| Bear/Bull Case Generator | Auto 3-point bull + bear case from filing | +$0.02 | Low |
 
 ---
 
