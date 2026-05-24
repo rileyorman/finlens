@@ -261,6 +261,9 @@ if uploaded_file:
         st.session_state.excel_bytes     = excel_bytes
         st.session_state.last_filename   = uploaded_file.name
         st.session_state.resolved_ticker = resolved_ticker
+        # Rerun so the sidebar cache count reflects the newly saved entry.
+        # Results are rendered from session state on the fresh pass.
+        st.rerun()
 
 # --- Display results (runs on every rerun as long as data is in state) -
 if st.session_state.financial_data:
