@@ -27,9 +27,11 @@ _BEAR_BG   = "F2D7D7"
 _BULL_TEXT = RGBColor(0x37, 0x56, 0x23)
 _BEAR_TEXT = RGBColor(0x7B, 0x00, 0x00)
 
-_GREEN_RAG = "70AD47"
-_AMBER_RAG = "FFC000"
-_RED_RAG   = "C00000"
+_GREEN_RAG  = "70AD47"
+_AMBER_RAG  = "FFC000"
+_RED_RAG    = "C00000"
+_GREEN_FONT = RGBColor(0x70, 0xAD, 0x47)
+_DARK_AMBER = RGBColor(0xB8, 0x86, 0x0B)
 
 _SIGNAL_BG = {
     "INVESTIGATE": _AMBER_RAG,
@@ -241,6 +243,7 @@ def create_memo(
     summary_data: dict | None,
     bear_bull_data: dict | None,
     market_data: dict | None,
+    red_flags_data: dict = None,
 ) -> bytes:
     """Build a one-page Investment Memo and return .docx bytes."""
 
@@ -417,6 +420,41 @@ def create_memo(
 
     sp2 = doc.add_paragraph()
     _tight(sp2, before=0, after=4)
+
+    # ── 4b. RISK FLAGS ────────────────────────────────────────────────────────
+    _section_header(doc, "Risk Flags")
+
+    rfd          = red_flags_data or {}
+    rf_flags     = rfd.get("flags", [])
+    rf_override  = rfd.get("signal_override")
+
+    if not rf_flags:
+        p_clean = doc.add_paragraph()
+        _tight(p_clean, before=3, after=2)
+        _run(p_clean, "No material flags identified.", size=9, color=_GREEN_FONT)
+    else:
+        for flag in [f for f in rf_flags if f["severity"] == "red"]:
+            p = doc.add_paragraph()
+            _tight(p, before=2, after=1)
+            _run(p, f"\U0001f534 {flag['label']}", bold=True, size=9, color=_RED_FONT)
+            _run(p, f" — {flag['detail']}", size=9, color=_RED_FONT)
+
+        for flag in [f for f in rf_flags if f["severity"] == "yellow"]:
+            p = doc.add_paragraph()
+            _tight(p, before=2, after=1)
+            _run(p, f"\U0001f7e1 {flag['label']}", bold=True, size=9, color=_DARK_AMBER)
+            _run(p, f" — {flag['detail']}", size=9, color=_DARK_AMBER)
+
+        if rf_override and rf_override != signal:
+            p_note = doc.add_paragraph()
+            _tight(p_note, before=4, after=2)
+            _run(p_note,
+                 f"Note: Quantitative flags suggest {rf_override} — "
+                 "review alongside qualitative signal.",
+                 italic=True, size=8, color=_GREY)
+
+    sp_flags = doc.add_paragraph()
+    _tight(sp_flags, before=0, after=4)
 
     # ── 5. VALUATION ─────────────────────────────────────────────────────────
     if mc > 0:

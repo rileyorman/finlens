@@ -507,7 +507,7 @@ if st.session_state.financial_data:
     memo_filename = f"FinLens_Memo_{company.replace(' ', '_')}_{fy}.docx"
 
     try:
-        memo_bytes = create_memo(financial_data, summary_data, bear_bull_data, market_data)
+        memo_bytes = create_memo(financial_data, summary_data, bear_bull_data, market_data, flag_result)
     except Exception as e:
         memo_bytes = None
         st.warning(f"Memo generation failed: {e}")
