@@ -6,6 +6,7 @@ from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull
 from modules.excel_exporter import create_excel_file
 from modules.memo_exporter import create_memo
+from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
@@ -395,6 +396,40 @@ if st.session_state.financial_data:
                             st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
                 else:
                     st.warning("Enter a ticker symbol first.")
+
+    # --- Red Flag Analysis -------------------------------------------------
+    flag_result  = detect_flags(financial_data)
+    flags        = flag_result["flags"]
+    red_count    = flag_result["red_count"]
+    yellow_count = flag_result["yellow_count"]
+    override     = flag_result["signal_override"]
+
+    if red_count or yellow_count:
+        exp_label = f"🚩 Red Flag Analysis  —  {red_count} red · {yellow_count} yellow"
+    else:
+        exp_label = "🟢 Red Flag Analysis  —  Clean"
+
+    with st.expander(exp_label, expanded=(red_count > 0)):
+        if not flags:
+            st.success("No major red flags detected across all monitored thresholds.")
+        else:
+            if override:
+                claude_signal = (summary_data.get("signal") or "—").upper()
+                if override == claude_signal:
+                    st.info(
+                        f"Ratio analysis **confirms** Claude's **{claude_signal}** signal — "
+                        f"{red_count} red flag(s), {yellow_count} yellow flag(s)."
+                    )
+                else:
+                    st.info(
+                        f"**Signal override:** Ratio thresholds suggest **{override}** "
+                        f"(Claude's signal: {claude_signal}) — "
+                        f"{red_count} red flag(s), {yellow_count} yellow flag(s)."
+                    )
+            for flag in [f for f in flags if f["severity"] == "red"]:
+                st.error(f"🔴 **{flag['label']}** — {flag['detail']}")
+            for flag in [f for f in flags if f["severity"] == "yellow"]:
+                st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
 
     # --- Financial statement tables ----------------------------------------
     col_cfg = {
