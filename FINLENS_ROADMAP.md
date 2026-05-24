@@ -99,6 +99,50 @@ ANALYSIS_MODEL = "claude-sonnet-4-6" # Student tier (current)
 
 ---
 
+### Phase 4 — Portfolio Manager
+
+> **Vision:** Turn FinLens into a one-stop portfolio management platform.
+> Start with a paper trading portfolio for learning, transition to real
+> money when ready. Every feature is designed to build genuine investing
+> intuition — not just track numbers, but understand why they move.
+> Bloomberg costs $25,000/year. FinLens will do more for a fraction of the cost.
+
+#### MVP (Build next after June demo)
+| Feature | Description | Cost | Effort |
+|---|---|---|---|
+| Position tracker | Add/edit/remove holdings — ticker, entry price, quantity, date | Free (yfinance) | Low |
+| Live P&L | Current price via yfinance, unrealised P&L in $ and % | Free | Low |
+| Portfolio weights | % allocation per position, sector breakdown | Free | Low |
+| Watchlist | Track companies not yet bought, one-click add to portfolio | Free | Low |
+
+#### V2 — Daily Utility
+| Feature | Description | Cost | Effort |
+|---|---|---|---|
+| Benchmark comparison | Total return vs S&P 500 and TSX | Free (yfinance) | Medium |
+| Filing alerts | Notify when a portfolio company files new 10-K or 10-Q | Free (EDGAR) | Medium |
+| Dividend tracking | Record and track dividend income | Free | Low |
+| Sector/geography allocation | Visual breakdown of portfolio exposure | Free | Low |
+
+#### V3 — AI Intelligence (FinLens Differentiator)
+| Feature | Description | Cost | Effort |
+|---|---|---|---|
+| Filing change summary | "What changed since you bought this?" narrative vs prior filing | ~$0.10/run | Medium |
+| Thesis tracking | Record investment thesis on entry, Claude scores each new filing against it | ~$0.05/run | High |
+| Sentiment drift monitor | Tracks MD&A tone across filings, alerts when management language shifts | ~$0.03/run | High |
+| Cross-portfolio risk narrative | "3 of your 5 holdings cite rising rates as key risk" | ~$0.05/run | Medium |
+| Peer relative analysis | Auto-benchmarks each holding vs 3-5 sector peers | Free + ~$0.05 | High |
+
+#### V4 — Bloomberg Killer
+| Feature | Description | Cost | Effort |
+|---|---|---|---|
+| Scenario analysis | "What happens to my portfolio if rates rise 1%?" | ~$0.05/run | High |
+| Natural language queries | "Which holdings have FCF conversion below 70%?" | ~$0.02/query | High |
+| Automated portfolio memo | Monthly one-page Word doc — performance, risks, developments | ~$0.10/run | High |
+| Earnings season dashboard | All portfolio companies reporting this quarter, pre/post analysis | ~$0.10/run | High |
+| Investment journal | AI-assisted trade log, thesis vs outcome pattern recognition | ~$0.02/entry | Medium |
+
+---
+
 ## June Demo Priority List
 
 For the family office meeting, focus on:
