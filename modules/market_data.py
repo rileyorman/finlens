@@ -2,6 +2,7 @@ import os
 import ssl
 import sys
 import tempfile
+from difflib import SequenceMatcher
 import yfinance as yf
 
 # Data from yfinance — delayed ~15 mins. Verify before use in live analysis.
@@ -34,16 +35,18 @@ def _patch_windows_ssl():
 
 _patch_windows_ssl()
 
-# Lower rank = higher preference. Foreign/unknown exchanges get 99.
+# Tier 0 = major US exchanges (NYSE + NASDAQ peers). Foreign/unknown = 99.
+# Within the same tier, name similarity breaks ties.
 _EXCHANGE_RANK = {
-    "NYQ": 0, "NYSE": 0,          # New York Stock Exchange
-    "NMS": 1, "NASDAQ": 1,        # NASDAQ Global Select Market
-    "NGM": 2,                      # NASDAQ Global Market
-    "NCM": 3,                      # NASDAQ Capital Market
-    "ASE": 4, "AMEX": 4,          # NYSE American (formerly AMEX)
-    "PCX": 5,                      # NYSE Arca
-    "BTS": 6,                      # BATS
-    "NYB": 7,                      # NYSE Bonds
+    "NYQ": 0, "NYSE": 0,                    # New York Stock Exchange
+    "NMS": 0, "NGS": 0, "NAS": 0,           # NASDAQ Global Select Market
+    "NASDAQ": 0,                             # NASDAQ generic
+    "NGM": 1,                                # NASDAQ Global Market
+    "NCM": 2,                                # NASDAQ Capital Market
+    "ASE": 3, "AMEX": 3,                    # NYSE American (formerly AMEX)
+    "PCX": 4,                                # NYSE Arca
+    "BTS": 5,                                # BATS
+    "NYB": 6,                                # NYSE Bonds
 }
 
 
@@ -51,13 +54,28 @@ def _exchange_rank(quote: dict) -> int:
     return _EXCHANGE_RANK.get((quote.get("exchange") or "").upper(), 99)
 
 
+def _name_similarity(query: str, quote: dict) -> float:
+    """Similarity score 0.0–1.0 between search query and company name."""
+    name = (quote.get("longname") or quote.get("shortname") or "").lower().strip()
+    if not name:
+        return 0.0
+    return SequenceMatcher(None, query.lower().strip(), name).ratio()
+
+
+def _sort_key(query: str):
+    """Sort key: US exchange tier first, then name similarity (higher = better)."""
+    def key(quote: dict):
+        return (_exchange_rank(quote), -_name_similarity(query, quote))
+    return key
+
+
 def search_ticker_details(company_name: str, max_results: int = 5) -> list:
-    """Return yfinance search results sorted US-first by exchange preference."""
+    """Return yfinance search results sorted US-first, then by name match."""
     if not company_name or not company_name.strip():
         return []
     try:
         results = yf.Search(company_name.strip(), max_results=max_results)
-        return sorted(results.quotes, key=_exchange_rank)
+        return sorted(results.quotes, key=_sort_key(company_name.strip()))
     except Exception:
         return []
 
