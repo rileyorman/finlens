@@ -5,3 +5,4 @@ venv/
 .venv/
 *.xlsx
 *.pdf
+streamlit.log
