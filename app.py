@@ -7,6 +7,7 @@ from modules.claude_analyzer import analyze_financials, analyze_summary, analyze
 from modules.excel_exporter import create_excel_file
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
+from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
 
 load_dotenv()
 
@@ -41,6 +42,44 @@ with st.sidebar:
         "3. Claude parses the financials\n"
         "4. Download a formatted Excel file"
     )
+    st.divider()
+
+    # --- Filing Library ------------------------------------------------
+    lib_entries = lib_get()
+    lib_count   = len(lib_entries)
+    label       = f"📚 Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
+    with st.expander(label, expanded=lib_count > 0):
+        if not lib_entries:
+            st.caption("No filings saved yet. Analyse a PDF to add it here.")
+        for entry in lib_entries:
+            ticker     = entry.get("ticker", "—")
+            ticker_str = f" · {ticker}" if ticker and ticker != "—" else ""
+            fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
+            date_str   = entry.get("analysed_at", "")[:10]
+            st.markdown(f"**{entry['company_name']}**{ticker_str}")
+            st.caption(f"{fy}  ·  {date_str}")
+            load_col, del_col = st.columns([5, 1])
+            with load_col:
+                if st.button("Load", key=f"lib_load_{entry['id']}", use_container_width=True):
+                    fd = entry["financial_data"]
+                    sd = entry.get("summary_data")
+                    bb = entry.get("bear_bull_data")
+                    st.session_state.financial_data  = fd
+                    st.session_state.summary_data    = sd
+                    st.session_state.bear_bull_data  = bb
+                    st.session_state.market_data     = {}
+                    st.session_state.excel_bytes     = create_excel_file(fd, sd, 0.0, bb)
+                    st.session_state.last_filename   = entry.get("file_name", "")
+                    st.session_state.resolved_ticker = ticker if ticker != "—" else None
+                    st.session_state.cache_hit       = False
+                    st.rerun()
+            with del_col:
+                if st.button("🗑", key=f"lib_del_{entry['id']}", use_container_width=True,
+                             help=f"Remove {entry['company_name']} from library"):
+                    lib_delete(entry["id"])
+                    st.rerun()
+            st.divider()
+
     st.divider()
     n = cache_count()
     st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
@@ -261,8 +300,15 @@ if uploaded_file:
         st.session_state.excel_bytes     = excel_bytes
         st.session_state.last_filename   = uploaded_file.name
         st.session_state.resolved_ticker = resolved_ticker
-        # Rerun so the sidebar cache count reflects the newly saved entry.
-        # Results are rendered from session state on the fresh pass.
+
+        # Persist to Filing Library (permanent — survives cache clears).
+        try:
+            lib_add(cache_key, uploaded_file.name, len(pdf_bytes),
+                    financial_data, summary_data, bear_bull_data)
+        except Exception:
+            pass  # Library write failure must never block analysis
+
+        # Rerun so sidebar counts (cache + library) reflect the new entry.
         st.rerun()
 
 # --- Display results (runs on every rerun as long as data is in state) -

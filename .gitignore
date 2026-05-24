@@ -7,3 +7,4 @@ venv/
 *.pdf
 streamlit.log
 cache/
+filing_library.json
