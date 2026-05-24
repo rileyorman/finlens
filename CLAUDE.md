@@ -43,6 +43,7 @@ Or double-click `run.bat`.
 
 ## Notes
 - This is the standalone original app. It has also been merged into Orman Intelligence (`C:\Users\riley\OneDrive\Documents\orman_intelligence\`).
+- Project location: `C:\Users\riley\OneDrive\Documents\Python Project\finlens\`
 
 ## Next Session
 1. **MHH market data** — yfinance unreliable for small-caps. Investigate alternatives: try `yf.download()` for price, or Alpha Vantage free tier as a fallback source.

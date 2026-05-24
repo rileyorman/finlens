@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+import yfinance as yf
 from dotenv import load_dotenv
 
 from modules.pdf_extractor import extract_text_from_pdf
@@ -33,6 +34,66 @@ with st.sidebar:
 if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
+
+# --- Ticker Lookup (Dev Tool) ------------------------------------------
+with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
+    st.caption("Verify yfinance can find the right company before running a full analysis. No API calls, no cost.")
+    tl_col1, tl_col2 = st.columns([3, 1])
+    with tl_col1:
+        lookup_query = st.text_input("Company name", placeholder="e.g. Mastech Digital", key="ticker_lookup_query")
+    with tl_col2:
+        st.write("")
+        lookup_clicked = st.button("Look Up Ticker", use_container_width=True)
+
+    if lookup_clicked and lookup_query.strip():
+        with st.spinner("Searching yfinance..."):
+            try:
+                search = yf.Search(lookup_query.strip(), max_results=5)
+                quotes = search.quotes
+            except Exception as e:
+                st.error(f"Search failed: {e}")
+                quotes = []
+
+        if not quotes:
+            st.warning("No results found. Try a different company name.")
+        else:
+            st.markdown("**Top Results**")
+            st.dataframe(
+                [
+                    {
+                        "Symbol":   q.get("symbol", "—"),
+                        "Company":  q.get("longname") or q.get("shortname", "—"),
+                        "Exchange": q.get("exchange", "—"),
+                        "Type":     q.get("quoteType", "—"),
+                    }
+                    for q in quotes[:5]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            top_symbol = quotes[0].get("symbol")
+            if top_symbol:
+                st.markdown(f"**Market Data — {top_symbol}**")
+                with st.spinner(f"Fetching market data for {top_symbol}..."):
+                    md = get_market_data(top_symbol)
+                if md.get("current_price"):
+                    price = md["current_price"]
+                    mc    = md.get("market_cap")
+                    hi    = md.get("fifty_two_week_high")
+                    lo    = md.get("fifty_two_week_low")
+                    pe    = md.get("pe_ratio")
+                    mc_col, pr_col, rng_col, pe_col = st.columns(4)
+                    mc_col.metric("Price",          f"${price:,.2f}")
+                    pr_col.metric("Market Cap",     f"${mc:,.0f}M" if mc else "—")
+                    rng_col.metric("52-week Range", f"${lo:,.2f} – ${hi:,.2f}" if (lo and hi) else "—")
+                    pe_col.metric("P/E (trailing)", f"{pe:.1f}x" if pe else "—")
+                else:
+                    st.warning(f"'{top_symbol}' found but no market data — may be OTC or delisted.")
+    elif lookup_clicked:
+        st.warning("Enter a company name first.")
+
+st.divider()
 
 # --- Valuation inputs --------------------------------------------------
 st.markdown("#### Valuation Inputs")
