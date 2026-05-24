@@ -346,6 +346,22 @@ if st.session_state.financial_data:
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
 
+    # --- Investment signal badge -------------------------------------------
+    _BADGE_STYLE = {
+        "PASS":        {"bg": "#70AD47", "color": "#FFFFFF"},
+        "INVESTIGATE": {"bg": "#FFC000", "color": "#1F4E79"},
+        "DECLINE":     {"bg": "#C00000", "color": "#FFFFFF"},
+    }
+    signal = (summary_data.get("signal") or "").upper()
+    if signal in _BADGE_STYLE:
+        s = _BADGE_STYLE[signal]
+        st.markdown(
+            f'<div style="display:inline-block;background:{s["bg"]};color:{s["color"]};'
+            f'padding:8px 28px;border-radius:4px;font-size:18px;font-weight:700;'
+            f'letter-spacing:1.5px;margin:6px 0 14px 0">{signal}</div>',
+            unsafe_allow_html=True,
+        )
+
     if st.session_state.get("cache_hit"):
         st.info("📦 Using cached response (dev mode) — no API call was made.")
 
