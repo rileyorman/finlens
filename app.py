@@ -383,6 +383,16 @@ if st.session_state.financial_data:
             f"  ·  52-week: {range_str}  ·  P/E (trailing): {pe_str}"
             f"  ·  *Data: yfinance, ~15-min delay*"
         )
+        edgar_url = (
+            f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany"
+            f"&CIK={ticker}&type=10-K&dateb=&owner=include&count=10"
+        )
+        st.markdown(
+            f'<a href="{edgar_url}" target="_blank" '
+            f'style="font-size:12px;color:#595959;text-decoration:none;">'
+            f'&#128269; Find filings on SEC EDGAR</a>',
+            unsafe_allow_html=True,
+        )
     else:
         st.caption("Ticker not found — enter the exchange ticker to fetch live market data and populate valuation multiples.")
         tk_col, btn_col = st.columns([2, 1])
