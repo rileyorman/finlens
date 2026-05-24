@@ -6,6 +6,7 @@ from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary
 from modules.excel_exporter import create_excel_file
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
+from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 
 load_dotenv()
 
@@ -40,6 +41,14 @@ with st.sidebar:
         "3. Claude parses the financials\n"
         "4. Download a formatted Excel file"
     )
+    st.divider()
+    n = cache_count()
+    st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
+    if n:
+        if st.button("Clear Cache", use_container_width=True):
+            cleared = clear_cache()
+            st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
+            st.rerun()
 
 if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
@@ -133,6 +142,7 @@ if "financial_data" not in st.session_state:
     st.session_state.excel_bytes     = None
     st.session_state.last_filename   = None
     st.session_state.resolved_ticker = None
+    st.session_state.cache_hit       = False
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -156,40 +166,55 @@ if uploaded_file is None or (
     st.session_state.market_data     = None
     st.session_state.excel_bytes     = None
     st.session_state.resolved_ticker = None
+    st.session_state.cache_hit       = False
 
 if uploaded_file:
     if st.button("Analyze Financials", type="primary", use_container_width=True):
 
-        # Step 1 — Extract PDF text
-        with st.spinner("Extracting text from PDF..."):
-            try:
-                raw_text = extract_text_from_pdf(uploaded_file)
-            except Exception as e:
-                st.error(f"Could not read the PDF: {e}")
+        pdf_bytes = uploaded_file.getvalue()
+        cache_key = get_cache_key(pdf_bytes)
+        cached    = load_cache(cache_key)
+
+        if cached:
+            financial_data = cached["financial_data"]
+            summary_data   = cached.get("summary_data")
+            st.session_state.cache_hit = True
+            st.success(f"Loaded **{uploaded_file.name}** from cache.")
+        else:
+            st.session_state.cache_hit = False
+
+            # Step 1 — Extract PDF text
+            with st.spinner("Extracting text from PDF..."):
+                try:
+                    raw_text = extract_text_from_pdf(uploaded_file)
+                except Exception as e:
+                    st.error(f"Could not read the PDF: {e}")
+                    st.stop()
+
+            char_count = len(raw_text)
+            if char_count < 200:
+                st.error("Very little text was extracted — the PDF may be scanned/image-based. Try a text-based PDF.")
                 st.stop()
 
-        char_count = len(raw_text)
-        if char_count < 200:
-            st.error("Very little text was extracted — the PDF may be scanned/image-based. Try a text-based PDF.")
-            st.stop()
+            st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
 
-        st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
+            # Step 2 — Call 1: extract structured financials (claude-haiku)
+            with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
+                try:
+                    financial_data = analyze_financials(raw_text, API_KEY)
+                except Exception as e:
+                    st.error(f"Claude analysis failed: {e}")
+                    st.stop()
 
-        # Step 2 — Call 1: extract structured financials (claude-haiku)
-        with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
-            try:
-                financial_data = analyze_financials(raw_text, API_KEY)
-            except Exception as e:
-                st.error(f"Claude analysis failed: {e}")
-                st.stop()
+            # Step 3 — Call 2: generate investment signal (claude-opus-4-7)
+            summary_data = None
+            with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
+                try:
+                    summary_data = analyze_summary(raw_text, financial_data, API_KEY)
+                except Exception as e:
+                    st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
-        # Step 3 — Call 2: generate investment signal (claude-opus-4-7)
-        summary_data = None
-        with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
-            try:
-                summary_data = analyze_summary(raw_text, financial_data, API_KEY)
-            except Exception as e:
-                st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
+            save_cache(cache_key, uploaded_file.name, financial_data, summary_data)
 
         # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}
@@ -241,6 +266,9 @@ if st.session_state.financial_data:
 
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
+
+    if st.session_state.get("cache_hit"):
+        st.info("📦 Using cached response (dev mode) — no API call was made.")
 
     # --- Market data display or manual fallback ----------------------------
     if market_data.get("current_price"):

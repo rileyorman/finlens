@@ -6,3 +6,4 @@ venv/
 *.xlsx
 *.pdf
 streamlit.log
+cache/
