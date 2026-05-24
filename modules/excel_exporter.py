@@ -195,19 +195,52 @@ def _write_statement_sheet(
 # Key Ratios — calculation
 # ═════════════════════════════════════════════════════════════════════════════
 
+_STEM_STOPWORDS = frozenset({"a", "an", "and", "by", "for", "in", "of", "or", "the", "to"})
+
+
+def _words_stem(s: str) -> frozenset:
+    """5-char stemmed word tokens for fuzzy-match fallback.
+    Strips punctuation and stopwords so 'operating' and 'operations' both stem to 'opera'."""
+    return frozenset(
+        w[:5] for w in re.sub(r"[^a-z\s]", "", s.lower()).split()
+        if w not in _STEM_STOPWORDS
+    )
+
+
 def _lookup(rows: list, keywords: list, field: str,
             row_types: list = None, exclude: list = None):
-    """Return the value of the first row whose line_item contains any keyword."""
-    for row in rows:
+    """Return the value of the first matching row.
+    Pass 1 — exact substring match (original behaviour).
+    Pass 2 — stemmed-word-set fallback: all 5-char stems of the keyword must appear
+              in the line item's stems. Handles suffix variants like
+              'operations' vs 'operating', 'revenues' vs 'revenue'.
+    """
+    def _ok(row):
         li = row.get("line_item", "").lower().strip()
-        rt = row.get("row_type", "data")
-        if row_types and rt not in row_types:
-            continue
+        if row_types and row.get("row_type", "data") not in row_types:
+            return False
         if exclude and any(ex.lower() in li for ex in exclude):
+            return False
+        return True
+
+    # Pass 1: exact substring
+    for row in rows:
+        if not _ok(row):
             continue
-        for kw in keywords:
-            if kw.lower() in li:
+        li = row.get("line_item", "").lower().strip()
+        if any(kw.lower() in li for kw in keywords):
+            return row.get(field)
+
+    # Pass 2: stemmed word-set fallback
+    kw_stem_sets = [_words_stem(kw) for kw in keywords]
+    for row in rows:
+        if not _ok(row):
+            continue
+        li_stems = _words_stem(row.get("line_item", ""))
+        for kw_stems in kw_stem_sets:
+            if kw_stems and kw_stems.issubset(li_stems):
                 return row.get(field)
+
     return None
 
 
@@ -471,15 +504,21 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
 
     ocf_c = _lookup2(cf_rows,
                      ["net cash provided by operating", "net cash from operating",
+                      "net cash from operations",
                       "net cash used in operating", "cash provided by operating activities",
-                      "net cash provided by (used in) operating"],
+                      "net cash provided by (used in) operating",
+                      "cash flows from operating", "cash generated from operating"],
                      "value")
 
     capex_raw = _lookup(cf_rows,
                         ["capital expenditures", "capital expenditure",
                          "purchases of property, plant and equipment",
                          "purchases of property and equipment",
-                         "acquisition of property", "purchase of property"],
+                         "additions to property and equipment",
+                         "additions to property",
+                         "payments for property and equipment",
+                         "acquisition of property", "purchase of property",
+                         "purchases of fixed assets", "purchase of fixed assets"],
                         "value")
     capex_c = abs(capex_raw) if capex_raw is not None else None
 
