@@ -15,6 +15,34 @@ def _sanitize(text: str) -> str:
     return text.encode("ascii", "replace").decode("ascii")
 
 
+def _strip_latex(text: str) -> str:
+    """Remove LaTeX math formatting from Claude prose output.
+
+    Claude occasionally wraps numbers in inline math ($-0.61$) or uses
+    backslash escapes (\\-). Streamlit renders $...$ as LaTeX, collapsing
+    spaces and producing garbled strings like "$\\-0.61lossin2023to$".
+    """
+    if not text:
+        return text
+    # Display math $$...$$ → inner content
+    text = re.sub(r'\$\$(.+?)\$\$', r'\1', text, flags=re.DOTALL)
+    # Inline math containing a LaTeX command (backslash = definite math mode)
+    text = re.sub(r'\$([^$\n]*\\[^$\n]*)\$', r'\1', text)
+    # Inline math wrapping a plain number or percentage: $-0.61$ → -0.61
+    text = re.sub(r'\$([+-]?[\d,]+\.?\d*%?)\$', r'\1', text)
+    # LaTeX soft hyphen / negative sign: \- → -
+    text = re.sub(r'\\-', '-', text)
+    # LaTeX thin/medium/negative spacing commands → remove
+    text = re.sub(r'\\[,;:!]', '', text)
+    # LaTeX text formatting commands: \textbf{x} \textit{x} \text{x} → x
+    text = re.sub(r'\\text\w*\{([^}]*)\}', r'\1', text)
+    # Any remaining \word sequences (e.g. \alpha, \times) → remove
+    text = re.sub(r'\\\w+', '', text)
+    # Collapse double-spaces left behind after stripping
+    text = re.sub(r' {2,}', ' ', text).strip()
+    return text
+
+
 def _make_client(api_key: str):
     """Build an Anthropic client with Windows SSL fix for Avast HTTPS inspection.
     Avast presents its own CA cert which is in the Windows system store but not
@@ -317,11 +345,11 @@ def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
     try:
         data = json.loads(raw)
         for item in data.get("bull_case", []):
-            item["title"]  = _sanitize(item.get("title") or "")
-            item["detail"] = _sanitize(item.get("detail") or "")
+            item["title"]  = _sanitize(_strip_latex(item.get("title") or ""))
+            item["detail"] = _sanitize(_strip_latex(item.get("detail") or ""))
         for item in data.get("bear_case", []):
-            item["title"]  = _sanitize(item.get("title") or "")
-            item["detail"] = _sanitize(item.get("detail") or "")
+            item["title"]  = _sanitize(_strip_latex(item.get("title") or ""))
+            item["detail"] = _sanitize(_strip_latex(item.get("detail") or ""))
         return data
     except json.JSONDecodeError as e:
         return {
