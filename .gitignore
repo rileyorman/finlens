@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.xlsx
+*.pdf
+streamlit.log
+cache/
+filing_library.json
