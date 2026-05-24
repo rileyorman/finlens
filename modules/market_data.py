@@ -34,19 +34,40 @@ def _patch_windows_ssl():
 
 _patch_windows_ssl()
 
+# Lower rank = higher preference. Foreign/unknown exchanges get 99.
+_EXCHANGE_RANK = {
+    "NYQ": 0, "NYSE": 0,          # New York Stock Exchange
+    "NMS": 1, "NASDAQ": 1,        # NASDAQ Global Select Market
+    "NGM": 2,                      # NASDAQ Global Market
+    "NCM": 3,                      # NASDAQ Capital Market
+    "ASE": 4, "AMEX": 4,          # NYSE American (formerly AMEX)
+    "PCX": 5,                      # NYSE Arca
+    "BTS": 6,                      # BATS
+    "NYB": 7,                      # NYSE Bonds
+}
+
+
+def _exchange_rank(quote: dict) -> int:
+    return _EXCHANGE_RANK.get((quote.get("exchange") or "").upper(), 99)
+
+
+def search_ticker_details(company_name: str, max_results: int = 5) -> list:
+    """Return yfinance search results sorted US-first by exchange preference."""
+    if not company_name or not company_name.strip():
+        return []
+    try:
+        results = yf.Search(company_name.strip(), max_results=max_results)
+        return sorted(results.quotes, key=_exchange_rank)
+    except Exception:
+        return []
+
 
 def search_ticker(company_name: str):
-    """Search yfinance for a ticker by company name. Returns first symbol found, or None."""
-    if not company_name or not company_name.strip():
-        return None
-    try:
-        results = yf.Search(company_name.strip(), max_results=5)
-        quotes = results.quotes
-        if quotes:
-            return quotes[0].get("symbol")
-        return None
-    except Exception:
-        return None
+    """Search yfinance for a ticker by company name. Returns the best US-listed symbol, or None."""
+    quotes = search_ticker_details(company_name)
+    if quotes:
+        return quotes[0].get("symbol")
+    return None
 
 
 _EMPTY = {

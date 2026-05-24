@@ -1,12 +1,11 @@
 import os
 import streamlit as st
-import yfinance as yf
 from dotenv import load_dotenv
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary
 from modules.excel_exporter import create_excel_file
-from modules.market_data import get_market_data, search_ticker
+from modules.market_data import get_market_data, search_ticker, search_ticker_details
 
 load_dotenv()
 
@@ -48,8 +47,7 @@ with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
     if lookup_clicked and lookup_query.strip():
         with st.spinner("Searching yfinance..."):
             try:
-                search = yf.Search(lookup_query.strip(), max_results=5)
-                quotes = search.quotes
+                quotes = search_ticker_details(lookup_query.strip())
             except Exception as e:
                 st.error(f"Search failed: {e}")
                 quotes = []
