@@ -64,14 +64,15 @@ with st.sidebar:
                     fd = entry["financial_data"]
                     sd = entry.get("summary_data")
                     bb = entry.get("bear_bull_data")
-                    st.session_state.financial_data  = fd
-                    st.session_state.summary_data    = sd
-                    st.session_state.bear_bull_data  = bb
-                    st.session_state.market_data     = {}
-                    st.session_state.excel_bytes     = create_excel_file(fd, sd, 0.0, bb)
-                    st.session_state.last_filename   = entry.get("file_name", "")
-                    st.session_state.resolved_ticker = ticker if ticker != "—" else None
-                    st.session_state.cache_hit       = False
+                    st.session_state.financial_data      = fd
+                    st.session_state.summary_data        = sd
+                    st.session_state.bear_bull_data      = bb
+                    st.session_state.market_data         = {}
+                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                    st.session_state.last_filename       = entry.get("file_name", "")
+                    st.session_state.resolved_ticker     = ticker if ticker != "—" else None
+                    st.session_state.cache_hit           = False
+                    st.session_state.loaded_from_library = True
                     st.rerun()
             with del_col:
                 if st.button("🗑", key=f"lib_del_{entry['id']}", use_container_width=True,
@@ -175,14 +176,15 @@ st.divider()
 
 # --- Session state — persists results across Streamlit reruns ----------
 if "financial_data" not in st.session_state:
-    st.session_state.financial_data  = None
-    st.session_state.summary_data    = None
-    st.session_state.bear_bull_data  = None
-    st.session_state.market_data     = None
-    st.session_state.excel_bytes     = None
-    st.session_state.last_filename   = None
-    st.session_state.resolved_ticker = None
-    st.session_state.cache_hit       = False
+    st.session_state.financial_data      = None
+    st.session_state.summary_data        = None
+    st.session_state.bear_bull_data      = None
+    st.session_state.market_data         = None
+    st.session_state.excel_bytes         = None
+    st.session_state.last_filename       = None
+    st.session_state.resolved_ticker     = None
+    st.session_state.cache_hit           = False
+    st.session_state.loaded_from_library = False
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -196,18 +198,30 @@ uploaded_file = st.file_uploader(
     type=["pdf"],
     help="Annual reports, 10-K filings, or standalone financial statement PDFs work best.",
 )
-# Clear stored results when a new file is uploaded
-if uploaded_file is None or (
-    st.session_state.last_filename and
-    uploaded_file.name != st.session_state.last_filename
-):
-    st.session_state.financial_data  = None
-    st.session_state.summary_data    = None
-    st.session_state.bear_bull_data  = None
-    st.session_state.market_data     = None
-    st.session_state.excel_bytes     = None
-    st.session_state.resolved_ticker = None
-    st.session_state.cache_hit       = False
+# Clear stored results when the uploaded file changes.
+# When data was loaded from the Filing Library there is no uploaded file,
+# so we must NOT reset — library results should persist until the user
+# explicitly uploads a different file.
+if uploaded_file is None:
+    if not st.session_state.get("loaded_from_library"):
+        st.session_state.financial_data  = None
+        st.session_state.summary_data    = None
+        st.session_state.bear_bull_data  = None
+        st.session_state.market_data     = None
+        st.session_state.excel_bytes     = None
+        st.session_state.resolved_ticker = None
+        st.session_state.cache_hit       = False
+elif (st.session_state.last_filename and
+      uploaded_file.name != st.session_state.last_filename):
+    # A different file was dropped in — always reset, including the flag.
+    st.session_state.financial_data      = None
+    st.session_state.summary_data        = None
+    st.session_state.bear_bull_data      = None
+    st.session_state.market_data         = None
+    st.session_state.excel_bytes         = None
+    st.session_state.resolved_ticker     = None
+    st.session_state.cache_hit           = False
+    st.session_state.loaded_from_library = False
 
 if uploaded_file:
     if st.button("Analyze Financials", type="primary", use_container_width=True):
@@ -293,13 +307,14 @@ if uploaded_file:
             st.error(f"Could not generate Excel file: {e}")
             st.stop()
 
-        st.session_state.financial_data  = financial_data
-        st.session_state.summary_data    = summary_data
-        st.session_state.bear_bull_data  = bear_bull_data
-        st.session_state.market_data     = market_data
-        st.session_state.excel_bytes     = excel_bytes
-        st.session_state.last_filename   = uploaded_file.name
-        st.session_state.resolved_ticker = resolved_ticker
+        st.session_state.financial_data      = financial_data
+        st.session_state.summary_data        = summary_data
+        st.session_state.bear_bull_data      = bear_bull_data
+        st.session_state.market_data         = market_data
+        st.session_state.excel_bytes         = excel_bytes
+        st.session_state.last_filename       = uploaded_file.name
+        st.session_state.resolved_ticker     = resolved_ticker
+        st.session_state.loaded_from_library = False
 
         # Persist to Filing Library (permanent — survives cache clears).
         try:
