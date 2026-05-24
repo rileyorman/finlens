@@ -7,3 +7,4 @@ pip-system-certs>=4.0
 httpx
 certifi
 yfinance
+python-docx>=1.1.0

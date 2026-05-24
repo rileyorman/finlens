@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull
 from modules.excel_exporter import create_excel_file
+from modules.memo_exporter import create_memo
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
@@ -449,17 +450,37 @@ if st.session_state.financial_data:
                     st.markdown(f"**{pt.get('title', '')}**")
                     st.caption(pt.get("detail", ""))
 
-    # --- Download button ---------------------------------------------------
+    # --- Download buttons --------------------------------------------------
     st.divider()
-    filename = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
-    st.download_button(
-        label="Download FinLens Report",
-        data=excel_bytes,
-        file_name=filename,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-        type="primary",
-    )
+    filename      = f"FinLens_{company.replace(' ', '_')}_{fy}.xlsx"
+    memo_filename = f"FinLens_Memo_{company.replace(' ', '_')}_{fy}.docx"
+
+    try:
+        memo_bytes = create_memo(financial_data, summary_data, bear_bull_data, market_data)
+    except Exception as e:
+        memo_bytes = None
+        st.warning(f"Memo generation failed: {e}")
+
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            label="Download FinLens Report",
+            data=excel_bytes,
+            file_name=filename,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            type="primary",
+        )
+    with dl_col2:
+        if memo_bytes:
+            st.download_button(
+                label="Download Investment Memo",
+                data=memo_bytes,
+                file_name=memo_filename,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+                type="secondary",
+            )
 
 else:
     if not uploaded_file:
