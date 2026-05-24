@@ -11,6 +11,17 @@ load_dotenv()
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+
+def _fmt_market_cap(mc_millions):
+    """Format market cap (stored in millions) as $X.XT / $X.XB / $X.XM."""
+    if not mc_millions:
+        return "—"
+    if mc_millions >= 1_000_000:
+        return f"${mc_millions / 1_000_000:.1f}T"
+    if mc_millions >= 1_000:
+        return f"${mc_millions / 1_000:.1f}B"
+    return f"${mc_millions:.0f}M"
+
 st.set_page_config(
     page_title="FinLens",
     page_icon="📊",
@@ -37,12 +48,13 @@ if not API_KEY:
 # --- Ticker Lookup (Dev Tool) ------------------------------------------
 with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
     st.caption("Verify yfinance can find the right company before running a full analysis. No API calls, no cost.")
-    tl_col1, tl_col2 = st.columns([3, 1])
-    with tl_col1:
-        lookup_query = st.text_input("Company name", placeholder="e.g. Mastech Digital", key="ticker_lookup_query")
-    with tl_col2:
-        st.write("")
-        lookup_clicked = st.button("Look Up Ticker", use_container_width=True)
+    with st.form("ticker_lookup_form"):
+        tl_col1, tl_col2 = st.columns([3, 1])
+        with tl_col1:
+            lookup_query = st.text_input("Company name", placeholder="e.g. Mastech Digital")
+        with tl_col2:
+            st.write("")
+            lookup_clicked = st.form_submit_button("Look Up Ticker", use_container_width=True)
 
     if lookup_clicked and lookup_query.strip():
         with st.spinner("Searching yfinance..."):
@@ -83,7 +95,7 @@ with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
                     pe    = md.get("pe_ratio")
                     mc_col, pr_col, rng_col, pe_col = st.columns(4)
                     mc_col.metric("Price",          f"${price:,.2f}")
-                    pr_col.metric("Market Cap",     f"${mc:,.0f}M" if mc else "—")
+                    pr_col.metric("Market Cap",     _fmt_market_cap(mc))
                     rng_col.metric("52-week Range", f"${lo:,.2f} – ${hi:,.2f}" if (lo and hi) else "—")
                     pe_col.metric("P/E (trailing)", f"{pe:.1f}x" if pe else "—")
                 else:
@@ -239,7 +251,7 @@ if st.session_state.financial_data:
         pe    = market_data.get("pe_ratio")
 
         price_str = f"${price:,.2f}"
-        mc_str    = f"${mc:,.0f}M" if mc else "—"
+        mc_str    = _fmt_market_cap(mc)
         range_str = f"${lo:,.2f} – ${hi:,.2f}" if (lo and hi) else "—"
         pe_str    = f"{pe:.1f}x" if pe else "—"
 
