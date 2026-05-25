@@ -443,15 +443,6 @@ with st.sidebar:
 
         st.divider()
 
-    st.markdown(
-        "**How it works**\n"
-        "1. Upload a PDF\n"
-        "2. Text is extracted with pdfplumber\n"
-        "3. Claude parses the financials\n"
-        "4. Download a formatted Excel file"
-    )
-    st.divider()
-
     # --- Filing Library (Single Analysis mode only) --------------------
     if page == "📊 Single Analysis":
         st.markdown("""
@@ -849,26 +840,6 @@ with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
 
 st.divider()
 
-# --- Valuation inputs --------------------------------------------------
-st.markdown("#### Valuation Inputs")
-st.caption("Market cap is fetched automatically from yfinance when the filing contains a ticker. Enter sector and hurdle rate manually.")
-vi_col1, vi_col2 = st.columns(2)
-with vi_col1:
-    sector = st.selectbox("Sector", [
-        "Enterprise SaaS", "Specialty Retail", "IT Services",
-        "Financial Services", "Upstream Oil & Gas", "Healthcare",
-        "Consumer Staples", "Industrials", "Real Estate", "Other",
-    ])
-with vi_col2:
-    hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
-st.components.v1.html("""
-<script>
-  const inputs = window.parent.document.querySelectorAll('input[type=number]');
-  inputs.forEach(input => input.addEventListener('focus', function() { this.select(); }));
-</script>
-""", height=0)
-st.divider()
-
 # --- Session state — persists results across Streamlit reruns ----------
 if "financial_data" not in st.session_state:
     st.session_state.financial_data      = None
@@ -927,6 +898,28 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.resolved_ticker     = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+
+st.divider()
+
+# --- Valuation inputs --------------------------------------------------
+st.markdown("#### Valuation Inputs")
+st.caption("Market cap is fetched automatically from yfinance when the filing contains a ticker. Enter sector and hurdle rate manually.")
+vi_col1, vi_col2 = st.columns(2)
+with vi_col1:
+    sector = st.selectbox("Sector", [
+        "Enterprise SaaS", "Specialty Retail", "IT Services",
+        "Financial Services", "Upstream Oil & Gas", "Healthcare",
+        "Consumer Staples", "Industrials", "Real Estate", "Other",
+    ])
+with vi_col2:
+    hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
+st.components.v1.html("""
+<script>
+  const inputs = window.parent.document.querySelectorAll('input[type=number]');
+  inputs.forEach(input => input.addEventListener('focus', function() { this.select(); }));
+</script>
+""", height=0)
+st.divider()
 
 # --- Re-analyse from Filing Library (fires when ♻️ button sets pending_reanalyse) ---
 if st.session_state.get("pending_reanalyse"):
