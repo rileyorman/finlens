@@ -82,11 +82,24 @@ def _svg_b64(path: str) -> str:
     return base64.b64encode(open(path, "rb").read()).decode()
 
 
-st.markdown(
-    f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}"'
-    f' width="360" style="margin-bottom:1.5rem">',
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:0.5px solid #2D3650;">
+    <svg width="52" height="52" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs><clipPath id="lico"><circle cx="20" cy="20" r="17"/></clipPath></defs>
+        <circle cx="20" cy="20" r="18" fill="rgba(24,95,165,0.1)" stroke="#185FA5" stroke-width="1.5"/>
+        <polyline points="6,30 11,22 16,26 22,13 34,8" fill="none" stroke="#378ADD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#lico)"/>
+        <circle cx="34" cy="8" r="3.5" fill="#4ADE80" clip-path="url(#lico)"/>
+    </svg>
+    <div>
+        <div style="font-size:32px;font-weight:500;color:#F1F5F9;letter-spacing:-0.03em;line-height:1">
+            Fin<span style="color:#378ADD;font-weight:300">Lens</span>
+        </div>
+        <div style="font-size:11px;color:#64748B;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px">
+            AI Financial Analysis
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
@@ -684,6 +697,9 @@ if page == "📈 Portfolio Manager":
 
 
 # --- Single Analysis page ----------------------------------------------
+if page != "📊 Single Analysis":
+    st.stop()
+
 if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
