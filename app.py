@@ -387,6 +387,19 @@ if st.session_state.financial_data:
     bear_bull_data  = st.session_state.bear_bull_data or {}
     dashboard_data  = st.session_state.dashboard_data
 
+    # If dashboard insights are missing (old library entry or failed Call 4 in the
+    # upload pipeline), generate them now from the structured data we do have.
+    # filing_text is unavailable here, so we pass "" — Claude uses financials + signal.
+    if dashboard_data is None:
+        with st.spinner("Generating dashboard insights — this may take 15–20 seconds..."):
+            dashboard_data = analyze_dashboard_insights(
+                "",
+                st.session_state.summary_data,
+                financial_data,
+                API_KEY,
+            )
+            st.session_state.dashboard_data = dashboard_data
+
     company  = financial_data.get("company_name", "Results")
     period   = financial_data.get("period", "")
     currency = financial_data.get("currency", "")

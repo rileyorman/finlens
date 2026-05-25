@@ -420,43 +420,48 @@ def analyze_dashboard_insights(
     financial_data: dict,
     api_key: str,
 ) -> dict:
-    """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard."""
-    client      = _make_client(api_key)
-    filing_text = filing_text[:MAX_FILING_CHARS]
+    """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard.
 
-    user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
-        summary_json   = json.dumps(summary_data or {}, indent=2),
-        financials_json= json.dumps(financial_data,     indent=2),
-        filing_text    = filing_text,
-    )
-
-    response = client.messages.create(
-        model     = DASHBOARD_MODEL,
-        max_tokens= 1200,
-        system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
-                      "cache_control": {"type": "ephemeral"}}],
-        messages  = [{"role": "user", "content": user_message}],
-    )
-
-    raw = response.content[0].text
-
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-    if match:
-        raw = match.group(1)
-
+    Always returns a dict — never raises. Errors are returned as {"error": "..."}.
+    filing_text may be empty string when called from the Filing Library load path
+    (raw text not stored); the model generates insights from structured data alone.
+    """
+    raw = ""
     try:
+        client      = _make_client(api_key)
+        filing_text = filing_text[:MAX_FILING_CHARS]
+
+        user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+            summary_json   = json.dumps(summary_data or {}, indent=2),
+            financials_json= json.dumps(financial_data,     indent=2),
+            filing_text    = filing_text,
+        )
+
+        response = client.messages.create(
+            model     = DASHBOARD_MODEL,
+            max_tokens= 1200,
+            system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
+                          "cache_control": {"type": "ephemeral"}}],
+            messages  = [{"role": "user", "content": user_message}],
+        )
+
+        raw = response.content[0].text
+
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+        if m:
+            raw = m.group(1)
+
         data = json.loads(raw)
         for key in ("dalio_view", "lynch_category", "lynch_story", "marks_view",
                     "crowd_thinks", "marks_question"):
             if key in data:
                 data[key] = _sanitize(data.get(key) or "")
-        for item in (data.get("capital_allocation") or []):  # guard against null from Claude
+        for item in (data.get("capital_allocation") or []):
             item["label"] = _sanitize(item.get("label") or "")
             item["value"] = _sanitize(item.get("value") or "")
         return data
+
     except Exception as e:
-        # Catch all errors (JSONDecodeError, TypeError from null fields, etc.)
-        # so this function always returns a dict and never raises into app.py.
         return {
             "error":              f"Call 4 failed ({type(e).__name__}): {e}",
             "raw_response":       raw,
