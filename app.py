@@ -96,35 +96,31 @@ with st.sidebar:
             st.markdown(f"**{entry['company_name']}**{ticker_str}")
             st.caption(f"{fy}  ·  {date_str}")
 
-            load_col, reanalyse_col, del_col = st.columns([3, 1, 1])
-            with load_col:
-                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
-                    fd = entry["financial_data"]
-                    sd = entry.get("summary_data")
-                    bb = entry.get("bear_bull_data")
-                    st.session_state.financial_data      = fd
-                    st.session_state.summary_data        = sd
-                    st.session_state.bear_bull_data      = bb
-                    st.session_state.dashboard_data      = entry.get("dashboard_data")
-                    st.session_state.market_data         = {}
-                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
-                    st.session_state.last_filename       = entry.get("file_name", "")
-                    st.session_state.resolved_ticker     = ticker if ticker != "—" else None
-                    st.session_state.cache_hit           = False
-                    st.session_state.loaded_from_library = True
-                    st.rerun()
-            with reanalyse_col:
-                if st.button("♻️", key=f"lib_reanalyse_{eid}", use_container_width=True,
-                             help="Re-analyse with fresh Claude calls"):
-                    st.session_state.confirm_reanalyse = eid
-                    st.session_state.confirm_delete    = None
-                    st.rerun()
-            with del_col:
-                if st.button("🗑️", key=f"lib_del_{eid}", use_container_width=True,
-                             help=f"Remove {entry['company_name']} from library"):
-                    st.session_state.confirm_delete    = eid
-                    st.session_state.confirm_reanalyse = None
-                    st.rerun()
+            if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                fd = entry["financial_data"]
+                sd = entry.get("summary_data")
+                bb = entry.get("bear_bull_data")
+                st.session_state.financial_data      = fd
+                st.session_state.summary_data        = sd
+                st.session_state.bear_bull_data      = bb
+                st.session_state.dashboard_data      = entry.get("dashboard_data")
+                st.session_state.market_data         = {}
+                st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                st.session_state.last_filename       = entry.get("file_name", "")
+                st.session_state.resolved_ticker     = ticker if ticker != "—" else None
+                st.session_state.cache_hit           = False
+                st.session_state.loaded_from_library = True
+                st.rerun()
+            if st.button("♻️ Re-Analyse", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                         help="Re-analyse with fresh Claude calls"):
+                st.session_state.confirm_reanalyse = eid
+                st.session_state.confirm_delete    = None
+                st.rerun()
+            if st.button("🗑️ Remove", key=f"lib_del_{eid}", use_container_width=True,
+                         help=f"Remove {entry['company_name']} from library"):
+                st.session_state.confirm_delete    = eid
+                st.session_state.confirm_reanalyse = None
+                st.rerun()
 
             # --- Delete confirmation ---
             if st.session_state.get("confirm_delete") == eid:
