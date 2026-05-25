@@ -84,7 +84,7 @@ def _svg_b64(path: str) -> str:
 
 st.markdown(
     f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}"'
-    f' width="280" style="margin-bottom:1.5rem">',
+    f' width="360" style="margin-bottom:1.5rem">',
     unsafe_allow_html=True,
 )
 
@@ -92,7 +92,7 @@ st.markdown(
 with st.sidebar:
     st.markdown(
         f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo_compact.svg")}"'
-        f' width="150" style="margin-bottom:1rem">',
+        f' width="180" style="margin-bottom:1rem">',
         unsafe_allow_html=True,
     )
     page = st.radio(
