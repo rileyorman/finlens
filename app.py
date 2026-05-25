@@ -88,15 +88,17 @@ with st.sidebar:
         if not lib_entries:
             st.caption("No filings saved yet. Analyse a PDF to add it here.")
         for entry in lib_entries:
+            eid        = entry["id"]
             ticker     = entry.get("ticker", "—")
             ticker_str = f" · {ticker}" if ticker and ticker != "—" else ""
             fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
             date_str   = entry.get("analysed_at", "")[:10]
             st.markdown(f"**{entry['company_name']}**{ticker_str}")
             st.caption(f"{fy}  ·  {date_str}")
-            load_col, reanalyse_col, del_col = st.columns([4, 1, 1])
+
+            load_col, reanalyse_col, del_col = st.columns([3, 1, 1])
             with load_col:
-                if st.button("Load", key=f"lib_load_{entry['id']}", use_container_width=True):
+                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
                     fd = entry["financial_data"]
                     sd = entry.get("summary_data")
                     bb = entry.get("bear_bull_data")
@@ -112,25 +114,63 @@ with st.sidebar:
                     st.session_state.loaded_from_library = True
                     st.rerun()
             with reanalyse_col:
-                if st.button("♻️", key=f"lib_reanalyse_{entry['id']}", use_container_width=True,
+                if st.button("♻️", key=f"lib_reanalyse_{eid}", use_container_width=True,
                              help="Re-analyse with fresh Claude calls"):
-                    if entry.get("raw_text"):
-                        st.session_state.pending_reanalyse = {
-                            "raw_text":     entry["raw_text"],
-                            "company_name": entry["company_name"],
-                            "entry_id":     entry["id"],
-                            "file_name":    entry.get("file_name", ""),
-                            "file_size":    entry.get("file_size_bytes", 0),
-                        }
-                    else:
-                        st.session_state.reanalyse_no_text = entry["company_name"]
-                        st.session_state.uploader_key += 1
+                    st.session_state.confirm_reanalyse = eid
+                    st.session_state.confirm_delete    = None
                     st.rerun()
             with del_col:
-                if st.button("🗑", key=f"lib_del_{entry['id']}", use_container_width=True,
+                if st.button("🗑️", key=f"lib_del_{eid}", use_container_width=True,
                              help=f"Remove {entry['company_name']} from library"):
-                    lib_delete(entry["id"])
+                    st.session_state.confirm_delete    = eid
+                    st.session_state.confirm_reanalyse = None
                     st.rerun()
+
+            # --- Delete confirmation ---
+            if st.session_state.get("confirm_delete") == eid:
+                st.caption(f"Delete **{entry['company_name']}**? This cannot be undone.")
+                yes_col, no_col = st.columns(2)
+                with yes_col:
+                    if st.button("Yes, delete", key=f"lib_del_yes_{eid}",
+                                 use_container_width=True, type="primary"):
+                        lib_delete(eid)
+                        st.session_state.confirm_delete = None
+                        st.rerun()
+                with no_col:
+                    if st.button("Cancel", key=f"lib_del_no_{eid}",
+                                 use_container_width=True):
+                        st.session_state.confirm_delete = None
+                        st.rerun()
+
+            # --- Re-analyse confirmation ---
+            if st.session_state.get("confirm_reanalyse") == eid:
+                st.caption(
+                    f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
+                    f"(~$0.10–0.15 cost) and overwrite the existing result."
+                )
+                yes_col, no_col = st.columns(2)
+                with yes_col:
+                    if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
+                                 use_container_width=True, type="primary"):
+                        st.session_state.confirm_reanalyse = None
+                        if entry.get("raw_text"):
+                            st.session_state.pending_reanalyse = {
+                                "raw_text":     entry["raw_text"],
+                                "company_name": entry["company_name"],
+                                "entry_id":     eid,
+                                "file_name":    entry.get("file_name", ""),
+                                "file_size":    entry.get("file_size_bytes", 0),
+                            }
+                        else:
+                            st.session_state.reanalyse_no_text = entry["company_name"]
+                            st.session_state.uploader_key += 1
+                        st.rerun()
+                with no_col:
+                    if st.button("Cancel", key=f"lib_ra_no_{eid}",
+                                 use_container_width=True):
+                        st.session_state.confirm_reanalyse = None
+                        st.rerun()
+
             st.divider()
 
     st.divider()
