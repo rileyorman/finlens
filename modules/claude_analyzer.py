@@ -403,7 +403,8 @@ Rules:
 - Reference specific numbers, trends, or disclosures from the filing wherever possible
 - lynch_category must be exactly one of the 6 values listed above, nothing else
 - capital_allocation must have exactly 5 entries in the order shown
-- marks_view must show genuine contrarian or second-level insight — not generic risk commentary"""
+- marks_view must show genuine contrarian or second-level insight — not generic risk commentary
+- Important: never use em dashes (—) or special unicode punctuation. Use regular hyphens (-) or double hyphens (--) instead. Use straight quotes only."""
 
 DASHBOARD_USER_PROMPT_TEMPLATE = """Generate dashboard insights for this financial filing.
 

@@ -22,6 +22,8 @@ _CHAR_REPLACEMENTS = {
 def _clean(text: str) -> str:
     if not text:
         return text
+    # Catch already-mangled em dashes (Windows encoding corruption → ' ? ')
+    text = text.replace(' ? ', ' -- ')
     for char, replacement in _CHAR_REPLACEMENTS.items():
         text = text.replace(char, replacement)
     return text
