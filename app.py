@@ -215,6 +215,93 @@ with st.sidebar:
                         st.session_state.pm_confirm_delete = sel_pf
                         st.rerun()
 
+            # --- Analysis Library (read-only, re-analyse only) ----------------
+            st.markdown(
+                "<hr style='margin:6px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                unsafe_allow_html=True,
+            )
+            st.markdown("""
+            <style>
+            section[data-testid="stSidebar"] .stButton button {
+                padding: 1px 8px;
+                font-size: 11px;
+                line-height: 1.3;
+                min-height: 0px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            st.markdown(
+                "<span style='font-size:10px;font-weight:700;color:#888;"
+                "text-transform:uppercase;letter-spacing:0.06em'>Analysis Library</span>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                "<span style='font-size:10px;color:#888'>"
+                "🟢 In current portfolio  ⚫ Not in portfolio</span>",
+                unsafe_allow_html=True,
+            )
+            if st.session_state.get("al_no_text_warning"):
+                st.warning(
+                    f"No PDF stored for **{st.session_state.al_no_text_warning}** — "
+                    "switch to 📊 Single Analysis to re-upload."
+                )
+                st.session_state.al_no_text_warning = None
+            al_entries = lib_get()
+            if not al_entries:
+                st.caption("No analyses yet — add filings via Single Analysis")
+            else:
+                _pf_tickers_upper = {t.upper() for t in cur_tickers}
+                for entry in al_entries:
+                    eid    = entry["id"]
+                    ticker = entry.get("ticker", "—")
+                    fy     = entry.get("fiscal_year") or entry.get("period", "")[:20]
+                    in_pf  = bool(ticker and ticker != "—" and ticker.upper() in _pf_tickers_upper)
+                    dot    = "🟢" if in_pf else "⚫"
+                    st.markdown(
+                        f"<span style='font-size:13px;font-weight:700;color:#1F3864'>"
+                        f"{dot} {entry['company_name']}</span>",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f"<small style='color:#888;font-size:11px'>{ticker} · {fy}</small>",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("♻️ Re-Analyse", key=f"al_ra_{eid}",
+                                 use_container_width=True,
+                                 help="Re-analyse with fresh Claude calls"):
+                        st.session_state.al_confirm_reanalyse = eid
+                        st.rerun()
+                    if st.session_state.get("al_confirm_reanalyse") == eid:
+                        st.caption(
+                            f"Re-analyse **{entry['company_name']}**? This will run 4 Claude "
+                            f"API calls (~$0.10–0.15 cost) and overwrite the existing result."
+                        )
+                        al_yes, al_no = st.columns(2)
+                        with al_yes:
+                            if st.button("Yes, re-analyse", key=f"al_ra_yes_{eid}",
+                                         use_container_width=True, type="primary"):
+                                st.session_state.al_confirm_reanalyse = None
+                                if entry.get("raw_text"):
+                                    st.session_state.pending_reanalyse = {
+                                        "raw_text":     entry["raw_text"],
+                                        "company_name": entry["company_name"],
+                                        "entry_id":     eid,
+                                        "file_name":    entry.get("file_name", ""),
+                                        "file_size":    entry.get("file_size_bytes", 0),
+                                    }
+                                else:
+                                    st.session_state.al_no_text_warning = entry["company_name"]
+                                st.rerun()
+                        with al_no:
+                            if st.button("Cancel", key=f"al_ra_no_{eid}",
+                                         use_container_width=True):
+                                st.session_state.al_confirm_reanalyse = None
+                                st.rerun()
+                    st.markdown(
+                        "<hr style='margin:2px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        unsafe_allow_html=True,
+                    )
+
         st.divider()
 
     st.markdown(
@@ -350,6 +437,34 @@ if page == "📈 Portfolio Manager":
     import pandas as pd
 
     st.subheader("📈 Portfolio Manager")
+
+    # Re-analysis triggered from Analysis Library sidebar fires here
+    # (Single Analysis handler is after st.stop() and unreachable in PM mode)
+    if st.session_state.get("pending_reanalyse"):
+        ra = st.session_state.pending_reanalyse
+        st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
+        _ra_text = ra["raw_text"]
+        with st.spinner("Call 1: Extracting financials (Haiku)..."):
+            _ra_fd = analyze_financials(_ra_text, API_KEY)
+        with st.spinner("Call 2: Generating investment signal..."):
+            _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY)
+        with st.spinner("Call 3: Generating bull/bear case..."):
+            _ra_bb = analyze_bear_bull(_ra_text, API_KEY)
+        with st.spinner("Call 4: Generating dashboard insights..."):
+            _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
+        try:
+            lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
+                    _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text)
+        except Exception:
+            pass
+        st.session_state.al_reanalyse_complete = ra["company_name"]
+        st.session_state.pending_reanalyse     = None
+        st.rerun()
+
+    if st.session_state.get("al_reanalyse_complete"):
+        _co = st.session_state.al_reanalyse_complete
+        st.session_state.al_reanalyse_complete = None
+        st.success(f"✅ {_co} re-analysed — portfolio view updated")
 
     pf_names = get_portfolio_names()
     if not pf_names:
