@@ -607,6 +607,19 @@ if st.session_state.financial_data:
         metrics = _calc_summary_metrics(financial_data)
         dd = dashboard_data if dashboard_data and "error" not in dashboard_data else {}
 
+        if dashboard_data and "error" in dashboard_data:
+            st.error(
+                f"Dashboard insights could not be generated: "
+                f"{dashboard_data['error']}  \n"
+                f"Re-analyse the filing to try again. "
+                f"Ratio metrics and stress scenarios below are still available."
+            )
+        elif not dashboard_data:
+            st.warning(
+                "Dashboard insights were not generated for this filing. "
+                "Re-analyse to run Call 4 (Dalio / Lynch / Marks frameworks)."
+            )
+
         # --- Section 1: Header — Signal badge, thesis, Quality Score, Beta, MoS ---
         sig_col, qs_col, beta_col, mos_col = st.columns([3, 2, 2, 2])
 
@@ -785,8 +798,9 @@ if st.session_state.financial_data:
                 if cap_items:
                     for item in cap_items[:5]:
                         if isinstance(item, dict):
-                            title  = item.get("title", "")
-                            detail = item.get("detail", "")
+                            # prompt returns "label"/"value"; fall back to "title"/"detail" for safety
+                            title  = item.get("label") or item.get("title", "")
+                            detail = item.get("value") or item.get("detail", "")
                         else:
                             title, detail = str(item), ""
                         st.markdown(f"**{title}**")

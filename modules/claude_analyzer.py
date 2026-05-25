@@ -7,6 +7,9 @@ import re
 
 from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS
 
+# Model alias for the dashboard insights call (same tier as analysis)
+DASHBOARD_MODEL = ANALYSIS_MODEL
+
 
 def _sanitize(text: str) -> str:
     """Replace non-ASCII characters with '?' — prevents charmap errors on Windows."""
@@ -356,4 +359,112 @@ def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
             "error": f"Call 3 response could not be parsed as JSON: {e}",
             "bull_case": [],
             "bear_case": [],
+        }
+
+
+# ===========================================================================
+# CALL 4 — DASHBOARD INSIGHTS
+# Model: DASHBOARD_MODEL (Sonnet)
+# Framework-based insights for the fund manager dashboard: Dalio (macro/cycle),
+# Lynch (story/growth), Marks (value/risk), capital allocation, sentiment.
+# ===========================================================================
+
+DASHBOARD_SYSTEM_PROMPT = """You are a financial analyst generating framework-based insights for a fund manager dashboard.
+
+Given a company's financial filing and investment signal, produce structured insights in the style of three legendary investors.
+
+DALIO: Ray Dalio's macro/credit cycle framework — where is this company in the debt/productivity cycle?
+LYNCH: Peter Lynch's story framework — categorise the business, apply the story test.
+MARKS: Howard Marks's risk/return framework — second-level thinking, what does the crowd miss?
+
+Return a single JSON object only. No markdown fences, no preamble.
+
+{
+  "dalio_view": "2 sentences on macro/debt cycle positioning from Dalio's perspective. Reference specific filing data.",
+  "lynch_category": "Exactly one of: Fast Grower | Stalwart | Slow Grower | Turnaround | Asset Play | Cyclical",
+  "lynch_story": "3 sentences — plain English investment story a non-expert can follow. Reference the actual business.",
+  "marks_view": "2 sentences of genuine second-level thinking. What does the crowd believe vs. what is actually true?",
+  "capital_allocation": [
+    {"label": "Buybacks",        "value": "One-line assessment referencing filing data."},
+    {"label": "Dividends",       "value": "One-line assessment."},
+    {"label": "M&A",             "value": "One-line assessment."},
+    {"label": "Cash Position",   "value": "One-line assessment referencing balance sheet."},
+    {"label": "Capex Intensity", "value": "One-line assessment referencing cash flow data."}
+  ],
+  "crowd_thinks": "1 sentence — the market consensus view on this company right now.",
+  "marks_question": "1 sentence — the specific second-level question Marks would ask about this investment."
+}
+
+Rules:
+- Reference specific numbers, trends, or disclosures from the filing wherever possible
+- lynch_category must be exactly one of the 6 values listed above, nothing else
+- capital_allocation must have exactly 5 entries in the order shown
+- marks_view must show genuine contrarian or second-level insight — not generic risk commentary"""
+
+DASHBOARD_USER_PROMPT_TEMPLATE = """Generate dashboard insights for this financial filing.
+
+INVESTMENT SIGNAL (from prior analysis):
+{summary_json}
+
+EXTRACTED FINANCIALS:
+{financials_json}
+
+FILING TEXT (for capital allocation and management commentary context):
+{filing_text}
+"""
+
+
+def analyze_dashboard_insights(
+    filing_text: str,
+    summary_data: dict,
+    financial_data: dict,
+    api_key: str,
+) -> dict:
+    """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard."""
+    client      = _make_client(api_key)
+    filing_text = filing_text[:MAX_FILING_CHARS]
+
+    user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+        summary_json   = json.dumps(summary_data or {}, indent=2),
+        financials_json= json.dumps(financial_data,     indent=2),
+        filing_text    = filing_text,
+    )
+
+    response = client.messages.create(
+        model     = DASHBOARD_MODEL,
+        max_tokens= 1200,
+        system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
+                      "cache_control": {"type": "ephemeral"}}],
+        messages  = [{"role": "user", "content": user_message}],
+    )
+
+    raw = response.content[0].text
+
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+    if match:
+        raw = match.group(1)
+
+    try:
+        data = json.loads(raw)
+        for key in ("dalio_view", "lynch_category", "lynch_story", "marks_view",
+                    "crowd_thinks", "marks_question"):
+            if key in data:
+                data[key] = _sanitize(data.get(key) or "")
+        for item in (data.get("capital_allocation") or []):  # guard against null from Claude
+            item["label"] = _sanitize(item.get("label") or "")
+            item["value"] = _sanitize(item.get("value") or "")
+        return data
+    except Exception as e:
+        # Catch all errors (JSONDecodeError, TypeError from null fields, etc.)
+        # so this function always returns a dict and never raises into app.py.
+        return {
+            "error":              f"Call 4 failed ({type(e).__name__}): {e}",
+            "raw_response":       raw,
+            "dalio_view":         "",
+            "lynch_category":     "",
+            "lynch_story":        "",
+            "marks_view":         "",
+            "capital_allocation": [],
+            "crowd_thinks":       "",
+            "marks_question":     "",
         }
