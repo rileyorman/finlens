@@ -226,123 +226,124 @@ with st.sidebar:
     )
     st.divider()
 
-    # --- Filing Library ------------------------------------------------
-    st.markdown("""
-    <style>
-    section[data-testid="stSidebar"] .stButton button {
-        padding: 1px 8px;
-        font-size: 11px;
-        line-height: 1.3;
-        min-height: 0px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # --- Filing Library (Single Analysis mode only) --------------------
+    if page == "📊 Single Analysis":
+        st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] .stButton button {
+            padding: 1px 8px;
+            font-size: 11px;
+            line-height: 1.3;
+            min-height: 0px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-    lib_entries = lib_get()
-    lib_count   = len(lib_entries)
-    label       = f"📚 Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
-    with st.expander(label, expanded=lib_count > 0):
-        if not lib_entries:
-            st.caption("No filings saved yet. Analyse a PDF to add it here.")
-        for entry in lib_entries:
-            eid        = entry["id"]
-            ticker     = entry.get("ticker", "—")
-            ticker_str = f" · {ticker}" if ticker and ticker != "—" else ""
-            fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
-            date_str   = entry.get("analysed_at", "")[:10]
-            st.markdown(
-                f"<span style='font-size:13px;font-weight:700'>{entry['company_name']}{ticker_str}</span>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<small style='color:#888;font-size:11px'>{fy} · {date_str}</small>",
-                unsafe_allow_html=True,
-            )
-            if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
-                fd = entry["financial_data"]
-                sd = entry.get("summary_data")
-                bb = entry.get("bear_bull_data")
-                st.session_state.financial_data      = fd
-                st.session_state.summary_data        = sd
-                st.session_state.bear_bull_data      = bb
-                st.session_state.dashboard_data      = entry.get("dashboard_data")
-                st.session_state.market_data         = {}
-                st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
-                st.session_state.last_filename       = entry.get("file_name", "")
-                st.session_state.resolved_ticker     = ticker if ticker != "—" else None
-                st.session_state.cache_hit           = False
-                st.session_state.loaded_from_library = True
-                st.rerun()
-            if st.button("♻️ Re-Analyse", key=f"lib_reanalyse_{eid}", use_container_width=True,
-                         help="Re-analyse with fresh Claude calls"):
-                st.session_state.confirm_reanalyse = eid
-                st.session_state.confirm_delete    = None
-                st.rerun()
-            if st.button("🗑️ Remove", key=f"lib_del_{eid}", use_container_width=True,
-                         help=f"Remove {entry['company_name']} from library"):
-                st.session_state.confirm_delete    = eid
-                st.session_state.confirm_reanalyse = None
-                st.rerun()
-
-            # --- Delete confirmation ---
-            if st.session_state.get("confirm_delete") == eid:
-                st.caption(f"Delete **{entry['company_name']}**? This cannot be undone.")
-                yes_col, no_col = st.columns(2)
-                with yes_col:
-                    if st.button("Yes, delete", key=f"lib_del_yes_{eid}",
-                                 use_container_width=True, type="primary"):
-                        lib_delete(eid)
-                        st.session_state.confirm_delete = None
-                        st.rerun()
-                with no_col:
-                    if st.button("Cancel", key=f"lib_del_no_{eid}",
-                                 use_container_width=True):
-                        st.session_state.confirm_delete = None
-                        st.rerun()
-
-            # --- Re-analyse confirmation ---
-            if st.session_state.get("confirm_reanalyse") == eid:
-                st.caption(
-                    f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
-                    f"(~$0.10–0.15 cost) and overwrite the existing result."
+        lib_entries = lib_get()
+        lib_count   = len(lib_entries)
+        label       = f"📚 Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
+        with st.expander(label, expanded=lib_count > 0):
+            if not lib_entries:
+                st.caption("No filings saved yet. Analyse a PDF to add it here.")
+            for entry in lib_entries:
+                eid        = entry["id"]
+                ticker     = entry.get("ticker", "—")
+                ticker_str = f" · {ticker}" if ticker and ticker != "—" else ""
+                fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
+                date_str   = entry.get("analysed_at", "")[:10]
+                st.markdown(
+                    f"<span style='font-size:13px;font-weight:700'>{entry['company_name']}{ticker_str}</span>",
+                    unsafe_allow_html=True,
                 )
-                yes_col, no_col = st.columns(2)
-                with yes_col:
-                    if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
-                                 use_container_width=True, type="primary"):
-                        st.session_state.confirm_reanalyse = None
-                        if entry.get("raw_text"):
-                            st.session_state.pending_reanalyse = {
-                                "raw_text":     entry["raw_text"],
-                                "company_name": entry["company_name"],
-                                "entry_id":     eid,
-                                "file_name":    entry.get("file_name", ""),
-                                "file_size":    entry.get("file_size_bytes", 0),
-                            }
-                        else:
-                            st.session_state.reanalyse_no_text = entry["company_name"]
-                            st.session_state.uploader_key += 1
-                        st.rerun()
-                with no_col:
-                    if st.button("Cancel", key=f"lib_ra_no_{eid}",
-                                 use_container_width=True):
-                        st.session_state.confirm_reanalyse = None
-                        st.rerun()
+                st.markdown(
+                    f"<small style='color:#888;font-size:11px'>{fy} · {date_str}</small>",
+                    unsafe_allow_html=True,
+                )
+                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                    fd = entry["financial_data"]
+                    sd = entry.get("summary_data")
+                    bb = entry.get("bear_bull_data")
+                    st.session_state.financial_data      = fd
+                    st.session_state.summary_data        = sd
+                    st.session_state.bear_bull_data      = bb
+                    st.session_state.dashboard_data      = entry.get("dashboard_data")
+                    st.session_state.market_data         = {}
+                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                    st.session_state.last_filename       = entry.get("file_name", "")
+                    st.session_state.resolved_ticker     = ticker if ticker != "—" else None
+                    st.session_state.cache_hit           = False
+                    st.session_state.loaded_from_library = True
+                    st.rerun()
+                if st.button("♻️ Re-Analyse", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                             help="Re-analyse with fresh Claude calls"):
+                    st.session_state.confirm_reanalyse = eid
+                    st.session_state.confirm_delete    = None
+                    st.rerun()
+                if st.button("🗑️ Remove", key=f"lib_del_{eid}", use_container_width=True,
+                             help=f"Remove {entry['company_name']} from library"):
+                    st.session_state.confirm_delete    = eid
+                    st.session_state.confirm_reanalyse = None
+                    st.rerun()
 
-            st.markdown(
-                "<hr style='margin: 2px 0; border: none; border-top: 0.5px solid #e0e0e0;'>",
-                unsafe_allow_html=True,
-            )
+                # --- Delete confirmation ---
+                if st.session_state.get("confirm_delete") == eid:
+                    st.caption(f"Delete **{entry['company_name']}**? This cannot be undone.")
+                    yes_col, no_col = st.columns(2)
+                    with yes_col:
+                        if st.button("Yes, delete", key=f"lib_del_yes_{eid}",
+                                     use_container_width=True, type="primary"):
+                            lib_delete(eid)
+                            st.session_state.confirm_delete = None
+                            st.rerun()
+                    with no_col:
+                        if st.button("Cancel", key=f"lib_del_no_{eid}",
+                                     use_container_width=True):
+                            st.session_state.confirm_delete = None
+                            st.rerun()
 
-    st.divider()
-    n = cache_count()
-    st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
-    if n:
-        if st.button("Clear Cache", use_container_width=True):
-            cleared = clear_cache()
-            st.session_state.uploader_key += 1  # force file uploader to reset
-            st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
-            st.rerun()
+                # --- Re-analyse confirmation ---
+                if st.session_state.get("confirm_reanalyse") == eid:
+                    st.caption(
+                        f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
+                        f"(~$0.10–0.15 cost) and overwrite the existing result."
+                    )
+                    yes_col, no_col = st.columns(2)
+                    with yes_col:
+                        if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
+                                     use_container_width=True, type="primary"):
+                            st.session_state.confirm_reanalyse = None
+                            if entry.get("raw_text"):
+                                st.session_state.pending_reanalyse = {
+                                    "raw_text":     entry["raw_text"],
+                                    "company_name": entry["company_name"],
+                                    "entry_id":     eid,
+                                    "file_name":    entry.get("file_name", ""),
+                                    "file_size":    entry.get("file_size_bytes", 0),
+                                }
+                            else:
+                                st.session_state.reanalyse_no_text = entry["company_name"]
+                                st.session_state.uploader_key += 1
+                            st.rerun()
+                    with no_col:
+                        if st.button("Cancel", key=f"lib_ra_no_{eid}",
+                                     use_container_width=True):
+                            st.session_state.confirm_reanalyse = None
+                            st.rerun()
+
+                st.markdown(
+                    "<hr style='margin: 2px 0; border: none; border-top: 0.5px solid #e0e0e0;'>",
+                    unsafe_allow_html=True,
+                )
+
+        st.divider()
+        n = cache_count()
+        st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
+        if n:
+            if st.button("Clear Cache", use_container_width=True):
+                cleared = clear_cache()
+                st.session_state.uploader_key += 1  # force file uploader to reset
+                st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
+                st.rerun()
 
 # --- Portfolio Manager page --------------------------------------------
 if page == "📈 Portfolio Manager":
