@@ -312,7 +312,7 @@ with st.sidebar:
                     in_pf  = bool(ticker and ticker != "—" and ticker.upper() in _pf_tickers_upper)
                     dot    = "🟢" if in_pf else "⚫"
                     st.markdown(
-                        f"<span style='font-size:13px;font-weight:700;color:#1F3864'>"
+                        f"<span style='font-size:13px;font-weight:500;color:#F1F5F9'>"
                         f"{dot} {entry['company_name']}</span>",
                         unsafe_allow_html=True,
                     )
