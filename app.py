@@ -133,14 +133,15 @@ with st.sidebar:
                     )
 
                 if st.session_state.get("pm_clear_input"):
-                    st.session_state.pm_clear_input = False
+                    st.session_state.pm_clear_input      = False
+                    st.session_state.pm_ticker_not_found = None
                     st.rerun()
 
-                ac, bc = st.columns([3, 1])
+                ac, bc = st.columns([4, 1])
                 with ac:
                     new_tk = st.text_input(
-                        "Ticker", key=f"pm_add_input_{sel_pf}",
-                        placeholder="e.g. AAPL", label_visibility="collapsed",
+                        "", key=f"pm_add_input_{sel_pf}",
+                        placeholder="e.g. AAPL, RY.TO", label_visibility="collapsed",
                     )
                 with bc:
                     add_clicked = st.button("Add", key=f"pm_add_btn_{sel_pf}", use_container_width=True)
@@ -150,6 +151,7 @@ with st.sidebar:
                 if add_clicked:
                     t_up = new_tk.strip().upper()
                     if t_up:
+                        st.session_state.pm_ticker_not_found = None  # clear any previous failure
                         with st.spinner(f"Validating {t_up}…"):
                             try:
                                 vmd      = get_market_data(t_up)
@@ -163,9 +165,31 @@ with st.sidebar:
                             else:
                                 st.warning(f"{t_up} already in portfolio.")
                         else:
-                            st.warning(f"'{t_up}' not found — check the ticker symbol.")
+                            st.session_state.pm_ticker_not_found = t_up
                     else:
                         st.warning("Enter a ticker symbol.")
+
+                if st.session_state.get("pm_ticker_not_found"):
+                    _nf = st.session_state.pm_ticker_not_found
+                    st.warning(
+                        f"'{_nf}' not found via yfinance — may be delisted or rate-limited."
+                    )
+                    ov1, ov2 = st.columns(2)
+                    with ov1:
+                        if st.button("Add anyway", key=f"pm_add_anyway_{sel_pf}",
+                                     use_container_width=True, type="primary"):
+                            if reg_add_ticker(sel_pf, _nf):
+                                st.session_state.pm_ticker_not_found = None
+                                st.session_state.pm_clear_input = True
+                                st.rerun()
+                            else:
+                                st.session_state.pm_ticker_not_found = None
+                                st.warning(f"{_nf} already in portfolio.")
+                    with ov2:
+                        if st.button("Cancel", key=f"pm_cancel_anyway_{sel_pf}",
+                                     use_container_width=True):
+                            st.session_state.pm_ticker_not_found = None
+                            st.rerun()
 
                 csv_up = st.file_uploader(
                     "Bulk add (.csv)", type=["csv"], key=f"pm_csv_{sel_pf}",
