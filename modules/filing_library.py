@@ -36,6 +36,7 @@ def add_entry(
     financial_data: dict,
     summary_data: dict | None,
     bear_bull_data: dict | None,
+    dashboard_data: dict | None = None,
 ) -> None:
     """Add or update a filing entry. Keyed on file_hash so the same PDF never duplicates."""
     lib = _load()
@@ -54,6 +55,7 @@ def add_entry(
         "financial_data":  financial_data,
         "summary_data":    summary_data,
         "bear_bull_data":  bear_bull_data,
+        "dashboard_data":  dashboard_data,
     }
 
     entries = lib["entries"]
