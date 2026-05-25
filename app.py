@@ -17,6 +17,7 @@ from modules.portfolio_registry import (
     bulk_add_tickers, get_tickers,
 )
 from modules.portfolio_manager import get_portfolio_display_data
+from modules.market_ticker import get_ticker_data
 from config import MAX_FILING_CHARS
 
 load_dotenv()
@@ -97,6 +98,90 @@ st.markdown("""
         <div style="font-size:11px;color:#64748B;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px">
             AI Financial Analysis
         </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Market Ticker Tape ------------------------------------------------
+_ticker_data = get_ticker_data()
+
+if not _ticker_data:
+    st.markdown(
+        "<div style='width:100%;background:#161B27;border-top:0.5px solid #2D3650;"
+        "border-bottom:0.5px solid #2D3650;padding:6px 16px;margin-bottom:1.5rem;"
+        "font-size:12px;color:#64748B;font-family:sans-serif'>Loading market data...</div>",
+        unsafe_allow_html=True,
+    )
+else:
+    def _ticker_item_html(item: dict) -> str:
+        arrow = "▲" if item["positive"] else "▼"
+        cls   = "ticker-change-pos" if item["positive"] else "ticker-change-neg"
+        return (
+            f"<div class='ticker-item'>"
+            f"<span class='ticker-name'>{item['name']}</span>"
+            f"<span class='ticker-price'>{item['price_fmt']}</span>"
+            f"<span class='{cls}'>{arrow} {abs(item['pct_change']):.2f}%</span>"
+            f"</div>"
+        )
+
+    _items_html = "".join(_ticker_item_html(i) for i in _ticker_data)
+    # Duplicate so the seamless loop never shows a gap
+    _items_html = _items_html * 2
+
+    st.markdown(f"""
+<style>
+.ticker-wrap {{
+    width: 100%;
+    overflow: hidden;
+    background: #161B27;
+    border-top: 0.5px solid #2D3650;
+    border-bottom: 0.5px solid #2D3650;
+    padding: 6px 0;
+    margin-bottom: 1.5rem;
+}}
+.ticker-content {{
+    display: inline-flex;
+    gap: 0;
+    animation: ticker-scroll 60s linear infinite;
+    white-space: nowrap;
+}}
+.ticker-content:hover {{
+    animation-play-state: paused;
+}}
+.ticker-item {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 24px;
+    border-right: 0.5px solid #2D3650;
+    font-size: 12px;
+    font-family: sans-serif;
+}}
+.ticker-name {{
+    color: #64748B;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+}}
+.ticker-price {{
+    color: #F1F5F9;
+    font-weight: 400;
+}}
+.ticker-change-pos {{
+    color: #4ADE80;
+    font-size: 11px;
+}}
+.ticker-change-neg {{
+    color: #F87171;
+    font-size: 11px;
+}}
+@keyframes ticker-scroll {{
+    0%   {{ transform: translateX(0); }}
+    100% {{ transform: translateX(-50%); }}
+}}
+</style>
+<div class="ticker-wrap">
+    <div class="ticker-content">
+        {_items_html}
     </div>
 </div>
 """, unsafe_allow_html=True)
