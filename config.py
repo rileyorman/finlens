@@ -11,4 +11,4 @@ MAX_FILING_CHARS     = 80_000   # Sonnet cap for analysis/summary calls (Calls 2
 # If the project lives in a OneDrive-synced folder, point this to a local
 # path outside OneDrive to prevent sync conflicts on cache clears, e.g.:
 #   CACHE_DIR = Path(r"C:\Users\riley\AppData\Local\FinLens\cache")
-CACHE_DIR = Path(__file__).parent / "cache"
+CACHE_DIR = Path(r"C:\Users\riley\AppData\Local\FinLens\cache")

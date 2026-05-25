@@ -5,6 +5,8 @@ from pathlib import Path
 
 from config import CACHE_DIR as _CACHE_DIR
 
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def get_cache_key(pdf_bytes: bytes) -> str:
     """SHA-256 hash of the raw PDF bytes — same file always maps to the same key."""
