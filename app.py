@@ -10,6 +10,7 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
+from config import MAX_FILING_CHARS
 
 load_dotenv()
 
@@ -93,7 +94,7 @@ with st.sidebar:
             date_str   = entry.get("analysed_at", "")[:10]
             st.markdown(f"**{entry['company_name']}**{ticker_str}")
             st.caption(f"{fy}  ·  {date_str}")
-            load_col, del_col = st.columns([5, 1])
+            load_col, reanalyse_col, del_col = st.columns([4, 1, 1])
             with load_col:
                 if st.button("Load", key=f"lib_load_{entry['id']}", use_container_width=True):
                     fd = entry["financial_data"]
@@ -109,6 +110,21 @@ with st.sidebar:
                     st.session_state.resolved_ticker     = ticker if ticker != "—" else None
                     st.session_state.cache_hit           = False
                     st.session_state.loaded_from_library = True
+                    st.rerun()
+            with reanalyse_col:
+                if st.button("♻️", key=f"lib_reanalyse_{entry['id']}", use_container_width=True,
+                             help="Re-analyse with fresh Claude calls"):
+                    if entry.get("raw_text"):
+                        st.session_state.pending_reanalyse = {
+                            "raw_text":     entry["raw_text"],
+                            "company_name": entry["company_name"],
+                            "entry_id":     entry["id"],
+                            "file_name":    entry.get("file_name", ""),
+                            "file_size":    entry.get("file_size_bytes", 0),
+                        }
+                    else:
+                        st.session_state.reanalyse_no_text = entry["company_name"]
+                        st.session_state.uploader_key += 1
                     st.rerun()
             with del_col:
                 if st.button("🗑", key=f"lib_del_{entry['id']}", use_container_width=True,
@@ -242,6 +258,9 @@ uploaded_file = st.file_uploader(
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
 # explicitly uploads a different file.
+if st.session_state.get("reanalyse_no_text"):
+    st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
+
 if uploaded_file is None:
     if not st.session_state.get("loaded_from_library"):
         st.session_state.financial_data  = None
@@ -265,12 +284,55 @@ elif (st.session_state.last_filename and
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
 
+# --- Re-analyse from Filing Library (fires when ♻️ button sets pending_reanalyse) ---
+if st.session_state.get("pending_reanalyse"):
+    ra = st.session_state.pending_reanalyse
+    st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
+
+    _ra_text = ra["raw_text"]
+
+    with st.spinner("Call 1: Extracting financials (Haiku)..."):
+        _ra_fd = analyze_financials(_ra_text, API_KEY)
+
+    _ra_sd = None
+    with st.spinner("Call 2: Generating investment signal..."):
+        _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY)
+
+    _ra_bb = None
+    with st.spinner("Call 3: Generating bull/bear case..."):
+        _ra_bb = analyze_bear_bull(_ra_text, API_KEY)
+
+    _ra_dd = None
+    with st.spinner("Call 4: Generating dashboard insights..."):
+        _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
+
+    try:
+        lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
+                _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text)
+    except Exception:
+        pass
+
+    st.session_state.financial_data      = _ra_fd
+    st.session_state.summary_data        = _ra_sd
+    st.session_state.bear_bull_data      = _ra_bb
+    st.session_state.dashboard_data      = _ra_dd
+    st.session_state.market_data         = {}
+    st.session_state.excel_bytes         = create_excel_file(_ra_fd, _ra_sd, 0.0, _ra_bb)
+    st.session_state.last_filename       = ra["file_name"]
+    st.session_state.resolved_ticker     = None
+    st.session_state.loaded_from_library = True
+    st.session_state.pending_reanalyse   = None
+    st.rerun()
+
 if uploaded_file:
     if st.button("Analyze Financials", type="primary", use_container_width=True):
+
+        st.session_state.reanalyse_no_text = None  # clear prompt once user starts upload
 
         pdf_bytes = uploaded_file.getvalue()
         cache_key = get_cache_key(pdf_bytes)
         cached    = load_cache(cache_key)
+        raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
 
         if cached:
             financial_data = cached["financial_data"]
@@ -374,7 +436,8 @@ if uploaded_file:
         # Persist to Filing Library (permanent — survives cache clears).
         try:
             lib_add(cache_key, uploaded_file.name, len(pdf_bytes),
-                    financial_data, summary_data, bear_bull_data, dashboard_data)
+                    financial_data, summary_data, bear_bull_data, dashboard_data,
+                    raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None)
         except Exception:
             pass  # Library write failure must never block analysis
 
