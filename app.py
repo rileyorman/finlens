@@ -83,7 +83,8 @@ def _svg_b64(path: str) -> str:
 
 
 st.markdown(
-    f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}" width="200">',
+    f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}"'
+    f' width="280" style="margin-bottom:1.5rem">',
     unsafe_allow_html=True,
 )
 
@@ -91,7 +92,7 @@ st.markdown(
 with st.sidebar:
     st.markdown(
         f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo_compact.svg")}"'
-        f' width="120" style="margin-bottom:1rem">',
+        f' width="150" style="margin-bottom:1rem">',
         unsafe_allow_html=True,
     )
     page = st.radio(
@@ -477,7 +478,8 @@ if page == "📈 Portfolio Manager":
     import pandas as pd
 
     st.markdown(
-        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}" width="200">',
+        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}"'
+        f' width="280" style="margin-bottom:1.5rem">',
         unsafe_allow_html=True,
     )
 
@@ -623,7 +625,7 @@ if page == "📈 Portfolio Manager":
         red_counts = {r["ticker"]: r["red_flag_count"] for r in analysed}
         if any(v > 0 for v in red_counts.values()):
             st.caption("Red flag count per holding")
-            st.bar_chart(pd.DataFrame.from_dict(red_counts, orient="index", columns=["Red Flags"]))
+            st.bar_chart(pd.DataFrame.from_dict(red_counts, orient="index", columns=["Red Flags"]), color="#378ADD")
         else:
             st.success("All analysed holdings: 0 red flags.")
 
@@ -639,7 +641,7 @@ if page == "📈 Portfolio Manager":
     with lynch_left:
         st.caption("Holdings per Lynch category")
         if lynch_counts:
-            st.bar_chart(pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"]))
+            st.bar_chart(pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"]), color="#378ADD")
 
     with lynch_right:
         st.dataframe(
