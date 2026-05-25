@@ -132,6 +132,10 @@ with st.sidebar:
                         unsafe_allow_html=True,
                     )
 
+                if st.session_state.get("pm_clear_input"):
+                    st.session_state.pm_clear_input = False
+                    st.rerun()
+
                 ac, bc = st.columns([3, 1])
                 with ac:
                     new_tk = st.text_input(
@@ -150,7 +154,7 @@ with st.sidebar:
                                     is_valid = False
                             if is_valid:
                                 if reg_add_ticker(sel_pf, t_up):
-                                    st.session_state[f"pm_add_input_{sel_pf}"] = ""
+                                    st.session_state.pm_clear_input = True
                                     st.rerun()
                                 else:
                                     st.warning(f"{t_up} already in portfolio.")
