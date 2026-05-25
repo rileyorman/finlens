@@ -69,18 +69,31 @@ def _dash_rag(metric: str, value) -> tuple:
 
 st.set_page_config(
     page_title="FinLens",
-    page_icon="📊",
+    page_icon="assets/favicon.svg",
     layout="wide",
 )
 
 with open("assets/style.css") as _f:
     st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
 
-st.title("FinLens")
-st.caption("AI-powered financial statement analysis. Upload a PDF to extract key financials and download a structured Excel report.")
+
+def _svg_b64(path: str) -> str:
+    import base64
+    return base64.b64encode(open(path, "rb").read()).decode()
+
+
+st.markdown(
+    f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}" width="200">',
+    unsafe_allow_html=True,
+)
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
+    st.markdown(
+        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo_compact.svg")}"'
+        f' width="120" style="margin-bottom:1rem">',
+        unsafe_allow_html=True,
+    )
     page = st.radio(
         "Mode",
         ["📊 Single Analysis", "📈 Portfolio Manager"],
@@ -463,7 +476,10 @@ with st.sidebar:
 if page == "📈 Portfolio Manager":
     import pandas as pd
 
-    st.subheader("📈 Portfolio Manager")
+    st.markdown(
+        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}" width="200">',
+        unsafe_allow_html=True,
+    )
 
     # Re-analysis triggered from Analysis Library sidebar fires here
     # (Single Analysis handler is after st.stop() and unreachable in PM mode)
