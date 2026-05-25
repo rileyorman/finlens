@@ -657,7 +657,9 @@ if uploaded_file is None:
         st.session_state.excel_bytes     = None
         st.session_state.resolved_ticker = None
         st.session_state.cache_hit       = False
-elif (st.session_state.last_filename and
+elif (not st.session_state.get("loaded_from_library", False) and
+      st.session_state.last_filename and
+      uploaded_file is not None and
       uploaded_file.name != st.session_state.last_filename):
     # A different file was dropped in — always reset, including the flag.
     st.session_state.financial_data      = None
