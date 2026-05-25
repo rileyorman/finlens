@@ -41,6 +41,10 @@ Or double-click `run.bat`.
 - No over-engineering — straightforward solutions preferred
 - Brief explanations of changes and why
 
+## Cache Directory & OneDrive
+- `cache/` is excluded from git (`.gitignore`) but lives inside the OneDrive-synced project folder by default, which causes OneDrive to flag mass deletions when cache is cleared.
+- To fix: change `CACHE_DIR` in `config.py` to a path outside OneDrive, e.g. `Path(r"C:\Users\riley\AppData\Local\FinLens\cache")`. The cache module reads `CACHE_DIR` from config so no other changes are needed.
+
 ## Notes
 - This is the standalone original app. It has also been merged into Orman Intelligence (`C:\Users\riley\OneDrive\Documents\orman_intelligence\`).
 - Project location: `C:\Users\riley\OneDrive\Documents\Python Project\finlens\`

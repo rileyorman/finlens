@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-_CACHE_DIR = Path(__file__).parent.parent / "cache"
+from config import CACHE_DIR as _CACHE_DIR
 
 
 def get_cache_key(pdf_bytes: bytes) -> str:
