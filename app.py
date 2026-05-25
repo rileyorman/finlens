@@ -154,11 +154,11 @@ else:
     gap: 6px;
     padding: 0 24px;
     border-right: 0.5px solid #2D3650;
-    font-size: 12px;
+    font-size: 14px;
     font-family: sans-serif;
 }}
 .ticker-name {{
-    color: #64748B;
+    color: #94A3B8;
     font-weight: 500;
     letter-spacing: 0.03em;
 }}
@@ -168,11 +168,11 @@ else:
 }}
 .ticker-change-pos {{
     color: #4ADE80;
-    font-size: 11px;
+    font-size: 13px;
 }}
 .ticker-change-neg {{
     color: #F87171;
-    font-size: 11px;
+    font-size: 13px;
 }}
 @keyframes ticker-scroll {{
     0%   {{ transform: translateX(0); }}
