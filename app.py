@@ -71,6 +71,12 @@ st.caption("AI-powered financial statement analysis. Upload a PDF to extract key
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
+    page = st.radio(
+        "Mode",
+        ["📊 Single Analysis", "📈 Portfolio Manager"],
+        label_visibility="collapsed",
+    )
+    st.divider()
     st.markdown(
         "**How it works**\n"
         "1. Upload a PDF\n"
@@ -198,6 +204,170 @@ with st.sidebar:
             st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
             st.rerun()
 
+# --- Portfolio Manager page (no API calls — reads library only) --------
+if page == "📈 Portfolio Manager":
+    import pandas as pd
+    from modules.portfolio_manager import get_portfolio_data
+
+    st.subheader("📈 Portfolio Manager")
+    st.caption("Aggregate view of all analysed filings in your library.")
+
+    portfolio = get_portfolio_data()
+
+    if not portfolio:
+        st.info("No filings analysed yet. Add filings via Single Analysis to build your portfolio view.")
+        st.stop()
+
+    portfolio = sorted(portfolio, key=lambda x: x["quality_score"], reverse=True)
+
+    # --- Section 1: Portfolio Summary ---
+    st.markdown("##### Portfolio Summary")
+    total  = len(portfolio)
+    pass_n = sum(1 for r in portfolio if r["signal"] == "PASS")
+    inv_n  = sum(1 for r in portfolio if r["signal"] == "INVESTIGATE")
+    dec_n  = sum(1 for r in portfolio if r["signal"] == "DECLINE")
+    avg_qs = sum(r["quality_score"] for r in portfolio) / total
+
+    s1, s2, s3, s4, s5 = st.columns(5)
+    s1.metric("Holdings", total)
+    s2.metric("🟢 PASS", pass_n)
+    s3.metric("🟡 INVESTIGATE", inv_n)
+    s4.metric("🔴 DECLINE", dec_n)
+    qs_color = "#70AD47" if avg_qs >= 70 else ("#FFC000" if avg_qs >= 40 else "#C00000")
+    with s5:
+        st.markdown(
+            f'<div style="border:1px solid #ddd;border-radius:6px;padding:8px 12px;text-align:center;'
+            f'margin-top:4px">'
+            f'<div style="font-size:11px;color:#888">Avg Quality</div>'
+            f'<div style="font-size:22px;font-weight:700;color:{qs_color}">{avg_qs:.0f}</div>'
+            f'<div style="font-size:10px;color:#aaa">/ 100</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # --- Section 2: Holdings Table ---
+    st.markdown("##### Holdings")
+
+    _SIG = {"PASS": "🟢 PASS", "INVESTIGATE": "🟡 INVESTIGATE", "DECLINE": "🔴 DECLINE"}
+
+    def _fp(v):
+        return f"{v:.1f}%" if v is not None else "—"
+
+    def _fr(v):
+        return f"{v:.2f}" if v is not None else "—"
+
+    table_rows = [
+        {
+            "Company":      r["company_name"],
+            "Ticker":       r["ticker"],
+            "FY":           r["fiscal_year"],
+            "Signal":       _SIG.get(r["signal"], r["signal"]),
+            "Quality":      r["quality_score"],
+            "Lynch":        r["lynch_category"],
+            "Rev YoY%":     _fp(r["revenue_yoy"]),
+            "Gross Margin": _fp(r["gross_margin"]),
+            "Net Margin":   _fp(r["net_margin"]),
+            "Curr Ratio":   _fr(r["current_ratio"]),
+            "Red Flags":    f"🔴 {r['red_flag_count']}  🟡 {r['yellow_flag_count']}",
+        }
+        for r in portfolio
+    ]
+    st.dataframe(
+        table_rows,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Quality": st.column_config.ProgressColumn(
+                "Quality", min_value=0, max_value=100, format="%d"
+            ),
+        },
+    )
+
+    st.divider()
+
+    # --- Section 3: Risk Flags Across Portfolio ---
+    st.markdown("##### Risk Flags Across Portfolio")
+    flag_left, flag_right = st.columns(2)
+
+    flagged = [r for r in portfolio if r["red_flag_count"] > 0 or r["yellow_flag_count"] > 0]
+
+    with flag_left:
+        if not flagged:
+            st.success("No red or yellow flags across the portfolio.")
+        else:
+            for r in flagged:
+                st.markdown(f"**{r['company_name']}**")
+                if r["top_red_flag"]:
+                    st.markdown(f"🔴 {r['top_red_flag']}")
+                if r["yellow_flag_count"] > 0:
+                    st.caption(f"+{r['yellow_flag_count']} yellow flag(s)")
+
+    with flag_right:
+        red_counts = {r["company_name"]: r["red_flag_count"] for r in portfolio}
+        if any(v > 0 for v in red_counts.values()):
+            st.caption("Red flag count per holding")
+            st.bar_chart(pd.DataFrame.from_dict(red_counts, orient="index", columns=["Red Flags"]))
+        else:
+            st.success("All holdings: 0 red flags.")
+
+    st.divider()
+
+    # --- Section 4: Lynch Category Breakdown ---
+    st.markdown("##### Lynch Category Breakdown")
+    lynch_left, lynch_right = st.columns(2)
+
+    lynch_counts = {}
+    for r in portfolio:
+        cat = r["lynch_category"]
+        lynch_counts[cat] = lynch_counts.get(cat, 0) + 1
+
+    with lynch_left:
+        st.caption("Holdings per Lynch category")
+        st.bar_chart(
+            pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"])
+        )
+
+    with lynch_right:
+        lynch_table = [
+            {
+                "Company":  r["company_name"],
+                "Category": r["lynch_category"],
+                "Story":    (r["lynch_story"] or "—")[:120],
+            }
+            for r in portfolio
+        ]
+        st.dataframe(lynch_table, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # --- Section 5: Framework Scores ---
+    st.markdown("##### Framework Scores")
+    fw_rows = [
+        {
+            "Company":       r["company_name"],
+            "Quality Score": r["quality_score"],
+            "Dalio View":    (r["dalio_view"] or "—")[:100],
+            "Marks View":    (r["marks_view"] or "—")[:100],
+        }
+        for r in portfolio
+    ]
+    st.dataframe(
+        fw_rows,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Quality Score": st.column_config.ProgressColumn(
+                "Quality Score", min_value=0, max_value=100, format="%d"
+            ),
+        },
+    )
+
+    st.stop()
+
+
+# --- Single Analysis page ----------------------------------------------
 if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
