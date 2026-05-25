@@ -7,6 +7,25 @@ from modules.red_flag_detector import detect_flags
 
 _LIBRARY_PATH = Path(__file__).parent.parent / "filing_library.json"
 
+_CHAR_REPLACEMENTS = {
+    '—': '--',   # em dash
+    '–': '-',    # en dash
+    '‘': "'",    # left single quote
+    '’': "'",    # right single quote
+    '“': '"',    # left double quote
+    '”': '"',    # right double quote
+    '•': '*',    # bullet
+    'â': "'",  # UTF-8 mangled apostrophe
+}
+
+
+def _clean(text: str) -> str:
+    if not text:
+        return text
+    for char, replacement in _CHAR_REPLACEMENTS.items():
+        text = text.replace(char, replacement)
+    return text
+
 
 def _quality_score(m: dict) -> int:
     """0–100 from 5 RAG metrics. Green=20, Amber=10, Red/None=0."""
@@ -71,7 +90,7 @@ def get_portfolio_data() -> list:
             "signal":            (sd.get("signal") or "—").upper(),
             "quality_score":     qs,
             "lynch_category":    dd.get("lynch_category") or "—",
-            "lynch_story":       dd.get("lynch_story") or "—",
+            "lynch_story":       _clean(dd.get("lynch_story") or "—"),
             "revenue":           metrics.get("rev_c"),
             "revenue_yoy":       metrics.get("yoy_rev"),
             "gross_margin":      metrics.get("gp_margin"),
@@ -80,8 +99,8 @@ def get_portfolio_data() -> list:
             "red_flag_count":    red_count,
             "yellow_flag_count": yellow_count,
             "top_red_flag":      top_red_flag,
-            "dalio_view":        dd.get("dalio_view") or "—",
-            "marks_view":        dd.get("marks_view") or "—",
+            "dalio_view":        _clean(dd.get("dalio_view") or "—"),
+            "marks_view":        _clean(dd.get("marks_view") or "—"),
         })
 
     return result
@@ -144,12 +163,12 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
                 "signal":            (sd.get("signal") or "—").upper(),
                 "quality_score":     qs,
                 "lynch_category":    dd.get("lynch_category") or "—",
-                "lynch_story":       dd.get("lynch_story") or "—",
+                "lynch_story":       _clean(dd.get("lynch_story") or "—"),
                 "red_flag_count":    red_count,
                 "yellow_flag_count": yellow_count,
                 "top_red_flag":      top_red_flag,
-                "dalio_view":        dd.get("dalio_view") or "—",
-                "marks_view":        dd.get("marks_view") or "—",
+                "dalio_view":        _clean(dd.get("dalio_view") or "—"),
+                "marks_view":        _clean(dd.get("marks_view") or "—"),
             }
         else:
             analysis = {

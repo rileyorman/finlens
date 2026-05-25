@@ -484,12 +484,15 @@ if page == "📈 Portfolio Manager":
                 {
                     "Ticker":   r["ticker"],
                     "Category": r["lynch_category"],
-                    "Story":    (r["lynch_story"] or "—")[:120],
+                    "Story":    (r["lynch_story"] or "—")[:300],
                 }
                 for r in analysed
             ],
             use_container_width=True,
             hide_index=True,
+            column_config={
+                "Story": st.column_config.TextColumn("Story", width="large"),
+            },
         )
 
     st.divider()
@@ -502,8 +505,8 @@ if page == "📈 Portfolio Manager":
                 "Ticker":        r["ticker"],
                 "Company":       r["company_name"],
                 "Quality Score": r["quality_score"],
-                "Dalio View":    (r["dalio_view"] or "—")[:100],
-                "Marks View":    (r["marks_view"] or "—")[:100],
+                "Dalio View":    (r["dalio_view"] or "—")[:300],
+                "Marks View":    (r["marks_view"] or "—")[:300],
             }
             for r in analysed
         ],
@@ -513,6 +516,8 @@ if page == "📈 Portfolio Manager":
             "Quality Score": st.column_config.ProgressColumn(
                 "Quality Score", min_value=0, max_value=100, format="%d",
             ),
+            "Dalio View": st.column_config.TextColumn("Dalio View", width="large"),
+            "Marks View": st.column_config.TextColumn("Marks View", width="large"),
         },
     )
 
