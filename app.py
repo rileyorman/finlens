@@ -143,25 +143,29 @@ with st.sidebar:
                         placeholder="e.g. AAPL", label_visibility="collapsed",
                     )
                 with bc:
-                    if st.button("Add", key=f"pm_add_btn_{sel_pf}", use_container_width=True):
-                        t_up = new_tk.strip().upper()
-                        if t_up:
-                            with st.spinner(f"Validating {t_up}…"):
-                                try:
-                                    vmd      = get_market_data(t_up)
-                                    is_valid = bool(vmd.get("current_price"))
-                                except Exception:
-                                    is_valid = False
-                            if is_valid:
-                                if reg_add_ticker(sel_pf, t_up):
-                                    st.session_state.pm_clear_input = True
-                                    st.rerun()
-                                else:
-                                    st.warning(f"{t_up} already in portfolio.")
+                    add_clicked = st.button("Add", key=f"pm_add_btn_{sel_pf}", use_container_width=True)
+
+                st.caption("US: AAPL, MSFT  |  TSX: RY.TO, CNQ.TO  |  LSE: SHEL.L  |  Other: Yahoo Finance suffix format")
+
+                if add_clicked:
+                    t_up = new_tk.strip().upper()
+                    if t_up:
+                        with st.spinner(f"Validating {t_up}…"):
+                            try:
+                                vmd      = get_market_data(t_up)
+                                is_valid = bool(vmd.get("current_price"))
+                            except Exception:
+                                is_valid = False
+                        if is_valid:
+                            if reg_add_ticker(sel_pf, t_up):
+                                st.session_state.pm_clear_input = True
+                                st.rerun()
                             else:
-                                st.warning(f"'{t_up}' not found — check the ticker symbol.")
+                                st.warning(f"{t_up} already in portfolio.")
                         else:
-                            st.warning("Enter a ticker symbol.")
+                            st.warning(f"'{t_up}' not found — check the ticker symbol.")
+                    else:
+                        st.warning("Enter a ticker symbol.")
 
                 csv_up = st.file_uploader(
                     "Bulk add (.csv)", type=["csv"], key=f"pm_csv_{sel_pf}",
