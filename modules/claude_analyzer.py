@@ -5,7 +5,7 @@ import httpx
 import json
 import re
 
-from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS
+from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_CHARS
 
 # Model alias for the dashboard insights call (same tier as analysis)
 DASHBOARD_MODEL = ANALYSIS_MODEL
@@ -128,6 +128,7 @@ USER_PROMPT_TEMPLATE = """Extract the financial statements from the following do
 def analyze_financials(document_text: str, api_key: str) -> dict:
     """Call 1: extract structured financial data from PDF text using Claude Haiku."""
     client = _make_client(api_key)
+    document_text = document_text[:MAX_EXTRACTION_CHARS]
 
     response = client.messages.create(
         model=EXTRACTION_MODEL,
