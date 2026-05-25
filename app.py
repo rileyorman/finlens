@@ -123,6 +123,7 @@ with st.sidebar:
     if n:
         if st.button("Clear Cache", use_container_width=True):
             cleared = clear_cache()
+            st.session_state.uploader_key += 1  # force file uploader to reset
             st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
             st.rerun()
 
@@ -222,6 +223,7 @@ if "financial_data" not in st.session_state:
     st.session_state.resolved_ticker     = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+    st.session_state.uploader_key        = 0
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -234,6 +236,7 @@ uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
     type=["pdf"],
     help="Annual reports, 10-K filings, or standalone financial statement PDFs work best.",
+    key=f"pdf_uploader_{st.session_state.uploader_key}",
 )
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
