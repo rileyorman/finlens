@@ -73,6 +73,9 @@ st.set_page_config(
     layout="wide",
 )
 
+with open("assets/style.css") as _f:
+    st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
+
 st.title("FinLens")
 st.caption("AI-powered financial statement analysis. Upload a PDF to extract key financials and download a structured Excel report.")
 
@@ -1012,15 +1015,16 @@ if st.session_state.financial_data:
 
         # --- Investment signal badge ---
         _BADGE_STYLE = {
-            "PASS":        {"bg": "#70AD47", "color": "#FFFFFF"},
-            "INVESTIGATE": {"bg": "#FFC000", "color": "#1F4E79"},
-            "DECLINE":     {"bg": "#C00000", "color": "#FFFFFF"},
+            "PASS":        {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
+            "INVESTIGATE": {"bg": "#1C0F00", "color": "#FCD34D", "border": "#92400E"},
+            "DECLINE":     {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
         }
         signal = (summary_data.get("signal") or "").upper()
         if signal in _BADGE_STYLE:
             s = _BADGE_STYLE[signal]
             st.markdown(
                 f'<div style="display:inline-block;background:{s["bg"]};color:{s["color"]};'
+                f'border:1px solid {s["border"]};'
                 f'padding:8px 28px;border-radius:4px;font-size:18px;font-weight:700;'
                 f'letter-spacing:1.5px;margin:6px 0 14px 0">{signal}</div>',
                 unsafe_allow_html=True,
@@ -1232,15 +1236,16 @@ if st.session_state.financial_data:
 
         with sig_col:
             _BADGE_STYLE_D = {
-                "PASS":        {"bg": "#70AD47", "color": "#FFFFFF"},
-                "INVESTIGATE": {"bg": "#FFC000", "color": "#1F4E79"},
-                "DECLINE":     {"bg": "#C00000", "color": "#FFFFFF"},
+                "PASS":        {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
+                "INVESTIGATE": {"bg": "#1C0F00", "color": "#FCD34D", "border": "#92400E"},
+                "DECLINE":     {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
             }
             signal_d = (summary_data.get("signal") or "").upper()
             if signal_d in _BADGE_STYLE_D:
                 s = _BADGE_STYLE_D[signal_d]
                 st.markdown(
                     f'<div style="display:inline-block;background:{s["bg"]};color:{s["color"]};'
+                    f'border:1px solid {s["border"]};'
                     f'padding:6px 22px;border-radius:4px;font-size:16px;font-weight:700;'
                     f'letter-spacing:1.5px;margin:4px 0 6px 0">{signal_d}</div>',
                     unsafe_allow_html=True,
