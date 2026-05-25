@@ -10,6 +10,13 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
+from modules.portfolio_registry import (
+    get_portfolio_names, create_portfolio,
+    delete_portfolio as del_portfolio_reg,
+    add_ticker as reg_add_ticker, remove_ticker as reg_remove_ticker,
+    bulk_add_tickers, get_tickers,
+)
+from modules.portfolio_manager import get_portfolio_display_data
 from config import MAX_FILING_CHARS
 
 load_dotenv()
@@ -77,6 +84,131 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.divider()
+
+    # --- Portfolio management (Portfolio Manager mode only) ---------------
+    selected_portfolio = None
+    if page == "📈 Portfolio Manager":
+        pf_names = get_portfolio_names()
+        options  = pf_names + ["+ New Portfolio"]
+        active   = st.session_state.get("pm_active_portfolio")
+        sel_idx  = pf_names.index(active) if active in pf_names else 0
+
+        sel_pf = st.selectbox(
+            "Portfolio",
+            options,
+            index=min(sel_idx, len(options) - 1),
+        )
+
+        if sel_pf == "+ New Portfolio":
+            new_pf_name = st.text_input("Portfolio name", key="pm_new_name")
+            if st.button("Create Portfolio", use_container_width=True, type="primary"):
+                n = new_pf_name.strip()
+                if n:
+                    if create_portfolio(n):
+                        st.session_state.pm_active_portfolio = n
+                        st.rerun()
+                    else:
+                        st.warning("A portfolio with that name already exists.")
+                else:
+                    st.warning("Enter a portfolio name.")
+        else:
+            st.session_state.pm_active_portfolio = sel_pf
+            selected_portfolio = sel_pf
+            cur_tickers = get_tickers(sel_pf)
+
+            with st.expander(f"Manage Tickers ({len(cur_tickers)})", expanded=False):
+                for t in cur_tickers:
+                    tc, rc = st.columns([3, 1])
+                    with tc:
+                        st.markdown(f"`{t}`")
+                    with rc:
+                        if st.button("✕", key=f"rm_{sel_pf}_{t}", use_container_width=True):
+                            reg_remove_ticker(sel_pf, t)
+                            st.rerun()
+
+                if cur_tickers:
+                    st.markdown(
+                        "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        unsafe_allow_html=True,
+                    )
+
+                ac, bc = st.columns([3, 1])
+                with ac:
+                    new_tk = st.text_input(
+                        "Ticker", key=f"pm_add_input_{sel_pf}",
+                        placeholder="e.g. AAPL", label_visibility="collapsed",
+                    )
+                with bc:
+                    if st.button("Add", key=f"pm_add_btn_{sel_pf}", use_container_width=True):
+                        t_up = new_tk.strip().upper()
+                        if t_up:
+                            with st.spinner(f"Validating {t_up}…"):
+                                try:
+                                    vmd      = get_market_data(t_up)
+                                    is_valid = bool(vmd.get("current_price"))
+                                except Exception:
+                                    is_valid = False
+                            if is_valid:
+                                if reg_add_ticker(sel_pf, t_up):
+                                    st.session_state[f"pm_add_input_{sel_pf}"] = ""
+                                    st.rerun()
+                                else:
+                                    st.warning(f"{t_up} already in portfolio.")
+                            else:
+                                st.warning(f"'{t_up}' not found — check the ticker symbol.")
+                        else:
+                            st.warning("Enter a ticker symbol.")
+
+                csv_up = st.file_uploader(
+                    "Bulk add (.csv)", type=["csv"], key=f"pm_csv_{sel_pf}",
+                )
+                if csv_up is not None:
+                    import io, csv as _csv
+                    content = csv_up.read().decode("utf-8", errors="ignore")
+                    reader  = _csv.reader(io.StringIO(content))
+                    raw_tks = []
+                    for i, row in enumerate(reader):
+                        if not row:
+                            continue
+                        val = row[0].strip().upper()
+                        if i == 0 and val in ("TICKER", "TICKERS", "SYMBOL", "SYMBOLS"):
+                            continue
+                        if val:
+                            raw_tks.append(val)
+                    if raw_tks:
+                        br = bulk_add_tickers(sel_pf, raw_tks)
+                        st.success(f"Added {len(br['added'])}, skipped {len(br['skipped'])}.")
+                        st.rerun()
+                    else:
+                        st.warning("No tickers found in CSV.")
+
+                st.markdown(
+                    "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                    unsafe_allow_html=True,
+                )
+                if st.session_state.get("pm_confirm_delete") == sel_pf:
+                    st.caption(f"Delete **{sel_pf}**? This cannot be undone.")
+                    dc1, dc2 = st.columns(2)
+                    with dc1:
+                        if st.button("Yes, delete", key=f"pm_del_yes_{sel_pf}",
+                                     type="primary", use_container_width=True):
+                            del_portfolio_reg(sel_pf)
+                            st.session_state.pm_confirm_delete   = None
+                            st.session_state.pm_active_portfolio = None
+                            st.rerun()
+                    with dc2:
+                        if st.button("Cancel", key=f"pm_del_no_{sel_pf}",
+                                     use_container_width=True):
+                            st.session_state.pm_confirm_delete = None
+                            st.rerun()
+                else:
+                    if st.button("🗑️ Delete Portfolio", key=f"pm_del_{sel_pf}",
+                                 use_container_width=True):
+                        st.session_state.pm_confirm_delete = sel_pf
+                        st.rerun()
+
+        st.divider()
+
     st.markdown(
         "**How it works**\n"
         "1. Upload a PDF\n"
@@ -204,42 +336,54 @@ with st.sidebar:
             st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
             st.rerun()
 
-# --- Portfolio Manager page (no API calls — reads library only) --------
+# --- Portfolio Manager page --------------------------------------------
 if page == "📈 Portfolio Manager":
     import pandas as pd
-    from modules.portfolio_manager import get_portfolio_data
 
     st.subheader("📈 Portfolio Manager")
-    st.caption("Aggregate view of all analysed filings in your library.")
 
-    portfolio = get_portfolio_data()
-
-    if not portfolio:
-        st.info("No filings analysed yet. Add filings via Single Analysis to build your portfolio view.")
+    pf_names = get_portfolio_names()
+    if not pf_names:
+        st.info("No portfolios yet. Create one in the sidebar to get started.")
         st.stop()
 
-    portfolio = sorted(portfolio, key=lambda x: x["quality_score"], reverse=True)
+    if not selected_portfolio:
+        st.info("Select or create a portfolio in the sidebar.")
+        st.stop()
+
+    tickers = get_tickers(selected_portfolio)
+    if not tickers:
+        st.info(f"**{selected_portfolio}** has no tickers yet. Add some via the sidebar.")
+        st.stop()
+
+    st.caption(
+        f"Portfolio: **{selected_portfolio}** · "
+        f"{len(tickers)} holding{'s' if len(tickers) != 1 else ''}"
+    )
+
+    with st.spinner(f"Fetching live market data for {len(tickers)} holding(s)…"):
+        portfolio = get_portfolio_display_data(tickers)
+
+    analysed = [r for r in portfolio if r["has_analysis"]]
+    pass_n   = sum(1 for r in analysed if r["signal"] == "PASS")
+    inv_n    = sum(1 for r in analysed if r["signal"] == "INVESTIGATE")
+    dec_n    = sum(1 for r in analysed if r["signal"] == "DECLINE")
+    avg_qs   = (sum(r["quality_score"] for r in analysed) / len(analysed)) if analysed else None
 
     # --- Section 1: Portfolio Summary ---
     st.markdown("##### Portfolio Summary")
-    total  = len(portfolio)
-    pass_n = sum(1 for r in portfolio if r["signal"] == "PASS")
-    inv_n  = sum(1 for r in portfolio if r["signal"] == "INVESTIGATE")
-    dec_n  = sum(1 for r in portfolio if r["signal"] == "DECLINE")
-    avg_qs = sum(r["quality_score"] for r in portfolio) / total
-
     s1, s2, s3, s4, s5 = st.columns(5)
-    s1.metric("Holdings", total)
+    s1.metric("Holdings", len(tickers))
     s2.metric("🟢 PASS", pass_n)
     s3.metric("🟡 INVESTIGATE", inv_n)
     s4.metric("🔴 DECLINE", dec_n)
-    qs_color = "#70AD47" if avg_qs >= 70 else ("#FFC000" if avg_qs >= 40 else "#C00000")
+    qs_color = "#70AD47" if (avg_qs or 0) >= 70 else ("#FFC000" if (avg_qs or 0) >= 40 else "#C00000")
     with s5:
+        qs_str = f"{avg_qs:.0f}" if avg_qs is not None else "—"
         st.markdown(
-            f'<div style="border:1px solid #ddd;border-radius:6px;padding:8px 12px;text-align:center;'
-            f'margin-top:4px">'
+            f'<div style="border:1px solid #ddd;border-radius:6px;padding:8px 12px;text-align:center;margin-top:4px">'
             f'<div style="font-size:11px;color:#888">Avg Quality</div>'
-            f'<div style="font-size:22px;font-weight:700;color:{qs_color}">{avg_qs:.0f}</div>'
+            f'<div style="font-size:22px;font-weight:700;color:{qs_color}">{qs_str}</div>'
             f'<div style="font-size:10px;color:#aaa">/ 100</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -249,117 +393,121 @@ if page == "📈 Portfolio Manager":
 
     # --- Section 2: Holdings Table ---
     st.markdown("##### Holdings")
-
     _SIG = {"PASS": "🟢 PASS", "INVESTIGATE": "🟡 INVESTIGATE", "DECLINE": "🔴 DECLINE"}
 
     def _fp(v):
         return f"{v:.1f}%" if v is not None else "—"
 
-    def _fr(v):
-        return f"{v:.2f}" if v is not None else "—"
+    table_rows = []
+    for r in sorted(portfolio, key=lambda x: (x["quality_score"] is None, -(x["quality_score"] or 0))):
+        table_rows.append({
+            "Ticker":    r["ticker"],
+            "Company":   r["company_name"],
+            "Price":     f"${r['price']:,.2f}" if r["price"] else "—",
+            "Mkt Cap":   _fmt_market_cap(r["market_cap"]),
+            "P/E":       f"{r['pe_ratio']:.1f}x" if r["pe_ratio"] else "—",
+            "Signal":    _SIG.get(r["signal"], "🔍 No analysis") if r["has_analysis"] else "🔍 No analysis",
+            "Quality":   r["quality_score"] if r["has_analysis"] else None,
+            "Lynch":     r["lynch_category"],
+            "Red Flags": f"🔴 {r['red_flag_count']}  🟡 {r['yellow_flag_count']}" if r["has_analysis"] else "—",
+        })
 
-    table_rows = [
-        {
-            "Company":      r["company_name"],
-            "Ticker":       r["ticker"],
-            "FY":           r["fiscal_year"],
-            "Signal":       _SIG.get(r["signal"], r["signal"]),
-            "Quality":      r["quality_score"],
-            "Lynch":        r["lynch_category"],
-            "Rev YoY%":     _fp(r["revenue_yoy"]),
-            "Gross Margin": _fp(r["gross_margin"]),
-            "Net Margin":   _fp(r["net_margin"]),
-            "Curr Ratio":   _fr(r["current_ratio"]),
-            "Red Flags":    f"🔴 {r['red_flag_count']}  🟡 {r['yellow_flag_count']}",
-        }
-        for r in portfolio
-    ]
     st.dataframe(
         table_rows,
         use_container_width=True,
         hide_index=True,
         column_config={
             "Quality": st.column_config.ProgressColumn(
-                "Quality", min_value=0, max_value=100, format="%d"
+                "Quality", min_value=0, max_value=100, format="%d",
             ),
         },
     )
 
+    unanalysed = [r for r in portfolio if not r["has_analysis"]]
+    if unanalysed:
+        st.caption(
+            f"💡 {len(unanalysed)} holding(s) have no FinLens analysis — "
+            f"switch to 📊 Single Analysis and upload the filing PDF to add them."
+        )
+
+    if not analysed:
+        st.info("No FinLens analysis available yet. Sections below require at least one analysed filing.")
+        st.stop()
+
     st.divider()
 
-    # --- Section 3: Risk Flags Across Portfolio ---
+    # --- Section 3: Risk Flags ---
     st.markdown("##### Risk Flags Across Portfolio")
     flag_left, flag_right = st.columns(2)
-
-    flagged = [r for r in portfolio if r["red_flag_count"] > 0 or r["yellow_flag_count"] > 0]
+    flagged = [r for r in analysed if r["red_flag_count"] > 0 or r["yellow_flag_count"] > 0]
 
     with flag_left:
         if not flagged:
-            st.success("No red or yellow flags across the portfolio.")
+            st.success("No red or yellow flags across analysed holdings.")
         else:
             for r in flagged:
-                st.markdown(f"**{r['company_name']}**")
+                st.markdown(f"**{r['company_name']} ({r['ticker']})**")
                 if r["top_red_flag"]:
                     st.markdown(f"🔴 {r['top_red_flag']}")
                 if r["yellow_flag_count"] > 0:
                     st.caption(f"+{r['yellow_flag_count']} yellow flag(s)")
 
     with flag_right:
-        red_counts = {r["company_name"]: r["red_flag_count"] for r in portfolio}
+        red_counts = {r["ticker"]: r["red_flag_count"] for r in analysed}
         if any(v > 0 for v in red_counts.values()):
             st.caption("Red flag count per holding")
             st.bar_chart(pd.DataFrame.from_dict(red_counts, orient="index", columns=["Red Flags"]))
         else:
-            st.success("All holdings: 0 red flags.")
+            st.success("All analysed holdings: 0 red flags.")
 
     st.divider()
 
     # --- Section 4: Lynch Category Breakdown ---
     st.markdown("##### Lynch Category Breakdown")
     lynch_left, lynch_right = st.columns(2)
-
     lynch_counts = {}
-    for r in portfolio:
-        cat = r["lynch_category"]
-        lynch_counts[cat] = lynch_counts.get(cat, 0) + 1
+    for r in analysed:
+        lynch_counts[r["lynch_category"]] = lynch_counts.get(r["lynch_category"], 0) + 1
 
     with lynch_left:
         st.caption("Holdings per Lynch category")
-        st.bar_chart(
-            pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"])
-        )
+        if lynch_counts:
+            st.bar_chart(pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"]))
 
     with lynch_right:
-        lynch_table = [
-            {
-                "Company":  r["company_name"],
-                "Category": r["lynch_category"],
-                "Story":    (r["lynch_story"] or "—")[:120],
-            }
-            for r in portfolio
-        ]
-        st.dataframe(lynch_table, use_container_width=True, hide_index=True)
+        st.dataframe(
+            [
+                {
+                    "Ticker":   r["ticker"],
+                    "Category": r["lynch_category"],
+                    "Story":    (r["lynch_story"] or "—")[:120],
+                }
+                for r in analysed
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
 
     st.divider()
 
     # --- Section 5: Framework Scores ---
     st.markdown("##### Framework Scores")
-    fw_rows = [
-        {
-            "Company":       r["company_name"],
-            "Quality Score": r["quality_score"],
-            "Dalio View":    (r["dalio_view"] or "—")[:100],
-            "Marks View":    (r["marks_view"] or "—")[:100],
-        }
-        for r in portfolio
-    ]
     st.dataframe(
-        fw_rows,
+        [
+            {
+                "Ticker":        r["ticker"],
+                "Company":       r["company_name"],
+                "Quality Score": r["quality_score"],
+                "Dalio View":    (r["dalio_view"] or "—")[:100],
+                "Marks View":    (r["marks_view"] or "—")[:100],
+            }
+            for r in analysed
+        ],
         use_container_width=True,
         hide_index=True,
         column_config={
             "Quality Score": st.column_config.ProgressColumn(
-                "Quality Score", min_value=0, max_value=100, format="%d"
+                "Quality Score", min_value=0, max_value=100, format="%d",
             ),
         },
     )

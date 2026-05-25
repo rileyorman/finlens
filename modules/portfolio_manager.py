@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from modules.excel_exporter import _calc_summary_metrics
+from modules.market_data import get_market_data
 from modules.red_flag_detector import detect_flags
 
 _LIBRARY_PATH = Path(__file__).parent.parent / "filing_library.json"
@@ -81,6 +82,99 @@ def get_portfolio_data() -> list:
             "top_red_flag":      top_red_flag,
             "dalio_view":        dd.get("dalio_view") or "—",
             "marks_view":        dd.get("marks_view") or "—",
+        })
+
+    return result
+
+
+def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -> list:
+    """For each ticker fetch live market data and merge FinLens analysis if available.
+
+    Never raises — missing market data or library entries degrade to None / '—'.
+    """
+    lib_path = Path(filing_library_path) if filing_library_path else _LIBRARY_PATH
+    try:
+        with open(lib_path, "r", encoding="utf-8") as f:
+            lib_entries = json.load(f).get("entries", [])
+    except Exception:
+        lib_entries = []
+
+    # Build ticker → entry lookup (only entries with a real ticker)
+    ticker_map = {}
+    for entry in lib_entries:
+        t = (entry.get("ticker") or "").upper().strip()
+        if t and t != "—":
+            ticker_map[t] = entry
+
+    result = []
+    for ticker in tickers:
+        ticker_upper = ticker.upper().strip()
+
+        try:
+            md = get_market_data(ticker_upper)
+        except Exception:
+            md = {}
+
+        entry = ticker_map.get(ticker_upper)
+        if entry:
+            fd = entry.get("financial_data") or {}
+            sd = entry.get("summary_data") or {}
+            dd = entry.get("dashboard_data") or {}
+
+            try:
+                metrics = _calc_summary_metrics(fd)
+            except Exception:
+                metrics = {}
+
+            qs = _quality_score(metrics)
+
+            try:
+                flag_result  = detect_flags(fd)
+                red_count    = flag_result["red_count"]
+                yellow_count = flag_result["yellow_count"]
+                red_flags    = [f for f in flag_result["flags"] if f["severity"] == "red"]
+                top_red_flag = red_flags[0]["label"] if red_flags else None
+            except Exception:
+                red_count, yellow_count, top_red_flag = 0, 0, None
+
+            analysis = {
+                "has_analysis":      True,
+                "company_name":      fd.get("company_name", ticker_upper),
+                "fiscal_year":       fd.get("fiscal_year") or "—",
+                "signal":            (sd.get("signal") or "—").upper(),
+                "quality_score":     qs,
+                "lynch_category":    dd.get("lynch_category") or "—",
+                "lynch_story":       dd.get("lynch_story") or "—",
+                "red_flag_count":    red_count,
+                "yellow_flag_count": yellow_count,
+                "top_red_flag":      top_red_flag,
+                "dalio_view":        dd.get("dalio_view") or "—",
+                "marks_view":        dd.get("marks_view") or "—",
+            }
+        else:
+            analysis = {
+                "has_analysis":      False,
+                "company_name":      ticker_upper,
+                "fiscal_year":       "—",
+                "signal":            None,
+                "quality_score":     None,
+                "lynch_category":    "—",
+                "lynch_story":       "—",
+                "red_flag_count":    0,
+                "yellow_flag_count": 0,
+                "top_red_flag":      None,
+                "dalio_view":        "—",
+                "marks_view":        "—",
+            }
+
+        result.append({
+            "ticker":              ticker_upper,
+            "price":               md.get("current_price"),
+            "market_cap":          md.get("market_cap"),
+            "pe_ratio":            md.get("pe_ratio"),
+            "fifty_two_week_high": md.get("fifty_two_week_high"),
+            "fifty_two_week_low":  md.get("fifty_two_week_low"),
+            **analysis,
         })
 
     return result
