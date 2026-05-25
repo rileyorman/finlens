@@ -477,12 +477,6 @@ with st.sidebar:
 if page == "📈 Portfolio Manager":
     import pandas as pd
 
-    st.markdown(
-        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo.svg")}"'
-        f' width="280" style="margin-bottom:1.5rem">',
-        unsafe_allow_html=True,
-    )
-
     # Re-analysis triggered from Analysis Library sidebar fires here
     # (Single Analysis handler is after st.stop() and unreachable in PM mode)
     if st.session_state.get("pending_reanalyse"):
