@@ -1386,6 +1386,7 @@ if uploaded_file:
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
+            mda_sentiment  = None
             st.session_state.cache_hit = True
             st.success(f"Loaded **{uploaded_file.name}** from cache.")
         else:
@@ -1450,8 +1451,6 @@ if uploaded_file:
 
             save_cache(cache_key, uploaded_file.name, financial_data, summary_data,
                        bear_bull_data, dashboard_data)
-        else:
-            mda_sentiment = None
 
         # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}
