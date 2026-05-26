@@ -15,6 +15,7 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
+from modules.learning import info_tooltip
 from modules.portfolio_registry import (
     get_portfolio_names, create_portfolio,
     delete_portfolio as del_portfolio_reg,
@@ -210,7 +211,7 @@ with st.sidebar:
     )
     page = st.radio(
         "Mode",
-        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison"],
+        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison", "📚 Methodology"],
         label_visibility="collapsed",
     )
     st.divider()
@@ -1407,6 +1408,36 @@ if page == "📂 Filing Comparison":
     st.stop()
 
 
+# --- Methodology page --------------------------------------------------
+if page == "📚 Methodology":
+    from modules.learning import LEARNING_CONTENT
+
+    st.markdown("## FinLens Methodology")
+    st.markdown("#### How each analysis works")
+    st.divider()
+
+    _METHOD_ORDER = [
+        "signal", "quality_score", "distress_score", "lynch_category",
+        "red_flags", "bull_bear", "mda_sentiment", "scenario_simulator",
+    ]
+    _SECTION_NAMES = {
+        "signal":             "Investment Signal",
+        "quality_score":      "Quality Score",
+        "distress_score":     "Distress Score (Altman Z-Score)",
+        "lynch_category":     "Lynch Category",
+        "red_flags":          "Red Flag Analysis",
+        "bull_bear":          "Bull / Bear Case",
+        "mda_sentiment":      "MD&A Sentiment",
+        "scenario_simulator": "Scenario Simulator",
+    }
+    for _mk in _METHOD_ORDER:
+        st.subheader(_SECTION_NAMES[_mk])
+        st.markdown(info_tooltip(_mk))
+        st.divider()
+
+    st.stop()
+
+
 # --- Single Analysis page ----------------------------------------------
 if page != "📊 Single Analysis":
     st.stop()
@@ -1831,6 +1862,9 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
+        with st.expander("ℹ️ How this works"):
+            st.markdown(info_tooltip("signal"))
+
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
 
@@ -1904,6 +1938,9 @@ if st.session_state.financial_data:
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
 
+        with st.expander("ℹ️ How this works"):
+            st.markdown(info_tooltip("red_flags"))
+
         with st.expander(exp_label, expanded=(red_count > 0)):
             if not flags:
                 st.success("No major red flags detected across all monitored thresholds.")
@@ -1927,6 +1964,9 @@ if st.session_state.financial_data:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
 
         # --- MD&A Sentiment ---
+        with st.expander("ℹ️ How this works"):
+            st.markdown(info_tooltip("mda_sentiment"))
+
         if mda_sentiment and not mda_sentiment.get("error"):
             _tone = mda_sentiment.get("overall_tone") or "—"
             _scores = mda_sentiment.get("scores") or {}
@@ -1990,6 +2030,12 @@ if st.session_state.financial_data:
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
 
         # --- Scenario Simulator ---
+        with st.expander("ℹ️ How the Distress Score works"):
+            st.markdown(info_tooltip("distress_score"))
+
+        with st.expander("ℹ️ How the Scenario Simulator works"):
+            st.markdown(info_tooltip("scenario_simulator"))
+
         with st.expander("🔮 Scenario Simulator", expanded=False):
             _metrics = _calc_summary_metrics(financial_data)
             _base_gm = _metrics.get("gp_margin") or 50.0
@@ -2131,6 +2177,9 @@ if st.session_state.financial_data:
                 st.info("Not found in document.")
 
         # --- Bull / Bear Case ---
+        with st.expander("ℹ️ How this works"):
+            st.markdown(info_tooltip("bull_bear"))
+
         if bear_bull_data and "error" not in bear_bull_data:
             with st.expander("Bull / Bear Case", expanded=False):
                 bull_col, bear_col = st.columns(2)
@@ -2237,6 +2286,8 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
+            with st.expander("ℹ️ How this works"):
+                st.markdown(info_tooltip("quality_score"))
 
         with beta_col:
             beta_val = market_data.get("beta")
@@ -2400,6 +2451,8 @@ if st.session_state.financial_data:
         with lc_col:
             with st.container(border=True):
                 st.markdown("##### Lynch Category")
+                with st.expander("ℹ️ How this works"):
+                    st.markdown(info_tooltip("lynch_category"))
                 cat = dd.get("lynch_category") or "—"
                 st.markdown(f"**{cat}**")
                 _LYNCH_DESCS = {
