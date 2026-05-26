@@ -115,6 +115,8 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
                 "current_ratio":     metrics.get("current_ratio"),
                 "net_margin":        metrics.get("ni_margin"),
                 "revenue_yoy":       metrics.get("yoy_rev"),
+                "fcf_conv":          metrics.get("fcf_conv"),
+                "gross_margin":      metrics.get("gp_margin"),
             }
         else:
             analysis = {
@@ -133,6 +135,8 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
                 "current_ratio":     None,
                 "net_margin":        None,
                 "revenue_yoy":       None,
+                "fcf_conv":          None,
+                "gross_margin":      None,
             }
 
         result.append({

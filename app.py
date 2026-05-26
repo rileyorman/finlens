@@ -19,6 +19,7 @@ from modules.portfolio_registry import (
 from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
 from config import MAX_FILING_CHARS
+import plotly.graph_objects as go
 
 load_dotenv()
 
@@ -936,50 +937,206 @@ if page == "📈 Portfolio Manager":
 
     st.divider()
 
-    # --- Section 4: Lynch Category Breakdown ---
-    st.markdown("##### Lynch Category Breakdown")
-    lynch_left, lynch_right = st.columns(2)
-    lynch_counts = {}
-    for r in analysed:
-        lynch_counts[r["lynch_category"]] = lynch_counts.get(r["lynch_category"], 0) + 1
+    # --- Section 4: Portfolio Analytics ---
+    st.markdown("##### Portfolio Analytics")
+    st.caption("Trend analysis, valuation positioning, risk matrix, and earnings quality")
 
-    with lynch_left:
-        st.caption("Holdings per Lynch category")
-        if lynch_counts:
-            import plotly.graph_objects as go
-            _fig_lc = go.Figure(go.Bar(
-                x=list(lynch_counts.keys()),
-                y=list(lynch_counts.values()),
-                marker_color="#378ADD",
-            ))
-            _fig_lc.update_layout(
-                paper_bgcolor="#1E2433",
-                plot_bgcolor="#1E2433",
-                font_color="#94A3B8",
-                margin=dict(l=0, r=0, t=8, b=0),
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=True, gridcolor="#2D3650"),
-                showlegend=False,
-                height=220,
-            )
-            st.plotly_chart(_fig_lc, use_container_width=True)
-
-    with lynch_right:
-        st.dataframe(
-            [
-                {
-                    "Ticker":   r["ticker"],
-                    "Category": r["lynch_category"],
-                    "Story":    (r["lynch_story"] or "—")[:300],
-                }
-                for r in analysed
-            ],
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Story": st.column_config.TextColumn("Story", width="large"),
-            },
+    def _dark(fig, height=280, **extra):
+        """Apply shared dark theme to a plotly figure."""
+        fig.update_layout(
+            paper_bgcolor='#1E2433',
+            plot_bgcolor='#1E2433',
+            font=dict(color='#94A3B8', size=11),
+            margin=dict(l=40, r=20, t=20, b=40),
+            showlegend=False,
+            height=height,
+            **extra,
         )
+        fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+        fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+        return fig
+
+    def _panel_header(title, subtitle):
+        st.markdown(
+            f'<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:2px">{title}</div>'
+            f'<div style="font-size:11px;color:#64748B;margin-bottom:8px">{subtitle}</div>',
+            unsafe_allow_html=True,
+        )
+
+    row1_left, row1_right = st.columns([1, 1])
+    row2_left, row2_right = st.columns([1, 1])
+
+    # ── Panel 1: Portfolio Quality Trend ───────────────────────────────
+    with row1_left:
+        with st.container(border=True):
+            _panel_header("Portfolio Quality Trend",
+                          "Average quality score as filings are added")
+            from collections import defaultdict as _dd
+            fy_groups: dict = _dd(list)
+            for r in analysed:
+                if r["quality_score"] is not None:
+                    fy_groups[str(r["fiscal_year"])].append(r["quality_score"])
+            trend_pts = sorted(
+                [(fy, sum(scores) / len(scores)) for fy, scores in fy_groups.items()],
+                key=lambda p: p[0],
+            )
+            if len(trend_pts) < 2:
+                st.info("Add more analysed filings to see quality trend")
+            else:
+                fy_labels = [p[0] for p in trend_pts]
+                qs_vals   = [p[1] for p in trend_pts]
+                avg_qs    = sum(qs_vals) / len(qs_vals)
+                fig1 = go.Figure()
+                fig1.add_trace(go.Scatter(
+                    x=fy_labels, y=qs_vals,
+                    mode='lines+markers',
+                    line=dict(color='#378ADD', width=2),
+                    fill='tozeroy',
+                    fillcolor='rgba(55,138,221,0.1)',
+                    marker=dict(size=6, color='#378ADD'),
+                ))
+                fig1.add_hline(
+                    y=avg_qs, line_dash='dot',
+                    line_color='rgba(148,163,184,0.5)',
+                    annotation_text=f'Avg {avg_qs:.0f}',
+                    annotation_font=dict(color='#94A3B8', size=10),
+                )
+                _dark(fig1)
+                fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
+                st.plotly_chart(fig1, use_container_width=True)
+
+    # ── Panel 2: Valuation Dashboard ───────────────────────────────────
+    with row1_right:
+        with st.container(border=True):
+            _panel_header("Valuation Dashboard",
+                          "Quality score vs P/E — top-left is the sweet spot")
+            _SIG_PT_COLS = {
+                "PASS": "#4ADE80", "INVESTIGATE": "#FCD34D",
+                "DECLINE": "#F87171",
+            }
+            val_pts = [r for r in portfolio
+                       if r.get("quality_score") is not None and r.get("pe_ratio") is not None]
+            if len(val_pts) < 2:
+                st.info("Fetch market data for holdings to see valuation positioning")
+            else:
+                max_pe = max(r["pe_ratio"] for r in val_pts) or 30
+                fig2 = go.Figure(go.Scatter(
+                    x=[r["pe_ratio"] for r in val_pts],
+                    y=[r["quality_score"] for r in val_pts],
+                    mode='markers+text',
+                    text=[r["ticker"] for r in val_pts],
+                    textposition='top center',
+                    textfont=dict(size=10, color='#94A3B8'),
+                    marker=dict(
+                        size=10,
+                        color=[_SIG_PT_COLS.get(r.get("signal"), "#64748B") for r in val_pts],
+                    ),
+                ))
+                _dark(fig2)
+                fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
+                fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
+                st.plotly_chart(fig2, use_container_width=True)
+
+    # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
+    with row2_left:
+        with st.container(border=True):
+            _panel_header("Risk / Return Matrix",
+                          "Distress score vs momentum — bottom-left is ideal")
+            _MOM_NUM = {"Accelerating": 90, "Improving": 70, "Mixed": 50, "Deteriorating": 20}
+            matrix_pts = []
+            for r in analysed:
+                ds = _distress_score(r)
+                ml = _momentum_label(r)
+                ms = _MOM_NUM.get(ml)
+                if ms is None:
+                    continue
+                if ds < 40 and ms > 50:    pt_col = "#4ADE80"
+                elif ds >= 40 and ms > 50: pt_col = "#FCD34D"
+                elif ds < 40:              pt_col = "#94A3B8"
+                else:                      pt_col = "#F87171"
+                matrix_pts.append((r["ticker"], ds, ms, pt_col))
+
+            if not matrix_pts:
+                st.info("No analysed holdings to display")
+            else:
+                fig3 = go.Figure()
+                for x0, x1, y0, y1, shade in [
+                    (0,  40,  50, 100, 'rgba(74,222,128,0.05)'),
+                    (40, 100, 50, 100, 'rgba(252,211,77,0.05)'),
+                    (0,  40,  0,  50,  'rgba(148,163,184,0.05)'),
+                    (40, 100, 0,  50,  'rgba(248,113,113,0.05)'),
+                ]:
+                    fig3.add_shape(type='rect', x0=x0, x1=x1, y0=y0, y1=y1,
+                                   fillcolor=shade, line_width=0, layer='below')
+                for x, y, txt in [
+                    (20,  92, 'Safe + Improving'),
+                    (70,  92, 'Risky + Improving'),
+                    (20,   8, 'Safe + Declining'),
+                    (70,   8, 'Risky + Declining'),
+                ]:
+                    fig3.add_annotation(x=x, y=y, text=txt, showarrow=False,
+                                        font=dict(size=9, color='rgba(148,163,184,0.35)'))
+                fig3.add_trace(go.Scatter(
+                    x=[p[1] for p in matrix_pts],
+                    y=[p[2] for p in matrix_pts],
+                    mode='markers+text',
+                    text=[p[0] for p in matrix_pts],
+                    textposition='top center',
+                    textfont=dict(size=10, color='#94A3B8'),
+                    marker=dict(size=12, color=[p[3] for p in matrix_pts]),
+                ))
+                _dark(fig3)
+                fig3.update_xaxes(title_text='Distress Score', range=[0, 100])
+                fig3.update_yaxes(title_text='Momentum Score', range=[0, 100])
+                st.plotly_chart(fig3, use_container_width=True)
+
+    # ── Panel 4: Earnings Quality Scorecard ────────────────────────────
+    with row2_right:
+        with st.container(border=True):
+            _panel_header("Earnings Quality Scorecard",
+                          "FCF conversion and revenue quality per holding")
+            eq_rows = []
+            for r in sorted(analysed,
+                            key=lambda x: (x.get("fcf_conv") is None, -(x.get("fcf_conv") or 0))):
+                fcf = r.get("fcf_conv")
+                ry  = r.get("revenue_yoy")
+                gm  = r.get("gross_margin")
+                rf  = r.get("red_flag_count") or 0
+
+                if ry is not None and ry > 5 and gm is not None and gm > 30:
+                    rev_qual = "High"
+                elif (ry is not None and ry > 0) or (gm is not None and gm > 20):
+                    rev_qual = "Med"
+                else:
+                    rev_qual = "Low"
+
+                if fcf is not None and fcf > 80 and rf == 0:
+                    rating = "Real ✓"
+                elif (fcf is not None and fcf > 50) or rf <= 1:
+                    rating = "Mixed ~"
+                else:
+                    rating = "Weak ✗"
+
+                eq_rows.append({
+                    "Ticker":      r["ticker"],
+                    "FCF Conv.":   f"{fcf:.0f}%" if fcf is not None else "—",
+                    "Rev Quality": rev_qual,
+                    "Earnings":    rating,
+                })
+            if eq_rows:
+                st.dataframe(
+                    eq_rows,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Ticker":      st.column_config.TextColumn("Ticker",      width="small"),
+                        "FCF Conv.":   st.column_config.TextColumn("FCF Conv.",   width="small"),
+                        "Rev Quality": st.column_config.TextColumn("Rev Quality", width="small"),
+                        "Earnings":    st.column_config.TextColumn("Earnings",    width="small"),
+                    },
+                )
+            else:
+                st.info("No analysed holdings to display")
 
     st.divider()
 
