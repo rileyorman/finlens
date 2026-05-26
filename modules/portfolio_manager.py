@@ -112,6 +112,9 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
                 "top_red_flag":      top_red_flag,
                 "dalio_view":        _clean(dd.get("dalio_view") or "—"),
                 "marks_view":        _clean(dd.get("marks_view") or "—"),
+                "current_ratio":     metrics.get("current_ratio"),
+                "net_margin":        metrics.get("ni_margin"),
+                "revenue_yoy":       metrics.get("yoy_rev"),
             }
         else:
             analysis = {
@@ -127,6 +130,9 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
                 "top_red_flag":      None,
                 "dalio_view":        "—",
                 "marks_view":        "—",
+                "current_ratio":     None,
+                "net_margin":        None,
+                "revenue_yoy":       None,
             }
 
         result.append({

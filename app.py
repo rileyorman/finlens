@@ -688,45 +688,251 @@ if page == "📈 Portfolio Manager":
 
     st.divider()
 
-    # --- Section 3: Risk Flags ---
-    st.markdown("##### Risk Flags Across Portfolio")
-    flag_left, flag_right = st.columns(2)
-    flagged = [r for r in analysed if r["red_flag_count"] > 0 or r["yellow_flag_count"] > 0]
+    # --- Section 3: Predictive Analytics ---
+    st.markdown("##### Predictive Analytics")
+    st.caption("Forward-looking signals — distress probability, momentum, and concentration risk")
 
-    with flag_left:
-        if not flagged:
-            st.success("No red or yellow flags across analysed holdings.")
-        else:
-            for r in flagged:
-                st.markdown(f"**{r['company_name']} ({r['ticker']})**")
-                if r["top_red_flag"]:
-                    st.markdown(f"🔴 {r['top_red_flag']}")
-                if r["yellow_flag_count"] > 0:
-                    st.caption(f"+{r['yellow_flag_count']} yellow flag(s)")
+    pa_left, pa_mid, pa_right = st.columns([1, 1, 1])
 
-    with flag_right:
-        red_counts = {r["ticker"]: r["red_flag_count"] for r in analysed}
-        if any(v > 0 for v in red_counts.values()):
-            import plotly.graph_objects as go
-            st.caption("Red flag count per holding")
-            _fig_rf = go.Figure(go.Bar(
-                x=list(red_counts.keys()),
-                y=list(red_counts.values()),
-                marker_color="#378ADD",
-            ))
-            _fig_rf.update_layout(
-                paper_bgcolor="#1E2433",
-                plot_bgcolor="#1E2433",
-                font_color="#94A3B8",
-                margin=dict(l=0, r=0, t=8, b=0),
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=True, gridcolor="#2D3650"),
-                showlegend=False,
-                height=220,
+    def _distress_score(r):
+        score = 0
+        cr  = r.get("current_ratio")
+        nm  = r.get("net_margin")
+        rf  = r.get("red_flag_count") or 0
+        ry  = r.get("revenue_yoy")
+        sig = r.get("signal")
+        if cr is not None:
+            if cr < 1.0:   score += 30
+            elif cr < 1.5: score += 15
+        if nm is not None:
+            if nm < 0:    score += 25
+            elif nm < 5:  score += 10
+        if rf >= 2:   score += 20
+        elif rf == 1: score += 10
+        if ry is not None:
+            if ry < -10:  score += 15
+            elif ry < 0:  score += 8
+        if sig == "DECLINE":       score += 10
+        elif sig == "INVESTIGATE": score += 5
+        return min(score, 100)
+
+    def _ds_color(score):
+        if score < 40:  return "#4ADE80"
+        if score <= 70: return "#FCD34D"
+        return "#F87171"
+
+    def _momentum_label(r):
+        sig = r.get("signal")
+        rf  = r.get("red_flag_count") or 0
+        if sig == "DECLINE" or rf >= 2:      return "Deteriorating"
+        if sig == "INVESTIGATE" and rf >= 1: return "Mixed"
+        if sig == "INVESTIGATE" and rf == 0: return "Improving"
+        if sig == "PASS" and rf == 0:        return "Accelerating"
+        return "Mixed"
+
+    def _rev_trend(r):
+        ry = r.get("revenue_yoy")
+        if ry is None: return "Rev —"
+        if ry > 3:     return "Rev ▲"
+        if ry < -3:    return "Rev ▼"
+        return "Rev →"
+
+    _sorted_analysed = sorted(analysed, key=lambda x: _distress_score(x), reverse=True)
+    _unanalysed      = [r for r in portfolio if not r["has_analysis"]]
+
+    # ── Panel 1: Financial Distress Score ──────────────────────────────
+    with pa_left:
+        with st.container(border=True):
+            st.markdown(
+                '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:2px">'
+                'Financial Distress Score</div>'
+                '<div style="font-size:11px;color:#64748B;margin-bottom:12px">'
+                'Altman Z-Score derived · 0 = safe, 100 = distress</div>',
+                unsafe_allow_html=True,
             )
-            st.plotly_chart(_fig_rf, use_container_width=True)
-        else:
-            st.success("All analysed holdings: 0 red flags.")
+            rows_html = ""
+            for r in _sorted_analysed:
+                score = _distress_score(r)
+                col   = _ds_color(score)
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+                    f'<span style="font-size:12px;color:#94A3B8;width:44px;flex-shrink:0;'
+                    f'font-family:monospace">{r["ticker"]}</span>'
+                    f'<div style="flex:1;height:8px;background:#2D3650;border-radius:4px;overflow:hidden">'
+                    f'<div style="width:{score}%;height:8px;background:{col};border-radius:4px"></div>'
+                    f'</div>'
+                    f'<span style="font-size:12px;font-weight:700;color:{col};width:26px;'
+                    f'text-align:right;flex-shrink:0">{score}</span>'
+                    f'</div>'
+                )
+            for r in _unanalysed:
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+                    f'<span style="font-size:12px;color:#64748B;width:44px;flex-shrink:0;'
+                    f'font-family:monospace">{r["ticker"]}</span>'
+                    f'<div style="flex:1;height:8px;background:#2D3650;border-radius:4px"></div>'
+                    f'<span style="font-size:12px;color:#64748B;width:26px;'
+                    f'text-align:right;flex-shrink:0">—</span>'
+                    f'</div>'
+                )
+            st.markdown(rows_html, unsafe_allow_html=True)
+            st.markdown(
+                '<div style="font-size:11px;color:#64748B;margin-top:8px">'
+                '<span style="color:#4ADE80">●</span> Safe &lt;40&nbsp;&nbsp;'
+                '<span style="color:#FCD34D">●</span> Watch 40–70&nbsp;&nbsp;'
+                '<span style="color:#F87171">●</span> Distress &gt;70'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+
+    # ── Panel 2: Momentum Scorecard ────────────────────────────────────
+    with pa_mid:
+        with st.container(border=True):
+            st.markdown(
+                '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:2px">'
+                'Momentum Scorecard</div>'
+                '<div style="font-size:11px;color:#64748B;margin-bottom:12px">'
+                'YoY trend across revenue, margin, and cash flow</div>',
+                unsafe_allow_html=True,
+            )
+            _MOM_STYLE = {
+                "Accelerating":  ("#052e16", "#4ADE80"),
+                "Improving":     ("#052e16", "#4ADE80"),
+                "Mixed":         ("#252D40", "#94A3B8"),
+                "Deteriorating": ("#1F0000", "#F87171"),
+            }
+            imp_n, mix_n, det_n = 0, 0, 0
+            rows_html = ""
+            for r in _sorted_analysed:
+                label  = _momentum_label(r)
+                bg, fg = _MOM_STYLE[label]
+                rev    = _rev_trend(r)
+                if label in ("Accelerating", "Improving"): imp_n += 1
+                elif label == "Mixed":                     mix_n += 1
+                else:                                      det_n += 1
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:8px;'
+                    f'margin-bottom:5px;padding:2px 0">'
+                    f'<span style="font-size:12px;font-weight:700;color:#F1F5F9;width:44px;'
+                    f'flex-shrink:0;font-family:monospace">{r["ticker"]}</span>'
+                    f'<span style="flex:1;font-size:12px;color:#64748B">{rev}</span>'
+                    f'<span style="font-size:11px;font-weight:700;padding:2px 8px;'
+                    f'border-radius:3px;background:{bg};color:{fg};flex-shrink:0">{label}</span>'
+                    f'</div>'
+                )
+            for r in _unanalysed:
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:8px;'
+                    f'margin-bottom:5px;padding:2px 0">'
+                    f'<span style="font-size:12px;font-weight:700;color:#64748B;width:44px;'
+                    f'flex-shrink:0;font-family:monospace">{r["ticker"]}</span>'
+                    f'<span style="flex:1;font-size:12px;color:#64748B">—</span>'
+                    f'<span style="font-size:11px;color:#64748B;padding:2px 8px">No data</span>'
+                    f'</div>'
+                )
+            st.markdown(rows_html, unsafe_allow_html=True)
+            parts = []
+            if imp_n: parts.append(f'<span style="color:#4ADE80">{imp_n} improving</span>')
+            if mix_n: parts.append(f'<span style="color:#94A3B8">{mix_n} mixed</span>')
+            if det_n: parts.append(f'<span style="color:#F87171">{det_n} deteriorating</span>')
+            st.markdown(
+                '<div style="font-size:11px;color:#64748B;margin-top:8px">'
+                + ' · '.join(parts) + '</div>',
+                unsafe_allow_html=True,
+            )
+
+    # ── Panel 3: Concentration Risk ────────────────────────────────────
+    with pa_right:
+        with st.container(border=True):
+            st.markdown(
+                '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:2px">'
+                'Concentration Risk</div>'
+                '<div style="font-size:11px;color:#64748B;margin-bottom:12px">'
+                'Signal and sector distribution</div>',
+                unsafe_allow_html=True,
+            )
+            total_h = len(portfolio)
+
+            # Signal segmented bar
+            _SIG_COLS = {
+                "PASS":        "#4ADE80",
+                "INVESTIGATE": "#FCD34D",
+                "DECLINE":     "#F87171",
+                "No analysis": "#2D3650",
+            }
+            sig_counts = {"PASS": 0, "INVESTIGATE": 0, "DECLINE": 0, "No analysis": 0}
+            for r in portfolio:
+                if r["has_analysis"]:
+                    sig = r.get("signal") or ""
+                    if sig in ("PASS", "INVESTIGATE", "DECLINE"):
+                        sig_counts[sig] += 1
+                    else:
+                        sig_counts["No analysis"] += 1
+                else:
+                    sig_counts["No analysis"] += 1
+
+            st.markdown(
+                '<div style="font-size:11px;font-weight:600;color:#94A3B8;margin-bottom:4px">Signal</div>',
+                unsafe_allow_html=True,
+            )
+            bar1 = '<div style="display:flex;height:14px;border-radius:4px;overflow:hidden;gap:1px;margin-bottom:5px">'
+            leg1 = '<div style="font-size:11px;color:#64748B;line-height:2">'
+            for label, count in sig_counts.items():
+                if count == 0:
+                    continue
+                pct = count / total_h * 100
+                c   = _SIG_COLS[label]
+                bar1 += f'<div style="width:{pct:.1f}%;background:{c}" title="{label}: {count}"></div>'
+                leg1 += f'<span style="color:{c}">■</span> {label} {pct:.0f}%&nbsp;&nbsp;'
+            bar1 += '</div>'
+            leg1 += '</div>'
+            st.markdown(bar1 + leg1, unsafe_allow_html=True)
+
+            # Lynch/sector segmented bar
+            _LYNCH_MAP = {
+                "Fast Grower":  "Technology/Growth",
+                "Turnaround":   "Recovery",
+                "Stalwart":     "Defensive",
+                "Slow Grower":  "Value",
+                "Asset Play":   "Special Situations",
+            }
+            _LYNCH_COLS = {
+                "Technology/Growth":  "#185FA5",
+                "Recovery":           "#1D9E75",
+                "Defensive":          "#534AB7",
+                "Value":              "#D85A30",
+                "Special Situations": "#854F0B",
+                "Unclassified":       "#64748B",
+            }
+            lynch_dist: dict[str, int] = {}
+            for r in portfolio:
+                cat = _LYNCH_MAP.get(r.get("lynch_category") or "—", "Unclassified")
+                lynch_dist[cat] = lynch_dist.get(cat, 0) + 1
+
+            st.markdown(
+                '<div style="font-size:11px;font-weight:600;color:#94A3B8;margin:8px 0 4px 0">'
+                'Sector (Lynch proxy)</div>',
+                unsafe_allow_html=True,
+            )
+            bar2 = '<div style="display:flex;height:14px;border-radius:4px;overflow:hidden;gap:1px;margin-bottom:5px">'
+            leg2 = '<div style="font-size:11px;color:#64748B;line-height:2">'
+            for cat, count in lynch_dist.items():
+                pct   = count / total_h * 100
+                color = _LYNCH_COLS.get(cat, "#64748B")
+                bar2 += f'<div style="width:{pct:.1f}%;background:{color}" title="{cat}: {count}"></div>'
+                leg2 += f'<span style="color:{color}">■</span> {cat} {pct:.0f}%&nbsp;&nbsp;'
+            bar2 += '</div>'
+            leg2 += '</div>'
+            st.markdown(bar2 + leg2, unsafe_allow_html=True)
+
+            # Concentration warnings
+            top_sig_pct   = max(sig_counts.values()) / total_h * 100
+            top_lynch_pct = max(lynch_dist.values()) / total_h * 100 if lynch_dist else 0
+            warn = ""
+            if top_sig_pct   > 50: warn += '<div style="font-size:11px;color:#FCD34D;margin-top:6px">⚠ High signal concentration</div>'
+            if top_lynch_pct > 50: warn += '<div style="font-size:11px;color:#FCD34D;margin-top:4px">⚠ High category concentration</div>'
+            if warn:
+                st.markdown(warn, unsafe_allow_html=True)
 
     st.divider()
 
