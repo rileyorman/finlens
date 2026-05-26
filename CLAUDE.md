@@ -46,7 +46,7 @@ Or double-click `run.bat`.
 - To fix: change `CACHE_DIR` in `config.py` to a path outside OneDrive, e.g. `Path(r"C:\Users\riley\AppData\Local\FinLens\cache")`. The cache module reads `CACHE_DIR` from config so no other changes are needed.
 
 ## Notes
-- This is the standalone original app. It has also been merged into Orman Intelligence (`C:\Users\riley\OneDrive\Documents\orman_intelligence\`).
+- This is the standalone original app. It has also been merged into FinTelligence (`C:\Users\riley\OneDrive\Documents\orman_intelligence\`).
 - Project location: `C:\Users\riley\OneDrive\Documents\Python Project\finlens\`
 
 ## Next Session
