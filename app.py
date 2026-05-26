@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull, analyze_dashboard_insights
 from modules.mda_sentiment import analyze_mda_sentiment
+from modules.filing_comparison import compare_filings
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.red_flag_detector import detect_flags
@@ -197,7 +198,7 @@ with st.sidebar:
     )
     page = st.radio(
         "Mode",
-        ["📊 Single Analysis", "📈 Portfolio Manager"],
+        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison"],
         label_visibility="collapsed",
     )
     st.divider()
@@ -1174,6 +1175,203 @@ if page == "📈 Portfolio Manager":
             "Marks View": st.column_config.TextColumn("Marks View", width="large"),
         },
     )
+
+    st.stop()
+
+
+# --- Filing Comparison page --------------------------------------------
+if page == "📂 Filing Comparison":
+
+    if not API_KEY:
+        st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+        st.stop()
+
+    st.markdown("### Filing Comparison")
+    st.caption("Upload two filings from the same company to compare MD&A sentiment, theme shifts, and language changes year-over-year.")
+
+    fc_col1, fc_col2 = st.columns(2)
+    with fc_col1:
+        st.markdown("**Filing 1 — Earlier Period**")
+        fc_file1  = st.file_uploader("Filing 1 PDF", type=["pdf"], key="fc_file1", label_visibility="collapsed")
+        fc_label1 = st.text_input("Period label", value="", placeholder="e.g. FY2024", key="fc_label1")
+    with fc_col2:
+        st.markdown("**Filing 2 — Later Period**")
+        fc_file2  = st.file_uploader("Filing 2 PDF", type=["pdf"], key="fc_file2", label_visibility="collapsed")
+        fc_label2 = st.text_input("Period label", value="", placeholder="e.g. FY2025", key="fc_label2")
+
+    _both_uploaded = fc_file1 is not None and fc_file2 is not None
+
+    if st.button("Compare Filings", type="primary", use_container_width=True, disabled=not _both_uploaded):
+        _lbl1 = fc_label1.strip() or "Filing 1"
+        _lbl2 = fc_label2.strip() or "Filing 2"
+
+        with st.spinner(f"Extracting text from {fc_file1.name}..."):
+            _text1 = extract_text_from_pdf(fc_file1)
+        with st.spinner(f"Extracting text from {fc_file2.name}..."):
+            _text2 = extract_text_from_pdf(fc_file2)
+
+        with st.spinner(f"Scoring MD&A sentiment — {_lbl1}..."):
+            pass  # compare_filings handles all three calls internally
+
+        with st.spinner("Running comparison analysis (3 Claude calls)..."):
+            _fc_result = compare_filings(_text1, _text2, _lbl1, _lbl2, API_KEY)
+
+        st.session_state["filing_comparison"] = _fc_result
+        st.rerun()
+
+    # --- Display ---
+    _fc = st.session_state.get("filing_comparison")
+    if _fc:
+        if _fc.get("error"):
+            st.warning(f"Comparison could not be completed: {_fc['error']}")
+        else:
+            _s1   = _fc.get("sentiment_1") or {}
+            _s2   = _fc.get("sentiment_2") or {}
+            _comp = _fc.get("comparison") or {}
+            _lbl1 = _fc.get("label_1", "Filing 1")
+            _lbl2 = _fc.get("label_2", "Filing 2")
+
+            _TONE_STYLE = {
+                "Positive": {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
+                "Cautious":  {"bg": "#1C1200", "color": "#FCD34D", "border": "#92400E"},
+                "Negative": {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
+            }
+
+            def _tone_card(sentiment: dict, label: str) -> str:
+                tone = sentiment.get("overall_tone") or "—"
+                ts   = _TONE_STYLE.get(tone, {"bg": "#1E2433", "color": "#94A3B8", "border": "#374B6B"})
+                return (
+                    f'<div style="background:{ts["bg"]};border:1px solid {ts["border"]};'
+                    f'border-radius:8px;padding:14px 18px;text-align:center">'
+                    f'<div style="font-size:11px;color:#64748B;letter-spacing:0.08em;'
+                    f'text-transform:uppercase;margin-bottom:4px">{label}</div>'
+                    f'<div style="font-size:20px;font-weight:500;color:{ts["color"]}">{tone}</div>'
+                    f'</div>'
+                )
+
+            def _score_bar(label: str, value) -> str:
+                if value is None:
+                    return f'<div style="font-size:12px;color:#64748B;margin-bottom:4px">{label}: N/A</div>'
+                filled = "■" * value
+                empty  = "□" * (5 - value)
+                return (
+                    f'<div style="font-size:12px;color:#94A3B8;margin-bottom:4px">'
+                    f'{label}: <span style="color:#378ADD;letter-spacing:2px">{filled}</span>'
+                    f'<span style="color:#374B6B;letter-spacing:2px">{empty}</span>'
+                    f' <span style="color:#64748B">({value}/5)</span></div>'
+                )
+
+            def _delta_badge(v1, v2) -> str:
+                if v1 is None or v2 is None:
+                    return '<span style="color:#64748B;font-size:12px">—</span>'
+                d = v2 - v1
+                if d > 0:
+                    return f'<span style="color:#4ADE80;font-size:13px;font-weight:600">▲ +{d}</span>'
+                if d < 0:
+                    return f'<span style="color:#F87171;font-size:13px;font-weight:600">▼ {d}</span>'
+                return '<span style="color:#64748B;font-size:12px">= 0</span>'
+
+            # ── Section 1: Sentiment Comparison ──────────────────────────
+            st.divider()
+            st.markdown("#### Sentiment Comparison")
+
+            sc1, sc_mid, sc2 = st.columns([5, 2, 5])
+
+            with sc1:
+                st.markdown(_tone_card(_s1, _lbl1), unsafe_allow_html=True)
+                sc = (_s1.get("scores") or {})
+                st.markdown(
+                    _score_bar("Forward Outlook",      sc.get("forward_outlook")) +
+                    _score_bar("Risk Language Density", sc.get("risk_language_density")) +
+                    _score_bar("Management Confidence", sc.get("management_confidence")),
+                    unsafe_allow_html=True,
+                )
+
+            with sc_mid:
+                sc1s = _s1.get("scores") or {}
+                sc2s = _s2.get("scores") or {}
+                st.markdown(
+                    '<div style="margin-top:52px;text-align:center">'
+                    + _delta_badge(sc1s.get("forward_outlook"),      sc2s.get("forward_outlook"))      + "<br>"
+                    + _delta_badge(sc1s.get("risk_language_density"), sc2s.get("risk_language_density")) + "<br>"
+                    + _delta_badge(sc1s.get("management_confidence"), sc2s.get("management_confidence"))
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+            with sc2:
+                st.markdown(_tone_card(_s2, _lbl2), unsafe_allow_html=True)
+                sc = (_s2.get("scores") or {})
+                st.markdown(
+                    _score_bar("Forward Outlook",      sc.get("forward_outlook")) +
+                    _score_bar("Risk Language Density", sc.get("risk_language_density")) +
+                    _score_bar("Management Confidence", sc.get("management_confidence")),
+                    unsafe_allow_html=True,
+                )
+
+            # ── Tone shift summary ────────────────────────────────────────
+            if _comp.get("tone_shift"):
+                st.markdown(
+                    f'<div style="background:#252D40;border:0.5px solid #2D3650;border-radius:8px;'
+                    f'padding:14px 18px;margin-top:12px;font-size:14px;color:#94A3B8;line-height:1.6">'
+                    f'<span style="font-size:11px;color:#64748B;text-transform:uppercase;'
+                    f'letter-spacing:0.08em;display:block;margin-bottom:6px">Tone Shift</span>'
+                    f'{_comp["tone_shift"]}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Section 2: Theme Changes ──────────────────────────────────
+            themes = _comp.get("themes") or []
+            if themes:
+                st.divider()
+                st.markdown("#### Theme Changes")
+                for th in themes:
+                    direction = (th.get("direction") or "").lower()
+                    badge_bg    = "#052e16" if direction == "increased" else "#1F0000"
+                    badge_color = "#4ADE80" if direction == "increased" else "#F87171"
+                    badge_text  = "Increased" if direction == "increased" else "Decreased"
+                    st.markdown(
+                        f'<div style="background:#252D40;border:0.5px solid #2D3650;border-radius:8px;'
+                        f'padding:12px 16px;margin-bottom:8px">'
+                        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+                        f'<span style="font-size:14px;font-weight:500;color:#F1F5F9">{th.get("topic","")}</span>'
+                        f'<span style="background:{badge_bg};color:{badge_color};border-radius:4px;'
+                        f'padding:1px 8px;font-size:11px;font-weight:600;text-transform:uppercase;'
+                        f'letter-spacing:0.06em">{badge_text}</span>'
+                        f'</div>'
+                        f'<div style="font-size:13px;color:#64748B">{th.get("detail","")}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            # ── Section 3: Key Language Shifts ───────────────────────────
+            shifts = _comp.get("language_shifts") or []
+            if shifts:
+                st.divider()
+                st.markdown("#### Key Language Shifts")
+
+                _SHIFT_STYLE = {
+                    "appeared":   {"border": "#166534", "label": "Appeared",   "color": "#4ADE80"},
+                    "disappeared": {"border": "#991B1B", "label": "Disappeared", "color": "#F87171"},
+                    "changed":    {"border": "#92400E", "label": "Changed",    "color": "#FCD34D"},
+                }
+
+                for group_type in ("appeared", "disappeared", "changed"):
+                    group = [s for s in shifts if (s.get("type") or "").lower() == group_type]
+                    if not group:
+                        continue
+                    gs = _SHIFT_STYLE[group_type]
+                    for s in group:
+                        st.markdown(
+                            f'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">'
+                            f'<span style="font-size:10px;font-weight:700;text-transform:uppercase;'
+                            f'letter-spacing:0.08em;color:{gs["color"]};white-space:nowrap">{gs["label"]}</span>'
+                            f'<blockquote style="border-left:3px solid {gs["border"]};margin:0;'
+                            f'padding:5px 12px;color:#94A3B8;font-size:13px;font-style:italic;flex:1">'
+                            f'{s.get("phrase","")}</blockquote>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
 
     st.stop()
 
