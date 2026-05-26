@@ -6,6 +6,7 @@ from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull, analyze_dashboard_insights
 from modules.mda_sentiment import analyze_mda_sentiment
 from modules.filing_comparison import compare_filings
+from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.red_flag_detector import detect_flags
@@ -1918,6 +1919,94 @@ if st.session_state.financial_data:
                         )
         elif mda_sentiment and mda_sentiment.get("error"):
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
+
+        # --- Scenario Simulator ---
+        with st.expander("🔮 Scenario Simulator", expanded=False):
+            _metrics = _calc_summary_metrics(financial_data)
+            _base_gm = _metrics.get("gp_margin") or 50.0
+
+            _sl1, _sl2 = st.columns(2)
+            with _sl1:
+                _rev_g  = st.slider("Revenue Growth (%)",        min_value=-30,   max_value=50,   value=0,   step=1,    key="ss_rev_g")
+                _gm_pct = st.slider("Gross Margin (%)",          min_value=10.0,  max_value=90.0, value=round(float(_base_gm), 1), step=0.5, key="ss_gm")
+            with _sl2:
+                _opex_g = st.slider("OpEx Growth (%)",           min_value=-20,   max_value=30,   value=0,   step=1,    key="ss_opex_g")
+                _ir_bps = st.slider("Interest Rate Change (bps)", min_value=-200,  max_value=200,  value=0,   step=25,   key="ss_ir")
+
+            if st.button("Run Scenario", key="ss_run", type="primary", use_container_width=True):
+                _sc_inputs = {
+                    "revenue_growth_pct":       float(_rev_g),
+                    "gross_margin_pct":         float(_gm_pct),
+                    "opex_growth_pct":          float(_opex_g),
+                    "interest_rate_change_bps": float(_ir_bps),
+                }
+                with st.spinner("Running scenario — calling Claude for narrative..."):
+                    st.session_state["scenario_result"] = run_scenario(
+                        financial_data, _sc_inputs, API_KEY
+                    )
+
+            _sr = st.session_state.get("scenario_result")
+            if _sr:
+                if _sr.get("error"):
+                    st.warning(f"Scenario failed: {_sr['error']}")
+                else:
+                    def _fmt_money(v):
+                        if v is None:
+                            return "N/A"
+                        abs_v = abs(v)
+                        sign  = "-" if v < 0 else ""
+                        if abs_v >= 1_000_000:
+                            return f"{sign}${abs_v / 1_000_000:.1f}B"
+                        if abs_v >= 1_000:
+                            return f"{sign}${abs_v / 1_000:.1f}M"
+                        return f"{sign}${abs_v:,.0f}"
+
+                    # Part 1 — Key Metrics
+                    _sm1, _sm2, _sm3 = st.columns(3)
+                    _bd   = _sr.get("base_distress_score")
+                    _sd   = _sr.get("scenario_distress_score")
+                    _dd   = _sr.get("distress_delta")
+                    _dd_s = (f"{_dd:+.1f}" if _dd is not None else None)
+                    _sm1.metric(
+                        "Distress Score",
+                        f"{_sd:.0f}/100" if _sd is not None else "N/A",
+                        delta=_dd_s,
+                        delta_color="inverse",  # lower is better, so red = higher
+                    )
+                    _sm2.metric("Scenario EBIT",    _fmt_money(_sr.get("scenario_ebit")))
+                    _pe = _sr.get("implied_pe")
+                    _sm3.metric("Implied P/E",      f"{_pe:.1f}x" if _pe else "N/A")
+
+                    st.divider()
+
+                    # Part 2 — Scenario vs Base comparison
+                    _base_rev  = _metrics.get("rev_c")
+                    _base_gp2  = _metrics.get("gp_c")
+                    _base_ebit = None
+                    _is_rows   = financial_data.get("income_statement", [])
+                    from modules.excel_exporter import _lookup as _xlookup
+                    _base_ebit = _xlookup(_is_rows, [
+                        "income (loss) from operations", "income from operations",
+                        "operating income", "operating profit",
+                    ], "value")
+
+                    _cmp1, _cmp2, _cmp3 = st.columns(3)
+                    _s_rev  = _sr.get("scenario_revenue")
+                    _s_gp   = _sr.get("scenario_gross_profit")
+                    _s_ebit = _sr.get("scenario_ebit")
+
+                    def _delta_pct(base, scenario):
+                        if base and scenario:
+                            return f"{((scenario - base) / abs(base) * 100):+.1f}%"
+                        return None
+
+                    _cmp1.metric("Revenue",      _fmt_money(_s_rev),  delta=_delta_pct(_base_rev,  _s_rev))
+                    _cmp2.metric("Gross Profit", _fmt_money(_s_gp),   delta=_delta_pct(_base_gp2,  _s_gp))
+                    _cmp3.metric("EBIT",         _fmt_money(_s_ebit), delta=_delta_pct(_base_ebit, _s_ebit))
+
+                    # Part 3 — Claude Narrative
+                    if _sr.get("narrative"):
+                        st.info(_sr["narrative"])
 
         # --- Financial statement tables ---
         col_cfg = {
