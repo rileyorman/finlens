@@ -1,4 +1,6 @@
 import os
+import io
+import re
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -71,6 +73,15 @@ def _dash_rag(metric: str, value) -> tuple:
     elif metric == "int_cover": c = "G" if value >= 3.0 else ("A" if value >= 1.5 else "R")
     else: return "#D9D9D9", "N/A"
     return {"G": ("#70AD47", "GREEN"), "A": ("#FFC000", "AMBER"), "R": ("#C00000", "RED")}[c]
+
+
+def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
+    """Return disk cache path for a filing PDF, or None if ticker/period unavailable."""
+    if not ticker or not period:
+        return None
+    safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
+    return os.path.join("library", "pdfs", f"{safe}.pdf")
+
 
 st.set_page_config(
     page_title="FinLens",
@@ -501,6 +512,17 @@ document.addEventListener('focusin', function(e) {
                     st.session_state.resolved_ticker     = ticker if ticker != "—" else None
                     st.session_state.cache_hit           = False
                     st.session_state.loaded_from_library = True
+                    # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
+                    try:
+                        _lp = _pdf_cache_path(
+                            ticker if ticker != "—" else None,
+                            entry.get("fiscal_year") or entry.get("period", ""),
+                        )
+                        st.session_state.cached_pdf_bytes = (
+                            open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                        )
+                    except Exception:
+                        st.session_state.cached_pdf_bytes = None
                     st.rerun()
                 if st.button("♻️ Re-Analyse", key=f"lib_reanalyse_{eid}", use_container_width=True,
                              help="Re-analyse with fresh Claude calls"):
@@ -550,6 +572,14 @@ document.addEventListener('focusin', function(e) {
                                 }
                             else:
                                 st.session_state.reanalyse_no_text = entry["company_name"]
+                                st.session_state.reanalyse_pdf_info = {
+                                    "ticker":       entry.get("ticker"),
+                                    "period":       entry.get("fiscal_year") or entry.get("period", ""),
+                                    "entry_id":     eid,
+                                    "company_name": entry["company_name"],
+                                    "file_name":    entry.get("file_name", ""),
+                                    "file_size":    entry.get("file_size_bytes", 0),
+                                }
                                 st.session_state.uploader_key += 1
                             st.rerun()
                     with no_col:
@@ -1459,6 +1489,7 @@ if "financial_data" not in st.session_state:
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
     st.session_state.uploader_key        = 0
+    os.makedirs(os.path.join("library", "pdfs"), exist_ok=True)
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -1478,7 +1509,35 @@ uploaded_file = st.file_uploader(
 # so we must NOT reset — library results should persist until the user
 # explicitly uploads a different file.
 if st.session_state.get("reanalyse_no_text"):
-    st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
+    _pdf_info = st.session_state.get("reanalyse_pdf_info") or {}
+    # Try session-state preload (set by Load button), then fall back to disk
+    _cached_bytes = st.session_state.get("cached_pdf_bytes")
+    if _cached_bytes is None:
+        try:
+            _cp = _pdf_cache_path(_pdf_info.get("ticker"), _pdf_info.get("period"))
+            if _cp and os.path.exists(_cp):
+                with open(_cp, "rb") as _f:
+                    _cached_bytes = _f.read()
+        except Exception:
+            _cached_bytes = None
+    if _cached_bytes:
+        try:
+            _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
+            st.session_state.pending_reanalyse = {
+                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
+                "entry_id":     _pdf_info.get("entry_id"),
+                "file_name":    _pdf_info.get("file_name", ""),
+                "file_size":    _pdf_info.get("file_size", 0),
+            }
+            st.session_state.reanalyse_no_text  = None
+            st.session_state.reanalyse_pdf_info = None
+            st.session_state.cached_pdf_bytes   = None
+            st.rerun()
+        except Exception:
+            st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
+    else:
+        st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
 
 if uploaded_file is None:
     if not st.session_state.get("loaded_from_library"):
@@ -1702,6 +1761,16 @@ if uploaded_file:
                     mda_sentiment=mda_sentiment)
         except Exception:
             pass  # Library write failure must never block analysis
+
+        # Save PDF bytes to disk so Re-Analyse can run without re-uploading.
+        try:
+            _period_label = financial_data.get("fiscal_year") or financial_data.get("period", "")
+            _pdf_disk_path = _pdf_cache_path(resolved_ticker, _period_label)
+            if _pdf_disk_path:
+                with open(_pdf_disk_path, "wb") as _f:
+                    _f.write(pdf_bytes)
+        except Exception:
+            pass  # PDF cache write failure must never block analysis
 
         # Rerun so sidebar counts (cache + library) reflect the new entry.
         st.rerun()
