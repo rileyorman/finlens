@@ -1,3 +1,26 @@
+/* ── Global minimum font size ── */
+* {
+    min-font-size: 12px;
+}
+
+.stDataFrame,
+div[data-testid="stDataFrame"] * {
+    font-size: 12px !important;
+}
+
+div[data-testid="stMetric"] label {
+    font-size: 12px !important;
+}
+
+section[data-testid="stSidebar"] * {
+    font-size: 12px !important;
+}
+
+/* Sidebar buttons stay at their own smaller size */
+section[data-testid="stSidebar"] .stButton button {
+    font-size: 11px !important;
+}
+
 /* ── Base ── */
 .stApp {
     background-color: #1E2433;

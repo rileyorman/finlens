@@ -707,8 +707,24 @@ if page == "📈 Portfolio Manager":
     with flag_right:
         red_counts = {r["ticker"]: r["red_flag_count"] for r in analysed}
         if any(v > 0 for v in red_counts.values()):
+            import plotly.graph_objects as go
             st.caption("Red flag count per holding")
-            st.bar_chart(pd.DataFrame.from_dict(red_counts, orient="index", columns=["Red Flags"]), color="#378ADD")
+            _fig_rf = go.Figure(go.Bar(
+                x=list(red_counts.keys()),
+                y=list(red_counts.values()),
+                marker_color="#378ADD",
+            ))
+            _fig_rf.update_layout(
+                paper_bgcolor="#1E2433",
+                plot_bgcolor="#1E2433",
+                font_color="#94A3B8",
+                margin=dict(l=0, r=0, t=8, b=0),
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="#2D3650"),
+                showlegend=False,
+                height=220,
+            )
+            st.plotly_chart(_fig_rf, use_container_width=True)
         else:
             st.success("All analysed holdings: 0 red flags.")
 
@@ -724,7 +740,23 @@ if page == "📈 Portfolio Manager":
     with lynch_left:
         st.caption("Holdings per Lynch category")
         if lynch_counts:
-            st.bar_chart(pd.DataFrame.from_dict(lynch_counts, orient="index", columns=["Count"]), color="#378ADD")
+            import plotly.graph_objects as go
+            _fig_lc = go.Figure(go.Bar(
+                x=list(lynch_counts.keys()),
+                y=list(lynch_counts.values()),
+                marker_color="#378ADD",
+            ))
+            _fig_lc.update_layout(
+                paper_bgcolor="#1E2433",
+                plot_bgcolor="#1E2433",
+                font_color="#94A3B8",
+                margin=dict(l=0, r=0, t=8, b=0),
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="#2D3650"),
+                showlegend=False,
+                height=220,
+            )
+            st.plotly_chart(_fig_lc, use_container_width=True)
 
     with lynch_right:
         st.dataframe(
