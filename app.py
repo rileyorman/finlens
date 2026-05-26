@@ -1953,12 +1953,26 @@ if st.session_state.financial_data:
                     def _fmt_money(v):
                         if v is None:
                             return "N/A"
-                        abs_v = abs(v)
+                        # Values are as-reported (e.g. 130497 when filing says "in millions").
+                        # Scale to raw dollars before thresholding so $B/$M display correctly
+                        # for large-caps (NVIDIA, Apple) and small-caps alike.
+                        _cur = (financial_data.get("currency") or "").lower()
+                        if "billion" in _cur:
+                            _scale = 1_000_000_000
+                        elif "million" in _cur:
+                            _scale = 1_000_000
+                        elif "thousand" in _cur:
+                            _scale = 1_000
+                        else:
+                            _scale = 1
+                        abs_v = abs(v) * _scale
                         sign  = "-" if v < 0 else ""
+                        if abs_v >= 1_000_000_000:
+                            return f"{sign}${abs_v / 1_000_000_000:.1f}B"
                         if abs_v >= 1_000_000:
-                            return f"{sign}${abs_v / 1_000_000:.1f}B"
+                            return f"{sign}${abs_v / 1_000_000:.1f}M"
                         if abs_v >= 1_000:
-                            return f"{sign}${abs_v / 1_000:.1f}M"
+                            return f"{sign}${abs_v / 1_000:.0f}K"
                         return f"{sign}${abs_v:,.0f}"
 
                     # Part 1 — Key Metrics
