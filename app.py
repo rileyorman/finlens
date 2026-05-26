@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull, analyze_dashboard_insights
+from modules.mda_sentiment import analyze_mda_sentiment
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.red_flag_detector import detect_flags
@@ -1247,6 +1248,7 @@ if "financial_data" not in st.session_state:
     st.session_state.summary_data        = None
     st.session_state.bear_bull_data      = None
     st.session_state.dashboard_data      = None
+    st.session_state.mda_sentiment       = None
     st.session_state.market_data         = None
     st.session_state.excel_bytes         = None
     st.session_state.last_filename       = None
@@ -1281,6 +1283,7 @@ if uploaded_file is None:
         st.session_state.summary_data    = None
         st.session_state.bear_bull_data  = None
         st.session_state.dashboard_data  = None
+        st.session_state.mda_sentiment   = None
         st.session_state.market_data     = None
         st.session_state.excel_bytes     = None
         st.session_state.resolved_ticker = None
@@ -1294,6 +1297,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.summary_data        = None
     st.session_state.bear_bull_data      = None
     st.session_state.dashboard_data      = None
+    st.session_state.mda_sentiment       = None
     st.session_state.market_data         = None
     st.session_state.excel_bytes         = None
     st.session_state.resolved_ticker     = None
@@ -1344,6 +1348,10 @@ if st.session_state.get("pending_reanalyse"):
     with st.spinner("Call 4: Generating dashboard insights..."):
         _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
 
+    _ra_mda = None
+    with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
+        _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
+
     try:
         lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
                 _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text)
@@ -1354,6 +1362,7 @@ if st.session_state.get("pending_reanalyse"):
     st.session_state.summary_data        = _ra_sd
     st.session_state.bear_bull_data      = _ra_bb
     st.session_state.dashboard_data      = _ra_dd
+    st.session_state.mda_sentiment       = _ra_mda
     st.session_state.market_data         = {}
     st.session_state.excel_bytes         = create_excel_file(_ra_fd, _ra_sd, 0.0, _ra_bb)
     st.session_state.last_filename       = ra["file_name"]
@@ -1431,8 +1440,18 @@ if uploaded_file:
                 except Exception as e:
                     st.warning(f"Dashboard insights could not be generated: {e}.")
 
+            # Step 6 — Call 5: score MD&A sentiment
+            mda_sentiment = None
+            with st.spinner("Scoring MD&A sentiment (Haiku)..."):
+                try:
+                    mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY)
+                except Exception as e:
+                    st.warning(f"MD&A sentiment could not be scored: {e}.")
+
             save_cache(cache_key, uploaded_file.name, financial_data, summary_data,
                        bear_bull_data, dashboard_data)
+        else:
+            mda_sentiment = None
 
         # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}
@@ -1465,6 +1484,7 @@ if uploaded_file:
         st.session_state.summary_data        = summary_data
         st.session_state.bear_bull_data      = bear_bull_data
         st.session_state.dashboard_data      = dashboard_data
+        st.session_state.mda_sentiment       = mda_sentiment
         st.session_state.market_data         = market_data
         st.session_state.excel_bytes         = excel_bytes
         st.session_state.last_filename       = uploaded_file.name
@@ -1490,6 +1510,7 @@ if st.session_state.financial_data:
     summary_data    = st.session_state.summary_data or {}
     bear_bull_data  = st.session_state.bear_bull_data or {}
     dashboard_data  = st.session_state.dashboard_data
+    mda_sentiment   = st.session_state.get("mda_sentiment")
 
     # If dashboard insights are missing (old library entry or failed Call 4 in the
     # upload pipeline), generate them now from the structured data we do have.
@@ -1631,6 +1652,69 @@ if st.session_state.financial_data:
                     st.error(f"🔴 **{flag['label']}** — {flag['detail']}")
                 for flag in [f for f in flags if f["severity"] == "yellow"]:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
+
+        # --- MD&A Sentiment ---
+        if mda_sentiment and not mda_sentiment.get("error"):
+            _tone = mda_sentiment.get("overall_tone") or "—"
+            _scores = mda_sentiment.get("scores") or {}
+            _phrases = mda_sentiment.get("key_phrases") or []
+            _fo  = _scores.get("forward_outlook")
+            _rld = _scores.get("risk_language_density")
+            _mc  = _scores.get("management_confidence")
+
+            _TONE_STYLE = {
+                "Positive": {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
+                "Cautious":  {"bg": "#1C1200", "color": "#FCD34D", "border": "#92400E"},
+                "Negative": {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
+            }
+            _ts = _TONE_STYLE.get(_tone, {"bg": "#1E2433", "color": "#94A3B8", "border": "#374B6B"})
+
+            def _score_bar(label: str, value):
+                if value is None:
+                    return f'<div style="font-size:12px;color:#64748B">{label}: N/A</div>'
+                filled = "■" * value
+                empty  = "□" * (5 - value)
+                return (
+                    f'<div style="font-size:12px;color:#94A3B8;margin-bottom:4px">'
+                    f'{label}: <span style="color:#378ADD;letter-spacing:2px">{filled}</span>'
+                    f'<span style="color:#374B6B;letter-spacing:2px">{empty}</span>'
+                    f' <span style="color:#64748B">({value}/5)</span></div>'
+                )
+
+            with st.expander("📝 MD&A Sentiment", expanded=False):
+                tone_col, scores_col = st.columns([1, 2])
+
+                with tone_col:
+                    st.markdown(
+                        f'<div style="background:{_ts["bg"]};border:1px solid {_ts["border"]};'
+                        f'border-radius:8px;padding:16px 20px;text-align:center">'
+                        f'<div style="font-size:11px;color:#64748B;letter-spacing:0.08em;'
+                        f'text-transform:uppercase;margin-bottom:6px">Overall Tone</div>'
+                        f'<div style="font-size:22px;font-weight:500;color:{_ts["color"]}">{_tone}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                with scores_col:
+                    st.markdown(
+                        _score_bar("Forward Outlook", _fo) +
+                        _score_bar("Risk Language Density", _rld) +
+                        _score_bar("Management Confidence", _mc),
+                        unsafe_allow_html=True,
+                    )
+
+                if _phrases:
+                    st.markdown("**Key Phrases**")
+                    for phrase in _phrases:
+                        st.markdown(
+                            f'<blockquote style="border-left:3px solid #374B6B;'
+                            f'margin:4px 0;padding:6px 12px;'
+                            f'color:#94A3B8;font-size:13px;font-style:italic">'
+                            f'{phrase}</blockquote>',
+                            unsafe_allow_html=True,
+                        )
+        elif mda_sentiment and mda_sentiment.get("error"):
+            st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
 
         # --- Financial statement tables ---
         col_cfg = {
