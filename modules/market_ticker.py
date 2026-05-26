@@ -14,12 +14,11 @@ SYMBOLS = {
     "^DJI":     "Dow",
     "^RUT":     "Russell 2000",
     "^GSPTSE":  "TSX",
-    "^JX":      "TSX Venture",
     # Volatility
     "^VIX":     "VIX",
     # Rates
     "^TNX":     "US 10yr",
-    "^TYX":     "CA 10yr",
+    "^TYX":     "US 30yr",
     # Currencies
     "USDCAD=X": "USD/CAD",
     "EURUSD=X": "EUR/USD",
@@ -52,20 +51,14 @@ def _fmt_price(symbol: str, price: float) -> str:
 
 
 def _fetch_one(symbol: str) -> dict | None:
-    """Fetch price, change, pct_change for one symbol. Returns None on any failure."""
+    """Fetch price and change for one symbol. Returns None on any failure — no retries."""
     try:
-        ticker = yf.Ticker(symbol)
-        info   = ticker.fast_info
-        price  = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
-        prev   = getattr(info, "previous_close", None)
+        info  = yf.Ticker(symbol).fast_info
+        price = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
+        prev  = getattr(info, "previous_close", None)
 
-        # Fall back to last close from history if fast_info is empty
         if price is None or prev is None:
-            hist  = ticker.history(period="2d", interval="1d")
-            if hist.empty or len(hist) < 1:
-                return None
-            price = float(hist["Close"].iloc[-1])
-            prev  = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else price
+            return None
 
         price  = float(price)
         prev   = float(prev)
