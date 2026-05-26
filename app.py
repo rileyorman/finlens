@@ -248,26 +248,34 @@ with st.sidebar:
                         unsafe_allow_html=True,
                     )
 
-                if st.session_state.get("pm_clear_input"):
-                    st.session_state.pm_clear_input      = False
-                    st.session_state.pm_ticker_not_found = None
-                    st.rerun()
+                st.markdown("""
+<script>
+document.addEventListener('focusin', function(e) {
+    if (e.target.tagName === 'INPUT' &&
+        e.target.type === 'text' &&
+        e.target.placeholder === 'e.g. AAPL, RY.TO') {
+        e.target.select();
+    }
+});
+</script>
+""", unsafe_allow_html=True)
 
-                ac, bc = st.columns([4, 1])
-                with ac:
-                    new_tk = st.text_input(
-                        "", key=f"pm_add_input_{sel_pf}",
-                        placeholder="e.g. AAPL, RY.TO", label_visibility="collapsed",
-                    )
-                with bc:
-                    add_clicked = st.button("Add", key=f"pm_add_btn_{sel_pf}", use_container_width=True)
+                with st.form(key=f"add_ticker_form_{sel_pf}", clear_on_submit=True):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        new_tk = st.text_input("",
+                            placeholder="e.g. AAPL, RY.TO",
+                            label_visibility="collapsed")
+                    with col2:
+                        add_clicked = st.form_submit_button("Add",
+                            use_container_width=True)
 
                 st.caption("US: AAPL, MSFT  |  TSX: RY.TO, CNQ.TO  |  LSE: SHEL.L  |  Other: Yahoo Finance suffix format")
 
                 if add_clicked:
                     t_up = new_tk.strip().upper()
                     if t_up:
-                        st.session_state.pm_ticker_not_found = None  # clear any previous failure
+                        st.session_state.pm_ticker_not_found = None
                         with st.spinner(f"Validating {t_up}…"):
                             try:
                                 vmd      = get_market_data(t_up)
@@ -276,7 +284,6 @@ with st.sidebar:
                                 is_valid = False
                         if is_valid:
                             if reg_add_ticker(sel_pf, t_up):
-                                st.session_state.pm_clear_input = True
                                 st.rerun()
                             else:
                                 st.warning(f"{t_up} already in portfolio.")
@@ -296,7 +303,6 @@ with st.sidebar:
                                      use_container_width=True, type="primary"):
                             if reg_add_ticker(sel_pf, _nf):
                                 st.session_state.pm_ticker_not_found = None
-                                st.session_state.pm_clear_input = True
                                 st.rerun()
                             else:
                                 st.session_state.pm_ticker_not_found = None
