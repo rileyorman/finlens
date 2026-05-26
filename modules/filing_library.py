@@ -38,6 +38,7 @@ def add_entry(
     bear_bull_data: dict | None,
     dashboard_data: dict | None = None,
     raw_text: str | None = None,
+    mda_sentiment: dict | None = None,
 ) -> None:
     """Add or update a filing entry. Keyed on file_hash so the same PDF never duplicates."""
     lib = _load()
@@ -57,6 +58,7 @@ def add_entry(
         "summary_data":    summary_data,
         "bear_bull_data":  bear_bull_data,
         "dashboard_data":  dashboard_data,
+        "mda_sentiment":   mda_sentiment,
         "raw_text":        raw_text,
     }
 

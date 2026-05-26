@@ -492,6 +492,7 @@ document.addEventListener('focusin', function(e) {
                     st.session_state.summary_data        = sd
                     st.session_state.bear_bull_data      = bb
                     st.session_state.dashboard_data      = entry.get("dashboard_data")
+                    st.session_state.mda_sentiment       = entry.get("mda_sentiment")
                     st.session_state.market_data         = {}
                     st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
                     st.session_state.last_filename       = entry.get("file_name", "")
@@ -588,9 +589,12 @@ if page == "📈 Portfolio Manager":
             _ra_bb = analyze_bear_bull(_ra_text, API_KEY)
         with st.spinner("Call 4: Generating dashboard insights..."):
             _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
+        with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
+            _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
         try:
             lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                    _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text)
+                    _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                    mda_sentiment=_ra_mda)
         except Exception:
             pass
         st.session_state.al_reanalyse_complete = ra["company_name"]
@@ -1354,7 +1358,8 @@ if st.session_state.get("pending_reanalyse"):
 
     try:
         lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text)
+                _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                mda_sentiment=_ra_mda)
     except Exception:
         pass
 
@@ -1494,7 +1499,8 @@ if uploaded_file:
         try:
             lib_add(cache_key, uploaded_file.name, len(pdf_bytes),
                     financial_data, summary_data, bear_bull_data, dashboard_data,
-                    raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None)
+                    raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None,
+                    mda_sentiment=mda_sentiment)
         except Exception:
             pass  # Library write failure must never block analysis
 
