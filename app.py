@@ -1358,7 +1358,12 @@ if st.session_state.financial_data:
                 )
             thesis = summary_data.get("thesis") or ""
             if thesis:
-                st.caption(thesis[:300])
+                import html as _html
+                st.markdown(
+                    f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
+                    f'{_html.escape(thesis[:300])}</p>',
+                    unsafe_allow_html=True,
+                )
 
         qs = _quality_score(metrics)
         qs_color = "#70AD47" if qs >= 70 else ("#FFC000" if qs >= 40 else "#C00000")
