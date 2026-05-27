@@ -5,7 +5,10 @@ import httpx
 import json
 import re
 
-from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS
+from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
+
+# Model alias for the dashboard insights call (same tier as analysis)
+DASHBOARD_MODEL = ANALYSIS_MODEL
 
 
 def _sanitize(text: str) -> str:
@@ -125,6 +128,10 @@ USER_PROMPT_TEMPLATE = """Extract the financial statements from the following do
 def analyze_financials(document_text: str, api_key: str) -> dict:
     """Call 1: extract structured financial data from PDF text using Claude Haiku."""
     client = _make_client(api_key)
+    # Front+back slice: captures business context at the top and financial
+    # statements at the end, which large filings (e.g. Walgreens 10-K) place
+    # well past the 150K character mark if front-only truncation is used.
+    document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
 
     response = client.messages.create(
         model=EXTRACTION_MODEL,
@@ -356,4 +363,118 @@ def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
             "error": f"Call 3 response could not be parsed as JSON: {e}",
             "bull_case": [],
             "bear_case": [],
+        }
+
+
+# ===========================================================================
+# CALL 4 — DASHBOARD INSIGHTS
+# Model: DASHBOARD_MODEL (Sonnet)
+# Framework-based insights for the fund manager dashboard: Dalio (macro/cycle),
+# Lynch (story/growth), Marks (value/risk), capital allocation, sentiment.
+# ===========================================================================
+
+DASHBOARD_SYSTEM_PROMPT = """You are a financial analyst generating framework-based insights for a fund manager dashboard.
+
+Given a company's financial filing and investment signal, produce structured insights in the style of three legendary investors.
+
+DALIO: Ray Dalio's macro/credit cycle framework — where is this company in the debt/productivity cycle?
+LYNCH: Peter Lynch's story framework — categorise the business, apply the story test.
+MARKS: Howard Marks's risk/return framework — second-level thinking, what does the crowd miss?
+
+Return a single JSON object only. No markdown fences, no preamble.
+
+{
+  "dalio_view": "2 sentences on macro/debt cycle positioning from Dalio's perspective. Reference specific filing data.",
+  "lynch_category": "Exactly one of: Fast Grower | Stalwart | Slow Grower | Turnaround | Asset Play | Cyclical",
+  "lynch_story": "3 sentences — plain English investment story a non-expert can follow. Reference the actual business.",
+  "marks_view": "2 sentences of genuine second-level thinking. What does the crowd believe vs. what is actually true?",
+  "capital_allocation": [
+    {"label": "Buybacks",        "value": "One-line assessment referencing filing data."},
+    {"label": "Dividends",       "value": "One-line assessment."},
+    {"label": "M&A",             "value": "One-line assessment."},
+    {"label": "Cash Position",   "value": "One-line assessment referencing balance sheet."},
+    {"label": "Capex Intensity", "value": "One-line assessment referencing cash flow data."}
+  ],
+  "crowd_thinks": "1 sentence — the market consensus view on this company right now.",
+  "marks_question": "1 sentence — the specific second-level question Marks would ask about this investment."
+}
+
+Rules:
+- Reference specific numbers, trends, or disclosures from the filing wherever possible
+- lynch_category must be exactly one of the 6 values listed above, nothing else
+- capital_allocation must have exactly 5 entries in the order shown
+- marks_view must show genuine contrarian or second-level insight — not generic risk commentary
+- Important: never use em dashes (—) or special unicode punctuation. Use regular hyphens (-) or double hyphens (--) instead. Use straight quotes only."""
+
+DASHBOARD_USER_PROMPT_TEMPLATE = """Generate dashboard insights for this financial filing.
+
+INVESTMENT SIGNAL (from prior analysis):
+{summary_json}
+
+EXTRACTED FINANCIALS:
+{financials_json}
+
+FILING TEXT (for capital allocation and management commentary context):
+{filing_text}
+"""
+
+
+def analyze_dashboard_insights(
+    filing_text: str,
+    summary_data: dict,
+    financial_data: dict,
+    api_key: str,
+) -> dict:
+    """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard.
+
+    Always returns a dict — never raises. Errors are returned as {"error": "..."}.
+    filing_text may be empty string when called from the Filing Library load path
+    (raw text not stored); the model generates insights from structured data alone.
+    """
+    raw = ""
+    try:
+        client      = _make_client(api_key)
+        filing_text = filing_text[:MAX_FILING_CHARS]
+
+        user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+            summary_json   = json.dumps(summary_data or {}, indent=2),
+            financials_json= json.dumps(financial_data,     indent=2),
+            filing_text    = filing_text,
+        )
+
+        response = client.messages.create(
+            model     = DASHBOARD_MODEL,
+            max_tokens= 1200,
+            system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
+                          "cache_control": {"type": "ephemeral"}}],
+            messages  = [{"role": "user", "content": user_message}],
+        )
+
+        raw = response.content[0].text
+
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+        if m:
+            raw = m.group(1)
+
+        data = json.loads(raw)
+        for key in ("dalio_view", "lynch_category", "lynch_story", "marks_view",
+                    "crowd_thinks", "marks_question"):
+            if key in data:
+                data[key] = _sanitize(data.get(key) or "")
+        for item in (data.get("capital_allocation") or []):
+            item["label"] = _sanitize(item.get("label") or "")
+            item["value"] = _sanitize(item.get("value") or "")
+        return data
+
+    except Exception as e:
+        return {
+            "error":              f"Call 4 failed ({type(e).__name__}): {e}",
+            "raw_response":       raw,
+            "dalio_view":         "",
+            "lynch_category":     "",
+            "lynch_story":        "",
+            "marks_view":         "",
+            "capital_allocation": [],
+            "crowd_thinks":       "",
+            "marks_question":     "",
         }

@@ -1,0 +1,308 @@
+/* ── Global minimum font size ── */
+* {
+    min-font-size: 12px;
+}
+
+.stDataFrame,
+div[data-testid="stDataFrame"] * {
+    font-size: 12px !important;
+}
+
+div[data-testid="stMetric"] label {
+    font-size: 12px !important;
+}
+
+section[data-testid="stSidebar"] * {
+    font-size: 12px !important;
+}
+
+/* Sidebar buttons stay at their own smaller size */
+section[data-testid="stSidebar"] .stButton button {
+    font-size: 11px !important;
+}
+
+/* ── Base ── */
+.stApp {
+    background-color: #1E2433;
+}
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"] {
+    background-color: #1E2433;
+    border-right: 0.5px solid #2D3650;
+}
+
+section[data-testid="stSidebar"] .stRadio label {
+    color: #94A3B8;
+    font-size: 13px;
+}
+
+section[data-testid="stSidebar"] .stRadio label:hover {
+    color: #F1F5F9;
+}
+
+section[data-testid="stSidebar"] .stButton button {
+    border: 1px solid #374B6B !important;
+    color: #94A3B8 !important;
+    background-color: #252D40 !important;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-size: 11px;
+    line-height: 1.3;
+    min-height: 0px;
+}
+
+section[data-testid="stSidebar"] .stButton button:hover {
+    border-color: #5B6F9E !important;
+    color: #F1F5F9 !important;
+    background-color: #2D3650 !important;
+}
+
+/* ── Cards / containers ── */
+div[data-testid="stExpander"] {
+    background-color: #252D40;
+    border: 0.5px solid #2D3650;
+    border-radius: 8px;
+}
+
+div[data-testid="stExpander"] summary {
+    color: #F1F5F9;
+    font-size: 13px;
+    border: 0.5px solid #374B6B;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    background-color: #252D40;
+}
+
+div[data-testid="stExpander"] summary:hover {
+    border-color: #5B6F9E;
+    background-color: #2D3650;
+}
+
+/* ── Dataframes ── */
+div[data-testid="stDataFrame"] {
+    background-color: #252D40;
+    border: 0.5px solid #2D3650;
+    border-radius: 8px;
+}
+
+/* ── Metric cards ── */
+div[data-testid="stMetric"] {
+    background-color: #252D40;
+    border: 0.5px solid #2D3650;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+div[data-testid="stMetric"] label {
+    color: #64748B;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    color: #F1F5F9;
+    font-size: 22px;
+    font-weight: 500;
+}
+
+/* ── Buttons ── */
+.stButton button {
+    background-color: transparent;
+    border: 0.5px solid #374B6B;
+    color: #94A3B8;
+    border-radius: 6px;
+    font-size: 12px;
+    transition: all 0.15s ease;
+}
+
+.stButton button:hover {
+    background-color: #252D40;
+    border: 0.5px solid #5B6F9E;
+    color: #F1F5F9;
+}
+
+/* ── Primary button (Analyse Financials) ── */
+.stButton button[kind="primary"] {
+    background-color: #185FA5;
+    border-color: #185FA5;
+    color: #F1F5F9;
+    font-weight: 500;
+}
+
+.stButton button[kind="primary"]:hover {
+    background-color: #1a6fb8;
+    border-color: #1a6fb8;
+}
+
+/* ── Inputs ── */
+.stTextInput input {
+    background-color: #252D40;
+    border: 0.5px solid #374B6B;
+    border-radius: 6px;
+    color: #F1F5F9;
+    font-size: 13px;
+}
+
+.stTextInput input:hover {
+    border-color: #5B6F9E;
+}
+
+.stTextInput input:focus {
+    border-color: #185FA5;
+    box-shadow: 0 0 0 1px #185FA5;
+}
+
+.stSelectbox select,
+.stNumberInput input {
+    background-color: #252D40;
+    border: 0.5px solid #374B6B;
+    border-radius: 6px;
+    color: #F1F5F9;
+    font-size: 13px;
+}
+
+.stSelectbox select:focus {
+    border-color: #185FA5;
+    box-shadow: none;
+}
+
+/* ── Selectbox / dropdowns ── */
+div[data-testid="stSelectbox"] > div {
+    border: 0.5px solid #374B6B;
+    border-radius: 6px;
+    background-color: #252D40;
+}
+
+div[data-testid="stSelectbox"] > div:hover {
+    border-color: #5B6F9E;
+}
+
+/* ── Number inputs ── */
+div[data-testid="stNumberInput"] input {
+    border: 0.5px solid #374B6B;
+    background-color: #252D40;
+}
+
+/* ── File uploader ── */
+div[data-testid="stFileUploader"] {
+    background-color: #252D40;
+    border: 0.5px dashed #374B6B;
+    border-radius: 8px;
+}
+
+div[data-testid="stFileUploader"]:hover {
+    border-color: #5B6F9E;
+}
+
+/* ── Tabs ── */
+div[data-testid="stTabs"] button {
+    color: #64748B;
+    font-size: 13px;
+    border: 0.5px solid transparent;
+    border-radius: 6px 6px 0 0;
+    font-weight: 400;
+}
+
+div[data-testid="stTabs"] button:hover {
+    border-color: #374B6B;
+    background-color: #252D40;
+}
+
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #F1F5F9;
+    border-color: #374B6B;
+    border-bottom: 2px solid #185FA5;
+    background-color: #252D40;
+    font-weight: 500;
+}
+
+/* ── Radio buttons (page selector) ── */
+div[data-testid="stRadio"] label {
+    border: 0.5px solid transparent;
+    border-radius: 6px;
+    padding: 4px 8px;
+    transition: all 0.15s ease;
+}
+
+div[data-testid="stRadio"] label:hover {
+    border-color: #374B6B;
+    background-color: #252D40;
+}
+
+/* ── Dividers ── */
+hr {
+    border-color: #2D3650;
+    opacity: 1;
+}
+
+/* ── Success / warning / error alerts ── */
+div[data-testid="stAlert"][data-baseweb="notification"] {
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+/* ── Headings ── */
+h1, h2, h3 {
+    color: #F1F5F9;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+}
+
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+h3 { font-size: 15px; }
+
+/* ── Body text ── */
+p, li {
+    color: #94A3B8;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* ── Captions ── */
+div[data-testid="stCaptionContainer"] {
+    color: #64748B;
+    font-size: 11px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1E2433;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2D3650;
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #374B6B;
+}
+
+/* ── Signal badges (existing inline styles) ── */
+/* Keep existing signal badge colors — they already match dark theme */
+
+/* ── FinLens wordmark ── */
+.finlens-wordmark {
+    font-size: 22px;
+    font-weight: 500;
+    color: #F1F5F9;
+    letter-spacing: -0.02em;
+}
+
+/* ── Section dividers ── */
+.section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748B;
+    margin: 1rem 0 0.5rem;
+}

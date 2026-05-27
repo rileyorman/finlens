@@ -161,3 +161,40 @@ For the family office meeting, focus on:
 - **Local path:** C:\Users\riley\OneDrive\Documents\Python Project\finlens
 - **Run locally:** streamlit run app.py
 - **Stack:** Python, Streamlit, Claude API, yfinance, openpyxl, pdfplumber
+
+---
+
+## Columbia Course Feature Roadmap
+
+Features are sequenced to align with the Columbia Business School / Wall Street Prep
+AI for Business & Finance certificate (July 13 – September 6, 2026).
+Each module unlocks a FinLens feature sprint.
+
+| Priority | Feature | Course Module | Timing |
+|----------|---------|---------------|--------|
+| 1 | Wire Red Flags into Word Memo | — | Now (pre-demo) |
+| 2 | Demo Prep — company selection, rehearsal | — | This week |
+| 3 | Financial Distress Score (logistic regression on Altman Z-Score inputs) | Module 3 — Predictive Analytics | Late July |
+| 4 | MD&A Sentiment Scoring (4th Claude call, isolated prompt) | Module 7 — NLP & Text Analytics | August |
+| 5 | Scenario Simulator (Monte Carlo, what-if on revenue/margins) | Module 5 — Simulations & Optimization | August |
+| 6 | Filing Comparison Engine (embeddings, year-over-year language shift) | Module 6 — Generative AI / Embeddings | August |
+
+### Feature Notes
+
+**Financial Distress Score (Module 3)**
+Logistic regression model on Altman Z-Score inputs — working capital, retained earnings,
+EBIT, equity, revenue. All inputs already exist in financial_data dict. Outputs a 0–1
+distress probability alongside the existing Red Flag rules.
+
+**MD&A Sentiment (Module 7)**
+New 4th Claude API call using analyze_mda_sentiment(raw_text, API_KEY).
+Isolated prompt — Claude locates and scores the MD&A section for tone.
+Option A architecture (separate call) confirmed over Option B (piggyback).
+
+**Scenario Simulator (Module 5)**
+User inputs revenue change % and margin compression bps. Model shows downstream
+impact on FCF, interest coverage, and debt covenants. Feeds Portfolio Manager MVP.
+
+**Filing Comparison Engine (Module 6)**
+Upload two filings — embeddings identify material language shifts year-over-year.
+Especially powerful for risk factors section of 10-Ks.

@@ -93,6 +93,7 @@ _EMPTY = {
     "current_price":       None,
     "shares_outstanding":  None,
     "pe_ratio":            None,
+    "beta":                None,
     "fifty_two_week_high": None,
     "fifty_two_week_low":  None,
 }
@@ -115,10 +116,13 @@ def get_market_data(ticker: str) -> dict:
         raw_mc = getattr(fi, "market_cap", None)
         market_cap = round(raw_mc / 1_000_000, 2) if raw_mc else None
 
-        # P/E requires the heavier info call — best-effort, won't block the rest
+        # P/E and Beta require the heavier info call — best-effort, won't block the rest
         pe_ratio = None
+        beta = None
         try:
-            pe_ratio = t.info.get("trailingPE")
+            info = t.info
+            pe_ratio = info.get("trailingPE")
+            beta = info.get("beta")
         except Exception:
             pass
 
@@ -127,6 +131,7 @@ def get_market_data(ticker: str) -> dict:
             "current_price":       current_price,
             "shares_outstanding":  getattr(fi, "shares", None),
             "pe_ratio":            pe_ratio,
+            "beta":                beta,
             "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
             "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
         }

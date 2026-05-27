@@ -3,7 +3,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-_CACHE_DIR = Path(__file__).parent.parent / "cache"
+from config import CACHE_DIR as _CACHE_DIR
+
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_cache_key(pdf_bytes: bytes) -> str:
@@ -25,8 +27,9 @@ def load_cache(cache_key: str) -> dict | None:
 
 def save_cache(cache_key: str, filename: str,
                financial_data: dict, summary_data: dict | None,
-               bear_bull_data: dict | None = None) -> None:
-    """Persist all three Claude API responses to a single JSON file."""
+               bear_bull_data: dict | None = None,
+               dashboard_data: dict | None = None) -> None:
+    """Persist all Claude API responses to a single JSON file."""
     _CACHE_DIR.mkdir(exist_ok=True)
     path = _CACHE_DIR / f"{cache_key}.json"
     payload = {
@@ -35,6 +38,7 @@ def save_cache(cache_key: str, filename: str,
         "financial_data": financial_data,
         "summary_data":   summary_data,
         "bear_bull_data": bear_bull_data,
+        "dashboard_data": dashboard_data,
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)

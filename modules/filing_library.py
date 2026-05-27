@@ -36,6 +36,9 @@ def add_entry(
     financial_data: dict,
     summary_data: dict | None,
     bear_bull_data: dict | None,
+    dashboard_data: dict | None = None,
+    raw_text: str | None = None,
+    mda_sentiment: dict | None = None,
 ) -> None:
     """Add or update a filing entry. Keyed on file_hash so the same PDF never duplicates."""
     lib = _load()
@@ -54,11 +57,18 @@ def add_entry(
         "financial_data":  financial_data,
         "summary_data":    summary_data,
         "bear_bull_data":  bear_bull_data,
+        "dashboard_data":  dashboard_data,
+        "mda_sentiment":   mda_sentiment,
+        "raw_text":        raw_text,
     }
 
     entries = lib["entries"]
     for i, existing in enumerate(entries):
         if existing["id"] == file_hash:
+            # Preserve stored raw_text when a cache-hit update passes None —
+            # we don't want to wipe text that was saved on the original analysis.
+            if raw_text is None and existing.get("raw_text"):
+                entry["raw_text"] = existing["raw_text"]
             entries[i] = entry   # refresh in place (re-analysis updates the record)
             _save(lib)
             return
