@@ -211,7 +211,8 @@ with st.sidebar:
     )
     page = st.radio(
         "Mode",
-        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison", "📚 Methodology"],
+        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison",
+         "📚 Methodology", "📈 Stock Tracker"],
         label_visibility="collapsed",
     )
     st.divider()
@@ -1436,6 +1437,324 @@ if page == "📚 Methodology":
         st.subheader(_SECTION_NAMES[_mk])
         st.markdown(info_tooltip(_mk))
         st.divider()
+
+    st.stop()
+
+
+# --- Stock Tracker page ------------------------------------------------
+if page == "📈 Stock Tracker":
+    from modules.stock_tracker import get_stock_data
+    from datetime import date as _date
+
+    if "stock_data" not in st.session_state:
+        st.session_state.stock_data = None
+
+    st.markdown("## Stock Tracker")
+    st.caption("Live price, momentum signals, analyst consensus, and earnings — no upload needed.")
+
+    with st.form("st_form"):
+        tk_c, btn_c = st.columns([4, 1])
+        with tk_c:
+            st_ticker = st.text_input(
+                "Ticker", placeholder="e.g. AAPL, NVDA, MSFT",
+                label_visibility="collapsed", key="st_ticker",
+            )
+        with btn_c:
+            st_submitted = st.form_submit_button("Track", type="primary", use_container_width=True)
+
+    if st_submitted and st_ticker.strip():
+        with st.spinner(f"Fetching data for {st_ticker.strip().upper()}…"):
+            st.session_state.stock_data = get_stock_data(st_ticker.strip())
+
+    sd = st.session_state.stock_data
+    if sd is None:
+        st.info("Enter a ticker symbol above to get started.")
+        st.stop()
+
+    if sd.get("error"):
+        st.error(sd["error"])
+        st.stop()
+
+    price = sd["price"]
+    mom   = sd["momentum"]
+    comp  = sd["company"]
+
+    # Helper: coloured pill badge
+    def _pill(label, ok):
+        if ok is None:
+            color, bg, sym = "#888", "#f5f5f5", "—"
+        elif ok:
+            color, bg, sym = "#2d7a2d", "#e8f5e9", "✓"
+        else:
+            color, bg, sym = "#c0392b", "#fdecea", "✗"
+        return (
+            f'<span style="background:{bg};color:{color};padding:5px 12px;'
+            f'border-radius:20px;font-size:13px;font-weight:600;'
+            f'display:inline-block;margin:2px 4px 6px 0">'
+            f'{label} {sym}</span>'
+        )
+
+    # Helper: format market cap (stored in millions)
+    def _fmt_mc(mc):
+        if mc is None:
+            return "—"
+        if mc >= 1_000_000:
+            return f"${mc / 1_000_000:.2f}T"
+        if mc >= 1_000:
+            return f"${mc / 1_000:.2f}B"
+        return f"${mc:,.0f}M"
+
+    # --- SECTION 1: Price & Momentum ---
+    st.markdown(f"## {comp['name'] or st_ticker.upper()}")
+    sector_parts = [p for p in [comp.get("sector"), comp.get("industry")] if p]
+    if sector_parts:
+        st.caption("  ·  ".join(sector_parts))
+    st.divider()
+
+    st.markdown("#### Price & Momentum")
+    c1, c2, c3, c4 = st.columns(4)
+    cur     = price["current"]
+    day_pct = price["day_change_pct"]
+    with c1:
+        st.metric(
+            "Current Price",
+            f"${cur:,.2f}" if cur else "—",
+            delta=f"{day_pct:+.2f}%" if day_pct is not None else None,
+        )
+    with c2:
+        hi52    = price["week_52_high"]
+        pct_hi  = price["pct_from_52_high"]
+        st.metric(
+            "52W High",
+            f"${hi52:,.2f}" if hi52 else "—",
+            delta=f"{pct_hi:.1f}% from high" if pct_hi is not None else None,
+            delta_color="inverse",
+        )
+    with c3:
+        lo52   = price["week_52_low"]
+        pct_lo = price["pct_from_52_low"]
+        st.metric(
+            "52W Low",
+            f"${lo52:,.2f}" if lo52 else "—",
+            delta=f"{pct_lo:.1f}% from low" if pct_lo is not None else None,
+        )
+    with c4:
+        st.metric("Market Cap", _fmt_mc(comp["market_cap"]))
+
+    # Moving average badges
+    st.markdown("**Moving Averages**")
+    badges_html = (
+        _pill("Above 50MA",  mom["above_50ma"]) +
+        _pill("Above 200MA", mom["above_200ma"])
+    )
+    gc = mom["golden_cross"]
+    if gc is not None:
+        badges_html += _pill("Golden Cross" if gc else "Death Cross", gc)
+    st.markdown(badges_html, unsafe_allow_html=True)
+
+    # RSI
+    rsi = mom["rsi_14"]
+    if rsi is not None:
+        if rsi < 30:
+            rsi_label, rsi_color = "Oversold", "#2d7a2d"
+            rsi_bg = "#e8f5e9"
+        elif rsi < 70:
+            rsi_label, rsi_color = "Neutral", "#555"
+            rsi_bg = "#f5f5f5"
+        else:
+            rsi_label, rsi_color = "Overbought", "#c0392b"
+            rsi_bg = "#fdecea"
+        st.markdown(
+            f'<div style="margin:8px 0 0 0">'
+            f'<span style="font-weight:600">RSI (14):</span> {rsi:.1f} &nbsp;'
+            f'<span style="background:{rsi_bg};color:{rsi_color};padding:3px 10px;'
+            f'border-radius:12px;font-size:13px;font-weight:600">{rsi_label}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # --- SECTION 2: Analyst Consensus ---
+    st.markdown("#### Analyst Consensus")
+    analyst = sd["analyst"]
+    rec     = (analyst["recommendation"] or "").upper()
+    target  = analyst["target_price"]
+    upside  = analyst["upside_pct"]
+    num_an  = analyst["num_analysts"]
+
+    if rec in ("BUY", "STRONG_BUY", "STRONG BUY"):
+        rec_color, rec_bg = "#2d7a2d", "#e8f5e9"
+    elif rec in ("SELL", "STRONG_SELL", "STRONG SELL", "UNDERPERFORM"):
+        rec_color, rec_bg = "#c0392b", "#fdecea"
+    else:
+        rec_color, rec_bg = "#7d5a00", "#fffbea"
+
+    if rec:
+        st.markdown(
+            f'<span style="background:{rec_bg};color:{rec_color};padding:6px 18px;'
+            f'border-radius:20px;font-size:15px;font-weight:700">'
+            f'{rec.replace("_", " ").title()}</span>',
+            unsafe_allow_html=True,
+        )
+        st.write("")
+
+    ac1, ac2, ac3 = st.columns(3)
+    with ac1:
+        st.metric("Price Target", f"${target:,.2f}" if target else "—")
+    with ac2:
+        if upside is not None:
+            st.metric("Upside / Downside", f"{upside:+.1f}%",
+                      delta=f"{upside:+.1f}%")
+        else:
+            st.metric("Upside / Downside", "—")
+    with ac3:
+        st.metric("Analysts Covering", str(num_an) if num_an else "—")
+
+    # Current vs target bar
+    if cur and target:
+        lo_b  = min(cur, target) * 0.92
+        hi_b  = max(cur, target) * 1.08
+        span  = hi_b - lo_b or 1
+        c_pct = (cur    - lo_b) / span * 100
+        t_pct = (target - lo_b) / span * 100
+        fill_left  = min(c_pct, t_pct)
+        fill_width = abs(t_pct - c_pct)
+        st.markdown(
+            f'<div style="margin:10px 0 4px">'
+            f'<div style="background:#e8e8e8;border-radius:6px;height:10px;position:relative">'
+            f'<div style="position:absolute;left:{fill_left:.0f}%;width:{fill_width:.0f}%;'
+            f'height:100%;background:#7cb9e8;border-radius:6px"></div>'
+            f'<div style="position:absolute;left:{c_pct:.0f}%;transform:translateX(-50%);'
+            f'width:3px;height:100%;background:#333;border-radius:2px" title="Current"></div>'
+            f'<div style="position:absolute;left:{t_pct:.0f}%;transform:translateX(-50%);'
+            f'width:3px;height:100%;background:#2d7a2d;border-radius:2px" title="Target"></div>'
+            f'</div>'
+            f'<div style="font-size:11px;color:#888;margin-top:4px">'
+            f'&#9632; Current: ${cur:,.2f} &nbsp;&nbsp; '
+            f'<span style="color:#2d7a2d">&#9632;</span> Target: ${target:,.2f}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # --- SECTION 3: Earnings Tracker ---
+    st.markdown("#### Earnings Tracker")
+    earnings  = sd["earnings"]
+    next_date = earnings["next_earnings_date"]
+
+    if next_date:
+        st.markdown(f"**Next Earnings Date:** {next_date}")
+        try:
+            from datetime import datetime as _dt
+            nd          = _dt.strptime(next_date[:10], "%Y-%m-%d").date()
+            days_until  = (nd - _date.today()).days
+            if 0 <= days_until <= 30:
+                st.warning(
+                    f"Earnings approaching in {days_until} day{'s' if days_until != 1 else ''}"
+                    " — elevated volatility risk."
+                )
+        except Exception:
+            pass
+    else:
+        st.caption("Next earnings date not available.")
+
+    e1, e2 = st.columns(2)
+    with e1:
+        st.markdown("**EPS**")
+        eps_est = earnings["eps_estimate"]
+        eps_act = earnings["eps_actual_last"]
+        surp    = earnings["earnings_surprise_pct"]
+        st.markdown(f"Estimate: **{'${:.2f}'.format(eps_est) if eps_est is not None else '—'}**")
+        st.markdown(f"Last Actual: **{'${:.2f}'.format(eps_act) if eps_act is not None else '—'}**")
+        if surp is not None:
+            s_sign  = "+" if surp >= 0 else ""
+            s_label = "Beat" if surp >= 0 else "Miss"
+            s_color = "#2d7a2d" if surp >= 0 else "#c0392b"
+            s_bg    = "#e8f5e9" if surp >= 0 else "#fdecea"
+            st.markdown(
+                f'Last Quarter: <span style="background:{s_bg};color:{s_color};'
+                f'padding:2px 8px;border-radius:10px;font-size:13px;font-weight:600">'
+                f'{s_label} {s_sign}{surp:.1f}%</span>',
+                unsafe_allow_html=True,
+            )
+    with e2:
+        st.markdown("**Revenue**")
+        rev = earnings["revenue_estimate"]
+        if rev:
+            if rev >= 1_000_000_000_000:
+                rev_str = f"${rev / 1_000_000_000_000:.2f}T"
+            elif rev >= 1_000_000_000:
+                rev_str = f"${rev / 1_000_000_000:.2f}B"
+            elif rev >= 1_000_000:
+                rev_str = f"${rev / 1_000_000:.1f}M"
+            else:
+                rev_str = f"${rev:,.0f}"
+        else:
+            rev_str = "—"
+        st.metric("Revenue (TTM)", rev_str)
+
+    st.divider()
+
+    # --- SECTION 4: Valuation Metrics ---
+    st.markdown("#### Valuation Metrics")
+    val = sd["valuation"]
+
+    def _val_note(key, v):
+        if v is None:
+            return ""
+        if key == "pe_trailing":
+            if v > 30: return "Premium valuation"
+            if v < 15: return "Value territory"
+            return "Fairly valued"
+        if key == "pe_forward":
+            if v > 25: return "Premium valuation"
+            if v < 12: return "Value territory"
+            return "Fairly valued"
+        if key == "peg_ratio":
+            if v > 2:  return "Expensive relative to growth"
+            if v < 1:  return "Attractive relative to growth"
+            return ""
+        return ""
+
+    val_items = [
+        ("P/E (Trailing)", "pe_trailing",    val["pe_trailing"]),
+        ("P/E (Forward)",  "pe_forward",     val["pe_forward"]),
+        ("PEG Ratio",      "peg_ratio",      val["peg_ratio"]),
+        ("EV/EBITDA",      "ev_ebitda",      val["ev_ebitda"]),
+        ("Price / Book",   "price_to_book",  val["price_to_book"]),
+        ("Price / Sales",  "price_to_sales", val["price_to_sales"]),
+    ]
+    vr1 = st.columns(3)
+    vr2 = st.columns(3)
+    for i, (label, key, v) in enumerate(val_items):
+        col = vr1[i] if i < 3 else vr2[i - 3]
+        with col:
+            v_str = f"{v:.2f}x" if v is not None else "—"
+            note  = _val_note(key, v)
+            st.metric(label, v_str)
+            if note:
+                st.caption(note)
+
+    st.divider()
+
+    # --- SECTION 5: Company Snapshot ---
+    st.markdown("#### Company Snapshot")
+    desc = comp["description"]
+    if desc:
+        st.markdown(desc)
+
+    tags = [p for p in [comp.get("sector"), comp.get("industry")] if p]
+    if tags:
+        st.markdown(
+            " &nbsp; ".join(
+                f'<span style="background:#f0f0f0;border-radius:4px;'
+                f'padding:3px 10px;font-size:12px">{tg}</span>'
+                for tg in tags
+            ),
+            unsafe_allow_html=True,
+        )
 
     st.stop()
 

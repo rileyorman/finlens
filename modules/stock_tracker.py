@@ -1,0 +1,201 @@
+import yfinance as yf
+import pandas as pd
+
+
+def _calc_rsi(hist, period=14):
+    delta = hist["Close"].diff()
+    gain = delta.clip(lower=0).rolling(period).mean()
+    loss = (-delta.clip(upper=0)).rolling(period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return float(rsi.iloc[-1])
+
+
+def _next_earnings_date(t):
+    """Return next upcoming earnings date as YYYY-MM-DD string, or None."""
+    # Try earnings_dates DataFrame (yfinance >= 0.2)
+    try:
+        ed = t.earnings_dates
+        if ed is not None and not ed.empty and "Reported EPS" in ed.columns:
+            future = ed[ed["Reported EPS"].isna()]
+            if not future.empty:
+                return str(future.index.min())[:10]
+    except Exception:
+        pass
+    # Fallback: calendar
+    try:
+        cal = t.calendar
+        if cal is None:
+            return None
+        if isinstance(cal, pd.DataFrame) and not cal.empty:
+            if "Earnings Date" in cal.index:
+                raw = cal.loc["Earnings Date"].iloc[0]
+                return str(raw)[:10]
+        elif isinstance(cal, dict):
+            ed_val = cal.get("Earnings Date")
+            if ed_val:
+                if isinstance(ed_val, list) and ed_val:
+                    return str(ed_val[0])[:10]
+                return str(ed_val)[:10]
+    except Exception:
+        pass
+    return None
+
+
+def _earnings_surprise(t):
+    """Return last quarter EPS surprise as a percentage, or None."""
+    try:
+        ed = t.earnings_dates
+        if ed is None or ed.empty:
+            return None
+        if "Reported EPS" not in ed.columns or "EPS Estimate" not in ed.columns:
+            return None
+        past = ed[ed["Reported EPS"].notna()].copy()
+        if past.empty:
+            return None
+        last = past.iloc[0]
+        est = last.get("EPS Estimate")
+        act = last.get("Reported EPS")
+        if est is not None and act is not None and float(est) != 0:
+            return float((act - est) / abs(est) * 100)
+    except Exception:
+        pass
+    return None
+
+
+def get_stock_data(ticker: str) -> dict:
+    """Fetch comprehensive stock data for a ticker via yfinance.
+
+    Returns a nested dict with sections: price, momentum, analyst, earnings,
+    valuation, company, and error. All fields default to None if unavailable.
+    Never raises exceptions.
+    """
+    result = {
+        "price": {
+            "current": None, "previous_close": None, "day_change_pct": None,
+            "week_52_high": None, "week_52_low": None,
+            "pct_from_52_high": None, "pct_from_52_low": None,
+        },
+        "momentum": {
+            "ma_50": None, "ma_200": None,
+            "above_50ma": None, "above_200ma": None,
+            "golden_cross": None, "rsi_14": None,
+        },
+        "analyst": {
+            "recommendation": None, "target_price": None,
+            "num_analysts": None, "upside_pct": None,
+        },
+        "earnings": {
+            "next_earnings_date": None, "eps_estimate": None,
+            "eps_actual_last": None, "revenue_estimate": None,
+            "earnings_surprise_pct": None,
+        },
+        "valuation": {
+            "pe_trailing": None, "pe_forward": None, "peg_ratio": None,
+            "ev_ebitda": None, "price_to_book": None, "price_to_sales": None,
+        },
+        "company": {
+            "name": None, "sector": None, "industry": None,
+            "market_cap": None, "description": None,
+        },
+        "error": None,
+    }
+
+    try:
+        t    = yf.Ticker(ticker.strip().upper())
+        info = t.info
+        hist = t.history(period="1y")
+
+        current = info.get("currentPrice") or info.get("regularMarketPrice")
+        if not current:
+            result["error"] = (
+                f"No data found for '{ticker}'. "
+                "Verify the symbol is correct and try again."
+            )
+            return result
+
+        # --- Price ---
+        prev  = info.get("previousClose") or info.get("regularMarketPreviousClose")
+        hi52  = info.get("fiftyTwoWeekHigh")
+        lo52  = info.get("fiftyTwoWeekLow")
+
+        result["price"] = {
+            "current":          current,
+            "previous_close":   prev,
+            "day_change_pct":   round((current - prev) / prev * 100, 2)
+                                if prev and prev > 0 else None,
+            "week_52_high":     hi52,
+            "week_52_low":      lo52,
+            "pct_from_52_high": round((current - hi52) / hi52 * 100, 2)
+                                if hi52 and hi52 > 0 else None,
+            "pct_from_52_low":  round((current - lo52) / lo52 * 100, 2)
+                                if lo52 and lo52 > 0 else None,
+        }
+
+        # --- Momentum ---
+        ma_50 = ma_200 = above_50 = above_200 = golden = rsi_14 = None
+        if not hist.empty and len(hist) >= 15:
+            closes = hist["Close"]
+            if len(closes) >= 50:
+                ma_50    = round(float(closes.rolling(50).mean().iloc[-1]), 2)
+                above_50 = bool(current > ma_50)
+            if len(closes) >= 200:
+                ma_200    = round(float(closes.rolling(200).mean().iloc[-1]), 2)
+                above_200 = bool(current > ma_200)
+            if ma_50 and ma_200:
+                golden = bool(ma_50 > ma_200)
+            try:
+                rsi_14 = round(float(_calc_rsi(hist)), 2)
+            except Exception:
+                pass
+
+        result["momentum"] = {
+            "ma_50": ma_50, "ma_200": ma_200,
+            "above_50ma": above_50, "above_200ma": above_200,
+            "golden_cross": golden, "rsi_14": rsi_14,
+        }
+
+        # --- Analyst ---
+        target = info.get("targetMeanPrice")
+        result["analyst"] = {
+            "recommendation": info.get("recommendationKey"),
+            "target_price":   target,
+            "num_analysts":   info.get("numberOfAnalystOpinions"),
+            "upside_pct":     round((target - current) / current * 100, 1)
+                              if target and current > 0 else None,
+        }
+
+        # --- Earnings ---
+        result["earnings"] = {
+            "next_earnings_date":    _next_earnings_date(t),
+            "eps_estimate":          info.get("forwardEps"),
+            "eps_actual_last":       info.get("trailingEps"),
+            "revenue_estimate":      info.get("totalRevenue"),
+            "earnings_surprise_pct": _earnings_surprise(t),
+        }
+
+        # --- Valuation ---
+        result["valuation"] = {
+            "pe_trailing":    info.get("trailingPE"),
+            "pe_forward":     info.get("forwardPE"),
+            "peg_ratio":      info.get("pegRatio"),
+            "ev_ebitda":      info.get("enterpriseToEbitda"),
+            "price_to_book":  info.get("priceToBook"),
+            "price_to_sales": info.get("priceToSalesTrailing12Months"),
+        }
+
+        # --- Company ---
+        raw_mc   = info.get("marketCap")
+        desc_raw = info.get("longBusinessSummary") or ""
+        result["company"] = {
+            "name":        info.get("longName") or info.get("shortName"),
+            "sector":      info.get("sector"),
+            "industry":    info.get("industry"),
+            "market_cap":  round(raw_mc / 1_000_000, 2) if raw_mc else None,
+            "description": desc_raw[:300] + ("..." if len(desc_raw) > 300 else ""),
+        }
+
+    except Exception as e:
+        result["error"] = f"Failed to fetch data for '{ticker}': {e}"
+
+    return result
