@@ -434,6 +434,7 @@ document.addEventListener('focusin', function(e) {
                                  help="Re-analyse with fresh Claude calls"):
                         st.session_state.al_confirm_reanalyse = eid
                         st.rerun()
+                    st.caption("~$0.08 per analysis")
                     if st.session_state.get("al_confirm_reanalyse") == eid:
                         st.caption(
                             f"Re-analyse **{entry['company_name']}**? This will run 4 Claude "
@@ -535,6 +536,7 @@ document.addEventListener('focusin', function(e) {
                     st.session_state.confirm_reanalyse = eid
                     st.session_state.confirm_delete    = None
                     st.rerun()
+                st.caption("~$0.08 per analysis")
                 if st.button("🗑️ Remove", key=f"lib_del_{eid}", use_container_width=True,
                              help=f"Remove {entry['company_name']} from library"):
                     st.session_state.confirm_delete    = eid
@@ -1255,6 +1257,7 @@ if page == "📂 Filing Comparison":
 
         st.session_state["filing_comparison"] = _fc_result
         st.rerun()
+    st.caption("~$0.03 per comparison")
 
     # --- Display ---
     _fc = st.session_state.get("filing_comparison")
@@ -2256,6 +2259,7 @@ if uploaded_file:
 
         # Rerun so sidebar counts (cache + library) reflect the new entry.
         st.rerun()
+    st.caption("~$0.08 per analysis")
 
 # --- Display results (runs on every rerun as long as data is in state) -
 if st.session_state.financial_data:
@@ -2510,6 +2514,7 @@ if st.session_state.financial_data:
                     st.session_state["scenario_result"] = run_scenario(
                         financial_data, _sc_inputs, API_KEY
                     )
+            st.caption("~$0.01 per scenario")
 
             _sr = st.session_state.get("scenario_result")
             if _sr:
