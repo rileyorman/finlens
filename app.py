@@ -2627,6 +2627,8 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
+            with st.expander("ℹ️ How this works"):
+                st.markdown(info_tooltip("beta"))
 
         with mos_col:
             _dcf_hdr = st.session_state.get("dcf_result") or {}
@@ -2653,6 +2655,8 @@ if st.session_state.financial_data:
                     f'</div>',
                     unsafe_allow_html=True,
                 )
+            with st.expander("ℹ️ How this works"):
+                st.markdown(info_tooltip("margin_of_safety"))
 
         st.divider()
 

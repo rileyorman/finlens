@@ -53,6 +53,18 @@ LEARNING_CONTENT = {
         "why": "DCF gives a fundamental anchor for valuation independent of market sentiment — the margin of safety tells you how much room for error you have.",
         "columbia": "DCF is the foundational valuation methodology in investment banking, equity research, and value investing."
     },
+    "beta": {
+        "what": "Beta measures a stock's volatility relative to the market. A beta of 1.0 moves in line with the market; above 1.0 is more volatile, below 1.0 is less volatile.",
+        "equation": "Beta = Covariance(Stock, Market) / Variance(Market)",
+        "why": "Beta is used in CAPM to estimate required return and helps size positions based on risk tolerance.",
+        "columbia": "Beta is a core input in the Capital Asset Pricing Model (CAPM) and modern portfolio theory."
+    },
+    "margin_of_safety": {
+        "what": "Margin of Safety is the discount between a stock's intrinsic value (from DCF) and its current market price.",
+        "equation": "MoS = (Intrinsic Value − Current Price) / Intrinsic Value × 100",
+        "why": "A positive margin of safety provides a buffer against errors in assumptions — the larger the discount, the safer the investment.",
+        "columbia": "Margin of Safety is the cornerstone concept of value investing, introduced by Benjamin Graham in Security Analysis."
+    },
 }
 
 
