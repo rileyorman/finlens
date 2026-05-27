@@ -1446,10 +1446,14 @@ if page == "📚 Methodology":
 # --- Stock Tracker page ------------------------------------------------
 if page == "📈 Stock Tracker":
     from modules.stock_tracker import get_stock_data
+    from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
+    import pandas as _pd
 
     if "stock_data" not in st.session_state:
         st.session_state.stock_data = None
+    if "st_current_ticker" not in st.session_state:
+        st.session_state.st_current_ticker = ""
 
     st.markdown("## Stock Tracker")
     st.caption("Live price, momentum signals, analyst consensus, and earnings — no upload needed.")
@@ -1467,6 +1471,7 @@ if page == "📈 Stock Tracker":
     if st_submitted and st_ticker.strip():
         with st.spinner(f"Fetching data for {st_ticker.strip().upper()}…"):
             st.session_state.stock_data = get_stock_data(st_ticker.strip())
+            st.session_state.st_current_ticker = st_ticker.strip().upper()
 
     sd = st.session_state.stock_data
     if sd is None:
@@ -1576,6 +1581,55 @@ if page == "📈 Stock Tracker":
         )
 
     st.divider()
+
+    # --- SECTION 1b: Price Chart ---
+    hist_df = sd.get("hist")
+    if hist_df is not None and not hist_df.empty:
+        st.markdown("#### 📈 Price Chart (1 Year)")
+
+        closes  = hist_df["Close"]
+        ma50    = closes.rolling(50).mean()
+        ma200   = closes.rolling(200).mean()
+        dates   = hist_df.index
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=dates, y=closes,
+            name="Close", line=dict(color="#1f77b4", width=2),
+        ))
+        if len(closes) >= 50:
+            fig.add_trace(go.Scatter(
+                x=dates, y=ma50,
+                name="50-Day MA", line=dict(color="#ff7f0e", width=1.5, dash="dot"),
+            ))
+        if len(closes) >= 200:
+            fig.add_trace(go.Scatter(
+                x=dates, y=ma200,
+                name="200-Day MA", line=dict(color="#d62728", width=1.5, dash="dash"),
+            ))
+        fig.update_layout(
+            height=320, margin=dict(l=0, r=0, t=10, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis_rangeslider_visible=False,
+            yaxis_tickprefix="$",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Volume bar chart
+        if "Volume" in hist_df.columns:
+            vol_fig = go.Figure()
+            vol_fig.add_trace(go.Bar(
+                x=dates, y=hist_df["Volume"],
+                name="Volume", marker_color="#aec7e8", opacity=0.7,
+            ))
+            vol_fig.update_layout(
+                height=120, margin=dict(l=0, r=0, t=0, b=0),
+                showlegend=False,
+                yaxis=dict(tickformat=".2s"),
+            )
+            st.plotly_chart(vol_fig, use_container_width=True)
+
+        st.divider()
 
     # --- SECTION 2: Analyst Consensus ---
     st.markdown("#### Analyst Consensus")
@@ -1757,6 +1811,77 @@ if page == "📈 Stock Tracker":
             ),
             unsafe_allow_html=True,
         )
+
+    st.divider()
+
+    # --- SECTION 6: Watchlist ---
+    st.markdown("#### ⭐ Watchlist")
+
+    # Add current ticker to watchlist
+    cur_ticker = st.session_state.get("st_current_ticker", "")
+    wl_tickers = load_watchlist()
+    if cur_ticker:
+        already_in = cur_ticker.upper() in [t.upper() for t in wl_tickers]
+        btn_label  = f"✓ In Watchlist" if already_in else f"+ Add {cur_ticker} to Watchlist"
+        btn_type   = "secondary" if already_in else "primary"
+        if st.button(btn_label, type=btn_type, disabled=already_in):
+            wl_tickers = wl_add(cur_ticker)
+            st.success(f"{cur_ticker} added to watchlist.")
+            st.rerun()
+
+    # Show watchlist ticker buttons + remove controls
+    wl_tickers = load_watchlist()
+    if not wl_tickers:
+        st.caption("Your watchlist is empty. Track a ticker above and add it here.")
+    else:
+        st.caption("Click a ticker to load it, or ✕ to remove.")
+        cols_per_row = 4
+        for row_start in range(0, len(wl_tickers), cols_per_row):
+            row_tickers = wl_tickers[row_start : row_start + cols_per_row]
+            row_cols    = st.columns(cols_per_row)
+            for col, tk in zip(row_cols, row_tickers):
+                with col:
+                    sub_a, sub_b = st.columns([3, 1])
+                    with sub_a:
+                        if st.button(tk, key=f"wl_load_{tk}", use_container_width=True):
+                            with st.spinner(f"Loading {tk}…"):
+                                st.session_state.stock_data        = get_stock_data(tk)
+                                st.session_state.st_current_ticker = tk
+                            st.rerun()
+                    with sub_b:
+                        if st.button("✕", key=f"wl_rm_{tk}", help=f"Remove {tk}"):
+                            wl_remove(tk)
+                            st.rerun()
+
+        # Watchlist summary table
+        st.markdown("**Watchlist Summary**")
+
+        @st.cache_data(ttl=300)
+        def _wl_summary(tickers_tuple):
+            rows = []
+            for tk in tickers_tuple:
+                d = get_stock_data(tk)
+                if d.get("error"):
+                    rows.append({"Ticker": tk, "Price": "—", "Day %": "—",
+                                 "52W High": "—", "52W Low": "—", "RSI": "—"})
+                    continue
+                p   = d["price"]
+                m   = d["momentum"]
+                rows.append({
+                    "Ticker":   tk,
+                    "Price":    f"${p['current']:,.2f}"       if p["current"]        else "—",
+                    "Day %":    f"{p['day_change_pct']:+.2f}%" if p["day_change_pct"] is not None else "—",
+                    "52W High": f"${p['week_52_high']:,.2f}"  if p["week_52_high"]   else "—",
+                    "52W Low":  f"${p['week_52_low']:,.2f}"   if p["week_52_low"]    else "—",
+                    "RSI":      f"{m['rsi_14']:.1f}"           if m["rsi_14"] is not None else "—",
+                })
+            return rows
+
+        with st.spinner("Loading watchlist prices…"):
+            summary_rows = _wl_summary(tuple(wl_tickers))
+
+        if summary_rows:
+            st.dataframe(_pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
     st.stop()
 

@@ -98,6 +98,7 @@ def get_stock_data(ticker: str) -> dict:
             "name": None, "sector": None, "industry": None,
             "market_cap": None, "description": None,
         },
+        "hist":  None,
         "error": None,
     }
 
@@ -194,6 +195,8 @@ def get_stock_data(ticker: str) -> dict:
             "market_cap":  round(raw_mc / 1_000_000, 2) if raw_mc else None,
             "description": desc_raw[:300] + ("..." if len(desc_raw) > 300 else ""),
         }
+
+        result["hist"] = hist
 
     except Exception as e:
         result["error"] = f"Failed to fetch data for '{ticker}': {e}"
