@@ -91,6 +91,41 @@ st.set_page_config(
     layout="wide",
 )
 
+# --- Password gate ---
+try:
+    _APP_PASSWORD = st.secrets["APP_PASSWORD"]
+except (KeyError, FileNotFoundError):
+    _APP_PASSWORD = os.environ.get("APP_PASSWORD", "[dev-password-removed]")
+
+if not st.session_state.get("authenticated"):
+    st.markdown(
+        """
+        <div style="display:flex;flex-direction:column;align-items:center;margin-top:5rem;">
+            <svg width="56" height="56" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <defs><clipPath id="lico"><circle cx="20" cy="20" r="17"/></clipPath></defs>
+                <circle cx="20" cy="20" r="18" fill="rgba(24,95,165,0.1)" stroke="#185FA5" stroke-width="1.5"/>
+                <polyline points="6,30 11,22 16,26 22,13 34,8" fill="none" stroke="#378ADD"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    clip-path="url(#lico)"/>
+            </svg>
+            <h2 style="margin-top:0.75rem;margin-bottom:0.25rem;">FinLens</h2>
+            <p style="color:#94A3B8;margin-bottom:2rem;">Financial Statement Analyzer</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    _, _login_col, _ = st.columns([1, 1, 1])
+    with _login_col:
+        _pw = st.text_input("Password", type="password", placeholder="Enter password",
+                            label_visibility="collapsed")
+        if st.button("Login", use_container_width=True, type="primary"):
+            if _pw == _APP_PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+    st.stop()
+
 with open("assets/style.css") as _f:
     st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
 
@@ -216,6 +251,9 @@ with st.sidebar:
          "📚 Methodology", "📈 Stock Tracker"],
         label_visibility="collapsed",
     )
+    if st.button("Logout", use_container_width=True):
+        st.session_state["authenticated"] = False
+        st.rerun()
     st.divider()
 
     # --- Portfolio management (Portfolio Manager mode only) ---------------
