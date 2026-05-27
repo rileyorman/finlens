@@ -513,6 +513,8 @@ document.addEventListener('focusin', function(e) {
                     st.session_state.resolved_ticker     = ticker if ticker != "—" else None
                     st.session_state.cache_hit           = False
                     st.session_state.loaded_from_library = True
+                    if ticker and ticker != "—":
+                        st.session_state["manual_ticker"] = ticker
                     # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
                     try:
                         _lp = _pdf_cache_path(
@@ -1903,7 +1905,7 @@ if st.session_state.financial_data:
                 manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")
             with btn_col:
                 st.write("")
-                if st.button("Fetch Market Data", use_container_width=True):
+                if st.button("Fetch Market Data", use_container_width=True, type="primary"):
                     if manual_ticker.strip():
                         with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
                             fetched = get_market_data(manual_ticker.strip())
