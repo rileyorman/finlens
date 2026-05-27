@@ -2158,6 +2158,12 @@ if st.session_state.get("pending_reanalyse"):
     st.rerun()
 
 if uploaded_file:
+    if uploaded_file.size > 20 * 1024 * 1024:
+        st.warning(
+            f"Large PDF detected ({uploaded_file.size / (1024 * 1024):.0f} MB) — "
+            "extraction may take longer on cloud deployment. "
+            "Only the first 150 pages will be processed."
+        )
     if st.button("Analyze Financials $", type="primary", use_container_width=True):
 
         st.session_state.reanalyse_no_text = None  # clear prompt once user starts upload
