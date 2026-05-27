@@ -3,7 +3,10 @@ anthropic>=0.28.0
 pdfplumber>=0.11.0
 openpyxl>=3.1.0
 python-dotenv>=1.0.0
-pip-system-certs>=4.0
+# charting
+plotly>=5.0.0
+# data
+pandas>=2.0.0
 httpx
 certifi
 yfinance
