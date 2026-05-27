@@ -429,7 +429,7 @@ document.addEventListener('focusin', function(e) {
                         f"<small style='color:#888;font-size:11px'>{ticker} · {fy}</small>",
                         unsafe_allow_html=True,
                     )
-                    if st.button("♻️ Re-Analyse", key=f"al_ra_{eid}",
+                    if st.button("♻️ Re-Analyse $", key=f"al_ra_{eid}",
                                  use_container_width=True,
                                  help="Re-analyse with fresh Claude calls"):
                         st.session_state.al_confirm_reanalyse = eid
@@ -530,7 +530,7 @@ document.addEventListener('focusin', function(e) {
                     except Exception:
                         st.session_state.cached_pdf_bytes = None
                     st.rerun()
-                if st.button("♻️ Re-Analyse", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                if st.button("♻️ Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
                              help="Re-analyse with fresh Claude calls"):
                     st.session_state.confirm_reanalyse = eid
                     st.session_state.confirm_delete    = None
@@ -1238,7 +1238,7 @@ if page == "📂 Filing Comparison":
 
     _both_uploaded = fc_file1 is not None and fc_file2 is not None
 
-    if st.button("Compare Filings", type="primary", use_container_width=True, disabled=not _both_uploaded):
+    if st.button("Compare Filings $", type="primary", use_container_width=True, disabled=not _both_uploaded):
         _lbl1 = fc_label1.strip() or "Filing 1"
         _lbl2 = fc_label2.strip() or "Filing 2"
 
@@ -2117,7 +2117,7 @@ if st.session_state.get("pending_reanalyse"):
     st.rerun()
 
 if uploaded_file:
-    if st.button("Analyze Financials", type="primary", use_container_width=True):
+    if st.button("Analyze Financials $", type="primary", use_container_width=True):
 
         st.session_state.reanalyse_no_text = None  # clear prompt once user starts upload
 
@@ -2499,7 +2499,7 @@ if st.session_state.financial_data:
                 _opex_g = st.slider("OpEx Growth (%)",           min_value=-20,   max_value=30,   value=0,   step=1,    key="ss_opex_g")
                 _ir_bps = st.slider("Interest Rate Change (bps)", min_value=-200,  max_value=200,  value=0,   step=25,   key="ss_ir")
 
-            if st.button("Run Scenario", key="ss_run", type="primary", use_container_width=True):
+            if st.button("Run Scenario $", key="ss_run", type="primary", use_container_width=True):
                 _sc_inputs = {
                     "revenue_growth_pct":       float(_rev_g),
                     "gross_margin_pct":         float(_gm_pct),
