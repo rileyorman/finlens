@@ -103,13 +103,18 @@ def calculate_dcf(financial_data: dict, inputs: dict) -> dict:
         debt_raw = ((ltd_rep or 0.0) + (std_rep or 0.0)) * scale
 
         # --- Project and discount FCFs ---
+        # pv_yr = FCF_year / (1 + wacc)^year  — exponent must increment each year.
+        # When revenue_growth_rate == wacc the (1+g)^t terms cancel and every
+        # discounted FCF equals base_fcf (mathematically correct but visually
+        # misleading), so defaults are kept WACC > growth_rate to avoid this.
         forecast_table = []
         pv_sum = 0.0
 
         for yr in range(1, n + 1):
-            fcf_yr = fcf_raw * ((1 + gr) ** yr)
-            pv_yr  = fcf_yr  / ((1 + wacc) ** yr)
-            pv_sum += pv_yr
+            fcf_yr          = fcf_raw * (1 + gr) ** yr
+            discount_factor = (1 + wacc) ** yr          # grows with each year
+            pv_yr           = fcf_yr / discount_factor
+            pv_sum         += pv_yr
             forecast_table.append({
                 "year":           yr,
                 "fcf":            fcf_yr,

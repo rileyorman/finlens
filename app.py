@@ -2672,7 +2672,7 @@ if st.session_state.financial_data:
             )
         with _dcf_c3:
             _rgr = st.number_input(
-                "Revenue Growth (%)", min_value=-10.0, max_value=50.0, value=10.0, step=1.0, key="dcf_rgr",
+                "Revenue Growth (%)", min_value=-10.0, max_value=50.0, value=5.0, step=1.0, key="dcf_rgr",
             )
         with _dcf_c4:
             _fp = st.selectbox("Forecast Period", [5, 10], index=1, key="dcf_fp")
