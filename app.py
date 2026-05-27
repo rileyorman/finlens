@@ -13,6 +13,7 @@ from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
+from modules.dcf_calculator import calculate_dcf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
 from modules.learning import info_tooltip
@@ -513,6 +514,7 @@ document.addEventListener('focusin', function(e) {
                     st.session_state.last_filename       = entry.get("file_name", "")
                     st.session_state.resolved_ticker     = ticker if ticker != "—" else None
                     st.session_state.cache_hit           = False
+                    st.session_state.dcf_result          = None
                     st.session_state.loaded_from_library = True
                     if ticker and ticker != "—":
                         st.session_state["manual_ticker"] = ticker
@@ -1838,6 +1840,7 @@ if "financial_data" not in st.session_state:
     st.session_state.excel_bytes         = None
     st.session_state.last_filename       = None
     st.session_state.resolved_ticker     = None
+    st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
     st.session_state.uploader_key        = 0
@@ -1901,6 +1904,7 @@ if uploaded_file is None:
         st.session_state.market_data     = None
         st.session_state.excel_bytes     = None
         st.session_state.resolved_ticker = None
+        st.session_state.dcf_result      = None
         st.session_state.cache_hit       = False
 elif (not st.session_state.get("loaded_from_library", False) and
       st.session_state.last_filename and
@@ -1915,6 +1919,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.market_data         = None
     st.session_state.excel_bytes         = None
     st.session_state.resolved_ticker     = None
+    st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
 
@@ -1982,6 +1987,7 @@ if st.session_state.get("pending_reanalyse"):
     st.session_state.excel_bytes         = create_excel_file(_ra_fd, _ra_sd, 0.0, _ra_bb)
     st.session_state.last_filename       = ra["file_name"]
     st.session_state.resolved_ticker     = None
+    st.session_state.dcf_result          = None
     st.session_state.loaded_from_library = True
     st.session_state.pending_reanalyse   = None
     st.rerun()
@@ -2623,14 +2629,105 @@ if st.session_state.financial_data:
             )
 
         with mos_col:
-            st.markdown(
-                f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                f'<div style="font-size:28px;font-weight:700">—</div>'
-                f'<div style="font-size:10px;color:#aaa">DCF required</div>'
-                f'</div>',
-                unsafe_allow_html=True,
+            _dcf_hdr = st.session_state.get("dcf_result") or {}
+            _iv_hdr  = _dcf_hdr.get("intrinsic_value_per_share")
+            _mos_hdr = _dcf_hdr.get("margin_of_safety_pct")
+            if _iv_hdr is not None and _mos_hdr is not None:
+                _mc = "#70AD47" if _mos_hdr > 20 else ("#FFC000" if _mos_hdr >= 0 else "#C00000")
+                _lbl = "undervalued" if _mos_hdr > 0 else "overvalued"
+                st.markdown(
+                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
+                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    f'<div style="font-size:22px;font-weight:700">${_iv_hdr:,.2f}</div>'
+                    f'<div style="font-size:16px;font-weight:700;color:{_mc}">{_mos_hdr:+.1f}%</div>'
+                    f'<div style="font-size:10px;color:#aaa">{_lbl}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
+                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    f'<div style="font-size:28px;font-weight:700">—</div>'
+                    f'<div style="font-size:10px;color:#aaa">DCF required</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+        st.divider()
+
+        # --- DCF Calculator ---
+        st.markdown("#### DCF Calculator")
+        with st.expander("ℹ️ How this works"):
+            st.markdown(info_tooltip("dcf"))
+
+        _dcf_c1, _dcf_c2, _dcf_c3, _dcf_c4 = st.columns([2, 2, 2, 1])
+        with _dcf_c1:
+            _wacc = st.number_input(
+                "WACC (%)", min_value=5.0, max_value=25.0, value=10.0, step=0.5, key="dcf_wacc",
             )
+        with _dcf_c2:
+            _tgr = st.number_input(
+                "Terminal Growth (%)", min_value=0.5, max_value=5.0, value=3.0, step=0.5, key="dcf_tgr",
+            )
+        with _dcf_c3:
+            _rgr = st.number_input(
+                "Revenue Growth (%)", min_value=-10.0, max_value=50.0, value=10.0, step=1.0, key="dcf_rgr",
+            )
+        with _dcf_c4:
+            _fp = st.selectbox("Forecast Period", [5, 10], index=1, key="dcf_fp")
+
+        if st.button("Calculate DCF", type="primary", key="dcf_calc_btn"):
+            _md      = st.session_state.get("market_data") or {}
+            _shr_raw = _md.get("shares_outstanding")
+            _dcf_inp = {
+                "wacc":                 _wacc,
+                "terminal_growth_rate": _tgr,
+                "forecast_period":      _fp,
+                "revenue_growth_rate":  _rgr,
+                "shares_outstanding":   _shr_raw / 1_000_000 if _shr_raw else None,
+                "current_price":        _md.get("current_price"),
+            }
+            with st.spinner("Calculating DCF…"):
+                st.session_state.dcf_result = calculate_dcf(financial_data, _dcf_inp)
+            st.rerun()
+
+        _dcf_res = st.session_state.get("dcf_result")
+        if _dcf_res:
+            if _dcf_res.get("error"):
+                st.warning(f"DCF: {_dcf_res['error']}")
+            else:
+                def _fmt_dcf(v):
+                    if v is None:
+                        return "—"
+                    av = abs(v)
+                    if av >= 1_000_000_000:
+                        return f"${v / 1_000_000_000:.2f}B"
+                    if av >= 1_000_000:
+                        return f"${v / 1_000_000:.1f}M"
+                    return f"${v:,.0f}"
+
+                _d1, _d2, _d3, _d4 = st.columns(4)
+                with _d1:
+                    st.metric("Base FCF", _fmt_dcf(_dcf_res["base_fcf"]))
+                with _d2:
+                    st.metric("PV of Forecast", _fmt_dcf(_dcf_res["pv_forecast"]))
+                with _d3:
+                    st.metric("PV of Terminal", _fmt_dcf(_dcf_res["pv_terminal"]))
+                with _d4:
+                    st.metric("Enterprise Value", _fmt_dcf(_dcf_res["enterprise_value"]))
+
+                with st.expander("📊 Year-by-Year Forecast"):
+                    _ft = _dcf_res.get("forecast_table", [])
+                    if _ft:
+                        st.dataframe(
+                            [{"Year":           r["year"],
+                              "Projected FCF":  _fmt_dcf(r["fcf"]),
+                              "Discounted FCF": _fmt_dcf(r["discounted_fcf"])}
+                             for r in _ft],
+                            hide_index=True,
+                            use_container_width=True,
+                        )
 
         st.divider()
 
@@ -2810,7 +2907,16 @@ if st.session_state.financial_data:
                 st.markdown("##### Second-Level Question")
                 mq = dd.get("marks_question") or "Re-analyse to generate Marks question."
                 st.write(mq)
-                st.caption("Margin of Safety: — (DCF required)")
+                _mos_marks = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
+                if _mos_marks is not None:
+                    _mos_mc = "#70AD47" if _mos_marks > 20 else ("#FFC000" if _mos_marks >= 0 else "#C00000")
+                    st.markdown(
+                        f'Margin of Safety: <span style="color:{_mos_mc};font-weight:700">'
+                        f'{_mos_marks:+.1f}%</span>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption("Margin of Safety: — (DCF required)")
 
         st.divider()
 
@@ -2914,11 +3020,12 @@ if st.session_state.financial_data:
                 if mc_val and rev_c_val and rev_c_val > 0:
                     ev_rev = (mc_val * 1_000_000) / (rev_c_val * _val_scale)
 
+                _mos_snap = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 for vname, vval in [
-                    ("P/E",        f"{pe_val:.1f}x"    if pe_val    else "—"),
-                    ("EV/EBITDA",  f"{ev_ebitda:.1f}x" if ev_ebitda else "—"),
-                    ("EV/Revenue", f"{ev_rev:.2f}x"    if ev_rev    else "—"),
-                    ("MoS",        "—"),
+                    ("P/E",        f"{pe_val:.1f}x"       if pe_val      else "—"),
+                    ("EV/EBITDA",  f"{ev_ebitda:.1f}x"    if ev_ebitda   else "—"),
+                    ("EV/Revenue", f"{ev_rev:.2f}x"        if ev_rev      else "—"),
+                    ("MoS",        f"{_mos_snap:+.1f}%"   if _mos_snap is not None else "—"),
                 ]:
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;padding:5px 4px;'

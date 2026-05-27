@@ -47,6 +47,12 @@ LEARNING_CONTENT = {
         "why": "Each category implies a different valuation approach and holding strategy.",
         "columbia": "Lynch's framework from One Up on Wall Street remains a widely taught qualitative classification tool."
     },
+    "dcf": {
+        "what": "Discounted Cash Flow analysis estimates the intrinsic value of a company by projecting future free cash flows and discounting them back to present value.",
+        "equation": "Intrinsic Value = Σ [FCF_t / (1+WACC)^t] + [FCF_n × (1+g) / (WACC−g)] / (1+WACC)^n",
+        "why": "DCF gives a fundamental anchor for valuation independent of market sentiment — the margin of safety tells you how much room for error you have.",
+        "columbia": "DCF is the foundational valuation methodology in investment banking, equity research, and value investing."
+    },
 }
 
 
