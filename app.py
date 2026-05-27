@@ -2576,12 +2576,22 @@ if st.session_state.financial_data:
                 ebitda_c_val = metrics.get("ebitda_c")
                 rev_c_val    = metrics.get("rev_c")
 
+                _cur = (financial_data.get("currency") or "").lower()
+                if "billion" in _cur:
+                    _val_scale = 1_000_000_000
+                elif "million" in _cur:
+                    _val_scale = 1_000_000
+                elif "thousand" in _cur:
+                    _val_scale = 1_000
+                else:
+                    _val_scale = 1
+
                 ev_ebitda = None
                 ev_rev    = None
                 if mc_val and ebitda_c_val and ebitda_c_val > 0:
-                    ev_ebitda = (mc_val * 1_000_000) / ebitda_c_val
+                    ev_ebitda = (mc_val * 1_000_000) / (ebitda_c_val * _val_scale)
                 if mc_val and rev_c_val and rev_c_val > 0:
-                    ev_rev = (mc_val * 1_000_000) / rev_c_val
+                    ev_rev = (mc_val * 1_000_000) / (rev_c_val * _val_scale)
 
                 for vname, vval in [
                     ("P/E",        f"{pe_val:.1f}x"    if pe_val    else "—"),
