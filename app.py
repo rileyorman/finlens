@@ -2678,6 +2678,44 @@ if st.session_state.financial_data:
                     type="secondary",
                 )
 
+        # --- Debug: Raw Extraction -----------------------------------------------
+        with st.expander("🔬 Debug: Raw Extraction Output", expanded=False):
+            st.caption(
+                "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
+                "Use this to diagnose — / N/A values in the Summary tab."
+            )
+            import json as _json
+
+            _dbg_metrics = _calc_summary_metrics(financial_data)
+
+            # Resolved metrics — what the Summary sheet actually uses
+            st.markdown("**Resolved Metrics** (what the Summary tab renders)")
+            _resolved_rows = [
+                {"Metric": k, "Value": v}
+                for k, v in _dbg_metrics.items()
+            ]
+            st.dataframe(_resolved_rows, use_container_width=True, hide_index=True)
+
+            st.divider()
+
+            # Raw line items — what Claude extracted from the PDF
+            for _section_key, _section_label in [
+                ("income_statement",    "Income Statement"),
+                ("balance_sheet",       "Balance Sheet"),
+                ("cash_flow_statement", "Cash Flow Statement"),
+            ]:
+                _rows = financial_data.get(_section_key, [])
+                st.markdown(f"**{_section_label}** — {len(_rows)} line items extracted")
+                if _rows:
+                    st.dataframe(
+                        [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.caption("No rows found.")
+                st.write("")
+
     # =====================================================================
     with tab_dash:
     # =====================================================================
