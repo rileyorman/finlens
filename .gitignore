@@ -9,3 +9,4 @@ streamlit.log
 cache/
 filing_library.json
 portfolio_registry.json
+library/watchlist.json

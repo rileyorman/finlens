@@ -6,8 +6,5 @@ textColor = "#F1F5F9"
 primaryColor = "#185FA5"
 font = "sans serif"
 
-[browser]
-serverAddress = "localhost"
-
 [server]
-headless = false
+headless = true
