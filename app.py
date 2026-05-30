@@ -13,7 +13,12 @@ from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
-from modules.edgar_fetcher import get_cik, get_recent_filings, get_financial_data as get_edgar_financial_data
+from modules.edgar_fetcher import (
+    get_cik,
+    get_recent_filings,
+    get_financial_data as get_edgar_financial_data,
+    _fmt as _fmt_edgar_value,
+)
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.peer_comparison import get_peer_data, peer_map
@@ -3142,13 +3147,29 @@ if st.session_state.financial_data:
                         st.info(_sr["narrative"])
 
         # --- Financial statement tables ---
-        col_cfg = {
-            "line_item":   st.column_config.TextColumn("Line Item"),
-            "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
-            "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
-        }
+        if st.session_state.get("loaded_from_edgar"):
+            col_cfg = {
+                "line_item":   st.column_config.TextColumn("Line Item"),
+                "value_prior": st.column_config.TextColumn(fy_prior),
+                "value":       st.column_config.TextColumn(fy),
+            }
+        else:
+            col_cfg = {
+                "line_item":   st.column_config.TextColumn("Line Item"),
+                "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
+                "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
+            }
 
         def _display_rows(rows):
+            if st.session_state.get("loaded_from_edgar"):
+                return [
+                    {
+                        "line_item": r.get("line_item"),
+                        "value_prior": _fmt_edgar_value(r.get("value_prior")) or "—",
+                        "value": _fmt_edgar_value(r.get("value")) or "—",
+                    }
+                    for r in rows
+                ]
             return [
                 {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
                 for r in rows

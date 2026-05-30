@@ -8,6 +8,23 @@ import requests
 HEADERS = {"User-Agent": "FinLens 264511560+rileyorman@users.noreply.github.com"}
 
 
+def _fmt(value):
+    if value is None:
+        return None
+    try:
+        v = float(value)
+        if abs(v) >= 1_000_000_000:
+            return f"${v/1_000_000_000:.1f}B"
+        elif abs(v) >= 1_000_000:
+            return f"${v/1_000_000:.1f}M"
+        elif abs(v) >= 1_000:
+            return f"${v/1_000:.1f}K"
+        else:
+            return f"${v:.0f}"
+    except:
+        return None
+
+
 def _zero_pad_cik(cik) -> str | None:
     try:
         digits = re.sub(r"\D", "", str(cik))
