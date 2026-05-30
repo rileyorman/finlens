@@ -5,7 +5,7 @@ from xml.etree import ElementTree
 import requests
 
 
-HEADERS = {"User-Agent": "FinLens 264511560+rileyorman@users.noreply.github.com"}
+HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
 
 
 def _fmt(value):
@@ -51,21 +51,36 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
         seen = set()
         if response.ok:
             payload = response.json()
-            hits = payload.get("hits", {}).get("hits", [])
+            hits = payload.get("hits", [])
+            if isinstance(hits, dict):
+                hits = hits.get("hits", [])
             for hit in hits:
-                source = hit.get("_source", {}) if isinstance(hit, dict) else {}
+                hit = hit if isinstance(hit, dict) else {}
+                source = hit.get("_source", {}) if isinstance(hit.get("_source"), dict) else {}
+                entities = hit.get("entity") or source.get("entity")
                 cik = (
-                    source.get("ciks")
+                    hit.get("cik")
+                    or hit.get("ciks")
+                    or source.get("ciks")
                     or source.get("cik")
                     or source.get("cikNumber")
+                    or source.get("cik_number")
                 )
                 if isinstance(cik, list):
                     cik = cik[0] if cik else None
+                if not cik and isinstance(entities, list):
+                    for entity in entities:
+                        match = re.search(r"\bCIK[:\s]+(\d+)\b", str(entity), re.I)
+                        if match:
+                            cik = match.group(1)
+                            break
                 padded = _zero_pad_cik(cik)
-                if not padded or padded in seen:
+                if not padded:
                     continue
                 company = (
-                    source.get("entity")
+                    entities
+                    or source.get("entity_name")
+                    or source.get("entityName")
                     or source.get("companyName")
                     or source.get("displayNames")
                     or source.get("name")
@@ -73,17 +88,23 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 )
                 if isinstance(company, list):
                     company = company[0] if company else query
+                company = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", str(company)).strip()
+                company_key = company.upper()
+                if company_key in seen:
+                    continue
                 ticker = source.get("tickers") or source.get("ticker") or source.get("tickerSymbol")
                 if isinstance(ticker, list):
                     ticker = ticker[0] if ticker else ""
                 matches.append({
                     "cik": padded,
-                    "name": str(company).strip(),
+                    "name": company,
                     "ticker": str(ticker or "").strip().upper(),
                 })
-                seen.add(padded)
+                seen.add(company_key)
                 if len(matches) >= count:
                     return matches
+        if matches:
+            return matches
 
         atom_url = (
             "https://www.sec.gov/cgi-bin/browse-edgar"
@@ -104,14 +125,18 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 text = child.text or ""
                 if tag.endswith("title"):
                     title = text.strip()
-                match = re.search(r"CIK=(\d+)", text)
+                attr_text = " ".join(str(v) for v in child.attrib.values())
+                match = re.search(r"CIK=(\d+)", f"{text} {attr_text}")
                 if match:
                     cik = match.group(1)
             padded = _zero_pad_cik(cik)
-            if padded and padded not in seen:
+            if padded:
                 name = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", title).strip() or query
+                name_key = name.upper()
+                if name_key in seen:
+                    continue
                 matches.append({"cik": padded, "name": name, "ticker": ""})
-                seen.add(padded)
+                seen.add(name_key)
                 if len(matches) >= count:
                     break
         return matches
