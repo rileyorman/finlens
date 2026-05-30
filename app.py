@@ -1,8 +1,12 @@
 import os
 import io
 import re
+import tempfile
+from html import escape
 from datetime import datetime, timedelta
+from urllib.parse import quote_plus
 import streamlit as st
+import yfinance as yf
 from dotenv import load_dotenv
 from streamlit_cookies_manager import CookieManager
 
@@ -18,11 +22,6 @@ from modules.edgar_fetcher import (
     get_recent_filings,
     get_financial_data as get_edgar_financial_data,
     _fmt as _fmt_edgar_value,
-)
-from modules.sedar_fetcher import (
-    search_company as search_sedar_company,
-    get_filings as get_sedar_filings,
-    get_financial_data as get_sedar_financial_data,
 )
 from modules.education_content import EDUCATION
 from modules.red_flag_detector import detect_flags
@@ -73,6 +72,58 @@ def _fmt_market_cap(mc_millions):
     if mc_millions >= 1_000:
         return f"${mc_millions / 1_000:.1f}B"
     return f"${mc_millions:.0f}M"
+
+
+SEDAR_SEARCH_URL = "https://www.sedarplus.ca/csa-party/party/search.html"
+
+
+def _ensure_yfinance_cache_location():
+    try:
+        cache_dir = os.path.join(tempfile.gettempdir(), "finlens_yfinance_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        yf.set_tz_cache_location(cache_dir)
+    except Exception:
+        pass
+
+
+def _sedar_search_url(company_name: str, filing_type: str | None = None) -> str:
+    query = (company_name or "").strip()
+    if filing_type:
+        query = f"{query} {filing_type}".strip()
+    return f"{SEDAR_SEARCH_URL}?query={quote_plus(query)}"
+
+
+def _resolve_sedar_company_from_yfinance(ticker: str) -> dict | None:
+    symbol = (ticker or "").strip().upper()
+    if not symbol:
+        return None
+
+    _ensure_yfinance_cache_location()
+
+    candidates = [symbol]
+    if "." not in symbol:
+        candidates.extend([f"{symbol}.TO", f"{symbol}.V"])
+
+    seen = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            info = yf.Ticker(candidate).info or {}
+        except Exception:
+            continue
+
+        company_name = (
+            info.get("longName")
+            or info.get("shortName")
+            or info.get("displayName")
+            or info.get("name")
+        )
+        quote_type = (info.get("quoteType") or "").upper()
+        if company_name and quote_type in {"EQUITY", "ETF", ""}:
+            return {"symbol": candidate, "company_name": company_name}
+    return None
 
 
 def _quality_score(m: dict) -> int:
@@ -2617,171 +2668,58 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                     st.rerun()
 
     with _sedar_tab:
-        st.caption("Search Canadian public company filings on SEDAR+. Structured data depends on whether SEDAR+ exposes XBRL for the filing.")
-        _sedar_query = st.text_input("Company name or ticker", placeholder="e.g. Shopify, SHOP.TO", key="sedar_query")
-        if st.button("Search SEDAR+", type="primary", use_container_width=True, key="sedar_search_btn"):
-            st.session_state["sedar_companies"] = []
-            st.session_state["sedar_filings"] = []
+        st.caption("Resolve a Canadian ticker, open SEDAR+ in the right search context, then upload the downloaded PDF for Claude analysis.")
+        _sedar_ticker = st.text_input("Canadian ticker", placeholder="e.g. SU, CNQ, SHOP, RY", key="sedar_ticker")
+        if st.button("Find Filings", type="primary", use_container_width=True, key="sedar_find_filings_btn"):
+            st.session_state.pop("sedar_company", None)
             st.session_state.loaded_from_sedar = False
-            _query = _sedar_query.strip()
-            if not _query:
-                st.warning("Enter a company name or ticker first.")
+            _ticker = _sedar_ticker.strip().upper()
+            if not _ticker:
+                st.warning("Enter a Canadian ticker first.")
             else:
-                with st.spinner(f"Searching SEDAR+ for {_query}..."):
-                    _companies = search_sedar_company(_query)
-                if not _companies:
-                    st.error("No SEDAR+ companies found.")
+                with st.spinner(f"Resolving {_ticker} with yfinance..."):
+                    _company = _resolve_sedar_company_from_yfinance(_ticker)
+                if not _company:
+                    st.error(f"Could not find company for ticker {_ticker}. Please check the ticker and try again.")
                 else:
-                    st.session_state["sedar_companies"] = _companies
-                    st.success(f"Found {len(_companies)} possible SEDAR+ match(es).")
-
-        _sedar_companies = st.session_state.get("sedar_companies") or []
-        if _sedar_companies:
-            _company_labels = []
-            for row in _sedar_companies:
-                _label = row.get("name", "Unknown")
-                if row.get("ticker"):
-                    _label = f"{_label} ({row.get('ticker')})"
-                if row.get("jurisdiction"):
-                    _label = f"{_label} - {row.get('jurisdiction')}"
-                _company_labels.append(_label)
-            _company_label = st.selectbox("Matching companies", _company_labels, key="sedar_company_select")
-            _company = _sedar_companies[_company_labels.index(_company_label)]
-            _issuer_no = _company.get("issuer_no", "")
-            if st.button("Find Recent SEDAR+ Filings", use_container_width=True, key="sedar_find_filings_btn"):
-                if not _issuer_no and _company.get("search_url"):
-                    _filings = [{
-                        "filing_id": "manual_sedar_search",
-                        "filing_date": "",
-                        "filing_type": "SEDAR+ manual search",
-                        "period_end": "",
-                        "document_url": _company.get("search_url", ""),
-                    }]
-                else:
-                    with st.spinner("Fetching recent SEDAR+ filings..."):
-                        _filings = get_sedar_filings(_issuer_no, filing_type="Annual", count=5)
-                if not _filings:
-                    st.error("No recent SEDAR+ filings found.")
-                else:
-                    st.session_state["sedar_selected_company"] = _company
-                    st.session_state["sedar_filings"] = _filings
-                    st.session_state["sedar_loaded_filing"] = None
-                    st.success(f"Found {len(_filings)} SEDAR+ filing option(s).")
-
-        _sedar_filings = st.session_state.get("sedar_filings") or []
-        if _sedar_filings:
-            _sedar_filing_labels = []
-            for row in _sedar_filings:
-                _label = row.get("filing_type", "Filing")
-                if row.get("filing_date"):
-                    _label = f"{_label} filed {row.get('filing_date')}"
-                if row.get("period_end"):
-                    _label = f"{_label} - period {row.get('period_end')}"
-                _sedar_filing_labels.append(_label)
-            _sedar_filing_label = st.selectbox("Recent SEDAR+ filings", _sedar_filing_labels, key="sedar_filing_select")
-            _sedar_filing = _sedar_filings[_sedar_filing_labels.index(_sedar_filing_label)]
-            _sedar_filing_id = _sedar_filing.get("filing_id", "")
-            if st.button("Load Selected Filing", type="primary", use_container_width=True, key="sedar_load_selected_btn"):
-                _company = st.session_state.get("sedar_selected_company") or {}
-                _issuer_no = _company.get("issuer_no", "")
-                _ticker = (_company.get("ticker") or st.session_state.get("sedar_query") or "").strip().upper()
-                if _sedar_filing_id == "manual_sedar_search":
-                    _sedar_fd = {
-                        "pdf_url": _sedar_filing.get("document_url", ""),
-                        "xbrl_available": False,
-                        "error": "PDF only — upload manually",
+                    st.session_state["sedar_company"] = {
+                        "ticker": _ticker,
+                        "symbol": _company["symbol"],
+                        "company_name": _company["company_name"],
                     }
-                else:
-                    with st.spinner("Fetching SEDAR+ filing data..."):
-                        _sedar_fd = get_sedar_financial_data(_issuer_no, _sedar_filing_id)
+                    st.success(f"Resolved {_ticker} to {_company['company_name']}.")
 
-                if not _sedar_fd:
-                    st.error("Could not fetch SEDAR+ filing data.")
-                elif not _sedar_fd.get("xbrl_available", True):
-                    st.info("This filing is PDF only. Download it from SEDAR+ and upload it manually.")
-                    _pdf_url = _sedar_fd.get("pdf_url") or _sedar_filing.get("document_url")
-                    if _pdf_url:
-                        st.markdown(f"[Open filing on SEDAR+]({_pdf_url})")
-                else:
-                    _sedar_text = _financial_data_to_text(_sedar_fd)
-                    _sedar_sd = {"ticker": _ticker, "filing_date": _sedar_filing.get("filing_date")}
-                    _sedar_bb = None
-                    _sedar_dd = None
-                    with st.spinner("Generating investment signal from SEDAR+ data..."):
-                        try:
-                            _sedar_sd = analyze_summary(_sedar_text, _sedar_fd, API_KEY)
-                            if isinstance(_sedar_sd, dict):
-                                _sedar_sd.setdefault("ticker", _ticker)
-                                _sedar_sd.setdefault("filing_date", _sedar_filing.get("filing_date"))
-                        except Exception as e:
-                            st.warning(f"Investment signal could not be generated: {e}.")
-                    with st.spinner("Generating bull/bear case from SEDAR+ data..."):
-                        try:
-                            _sedar_bb = analyze_bear_bull(_sedar_text, API_KEY)
-                        except Exception as e:
-                            st.warning(f"Bull/bear case could not be generated: {e}.")
-                    with st.spinner("Generating dashboard insights from SEDAR+ data..."):
-                        try:
-                            _sedar_dd = analyze_dashboard_insights(_sedar_text, _sedar_sd, _sedar_fd, API_KEY)
-                        except Exception as e:
-                            st.warning(f"Dashboard insights could not be generated: {e}.")
+        _sedar_company = st.session_state.get("sedar_company")
+        if _sedar_company:
+            _company_name = _sedar_company["company_name"]
+            _ticker = _sedar_company["ticker"]
+            st.info(f"Company resolved: **{_company_name}** ({_ticker})")
 
-                    _sedar_md = {}
-                    if _ticker:
-                        with st.spinner(f"Fetching market data for {_ticker}..."):
-                            _sedar_md = get_market_data(_ticker)
-                    _market_cap = _sedar_md.get("market_cap") or 0.0
-                    try:
-                        _excel_bytes = create_excel_file(_sedar_fd, _sedar_sd, _market_cap, _sedar_bb)
-                    except Exception as e:
-                        st.error(f"Could not generate Excel file: {e}")
-                        st.stop()
-
-                    _entry_id = f"sedar_{_issuer_no}_{_sedar_filing_id}"
-                    _file_name = f"{_ticker or 'SEDAR'}_{_sedar_filing.get('filing_type')}_{_sedar_filing.get('period_end')}.sedar"
-                    st.session_state.financial_data      = _sedar_fd
-                    st.session_state.summary_data        = _sedar_sd
-                    st.session_state.bear_bull_data      = _sedar_bb
-                    st.session_state.dashboard_data      = _sedar_dd
-                    st.session_state.mda_sentiment       = None
-                    st.session_state.market_data         = _sedar_md
-                    st.session_state.excel_bytes         = _excel_bytes
-                    st.session_state.last_filename       = _file_name
-                    st.session_state.resolved_ticker     = _ticker
-                    st.session_state.loaded_from_library = False
-                    st.session_state.loaded_from_edgar   = False
-                    st.session_state.loaded_from_sedar   = True
-                    st.session_state.cache_hit           = False
-                    st.session_state.dcf_result          = None
-                    st.session_state["manual_ticker"]    = _ticker
-                    st.session_state["sedar_loaded_filing"] = _sedar_filing_id
-                    st.session_state.pop("peer_data", None)
-
-                    try:
-                        lib_add(
-                            _entry_id,
-                            _file_name,
-                            len(_sedar_text),
-                            _sedar_fd,
-                            _sedar_sd,
-                            _sedar_bb,
-                            _sedar_dd,
-                            raw_text=_sedar_text[:MAX_FILING_CHARS],
+            with st.container(border=True):
+                st.subheader("SEDAR+ filing links")
+                st.caption("Links open SEDAR+ searches in a new tab. Use the filing type labels below as the document type to select on SEDAR+.")
+                _filing_types = [
+                    "Annual MD&A (Annual Report)",
+                    "Interim MD&A (Quarterly Report)",
+                    "Annual Information Form (AIF)",
+                    "Financial Statements (Annual)",
+                    "Financial Statements (Interim)",
+                ]
+                _cols = st.columns(2)
+                for _idx, _filing_type in enumerate(_filing_types):
+                    _url = _sedar_search_url(_company_name, _filing_type)
+                    _safe_url = escape(_url, quote=True)
+                    _safe_label = escape(_filing_type)
+                    with _cols[_idx % 2]:
+                        st.markdown(
+                            f'<a href="{_safe_url}" target="_blank" rel="noopener noreferrer">{_safe_label}</a>',
+                            unsafe_allow_html=True,
                         )
-                    except Exception:
-                        pass
-                    _save_analysis_to_supabase(
-                        _ticker,
-                        _sedar_fd,
-                        _sedar_sd,
-                        _sedar_bb,
-                        _sedar_dd,
-                        raw_text=_sedar_text[:MAX_FILING_CHARS],
-                        file_name=_file_name,
-                        file_size=len(_sedar_text),
-                    )
-                    st.success(f"Loaded SEDAR+ filing for {_ticker or _company.get('name', 'company')}.")
-                    st.rerun()
+
+                _profile_url = _sedar_search_url(_company_name)
+                st.link_button("View full profile on SEDAR+", _profile_url, use_container_width=True)
+
+            st.info("Once you've downloaded a filing from SEDAR+, upload it below to analyze it with Claude.")
 
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
