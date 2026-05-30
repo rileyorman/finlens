@@ -79,6 +79,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                     continue
                 company = (
                     entities
+                    or source.get("display_names")
                     or source.get("entity_name")
                     or source.get("entityName")
                     or source.get("companyName")
