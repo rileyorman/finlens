@@ -309,6 +309,9 @@ def _render_education_page(default_topic: str | None = None) -> None:
     st.caption("Plain-English explanations of the financial statements, valuation metrics, and analysis tools used in FinLens.")
 
     education_sections = {
+        "Markets & Investing Fundamentals": [
+            "options", "warrants", "preferred_shares", "convertible_notes", "etfs", "derivatives",
+        ],
         "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
         "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "beta", "margin_of_safety", "dcf"],
         "FinLens Analysis Tools": [
