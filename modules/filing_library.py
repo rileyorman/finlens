@@ -44,8 +44,10 @@ def add_entry(
     dashboard_data: dict | None = None,
     raw_text: str | None = None,
     mda_sentiment: dict | None = None,
+    source: str = "pdf",
+    file_path: str | None = None,
 ) -> None:
-    """Add or update a filing entry. Keyed on file_hash so the same PDF never duplicates."""
+    """Add or update a filing entry. Keyed on file_hash so the same filing never duplicates."""
     lib = _load()
 
     ticker = (summary_data or {}).get("ticker") or "—"
@@ -65,6 +67,8 @@ def add_entry(
         "dashboard_data":  dashboard_data,
         "mda_sentiment":   mda_sentiment,
         "raw_text":        raw_text,
+        "source":          source,
+        "file_path":       file_path,
     }
 
     entries = lib["entries"]
@@ -74,6 +78,10 @@ def add_entry(
             # we don't want to wipe text that was saved on the original analysis.
             if raw_text is None and existing.get("raw_text"):
                 entry["raw_text"] = existing["raw_text"]
+            if not file_path and existing.get("file_path"):
+                entry["file_path"] = existing["file_path"]
+            if source == "pdf" and existing.get("source"):
+                entry["source"] = existing["source"]
             entries[i] = entry   # refresh in place (re-analysis updates the record)
             _save(lib)
             return

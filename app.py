@@ -239,6 +239,43 @@ def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
     return os.path.join("library", "pdfs", f"{safe}.pdf")
 
 
+def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
+    """Return disk cache path for extracted filing text, or None if identifiers are unavailable."""
+    if not ticker or not period:
+        return None
+    safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
+    return os.path.join("library", "pdfs", f"{safe}.txt")
+
+
+def _read_text_cache(path: str | None) -> str | None:
+    if not path:
+        return None
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as _f:
+                return _f.read()
+    except Exception:
+        return None
+    return None
+
+
+def _library_text_for_entry(entry: dict) -> str | None:
+    """Return cached filing text for library entries that store source text on disk."""
+    text = _read_text_cache(entry.get("file_path"))
+    if text:
+        return text
+    if entry.get("source") == "edgar":
+        text = _read_text_cache(
+            _text_cache_path(
+                entry.get("ticker") if entry.get("ticker") != "—" else None,
+                entry.get("fiscal_year") or entry.get("period", ""),
+            )
+        )
+        if text:
+            return text
+    return entry.get("raw_text")
+
+
 def _supabase_row_to_library_entry(row: dict) -> dict:
     data = row.get("data") or {}
     if not isinstance(data, dict):
@@ -269,6 +306,8 @@ def _supabase_row_to_library_entry(row: dict) -> dict:
         "dashboard_data": dashboard_data,
         "mda_sentiment": mda_sentiment,
         "raw_text": raw_text,
+        "source": data.get("source", "pdf"),
+        "file_path": data.get("file_path"),
     }
 
 
@@ -297,6 +336,8 @@ def _supabase_analysis_payload(
     mda_sentiment: dict | None = None,
     file_name: str = "",
     file_size: int = 0,
+    source: str = "pdf",
+    file_path: str | None = None,
 ) -> dict:
     return {
         "financial_data": financial_data,
@@ -307,6 +348,8 @@ def _supabase_analysis_payload(
         "raw_text": raw_text,
         "file_name": file_name,
         "file_size_bytes": file_size,
+        "source": source,
+        "file_path": file_path,
     }
 
 
@@ -321,6 +364,8 @@ def _save_analysis_to_supabase(
     file_name: str = "",
     file_size: int = 0,
     pdf_bytes: bytes | None = None,
+    source: str = "pdf",
+    file_path: str | None = None,
 ) -> None:
     try:
         period = _analysis_period(financial_data)
@@ -337,6 +382,8 @@ def _save_analysis_to_supabase(
             mda_sentiment=mda_sentiment,
             file_name=file_name,
             file_size=file_size,
+            source=source,
+            file_path=file_path,
         )
         supabase_storage.save_filing(ticker, company, period, payload)
         if pdf_bytes:
@@ -1076,13 +1123,16 @@ document.addEventListener('focusin', function(e) {
                             if st.button("Yes, re-analyse", key=f"al_ra_yes_{eid}",
                                          use_container_width=True, type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
-                                if entry.get("raw_text"):
+                                _entry_text = _library_text_for_entry(entry)
+                                if _entry_text:
                                     st.session_state.pending_reanalyse = {
-                                        "raw_text":     entry["raw_text"],
+                                        "raw_text":     _entry_text[:MAX_FILING_CHARS],
                                         "company_name": entry["company_name"],
                                         "entry_id":     eid,
                                         "file_name":    entry.get("file_name", ""),
                                         "file_size":    entry.get("file_size_bytes", 0),
+                                        "source":       entry.get("source", "pdf"),
+                                        "file_path":    entry.get("file_path"),
                                     }
                                 else:
                                     _period = entry.get("fiscal_year") or entry.get("period", "")
@@ -1156,6 +1206,8 @@ document.addEventListener('focusin', function(e) {
                 expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
                 row_ticker  = ticker if ticker and ticker != "—" else "N/A"
                 row_period  = fy or "Unknown period"
+                if entry.get("source") == "edgar":
+                    row_period = f"{row_period} · EDGAR"
                 chevron     = "⌃" if expanded else "⌄"
                 if st.button(
                     f"**{row_ticker}**    {row_period}    {chevron}",
@@ -1183,24 +1235,32 @@ document.addEventListener('focusin', function(e) {
                             st.session_state.cache_hit           = False
                             st.session_state.dcf_result          = None
                             st.session_state.loaded_from_library = True
+                            st.session_state.loaded_from_edgar   = entry.get("source") == "edgar"
+                            st.session_state.loaded_from_sedar   = False
+                            st.session_state.cached_filing_text  = (
+                                _library_text_for_entry(entry) if entry.get("source") == "edgar" else None
+                            )
                             if ticker and ticker != "—":
                                 st.session_state["manual_ticker"] = ticker
-                            # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
-                            try:
-                                _lp = _pdf_cache_path(
-                                    ticker if ticker != "—" else None,
-                                    entry.get("fiscal_year") or entry.get("period", ""),
-                                )
-                                st.session_state.cached_pdf_bytes = (
-                                    open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
-                                )
-                                if st.session_state.cached_pdf_bytes is None:
-                                    st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
+                            if entry.get("source") == "edgar":
+                                st.session_state.cached_pdf_bytes = None
+                            else:
+                                # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
+                                try:
+                                    _lp = _pdf_cache_path(
                                         ticker if ticker != "—" else None,
                                         entry.get("fiscal_year") or entry.get("period", ""),
                                     )
-                            except Exception:
-                                st.session_state.cached_pdf_bytes = None
+                                    st.session_state.cached_pdf_bytes = (
+                                        open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                                    )
+                                    if st.session_state.cached_pdf_bytes is None:
+                                        st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
+                                            ticker if ticker != "—" else None,
+                                            entry.get("fiscal_year") or entry.get("period", ""),
+                                        )
+                                except Exception:
+                                    st.session_state.cached_pdf_bytes = None
                             st.rerun()
                     with reanalyse_col:
                         if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
@@ -1242,13 +1302,16 @@ document.addEventListener('focusin', function(e) {
                         if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
                                      use_container_width=True, type="primary"):
                             st.session_state.confirm_reanalyse = None
-                            if entry.get("raw_text"):
+                            _entry_text = _library_text_for_entry(entry)
+                            if _entry_text:
                                 st.session_state.pending_reanalyse = {
-                                    "raw_text":     entry["raw_text"],
+                                    "raw_text":     _entry_text[:MAX_FILING_CHARS],
                                     "company_name": entry["company_name"],
                                     "entry_id":     eid,
                                     "file_name":    entry.get("file_name", ""),
                                     "file_size":    entry.get("file_size_bytes", 0),
+                                    "source":       entry.get("source", "pdf"),
+                                    "file_path":    entry.get("file_path"),
                                 }
                             else:
                                 st.session_state.reanalyse_no_text = entry["company_name"]
@@ -1259,6 +1322,8 @@ document.addEventListener('focusin', function(e) {
                                     "company_name": entry["company_name"],
                                     "file_name":    entry.get("file_name", ""),
                                     "file_size":    entry.get("file_size_bytes", 0),
+                                    "source":       entry.get("source", "pdf"),
+                                    "file_path":    entry.get("file_path"),
                                 }
                                 st.session_state.uploader_key += 1
                             st.rerun()
@@ -1297,10 +1362,19 @@ if page == "Portfolio Manager":
             _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
         with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
             _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
+        if ra.get("source") == "edgar" and ra.get("file_path"):
+            try:
+                os.makedirs(os.path.dirname(ra["file_path"]), exist_ok=True)
+                with open(ra["file_path"], "w", encoding="utf-8") as _f:
+                    _f.write(_ra_text)
+            except Exception:
+                pass
         try:
             lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
                     _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
-                    mda_sentiment=_ra_mda)
+                    mda_sentiment=_ra_mda,
+                    source=ra.get("source", "pdf"),
+                    file_path=ra.get("file_path"))
         except Exception:
             pass
         _save_analysis_to_supabase(
@@ -1314,6 +1388,8 @@ if page == "Portfolio Manager":
             file_name=ra.get("file_name", ""),
             file_size=ra.get("file_size", 0),
             pdf_bytes=ra.get("pdf_bytes"),
+            source=ra.get("source", "pdf"),
+            file_path=ra.get("file_path"),
         )
         st.session_state.al_reanalyse_complete = ra["company_name"]
         st.session_state.pending_reanalyse     = None
@@ -2740,6 +2816,15 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.error("Could not fetch structured financial data for that filing.")
                 else:
                     _edgar_text = _financial_data_to_text(_edgar_fd)
+                    _edgar_period = _analysis_period(_edgar_fd)
+                    _edgar_text_path = _text_cache_path(_tk, _edgar_period)
+                    if _edgar_text_path:
+                        try:
+                            os.makedirs(os.path.dirname(_edgar_text_path), exist_ok=True)
+                            with open(_edgar_text_path, "w", encoding="utf-8") as _f:
+                                _f.write(_edgar_text)
+                        except Exception:
+                            _edgar_text_path = None
                     _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
                     _edgar_bb = None
                     _edgar_dd = None
@@ -2804,7 +2889,10 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             _edgar_bb,
                             _edgar_dd,
                             raw_text=_edgar_text[:MAX_FILING_CHARS],
+                            source="edgar",
+                            file_path=_edgar_text_path,
                         )
+                        st.session_state["filing_library"] = lib_get()
                     except Exception:
                         pass
                     _save_analysis_to_supabase(
@@ -2816,6 +2904,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                         raw_text=_edgar_text[:MAX_FILING_CHARS],
                         file_name=_file_name,
                         file_size=len(_edgar_text),
+                        source="edgar",
+                        file_path=_edgar_text_path,
                     )
                     st.success(f"Loaded SEC EDGAR filing for {_tk or _company_name}.")
                     st.rerun()
@@ -2928,6 +3018,26 @@ uploaded_file = st.file_uploader(
 # explicitly uploads a different file.
 if st.session_state.get("reanalyse_no_text"):
     _pdf_info = st.session_state.get("reanalyse_pdf_info") or {}
+    if _pdf_info.get("source") == "edgar":
+        _restored_text = _read_text_cache(_pdf_info.get("file_path"))
+        if _restored_text:
+            st.session_state.pending_reanalyse = {
+                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
+                "entry_id":     _pdf_info.get("entry_id"),
+                "file_name":    _pdf_info.get("file_name", ""),
+                "file_size":    _pdf_info.get("file_size", 0),
+                "source":       "edgar",
+                "file_path":    _pdf_info.get("file_path"),
+            }
+            st.session_state.reanalyse_no_text  = None
+            st.session_state.reanalyse_pdf_info = None
+            st.rerun()
+        else:
+            st.info(f"Cached EDGAR text was not found for **{st.session_state.reanalyse_no_text}**. Load the filing from EDGAR again.")
+            st.session_state.reanalyse_no_text = None
+            st.session_state.reanalyse_pdf_info = None
+            st.stop()
     # Try session-state preload (set by Load button), then fall back to disk
     _cached_bytes = st.session_state.get("cached_pdf_bytes")
     if _cached_bytes is None:
@@ -3047,10 +3157,20 @@ if st.session_state.get("pending_reanalyse"):
     with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
         _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
 
+    if ra.get("source") == "edgar" and ra.get("file_path"):
+        try:
+            os.makedirs(os.path.dirname(ra["file_path"]), exist_ok=True)
+            with open(ra["file_path"], "w", encoding="utf-8") as _f:
+                _f.write(_ra_text)
+        except Exception:
+            pass
+
     try:
         lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
                 _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
-                mda_sentiment=_ra_mda)
+                mda_sentiment=_ra_mda,
+                source=ra.get("source", "pdf"),
+                file_path=ra.get("file_path"))
     except Exception:
         pass
     _save_analysis_to_supabase(
@@ -3064,6 +3184,8 @@ if st.session_state.get("pending_reanalyse"):
         file_name=ra.get("file_name", ""),
         file_size=ra.get("file_size", 0),
         pdf_bytes=ra.get("pdf_bytes"),
+        source=ra.get("source", "pdf"),
+        file_path=ra.get("file_path"),
     )
 
     st.session_state.financial_data      = _ra_fd
