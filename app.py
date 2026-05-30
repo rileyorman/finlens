@@ -2350,6 +2350,7 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
     st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
     _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
     if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
+        st.session_state["edgar_filings"] = []
         _tk = _edgar_ticker.strip().upper()
         if not _tk:
             st.warning("Enter a ticker first.")
@@ -2377,8 +2378,18 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
         _selected_idx = _filing_labels.index(_selected_label)
         _selected_filing = _edgar_filings[_selected_idx]
         _selected_accession = _selected_filing.get("accessionNumber")
+        _load_selected = st.button(
+            "Load Selected Filing",
+            type="primary",
+            use_container_width=True,
+            key="edgar_load_selected_btn",
+        )
 
-        if _selected_accession and st.session_state.get("edgar_loaded_accession") != _selected_accession:
+        if (
+            _load_selected
+            and _selected_accession
+            and st.session_state.get("edgar_loaded_accession") != _selected_accession
+        ):
             _tk = (st.session_state.get("edgar_ticker") or "").strip().upper()
             _cik = st.session_state.get("edgar_cik")
             with st.spinner("Fetching SEC XBRL financial statements..."):

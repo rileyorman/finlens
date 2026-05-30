@@ -204,7 +204,7 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
                 _section("OPERATING ACTIVITIES"),
                 _row(facts, "Net Cash Provided by Operating Activities", ["NetCashProvidedByUsedInOperatingActivities"], accession_number, "total"),
                 _section("INVESTING ACTIVITIES"),
-                _row(facts, "Capital Expenditures", ["CapitalExpenditureDiscontinuedOperations", "PaymentsToAcquirePropertyPlantAndEquipment"], accession_number),
+                _row(facts, "Capital Expenditures", ["PaymentsToAcquirePropertyPlantAndEquipment", "CapitalExpenditureDiscontinuedOperations"], accession_number),
                 _row(facts, "Net Cash Provided by Investing Activities", ["NetCashProvidedByUsedInInvestingActivities"], accession_number, "total"),
                 _section("FINANCING ACTIVITIES"),
                 _row(facts, "Net Cash Provided by Financing Activities", ["NetCashProvidedByUsedInFinancingActivities"], accession_number, "total"),
