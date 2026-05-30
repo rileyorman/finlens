@@ -509,6 +509,9 @@ if _education_topic_requested:
 if "onboarding_complete" not in st.session_state:
     st.session_state["onboarding_complete"] = False
 
+with open("assets/style.css") as _f:
+    st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
+
 if not st.session_state.get("authenticated"):
     st.markdown(
         """
@@ -577,27 +580,6 @@ if not st.session_state["onboarding_complete"]:
             font-size: 17px;
             line-height: 1.65;
         }
-        .feature-card {
-            min-height: 150px;
-            background: #161B27;
-            border: 0.5px solid #2D3650;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: left;
-            margin-bottom: 16px;
-        }
-        .feature-card h3 {
-            margin: 0 0 10px;
-            color: #F1F5F9;
-            font-size: 18px;
-            font-weight: 650;
-        }
-        .feature-card p {
-            margin: 0;
-            color: #94A3B8;
-            font-size: 14px;
-            line-height: 1.5;
-        }
         </style>
         <div class="onboarding-wrap">
             <div class="onboarding-logo">
@@ -664,10 +646,6 @@ if not st.session_state["onboarding_complete"]:
             st.session_state["onboarding_complete"] = True
             st.rerun()
     st.stop()
-
-with open("assets/style.css") as _f:
-    st.markdown(f"<style>{_f.read()}</style>", unsafe_allow_html=True)
-
 
 def _svg_b64(path: str) -> str:
     import base64
