@@ -11,7 +11,7 @@ MAX_EXTRACTION_BACK  = 150_000  # Back slice: financial statements (always at en
 MAX_FILING_CHARS     = 80_000   # Sonnet cap for analysis/summary calls (Calls 2-4)
 
 PROJECT_ROOT = Path(__file__).parent
-FILING_LIBRARY_PATH = PROJECT_ROOT / "filing_library.json"
+_PROJECT_LIBRARY_PATH = PROJECT_ROOT / "filing_library.json"
 
 # Mutable local storage. Windows Streamlit can fail to write to AppData on this
 # machine, so cache-like artifacts live in the system temp directory.
@@ -24,6 +24,7 @@ else:
     CACHE_DIR = Path("/tmp/finlens_cache")
 
 LIBRARY_PDFS_DIR = LIBRARY_DIR / "pdfs"
+FILING_LIBRARY_PATH = LIBRARY_DIR / "filing_library.json"
 ANALYSIS_CACHE_DIR = LIBRARY_DIR / "analysis"
 EDGAR_TEXT_DIR = LIBRARY_DIR / "edgar_text"
 
@@ -55,6 +56,11 @@ def _copy_dir_files_if_missing(source_dir: Path, target_dir: Path, pattern: str 
 
 
 def _migrate_appdata_storage() -> None:
+    try:
+        _copy_file_if_missing(_PROJECT_LIBRARY_PATH, FILING_LIBRARY_PATH)
+    except Exception:
+        pass
+
     local_appdata = os.environ.get("LOCALAPPDATA")
     if not local_appdata:
         return
