@@ -49,6 +49,9 @@ from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
 from config import (
     MAX_FILING_CHARS,
+    ANALYSIS_CACHE_DIR,
+    CACHE_DIR,
+    EDGAR_TEXT_DIR,
     LIBRARY_DIR,
     LIBRARY_PDFS_DIR,
     FILING_LIBRARY_PATH,
@@ -74,6 +77,9 @@ API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
+ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+EDGAR_TEXT_DIR.mkdir(parents=True, exist_ok=True)
 FILING_LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
