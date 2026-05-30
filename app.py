@@ -968,7 +968,6 @@ _NAV_ITEMS = [
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     ),
 ]
-_NAV_BY_SLUG = {slug: label for label, slug, _ in _NAV_ITEMS}
 _NAV_SLUG_BY_LABEL = {label: slug for label, slug, _ in _NAV_ITEMS}
 
 
@@ -977,10 +976,6 @@ def _query_param_value(name: str) -> str | None:
     if isinstance(value, list):
         return value[0] if value else None
     return value
-
-
-def _nav_href(slug: str) -> str:
-    return f"?nav={quote_plus(slug)}"
 
 
 def _filing_key(entry: dict) -> str:
@@ -1001,23 +996,33 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
-    _nav_from_query = _query_param_value("nav")
-    if _nav_from_query in _NAV_BY_SLUG:
-        st.session_state["nav_mode"] = _NAV_BY_SLUG[_nav_from_query]
     if st.session_state.get("nav_mode") not in _NAV_SLUG_BY_LABEL:
         st.session_state["nav_mode"] = "Education" if _education_topic else "Single Analysis"
     page = st.session_state["nav_mode"]
-    st.markdown('<nav class="sidebar-nav" aria-label="Primary navigation">', unsafe_allow_html=True)
-    for _label, _slug, _icon in _NAV_ITEMS:
-        _active = " active" if page == _label else ""
-        st.markdown(
-            f'<a class="sidebar-nav-item{_active}" href="{_nav_href(_slug)}">'
-            f'<span class="sidebar-nav-icon">{_icon}</span>'
-            f'<span>{escape(_label)}</span>'
-            f'</a>',
-            unsafe_allow_html=True,
-        )
-    st.markdown("</nav>", unsafe_allow_html=True)
+    _active_slug = _NAV_SLUG_BY_LABEL[page]
+    st.markdown(
+        f"""
+        <style>
+        section[data-testid="stSidebar"] [class*="st-key-nav_{_active_slug}"] button {{
+            background: rgba(24,95,165,0.1) !important;
+            border-left-color: #185FA5 !important;
+            color: #F1F5F9 !important;
+            font-weight: 500 !important;
+        }}
+        section[data-testid="stSidebar"] [class*="st-key-nav_{_active_slug}"] button p {{
+            color: #F1F5F9 !important;
+            font-weight: 500 !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="sidebar-nav" aria-label="Primary navigation">', unsafe_allow_html=True)
+    for _label, _slug, _ in _NAV_ITEMS:
+        if st.button(_label, key=f"nav_{_slug}", use_container_width=True):
+            st.session_state["nav_mode"] = _label
+            st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
     if page != "Education" and _education_topic:
         try:
             del st.query_params["education"]
