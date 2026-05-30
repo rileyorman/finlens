@@ -13,6 +13,7 @@ from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
+from modules.edgar_fetcher import get_cik, get_recent_filings, get_financial_data as get_edgar_financial_data
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.peer_comparison import get_peer_data, peer_map
@@ -209,6 +210,29 @@ def _save_analysis_to_supabase(
             supabase_storage.save_pdf(ticker, period, pdf_bytes)
     except Exception:
         pass
+
+
+def _financial_data_to_text(financial_data: dict) -> str:
+    lines = [
+        f"Company: {financial_data.get('company_name', '')}",
+        f"Period: {financial_data.get('period', '')}",
+        f"Currency: {financial_data.get('currency', '')}",
+        "",
+    ]
+    for key, label in [
+        ("income_statement", "Income Statement"),
+        ("balance_sheet", "Balance Sheet"),
+        ("cash_flow_statement", "Cash Flow Statement"),
+    ]:
+        lines.append(label)
+        for row in financial_data.get(key, []):
+            lines.append(
+                f"- {row.get('line_item', '')}: "
+                f"{financial_data.get('fiscal_year', 'Current')}={row.get('value')}; "
+                f"{financial_data.get('fiscal_year_prior', 'Prior')}={row.get('value_prior')}"
+            )
+        lines.append("")
+    return "\n".join(lines)
 
 
 # --- Password gate ---
@@ -2322,6 +2346,124 @@ if "market_data" not in st.session_state:
     st.session_state.market_data = None
 
 # --- Main area ---------------------------------------------------------
+with st.expander("Fetch from SEC EDGAR", expanded=False):
+    st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
+    _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
+    if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
+        _tk = _edgar_ticker.strip().upper()
+        if not _tk:
+            st.warning("Enter a ticker first.")
+        else:
+            with st.spinner(f"Finding SEC filings for {_tk}..."):
+                _cik = get_cik(_tk)
+                _filings = get_recent_filings(_cik) if _cik else []
+            if not _cik:
+                st.error(f"Could not find a CIK for {_tk}.")
+            elif not _filings:
+                st.error(f"No recent 10-K filings found for {_tk}.")
+            else:
+                st.session_state["edgar_cik"] = _cik
+                st.session_state["edgar_filings"] = _filings
+                st.session_state["edgar_loaded_accession"] = None
+                st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_tk}.")
+
+    _edgar_filings = st.session_state.get("edgar_filings") or []
+    if _edgar_filings:
+        _filing_labels = [
+            f"{row.get('form')} filed {row.get('filingDate')} — report {row.get('reportDate')}"
+            for row in _edgar_filings
+        ]
+        _selected_label = st.selectbox("Recent filings", _filing_labels, key="edgar_filing_select")
+        _selected_idx = _filing_labels.index(_selected_label)
+        _selected_filing = _edgar_filings[_selected_idx]
+        _selected_accession = _selected_filing.get("accessionNumber")
+
+        if _selected_accession and st.session_state.get("edgar_loaded_accession") != _selected_accession:
+            _tk = (st.session_state.get("edgar_ticker") or "").strip().upper()
+            _cik = st.session_state.get("edgar_cik")
+            with st.spinner("Fetching SEC XBRL financial statements..."):
+                _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
+
+            if not _edgar_fd:
+                st.error("Could not fetch structured financial data for that filing.")
+            else:
+                _edgar_text = _financial_data_to_text(_edgar_fd)
+                _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
+                _edgar_bb = None
+                _edgar_dd = None
+                with st.spinner("Generating investment signal from SEC data..."):
+                    try:
+                        _edgar_sd = analyze_summary(_edgar_text, _edgar_fd, API_KEY)
+                        if isinstance(_edgar_sd, dict):
+                            _edgar_sd.setdefault("ticker", _tk)
+                            _edgar_sd.setdefault("filing_date", _selected_filing.get("filingDate"))
+                    except Exception as e:
+                        st.warning(f"Investment signal could not be generated: {e}.")
+                with st.spinner("Generating bull/bear case from SEC data..."):
+                    try:
+                        _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY)
+                    except Exception as e:
+                        st.warning(f"Bull/bear case could not be generated: {e}.")
+                with st.spinner("Generating dashboard insights from SEC data..."):
+                    try:
+                        _edgar_dd = analyze_dashboard_insights(_edgar_text, _edgar_sd, _edgar_fd, API_KEY)
+                    except Exception as e:
+                        st.warning(f"Dashboard insights could not be generated: {e}.")
+
+                _edgar_md = {}
+                with st.spinner(f"Fetching market data for {_tk}..."):
+                    _edgar_md = get_market_data(_tk)
+                _market_cap = _edgar_md.get("market_cap") or 0.0
+                try:
+                    _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
+                except Exception as e:
+                    st.error(f"Could not generate Excel file: {e}")
+                    st.stop()
+
+                _entry_id = f"edgar_{_cik}_{_selected_accession}"
+                _file_name = f"{_tk}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
+                st.session_state.financial_data      = _edgar_fd
+                st.session_state.summary_data        = _edgar_sd
+                st.session_state.bear_bull_data      = _edgar_bb
+                st.session_state.dashboard_data      = _edgar_dd
+                st.session_state.mda_sentiment       = None
+                st.session_state.market_data         = _edgar_md
+                st.session_state.excel_bytes         = _excel_bytes
+                st.session_state.last_filename       = _file_name
+                st.session_state.resolved_ticker     = _tk
+                st.session_state.loaded_from_library = False
+                st.session_state.cache_hit           = False
+                st.session_state.dcf_result          = None
+                st.session_state["manual_ticker"]    = _tk
+                st.session_state["edgar_loaded_accession"] = _selected_accession
+                st.session_state.pop("peer_data", None)
+
+                try:
+                    lib_add(
+                        _entry_id,
+                        _file_name,
+                        len(_edgar_text),
+                        _edgar_fd,
+                        _edgar_sd,
+                        _edgar_bb,
+                        _edgar_dd,
+                        raw_text=_edgar_text[:MAX_FILING_CHARS],
+                    )
+                except Exception:
+                    pass
+                _save_analysis_to_supabase(
+                    _tk,
+                    _edgar_fd,
+                    _edgar_sd,
+                    _edgar_bb,
+                    _edgar_dd,
+                    raw_text=_edgar_text[:MAX_FILING_CHARS],
+                    file_name=_file_name,
+                    file_size=len(_edgar_text),
+                )
+                st.success(f"Loaded SEC EDGAR filing for {_tk}.")
+                st.rerun()
+
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
     type=["pdf"],
