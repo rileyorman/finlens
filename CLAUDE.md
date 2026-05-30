@@ -18,6 +18,28 @@ Or double-click `run.bat`.
 ## Tech Stack
 - Python, Streamlit, Claude API (claude-sonnet-4-6), pdfplumber, openpyxl
 
+## Supabase Schema
+```sql
+CREATE TABLE filings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz DEFAULT now(),
+  ticker text,
+  company text,
+  period text,
+  data jsonb,
+  CONSTRAINT filings_ticker_period_unique UNIQUE (ticker, period)
+);
+
+CREATE TABLE pdfs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz DEFAULT now(),
+  ticker text,
+  period text,
+  file_data text,
+  CONSTRAINT pdfs_ticker_period_unique UNIQUE (ticker, period)
+);
+```
+
 ## Known Issues
 - **Avast antivirus — SSL CERTIFICATE_VERIFY_FAILED on Windows**
   Avast performs HTTPS inspection (man-in-the-middle): it presents its own certificate, signed by the Avast CA, which lives in the Windows system cert store. The certifi bundle does not include the Avast CA, so `load_verify_locations(certifi.where())` fails with `unable to get local issuer certificate`.

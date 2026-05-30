@@ -15,7 +15,13 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.dcf_calculator import calculate_dcf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
-from modules.filing_library import add_entry as lib_add, get_entries as lib_get, delete_entry as lib_delete
+from modules.filing_library import (
+    add_entry as lib_add,
+    get_entries as lib_get,
+    delete_entry as lib_delete,
+    import_entries as lib_import_entries,
+)
+from modules import supabase_storage
 from modules.learning import info_tooltip
 from modules.portfolio_registry import (
     get_portfolio_names, create_portfolio,
@@ -83,6 +89,112 @@ def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
         return None
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
     return os.path.join("library", "pdfs", f"{safe}.pdf")
+
+
+def _supabase_row_to_library_entry(row: dict) -> dict:
+    data = row.get("data") or {}
+    if not isinstance(data, dict):
+        data = {}
+    financial_data = data.get("financial_data") if isinstance(data.get("financial_data"), dict) else {}
+    summary_data = data.get("summary_data") if isinstance(data.get("summary_data"), dict) else None
+    bear_bull_data = data.get("bear_bull_data") if isinstance(data.get("bear_bull_data"), dict) else None
+    dashboard_data = data.get("dashboard_data") if isinstance(data.get("dashboard_data"), dict) else None
+    mda_sentiment = data.get("mda_sentiment") if isinstance(data.get("mda_sentiment"), dict) else None
+    raw_text = data.get("raw_text") if isinstance(data.get("raw_text"), str) else None
+
+    ticker = row.get("ticker") or (summary_data or {}).get("ticker") or "—"
+    period = row.get("period") or financial_data.get("period", "")
+    company = row.get("company") or financial_data.get("company_name", "Unknown")
+
+    return {
+        "id": row.get("id") or f"{ticker}_{period}",
+        "company_name": company,
+        "ticker": ticker,
+        "period": period,
+        "fiscal_year": financial_data.get("fiscal_year") or period,
+        "analysed_at": row.get("created_at", ""),
+        "file_name": data.get("file_name") or (f"{ticker}_{period}.pdf" if ticker and period else ""),
+        "file_size_bytes": data.get("file_size_bytes", 0),
+        "financial_data": financial_data,
+        "summary_data": summary_data,
+        "bear_bull_data": bear_bull_data,
+        "dashboard_data": dashboard_data,
+        "mda_sentiment": mda_sentiment,
+        "raw_text": raw_text,
+    }
+
+
+def _hydrate_library_from_supabase() -> None:
+    try:
+        if lib_get():
+            return
+        rows = supabase_storage.load_all_filings()
+        if not rows:
+            return
+        lib_import_entries([_supabase_row_to_library_entry(row) for row in rows])
+    except Exception:
+        pass
+
+
+def _analysis_period(financial_data: dict) -> str:
+    return financial_data.get("fiscal_year") or financial_data.get("period", "")
+
+
+def _supabase_analysis_payload(
+    financial_data: dict,
+    summary_data: dict | None,
+    bear_bull_data: dict | None,
+    dashboard_data: dict | None,
+    raw_text: str | None = None,
+    mda_sentiment: dict | None = None,
+    file_name: str = "",
+    file_size: int = 0,
+) -> dict:
+    return {
+        "financial_data": financial_data,
+        "summary_data": summary_data,
+        "bear_bull_data": bear_bull_data,
+        "dashboard_data": dashboard_data,
+        "mda_sentiment": mda_sentiment,
+        "raw_text": raw_text,
+        "file_name": file_name,
+        "file_size_bytes": file_size,
+    }
+
+
+def _save_analysis_to_supabase(
+    ticker: str | None,
+    financial_data: dict,
+    summary_data: dict | None,
+    bear_bull_data: dict | None,
+    dashboard_data: dict | None,
+    raw_text: str | None = None,
+    mda_sentiment: dict | None = None,
+    file_name: str = "",
+    file_size: int = 0,
+    pdf_bytes: bytes | None = None,
+) -> None:
+    try:
+        period = _analysis_period(financial_data)
+        company = financial_data.get("company_name", "Unknown")
+        ticker = ticker or (summary_data or {}).get("ticker")
+        if ticker == "—":
+            ticker = None
+        payload = _supabase_analysis_payload(
+            financial_data,
+            summary_data,
+            bear_bull_data,
+            dashboard_data,
+            raw_text=raw_text,
+            mda_sentiment=mda_sentiment,
+            file_name=file_name,
+            file_size=file_size,
+        )
+        supabase_storage.save_filing(ticker, company, period, payload)
+        if pdf_bytes:
+            supabase_storage.save_pdf(ticker, period, pdf_bytes)
+    except Exception:
+        pass
 
 
 st.set_page_config(
@@ -237,6 +349,8 @@ else:
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+_hydrate_library_from_supabase()
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
@@ -492,7 +606,37 @@ document.addEventListener('focusin', function(e) {
                                         "file_size":    entry.get("file_size_bytes", 0),
                                     }
                                 else:
-                                    st.session_state.al_no_text_warning = entry["company_name"]
+                                    _period = entry.get("fiscal_year") or entry.get("period", "")
+                                    _pdf_bytes = None
+                                    try:
+                                        _pdf_path = _pdf_cache_path(
+                                            ticker if ticker != "—" else None,
+                                            _period,
+                                        )
+                                        if _pdf_path and os.path.exists(_pdf_path):
+                                            with open(_pdf_path, "rb") as _f:
+                                                _pdf_bytes = _f.read()
+                                    except Exception:
+                                        _pdf_bytes = None
+                                    if _pdf_bytes is None:
+                                        _pdf_bytes = supabase_storage.load_pdf(
+                                            ticker if ticker != "—" else None,
+                                            _period,
+                                        )
+                                    if _pdf_bytes:
+                                        try:
+                                            st.session_state.pending_reanalyse = {
+                                                "raw_text":     extract_text_from_pdf(io.BytesIO(_pdf_bytes))[:MAX_FILING_CHARS],
+                                                "company_name": entry["company_name"],
+                                                "entry_id":     eid,
+                                                "file_name":    entry.get("file_name", ""),
+                                                "file_size":    entry.get("file_size_bytes", 0),
+                                                "pdf_bytes":    _pdf_bytes,
+                                            }
+                                        except Exception:
+                                            st.session_state.al_no_text_warning = entry["company_name"]
+                                    else:
+                                        st.session_state.al_no_text_warning = entry["company_name"]
                                 st.rerun()
                         with al_no:
                             if st.button("Cancel", key=f"al_ra_no_{eid}",
@@ -566,6 +710,11 @@ document.addEventListener('focusin', function(e) {
                         st.session_state.cached_pdf_bytes = (
                             open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
                         )
+                        if st.session_state.cached_pdf_bytes is None:
+                            st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
+                                ticker if ticker != "—" else None,
+                                entry.get("fiscal_year") or entry.get("period", ""),
+                            )
                     except Exception:
                         st.session_state.cached_pdf_bytes = None
                     st.rerun()
@@ -675,6 +824,18 @@ if page == "📈 Portfolio Manager":
                     mda_sentiment=_ra_mda)
         except Exception:
             pass
+        _save_analysis_to_supabase(
+            (_ra_sd or {}).get("ticker"),
+            _ra_fd,
+            _ra_sd,
+            _ra_bb,
+            _ra_dd,
+            raw_text=_ra_text,
+            mda_sentiment=_ra_mda,
+            file_name=ra.get("file_name", ""),
+            file_size=ra.get("file_size", 0),
+            pdf_bytes=ra.get("pdf_bytes"),
+        )
         st.session_state.al_reanalyse_complete = ra["company_name"]
         st.session_state.pending_reanalyse     = None
         st.rerun()
@@ -2040,6 +2201,8 @@ if st.session_state.get("reanalyse_no_text"):
                     _cached_bytes = _f.read()
         except Exception:
             _cached_bytes = None
+    if _cached_bytes is None:
+        _cached_bytes = supabase_storage.load_pdf(_pdf_info.get("ticker"), _pdf_info.get("period"))
     if _cached_bytes:
         try:
             _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
@@ -2049,6 +2212,7 @@ if st.session_state.get("reanalyse_no_text"):
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
                 "file_size":    _pdf_info.get("file_size", 0),
+                "pdf_bytes":    _cached_bytes,
             }
             st.session_state.reanalyse_no_text  = None
             st.session_state.reanalyse_pdf_info = None
@@ -2144,6 +2308,18 @@ if st.session_state.get("pending_reanalyse"):
                 mda_sentiment=_ra_mda)
     except Exception:
         pass
+    _save_analysis_to_supabase(
+        (_ra_sd or {}).get("ticker"),
+        _ra_fd,
+        _ra_sd,
+        _ra_bb,
+        _ra_dd,
+        raw_text=_ra_text,
+        mda_sentiment=_ra_mda,
+        file_name=ra.get("file_name", ""),
+        file_size=ra.get("file_size", 0),
+        pdf_bytes=ra.get("pdf_bytes"),
+    )
 
     st.session_state.financial_data      = _ra_fd
     st.session_state.summary_data        = _ra_sd
@@ -2294,6 +2470,18 @@ if uploaded_file:
                     mda_sentiment=mda_sentiment)
         except Exception:
             pass  # Library write failure must never block analysis
+        _save_analysis_to_supabase(
+            resolved_ticker,
+            financial_data,
+            summary_data,
+            bear_bull_data,
+            dashboard_data,
+            raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None,
+            mda_sentiment=mda_sentiment,
+            file_name=uploaded_file.name,
+            file_size=len(pdf_bytes),
+            pdf_bytes=pdf_bytes,
+        )
 
         # Save PDF bytes to disk so Re-Analyse can run without re-uploading.
         try:

@@ -29,6 +29,11 @@ def library_count() -> int:
     return len(get_entries())
 
 
+def import_entries(entries: list[dict]) -> None:
+    """Replace the local library with prebuilt entries."""
+    _save({"entries": entries})
+
+
 def add_entry(
     file_hash: str,
     file_name: str,
