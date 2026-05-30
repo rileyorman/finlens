@@ -2378,6 +2378,7 @@ if uploaded_file is None:
         st.session_state.resolved_ticker = None
         st.session_state.dcf_result      = None
         st.session_state.cache_hit       = False
+        st.session_state.pop("peer_data", None)
         st.session_state.pop("manual_ticker", None)
 elif (not st.session_state.get("loaded_from_library", False) and
       st.session_state.last_filename and
@@ -2395,6 +2396,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+    st.session_state.pop("peer_data", None)
     st.session_state.pop("manual_ticker", None)
 
 st.divider()
@@ -3334,11 +3336,11 @@ if st.session_state.financial_data:
                             "ticker": _peer_ticker,
                             "company": company,
                             "pe": market_data.get("pe_trailing") or market_data.get("pe_ratio"),
-                            "ev_ebitda": market_data.get("ev_ebitda") or market_data.get("enterprise_to_ebitda"),
-                            "pb": market_data.get("price_to_book") or market_data.get("pb"),
-                            "ps": market_data.get("price_to_sales") or market_data.get("ps"),
-                            "rev_growth": market_data.get("revenue_growth"),
-                            "gross_margin": market_data.get("gross_margins") or market_data.get("gross_margin"),
+                            "ev_ebitda": market_data.get("ev_ebitda"),
+                            "pb": market_data.get("pb"),
+                            "ps": market_data.get("ps"),
+                            "rev_growth": market_data.get("rev_growth"),
+                            "gross_margin": market_data.get("gross_margin"),
                             "is_current": True,
                         }
                     ]

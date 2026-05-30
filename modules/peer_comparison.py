@@ -31,7 +31,6 @@ def _num(value):
 def _fetch_peer(ticker: str) -> dict:
     stock = yf.Ticker(ticker)
     info = stock.info or {}
-    _ = stock.fast_info
     return {
         "ticker": ticker,
         "company": info.get("longName") or info.get("shortName") or ticker,
