@@ -32,7 +32,6 @@ from modules.filing_library import (
     import_entries as lib_import_entries,
 )
 from modules import supabase_storage
-from modules.learning import info_tooltip
 from modules.portfolio_registry import (
     get_portfolio_names, create_portfolio,
     delete_portfolio as del_portfolio_reg,
@@ -309,7 +308,34 @@ def _render_education_page(default_topic: str | None = None) -> None:
     st.markdown("## FinLens Education")
     st.caption("Plain-English explanations of the financial statements, valuation metrics, and analysis tools used in FinLens.")
 
-    topics = list(EDUCATION.keys())
+    education_sections = {
+        "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
+        "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "beta", "margin_of_safety", "dcf"],
+        "FinLens Analysis Tools": [
+            "signal", "quality_score", "distress_score", "red_flags",
+            "mda_sentiment", "scenario_simulator", "bull_bear", "lynch_category",
+        ],
+    }
+
+    for section_title, section_topics in education_sections.items():
+        st.markdown(f"### {section_title}")
+        topic_links = [
+            f'<a href="?education={topic}" target="_self" '
+            f'style="color:#378ADD;text-decoration:none;font-weight:600">'
+            f'{EDUCATION[topic]["title"]}</a>'
+            for topic in section_topics
+            if topic in EDUCATION
+        ]
+        st.markdown(" &nbsp; · &nbsp; ".join(topic_links), unsafe_allow_html=True)
+
+    st.divider()
+
+    topics = [
+        topic
+        for section_topics in education_sections.values()
+        for topic in section_topics
+        if topic in EDUCATION
+    ]
     default_topic = default_topic if default_topic in EDUCATION else topics[0]
     topic = st.selectbox(
         "Topic",
@@ -615,9 +641,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     _nav_options = [
-        "📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison",
-        "📚 Methodology", "🎓 Education", "📈 Stock Tracker",
+        "📊 Single Analysis",
+        "📈 Portfolio Manager",
+        "📂 Filing Comparison",
+        "📈 Stock Tracker",
+        "🎓 Education",
     ]
+    if st.session_state.get("nav_mode") not in _nav_options:
+        st.session_state["nav_mode"] = "🎓 Education" if _education_topic else "📊 Single Analysis"
     page = st.radio(
         "Mode",
         _nav_options,
@@ -1878,36 +1909,6 @@ if page == "📂 Filing Comparison":
                             f'</div>',
                             unsafe_allow_html=True,
                         )
-
-    st.stop()
-
-
-# --- Methodology page --------------------------------------------------
-if page == "📚 Methodology":
-    from modules.learning import LEARNING_CONTENT
-
-    st.markdown("## FinLens Methodology")
-    st.markdown("#### How each analysis works")
-    st.divider()
-
-    _METHOD_ORDER = [
-        "signal", "quality_score", "distress_score", "lynch_category",
-        "red_flags", "bull_bear", "mda_sentiment", "scenario_simulator",
-    ]
-    _SECTION_NAMES = {
-        "signal":             "Investment Signal",
-        "quality_score":      "Quality Score",
-        "distress_score":     "Distress Score (Altman Z-Score)",
-        "lynch_category":     "Lynch Category",
-        "red_flags":          "Red Flag Analysis",
-        "bull_bear":          "Bull / Bear Case",
-        "mda_sentiment":      "MD&A Sentiment",
-        "scenario_simulator": "Scenario Simulator",
-    }
-    for _mk in _METHOD_ORDER:
-        st.subheader(_SECTION_NAMES[_mk])
-        st.markdown(info_tooltip(_mk))
-        st.divider()
 
     st.stop()
 
