@@ -1,5 +1,7 @@
 import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 EXTRACTION_MODEL    = "claude-haiku-4-5-20251001"   # Fast, cheap, accurate for numbers
@@ -29,3 +31,48 @@ if sys.platform == "win32":
     CACHE_DIR = LIBRARY_DIR / "cache"
 else:
     CACHE_DIR = Path("/tmp/finlens_cache")
+
+
+def safe_write_text(path, content, encoding="utf-8") -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_text(content, encoding=encoding)
+    except PermissionError:
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding=encoding,
+                dir=path.parent,
+                delete=False,
+                suffix=".tmp",
+            ) as f:
+                f.write(content)
+                tmp_path = Path(f.name)
+            shutil.move(str(tmp_path), str(path))
+        except Exception:
+            tmp_path2 = Path(tempfile.gettempdir()) / path.name
+            tmp_path2.write_text(content, encoding=encoding)
+            shutil.move(str(tmp_path2), str(path))
+
+
+def safe_write_bytes(path, content: bytes) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_bytes(content)
+    except PermissionError:
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=path.parent,
+                delete=False,
+                suffix=".tmp",
+            ) as f:
+                f.write(content)
+                tmp_path = Path(f.name)
+            shutil.move(str(tmp_path), str(path))
+        except Exception:
+            tmp_path2 = Path(tempfile.gettempdir()) / path.name
+            tmp_path2.write_bytes(content)
+            shutil.move(str(tmp_path2), str(path))

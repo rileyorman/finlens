@@ -47,7 +47,14 @@ from modules.portfolio_registry import (
 )
 from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
-from config import MAX_FILING_CHARS, LIBRARY_DIR, LIBRARY_PDFS_DIR, FILING_LIBRARY_PATH
+from config import (
+    MAX_FILING_CHARS,
+    LIBRARY_DIR,
+    LIBRARY_PDFS_DIR,
+    FILING_LIBRARY_PATH,
+    safe_write_bytes,
+    safe_write_text,
+)
 import plotly.graph_objects as go
 
 st.set_page_config(
@@ -591,10 +598,7 @@ def _persist_loaded_edgar_to_library() -> None:
     text_path = _text_cache_path(ticker, period)
     if text_path and (not Path(text_path).exists()):
         try:
-            text_file = Path(text_path)
-            text_file.parent.mkdir(parents=True, exist_ok=True)
-            with text_file.open("w", encoding="utf-8") as _f:
-                _f.write(filing_text)
+            safe_write_text(text_path, filing_text)
         except Exception as _e:
             st.warning(f"Could not save EDGAR text cache: {_e}")
             text_path = None
@@ -1598,10 +1602,7 @@ if page == "Portfolio Manager":
             _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
-                text_file = Path(ra["file_path"])
-                text_file.parent.mkdir(parents=True, exist_ok=True)
-                with text_file.open("w", encoding="utf-8") as _f:
-                    _f.write(_ra_text)
+                safe_write_text(ra["file_path"], _ra_text)
             except Exception:
                 pass
         try:
@@ -3067,10 +3068,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _edgar_text_path = _text_cache_path(_tk, _edgar_period)
                     if _edgar_text_path:
                         try:
-                            text_file = Path(_edgar_text_path)
-                            text_file.parent.mkdir(parents=True, exist_ok=True)
-                            with text_file.open("w", encoding="utf-8") as _f:
-                                _f.write(_edgar_text)
+                            safe_write_text(_edgar_text_path, _edgar_text)
                         except Exception:
                             _edgar_text_path = None
                     _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
@@ -3419,10 +3417,7 @@ if st.session_state.get("pending_reanalyse"):
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
-            text_file = Path(ra["file_path"])
-            text_file.parent.mkdir(parents=True, exist_ok=True)
-            with text_file.open("w", encoding="utf-8") as _f:
-                _f.write(_ra_text)
+            safe_write_text(ra["file_path"], _ra_text)
         except Exception:
             pass
 
@@ -3642,10 +3637,7 @@ if uploaded_file:
         try:
             _pdf_disk_path = _pdf_cache_path(resolved_ticker, _period_label)
             if _pdf_disk_path:
-                pdf_file = Path(_pdf_disk_path)
-                pdf_file.parent.mkdir(parents=True, exist_ok=True)
-                with pdf_file.open("wb") as _f:
-                    _f.write(pdf_bytes)
+                safe_write_bytes(_pdf_disk_path, pdf_bytes)
         except Exception:
             pass  # PDF cache write failure must never block analysis
 

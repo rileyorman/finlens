@@ -1,9 +1,8 @@
 import json
 import re
-import shutil
 from pathlib import Path
 
-from config import ANALYSIS_CACHE_DIR
+from config import ANALYSIS_CACHE_DIR, safe_write_bytes, safe_write_text
 
 _CACHE_DIR = ANALYSIS_CACHE_DIR
 _OLD_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
@@ -16,7 +15,7 @@ def _migrate_old_cache() -> None:
             for old_file in _OLD_CACHE_DIR.glob("*.json"):
                 new_file = _CACHE_DIR / old_file.name
                 if not new_file.exists():
-                    shutil.copy2(old_file, new_file)
+                    safe_write_bytes(new_file, old_file.read_bytes())
     except Exception:
         pass
 
@@ -37,8 +36,7 @@ def save_analysis(ticker: str, period: str, results: dict) -> bool:
             return False
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path = analysis_cache_path(ticker, period)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, default=str)
+        safe_write_text(path, json.dumps(results, indent=2, default=str))
         return True
     except Exception:
         return False

@@ -1,9 +1,8 @@
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
-from config import FILING_LIBRARY_PATH, LIBRARY_PDFS_DIR
+from config import FILING_LIBRARY_PATH, LIBRARY_PDFS_DIR, safe_write_bytes, safe_write_text
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 _OLD_LIBRARY_PATH = _PROJECT_ROOT / "filing_library.json"
@@ -16,13 +15,13 @@ def _migrate_old_storage() -> None:
         _LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
         LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
         if _OLD_LIBRARY_PATH.exists() and not _LIBRARY_PATH.exists():
-            shutil.copy2(_OLD_LIBRARY_PATH, _LIBRARY_PATH)
+            safe_write_bytes(_LIBRARY_PATH, _OLD_LIBRARY_PATH.read_bytes())
         if _OLD_PDFS_DIR.exists():
             for old_file in _OLD_PDFS_DIR.iterdir():
                 if old_file.is_file():
                     new_file = LIBRARY_PDFS_DIR / old_file.name
                     if not new_file.exists():
-                        shutil.copy2(old_file, new_file)
+                        safe_write_bytes(new_file, old_file.read_bytes())
     except Exception:
         pass
 
@@ -64,8 +63,7 @@ def _load() -> dict:
 
 def _save(library: dict) -> None:
     _LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(_LIBRARY_PATH, "w", encoding="utf-8") as f:
-        json.dump(library, f, indent=2)
+    safe_write_text(_LIBRARY_PATH, json.dumps(library, indent=2))
 
 
 def get_entries() -> list:
