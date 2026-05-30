@@ -799,11 +799,7 @@ def _query_param_value(name: str) -> str | None:
 
 
 def _nav_href(slug: str) -> str:
-    filing = _query_param_value("filing")
-    href = f"?nav={quote_plus(slug)}"
-    if filing:
-        href += f"&filing={quote_plus(filing)}"
-    return href
+    return f"?nav={quote_plus(slug)}"
 
 
 def _filing_key(entry: dict) -> str:
@@ -1149,11 +1145,6 @@ document.addEventListener('focusin', function(e) {
         lib_entries = lib_get()
         lib_count   = len(lib_entries)
         label       = f"Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
-        _filing_from_query = _query_param_value("filing")
-        if _filing_from_query == "__none__":
-            st.session_state["sidebar_expanded_filing"] = None
-        elif _filing_from_query:
-            st.session_state["sidebar_expanded_filing"] = _filing_from_query
         with st.expander(label, expanded=lib_count > 0):
             if not lib_entries:
                 st.caption("No filings saved yet. Analyse a PDF to add it here.")
@@ -1163,23 +1154,16 @@ document.addEventListener('focusin', function(e) {
                 fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
                 filing_key = _filing_key(entry)
                 expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
-                nav_slug   = _NAV_SLUG_BY_LABEL.get(page, "single")
-                next_key   = "__none__" if expanded else filing_key
-                chevron    = (
-                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                    '<polyline points="6 9 12 15 18 9"/></svg>'
-                )
-                safe_ticker = escape(ticker if ticker and ticker != "—" else "N/A")
-                safe_period = escape(fy or "Unknown period")
-                st.markdown(
-                    f'<a class="filing-library-row{" expanded" if expanded else ""}" '
-                    f'href="?nav={quote_plus(nav_slug)}&filing={quote_plus(next_key)}">'
-                    f'<span class="filing-library-row-text">'
-                    f'<strong>{safe_ticker}</strong><span>{safe_period}</span>'
-                    f'</span><span class="filing-library-chevron">{chevron}</span></a>',
-                    unsafe_allow_html=True,
-                )
+                row_ticker  = ticker if ticker and ticker != "—" else "N/A"
+                row_period  = fy or "Unknown period"
+                chevron     = "⌃" if expanded else "⌄"
+                if st.button(
+                    f"**{row_ticker}**    {row_period}    {chevron}",
+                    key=f"filing_row_{filing_key}",
+                    use_container_width=True,
+                ):
+                    st.session_state["sidebar_expanded_filing"] = None if expanded else filing_key
+                    st.rerun()
                 if expanded:
                     load_col, reanalyse_col = st.columns(2)
                     with load_col:
