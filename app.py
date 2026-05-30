@@ -21,6 +21,7 @@ from modules.edgar_fetcher import (
     get_cik,
     get_recent_filings,
     get_financial_data as get_edgar_financial_data,
+    search_companies as search_edgar_companies,
     _fmt as _fmt_edgar_value,
 )
 from modules.education_content import EDUCATION
@@ -75,6 +76,20 @@ def _fmt_market_cap(mc_millions):
 
 
 SEDAR_SEARCH_URL = "https://www.sedarplus.ca/csa-party/party/search.html"
+SEDAR_FILING_TYPES = [
+    "Annual MD&A",
+    "Interim MD&A (Q1 / Q2 / Q3)",
+    "Annual Information Form (AIF)",
+    "Annual Financial Statements",
+    "Interim Financial Statements",
+]
+SEDAR_QUICK_LINKS = [
+    ("Annual MD&A", "Annual MD&A"),
+    ("Interim MD&A", "Interim MD&A"),
+    ("AIF", "Annual Information Form (AIF)"),
+    ("Annual Financial Statements", "Annual Financial Statements"),
+    ("Interim Financial Statements", "Interim Financial Statements"),
+]
 
 
 def _ensure_yfinance_cache_location():
@@ -88,9 +103,19 @@ def _ensure_yfinance_cache_location():
 
 def _sedar_search_url(company_name: str, filing_type: str | None = None) -> str:
     query = (company_name or "").strip()
+    url = f"{SEDAR_SEARCH_URL}?query={quote_plus(query)}"
     if filing_type:
-        query = f"{query} {filing_type}".strip()
-    return f"{SEDAR_SEARCH_URL}?query={quote_plus(query)}"
+        url = f"{url}&filing_type={quote_plus(filing_type)}"
+    return url
+
+
+def _external_link(label: str, url: str):
+    safe_url = escape(url, quote=True)
+    safe_label = escape(label)
+    st.markdown(
+        f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer">{safe_label}</a>',
+        unsafe_allow_html=True,
+    )
 
 
 def _resolve_sedar_company_from_yfinance(ticker: str) -> dict | None:
@@ -2532,19 +2557,21 @@ if "market_data" not in st.session_state:
     st.session_state.market_data = None
 
 # --- Main area ---------------------------------------------------------
-with st.expander("Fetch from SEC EDGAR", expanded=False):
+with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
     _edgar_tab, _sedar_tab = st.tabs(["SEC EDGAR", "SEDAR+"])
 
     with _edgar_tab:
         st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
-        _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
+        _edgar_query = st.text_input("Company name or ticker", placeholder="e.g. NVDA, Apple", key="edgar_ticker")
         if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
             st.session_state["edgar_filings"] = []
+            st.session_state["edgar_company_matches"] = []
             st.session_state.loaded_from_edgar = False
-            _tk = _edgar_ticker.strip().upper()
-            if not _tk:
-                st.warning("Enter a ticker first.")
-            else:
+            _query = _edgar_query.strip()
+            _tk = _query.upper()
+            if not _query:
+                st.warning("Enter a company name or ticker first.")
+            elif re.fullmatch(r"[A-Z]{1,5}", _tk):
                 with st.spinner(f"Finding SEC filings for {_tk}..."):
                     _cik = get_cik(_tk)
                     _filings = get_recent_filings(_cik) if _cik else []
@@ -2554,9 +2581,46 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                     st.error(f"No recent 10-K filings found for {_tk}.")
                 else:
                     st.session_state["edgar_cik"] = _cik
+                    st.session_state["edgar_company_name"] = _tk
+                    st.session_state["edgar_selected_ticker"] = _tk
                     st.session_state["edgar_filings"] = _filings
                     st.session_state["edgar_loaded_accession"] = None
                     st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_tk}.")
+            else:
+                with st.spinner(f"Searching SEC EDGAR for {_query}..."):
+                    _matches = search_edgar_companies(_query)
+                if not _matches:
+                    st.error(f"No SEC EDGAR company matches found for {_query}.")
+                else:
+                    st.session_state["edgar_company_matches"] = _matches
+                    st.success(f"Found {len(_matches)} possible SEC EDGAR match(es). Select one below.")
+
+        _edgar_matches = st.session_state.get("edgar_company_matches") or []
+        if _edgar_matches:
+            _match_labels = []
+            for row in _edgar_matches:
+                _label = row.get("name", "Unknown company")
+                if row.get("ticker"):
+                    _label = f"{_label} ({row.get('ticker')})"
+                _label = f"{_label} - CIK {row.get('cik')}"
+                _match_labels.append(_label)
+            _selected_company_label = st.selectbox("Matching companies", _match_labels, key="edgar_company_select")
+            _selected_company = _edgar_matches[_match_labels.index(_selected_company_label)]
+            if st.button("Find Recent 10-K Filings", use_container_width=True, key="edgar_find_company_filings_btn"):
+                _cik = _selected_company.get("cik")
+                with st.spinner(f"Finding SEC filings for {_selected_company.get('name', 'selected company')}..."):
+                    _filings = get_recent_filings(_cik) if _cik else []
+                if not _cik:
+                    st.error("Could not find a CIK for the selected company.")
+                elif not _filings:
+                    st.error(f"No recent 10-K filings found for {_selected_company.get('name', 'the selected company')}.")
+                else:
+                    st.session_state["edgar_cik"] = _cik
+                    st.session_state["edgar_company_name"] = _selected_company.get("name", "")
+                    st.session_state["edgar_selected_ticker"] = _selected_company.get("ticker") or ""
+                    st.session_state["edgar_filings"] = _filings
+                    st.session_state["edgar_loaded_accession"] = None
+                    st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_selected_company.get('name', 'the selected company')}.")
 
         _edgar_filings = st.session_state.get("edgar_filings") or []
         if _edgar_filings:
@@ -2569,7 +2633,7 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
             _selected_filing = _edgar_filings[_selected_idx]
             _selected_accession = _selected_filing.get("accessionNumber")
             _load_selected = st.button(
-                "Load Selected Filing",
+                "Load Selected Filing $",
                 type="primary",
                 use_container_width=True,
                 key="edgar_load_selected_btn",
@@ -2580,7 +2644,8 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                 and _selected_accession
                 and st.session_state.get("edgar_loaded_accession") != _selected_accession
             ):
-                _tk = (st.session_state.get("edgar_ticker") or "").strip().upper()
+                _tk = (st.session_state.get("edgar_selected_ticker") or st.session_state.get("edgar_ticker") or "").strip().upper()
+                _company_name = (st.session_state.get("edgar_company_name") or _tk or "company").strip()
                 _cik = st.session_state.get("edgar_cik")
                 with st.spinner("Fetching SEC XBRL financial statements..."):
                     _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
@@ -2612,8 +2677,9 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                             st.warning(f"Dashboard insights could not be generated: {e}.")
 
                     _edgar_md = {}
-                    with st.spinner(f"Fetching market data for {_tk}..."):
-                        _edgar_md = get_market_data(_tk)
+                    if _tk and re.fullmatch(r"[A-Z]{1,5}", _tk):
+                        with st.spinner(f"Fetching market data for {_tk}..."):
+                            _edgar_md = get_market_data(_tk)
                     _market_cap = _edgar_md.get("market_cap") or 0.0
                     try:
                         _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
@@ -2622,7 +2688,8 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                         st.stop()
 
                     _entry_id = f"edgar_{_cik}_{_selected_accession}"
-                    _file_name = f"{_tk}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
+                    _file_prefix = _tk or re.sub(r"[^A-Za-z0-9]+", "_", _company_name).strip("_") or "EDGAR"
+                    _file_name = f"{_file_prefix}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
                     st.session_state.financial_data      = _edgar_fd
                     st.session_state.summary_data        = _edgar_sd
                     st.session_state.bear_bull_data      = _edgar_bb
@@ -2664,7 +2731,7 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                         file_name=_file_name,
                         file_size=len(_edgar_text),
                     )
-                    st.success(f"Loaded SEC EDGAR filing for {_tk}.")
+                    st.success(f"Loaded SEC EDGAR filing for {_tk or _company_name}.")
                     st.rerun()
 
     with _sedar_tab:
@@ -2672,6 +2739,8 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
         _sedar_ticker = st.text_input("Canadian ticker", placeholder="e.g. SU, CNQ, SHOP, RY", key="sedar_ticker")
         if st.button("Find Filings", type="primary", use_container_width=True, key="sedar_find_filings_btn"):
             st.session_state.pop("sedar_company", None)
+            st.session_state.pop("sedar_selected_filing_url", None)
+            st.session_state.pop("sedar_selected_filing_type", None)
             st.session_state.loaded_from_sedar = False
             _ticker = _sedar_ticker.strip().upper()
             if not _ticker:
@@ -2696,28 +2765,32 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
             st.info(f"Company resolved: **{_company_name}** ({_ticker})")
 
             with st.container(border=True):
-                st.subheader("SEDAR+ filing links")
-                st.caption("Links open SEDAR+ searches in a new tab. Use the filing type labels below as the document type to select on SEDAR+.")
-                _filing_types = [
-                    "Annual MD&A (Annual Report)",
-                    "Interim MD&A (Quarterly Report)",
-                    "Annual Information Form (AIF)",
-                    "Financial Statements (Annual)",
-                    "Financial Statements (Interim)",
-                ]
+                st.subheader("Find recent SEDAR+ filings")
+                _selected_sedar_type = st.selectbox(
+                    "Filing type",
+                    SEDAR_FILING_TYPES,
+                    key="sedar_filing_type_select",
+                )
+                if st.button("Find Recent SEDAR+ Filings", use_container_width=True, key="sedar_find_recent_by_type_btn"):
+                    st.session_state["sedar_selected_filing_url"] = _sedar_search_url(_company_name, _selected_sedar_type)
+                    st.session_state["sedar_selected_filing_type"] = _selected_sedar_type
+
+                _selected_sedar_url = st.session_state.get("sedar_selected_filing_url")
+                if _selected_sedar_url:
+                    _selected_type = st.session_state.get("sedar_selected_filing_type", "selected filing type")
+                    _external_link(f"Open {_selected_type} on SEDAR+", _selected_sedar_url)
+                    st.info("Click the link above to open SEDAR+, download the PDF, then upload it below.")
+
+            with st.container(border=True):
+                st.subheader("Quick links — open filing type directly on SEDAR+")
                 _cols = st.columns(2)
-                for _idx, _filing_type in enumerate(_filing_types):
+                for _idx, (_label, _filing_type) in enumerate(SEDAR_QUICK_LINKS):
                     _url = _sedar_search_url(_company_name, _filing_type)
-                    _safe_url = escape(_url, quote=True)
-                    _safe_label = escape(_filing_type)
                     with _cols[_idx % 2]:
-                        st.markdown(
-                            f'<a href="{_safe_url}" target="_blank" rel="noopener noreferrer">{_safe_label}</a>',
-                            unsafe_allow_html=True,
-                        )
+                        _external_link(_label, _url)
 
                 _profile_url = _sedar_search_url(_company_name)
-                st.link_button("View full profile on SEDAR+", _profile_url, use_container_width=True)
+                _external_link("Open filing on SEDAR+", _profile_url)
 
             st.info("Once you've downloaded a filing from SEDAR+, upload it below to analyze it with Claude.")
 

@@ -35,6 +35,90 @@ def _zero_pad_cik(cik) -> str | None:
         return None
 
 
+def search_companies(company_name: str, count: int = 10) -> list[dict]:
+    try:
+        query = (company_name or "").strip()
+        if not query:
+            return []
+
+        search_url = (
+            "https://efts.sec.gov/LATEST/search-index"
+            f"?q={quote(f'\"{query}\"')}&dateRange=custom"
+            "&startdt=2020-01-01&enddt=2026-12-31&forms=10-K"
+        )
+        response = requests.get(search_url, headers=HEADERS, timeout=15)
+        matches = []
+        seen = set()
+        if response.ok:
+            payload = response.json()
+            hits = payload.get("hits", {}).get("hits", [])
+            for hit in hits:
+                source = hit.get("_source", {}) if isinstance(hit, dict) else {}
+                cik = (
+                    source.get("ciks")
+                    or source.get("cik")
+                    or source.get("cikNumber")
+                )
+                if isinstance(cik, list):
+                    cik = cik[0] if cik else None
+                padded = _zero_pad_cik(cik)
+                if not padded or padded in seen:
+                    continue
+                company = (
+                    source.get("entity")
+                    or source.get("companyName")
+                    or source.get("displayNames")
+                    or source.get("name")
+                    or query
+                )
+                if isinstance(company, list):
+                    company = company[0] if company else query
+                ticker = source.get("tickers") or source.get("ticker") or source.get("tickerSymbol")
+                if isinstance(ticker, list):
+                    ticker = ticker[0] if ticker else ""
+                matches.append({
+                    "cik": padded,
+                    "name": str(company).strip(),
+                    "ticker": str(ticker or "").strip().upper(),
+                })
+                seen.add(padded)
+                if len(matches) >= count:
+                    return matches
+
+        atom_url = (
+            "https://www.sec.gov/cgi-bin/browse-edgar"
+            f"?company={quote(query)}&CIK=&type=10-K&dateb=&owner=include"
+            "&count=10&search_text=&action=getcompany&output=atom"
+        )
+        response = requests.get(atom_url, headers=HEADERS, timeout=15)
+        if not response.ok:
+            return matches
+        root = ElementTree.fromstring(response.content)
+        for entry in root.iter():
+            if not entry.tag.lower().endswith("entry"):
+                continue
+            title = ""
+            cik = None
+            for child in entry:
+                tag = child.tag.lower()
+                text = child.text or ""
+                if tag.endswith("title"):
+                    title = text.strip()
+                match = re.search(r"CIK=(\d+)", text)
+                if match:
+                    cik = match.group(1)
+            padded = _zero_pad_cik(cik)
+            if padded and padded not in seen:
+                name = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", title).strip() or query
+                matches.append({"cik": padded, "name": name, "ticker": ""})
+                seen.add(padded)
+                if len(matches) >= count:
+                    break
+        return matches
+    except Exception:
+        return []
+
+
 def get_cik(ticker: str) -> str | None:
     try:
         ticker = (ticker or "").strip().upper()
