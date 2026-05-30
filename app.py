@@ -251,13 +251,14 @@ def _education_topic_param() -> str | None:
         return None
 
 
-def _learn_more(topic: str) -> None:
+def _learn_more(topic: str, label: str | None = None) -> None:
     if topic not in EDUCATION:
         return
+    link_text = f"Learn more about {label} →" if label else "Learn more →"
     st.markdown(
         f'<a href="?education={topic}" target="_self" '
         f'style="font-size:12px;color:#378ADD;text-decoration:none;font-weight:600">'
-        f'Learn more →</a>',
+        f'{link_text}</a>',
         unsafe_allow_html=True,
     )
 
@@ -3498,7 +3499,7 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            _learn_more("quality_score")
+            _learn_more("dcf", "Quality Score")
 
         with beta_col:
             beta_val = market_data.get("beta")
@@ -3511,7 +3512,7 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            _learn_more("beta")
+            _learn_more("beta", "Beta")
 
         with mos_col:
             _dcf_hdr = st.session_state.get("dcf_result") or {}
@@ -3538,13 +3539,13 @@ if st.session_state.financial_data:
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-            _learn_more("margin_of_safety")
+            _learn_more("margin_of_safety", "Margin of Safety")
 
         st.divider()
 
         # --- DCF Calculator ---
         st.markdown("#### DCF Calculator")
-        _learn_more("dcf")
+        _learn_more("dcf", "DCF Calculator")
 
         _dcf_c1, _dcf_c2, _dcf_c3, _dcf_c4 = st.columns([2, 2, 2, 1])
         with _dcf_c1:
