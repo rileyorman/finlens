@@ -1,8 +1,10 @@
 import os
 import io
 import re
+from datetime import datetime, timedelta
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull, analyze_dashboard_insights
@@ -33,6 +35,17 @@ from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
 from config import MAX_FILING_CHARS
 import plotly.graph_objects as go
+
+st.set_page_config(
+    page_title="FinLens",
+    page_icon="assets/favicon.svg",
+    layout="wide",
+)
+
+cookies = CookieManager()
+cookies._default_expiry = datetime.now() + timedelta(days=30)
+if not cookies.ready():
+    st.stop()
 
 load_dotenv()
 
@@ -197,17 +210,14 @@ def _save_analysis_to_supabase(
         pass
 
 
-st.set_page_config(
-    page_title="FinLens",
-    page_icon="assets/favicon.svg",
-    layout="wide",
-)
-
 # --- Password gate ---
 try:
     _APP_PASSWORD = st.secrets["APP_PASSWORD"]
 except (KeyError, FileNotFoundError):
     _APP_PASSWORD = os.environ.get("APP_PASSWORD", "[dev-password-removed]")
+
+if cookies.get("finlens_auth") == "true":
+    st.session_state["authenticated"] = True
 
 if not st.session_state.get("authenticated"):
     st.markdown(
@@ -230,8 +240,12 @@ if not st.session_state.get("authenticated"):
     with _login_col:
         _pw = st.text_input("Password", type="password", placeholder="Enter password",
                             label_visibility="collapsed")
+        remember_me = st.checkbox("Remember me for 30 days")
         if st.button("Login", use_container_width=True, type="primary"):
             if _pw == _APP_PASSWORD:
+                if remember_me:
+                    cookies["finlens_auth"] = "true"
+                    cookies.save()
                 st.session_state["authenticated"] = True
                 st.rerun()
             else:
@@ -366,6 +380,8 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     if st.button("Logout", use_container_width=True):
+        cookies["finlens_auth"] = ""
+        cookies.save()
         st.session_state["authenticated"] = False
         st.rerun()
     st.divider()
