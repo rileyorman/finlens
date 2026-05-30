@@ -4,8 +4,9 @@ from pathlib import Path
 from modules.excel_exporter import _calc_summary_metrics
 from modules.market_data import get_market_data
 from modules.red_flag_detector import detect_flags
+from config import FILING_LIBRARY_PATH
 
-_LIBRARY_PATH = Path(__file__).parent.parent / "filing_library.json"
+_LIBRARY_PATH = FILING_LIBRARY_PATH
 
 _CHAR_REPLACEMENTS = {
     '—': '--',   # em dash

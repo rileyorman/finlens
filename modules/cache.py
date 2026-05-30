@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from config import CACHE_DIR as _CACHE_DIR
+from config import CACHE_DIR as _CACHE_DIR, safe_write_text
 
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -40,8 +40,7 @@ def save_cache(cache_key: str, filename: str,
         "bear_bull_data": bear_bull_data,
         "dashboard_data": dashboard_data,
     }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
+    safe_write_text(path, json.dumps(payload, indent=2))
 
 
 def clear_cache() -> int:

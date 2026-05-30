@@ -1,7 +1,23 @@
 import json
-import os
+from pathlib import Path
 
-_WATCHLIST_PATH = os.path.join("library", "watchlist.json")
+from config import LIBRARY_DIR, safe_write_bytes, safe_write_text
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+_OLD_WATCHLIST_PATH = _PROJECT_ROOT / "library" / "watchlist.json"
+_WATCHLIST_PATH = LIBRARY_DIR / "watchlist.json"
+
+
+def _migrate_old_watchlist() -> None:
+    try:
+        _WATCHLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if _OLD_WATCHLIST_PATH.exists() and not _WATCHLIST_PATH.exists():
+            safe_write_bytes(_WATCHLIST_PATH, _OLD_WATCHLIST_PATH.read_bytes())
+    except Exception:
+        pass
+
+
+_migrate_old_watchlist()
 
 
 def load_watchlist() -> list:
@@ -15,9 +31,8 @@ def load_watchlist() -> list:
 
 def save_watchlist(tickers: list) -> None:
     """Persist the ticker list to disk."""
-    os.makedirs("library", exist_ok=True)
-    with open(_WATCHLIST_PATH, "w") as f:
-        json.dump(tickers, f)
+    _WATCHLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    safe_write_text(_WATCHLIST_PATH, json.dumps(tickers))
 
 
 def add_ticker(ticker: str) -> list:

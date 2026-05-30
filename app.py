@@ -4,6 +4,7 @@ import re
 import tempfile
 from html import escape
 from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import quote_plus
 import streamlit as st
 import yfinance as yf
@@ -46,7 +47,17 @@ from modules.portfolio_registry import (
 )
 from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
-from config import MAX_FILING_CHARS
+from config import (
+    MAX_FILING_CHARS,
+    ANALYSIS_CACHE_DIR,
+    CACHE_DIR,
+    EDGAR_TEXT_DIR,
+    LIBRARY_DIR,
+    LIBRARY_PDFS_DIR,
+    FILING_LIBRARY_PATH,
+    safe_write_bytes,
+    safe_write_text,
+)
 import plotly.graph_objects as go
 
 st.set_page_config(
@@ -63,6 +74,13 @@ if not cookies.ready():
 load_dotenv()
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
+ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+EDGAR_TEXT_DIR.mkdir(parents=True, exist_ok=True)
+FILING_LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _fmt_market_cap(mc_millions):
@@ -238,7 +256,7 @@ def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
     if not ticker or not period:
         return None
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
-    return os.path.join("library", "pdfs", f"{safe}.pdf")
+    return str(LIBRARY_PDFS_DIR / f"{safe}.pdf")
 
 
 def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
@@ -246,15 +264,16 @@ def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
     if not ticker or not period:
         return None
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
-    return os.path.join("library", "pdfs", f"{safe}.txt")
+    return str(LIBRARY_PDFS_DIR / f"{safe}.txt")
 
 
 def _read_text_cache(path: str | None) -> str | None:
     if not path:
         return None
     try:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as _f:
+        text_file = Path(path)
+        if text_file.exists():
+            with text_file.open("r", encoding="utf-8") as _f:
                 return _f.read()
     except Exception:
         return None
@@ -547,6 +566,71 @@ def _financial_data_to_text(financial_data: dict) -> str:
             )
         lines.append("")
     return "\n".join(lines)
+
+
+def _edgar_cache_identifier() -> str:
+    identifier = (
+        st.session_state.get("edgar_selected_ticker")
+        or st.session_state.get("edgar_company_name")
+        or ""
+    )
+    identifier = str(identifier).strip().upper()
+    if identifier:
+        return identifier
+    return (
+        str(st.session_state.get("edgar_cik", "UNKNOWN"))
+        .replace("000", "", 1)
+        .lstrip("0")
+        or "UNKNOWN"
+    )
+
+
+def _persist_loaded_edgar_to_library() -> None:
+    if not st.session_state.get("loaded_from_edgar"):
+        return
+
+    financial_data = st.session_state.get("financial_data")
+    accession = st.session_state.get("edgar_loaded_accession")
+    cik = st.session_state.get("edgar_cik")
+    if not financial_data or not accession or not cik:
+        return
+
+    ticker = _edgar_cache_identifier()
+    period = _analysis_period(financial_data)
+    if not ticker or not period:
+        return
+
+    filing_text = st.session_state.get("cached_filing_text") or _financial_data_to_text(financial_data)
+    text_path = _text_cache_path(ticker, period)
+    if text_path and (not Path(text_path).exists()):
+        try:
+            safe_write_text(text_path, filing_text)
+        except Exception as _e:
+            st.warning(f"Could not save EDGAR text cache: {_e}")
+            text_path = None
+
+    entry_id = f"edgar_{cik}_{accession}"
+    existing = next((entry for entry in lib_get() if entry.get("id") == entry_id), None)
+    if existing and existing.get("source") == "edgar" and existing.get("file_path"):
+        return
+
+    try:
+        lib_add(
+            entry_id,
+            st.session_state.get("last_filename") or f"{ticker}_{period}.edgar",
+            len(filing_text),
+            financial_data,
+            st.session_state.get("summary_data"),
+            st.session_state.get("bear_bull_data"),
+            st.session_state.get("dashboard_data"),
+            raw_text=filing_text[:MAX_FILING_CHARS],
+            mda_sentiment=st.session_state.get("mda_sentiment"),
+            source="edgar",
+            file_path=text_path,
+        )
+        st.session_state["filing_library"] = lib_get()
+    except Exception as _e:
+        st.warning(f"Could not save to library: {_e}")
 
 
 def _education_topic_param() -> str | None:
@@ -1281,8 +1365,8 @@ document.addEventListener('focusin', function(e) {
                                             ticker if ticker != "—" else None,
                                             _period,
                                         )
-                                        if _pdf_path and os.path.exists(_pdf_path):
-                                            with open(_pdf_path, "rb") as _f:
+                                        if _pdf_path and Path(_pdf_path).exists():
+                                            with Path(_pdf_path).open("rb") as _f:
                                                 _pdf_bytes = _f.read()
                                     except Exception:
                                         _pdf_bytes = None
@@ -1371,7 +1455,7 @@ document.addEventListener('focusin', function(e) {
                                     try:
                                         _lp = _pdf_cache_path(_entry_ticker, _entry_period)
                                         st.session_state.cached_pdf_bytes = (
-                                            open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                                            Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
                                         )
                                     except Exception:
                                         st.session_state.cached_pdf_bytes = None
@@ -1410,7 +1494,7 @@ document.addEventListener('focusin', function(e) {
                                         entry.get("fiscal_year") or entry.get("period", ""),
                                     )
                                     st.session_state.cached_pdf_bytes = (
-                                        open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                                        Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
                                     )
                                     if st.session_state.cached_pdf_bytes is None:
                                         st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
@@ -1522,9 +1606,7 @@ if page == "Portfolio Manager":
             _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
-                os.makedirs(os.path.dirname(ra["file_path"]), exist_ok=True)
-                with open(ra["file_path"], "w", encoding="utf-8") as _f:
-                    _f.write(_ra_text)
+                safe_write_text(ra["file_path"], _ra_text)
             except Exception:
                 pass
         try:
@@ -2873,7 +2955,7 @@ if "financial_data" not in st.session_state:
     st.session_state.loaded_from_sedar   = False
     st.session_state.analysis_loaded_from_cache = False
     st.session_state.uploader_key        = 0
-    os.makedirs(os.path.join("library", "pdfs"), exist_ok=True)
+    LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None
@@ -2975,7 +3057,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 and _selected_accession
                 and st.session_state.get("edgar_loaded_accession") != _selected_accession
             ):
-                _tk = (st.session_state.get("edgar_selected_ticker") or "").strip().upper()
+                _tk = _edgar_cache_identifier()
                 _company_name = (st.session_state.get("edgar_company_name") or _tk or "company").strip()
                 _cik = st.session_state.get("edgar_cik")
                 with st.spinner("Fetching SEC XBRL financial statements..."):
@@ -2985,13 +3067,12 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.error("Could not fetch structured financial data for that filing.")
                 else:
                     _edgar_text = _financial_data_to_text(_edgar_fd)
+                    st.session_state.cached_filing_text = _edgar_text
                     _edgar_period = _analysis_period(_edgar_fd)
                     _edgar_text_path = _text_cache_path(_tk, _edgar_period)
                     if _edgar_text_path:
                         try:
-                            os.makedirs(os.path.dirname(_edgar_text_path), exist_ok=True)
-                            with open(_edgar_text_path, "w", encoding="utf-8") as _f:
-                                _f.write(_edgar_text)
+                            safe_write_text(_edgar_text_path, _edgar_text)
                         except Exception:
                             _edgar_text_path = None
                     _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
@@ -3070,8 +3151,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             file_path=_edgar_text_path,
                         )
                         st.session_state["filing_library"] = lib_get()
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        st.warning(f"Could not save to library: {_e}")
                     _save_analysis_to_supabase(
                         _tk,
                         _edgar_fd,
@@ -3183,6 +3264,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
 
             st.info("Once you've downloaded a filing from SEDAR+, upload it below to analyze it with Claude.")
 
+_persist_loaded_edgar_to_library()
+
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
     type=["pdf"],
@@ -3220,8 +3303,8 @@ if st.session_state.get("reanalyse_no_text"):
     if _cached_bytes is None:
         try:
             _cp = _pdf_cache_path(_pdf_info.get("ticker"), _pdf_info.get("period"))
-            if _cp and os.path.exists(_cp):
-                with open(_cp, "rb") as _f:
+            if _cp and Path(_cp).exists():
+                with Path(_cp).open("rb") as _f:
                     _cached_bytes = _f.read()
         except Exception:
             _cached_bytes = None
@@ -3338,9 +3421,7 @@ if st.session_state.get("pending_reanalyse"):
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
-            os.makedirs(os.path.dirname(ra["file_path"]), exist_ok=True)
-            with open(ra["file_path"], "w", encoding="utf-8") as _f:
-                _f.write(_ra_text)
+            safe_write_text(ra["file_path"], _ra_text)
         except Exception:
             pass
 
@@ -3560,8 +3641,7 @@ if uploaded_file:
         try:
             _pdf_disk_path = _pdf_cache_path(resolved_ticker, _period_label)
             if _pdf_disk_path:
-                with open(_pdf_disk_path, "wb") as _f:
-                    _f.write(pdf_bytes)
+                safe_write_bytes(_pdf_disk_path, pdf_bytes)
         except Exception:
             pass  # PDF cache write failure must never block analysis
 

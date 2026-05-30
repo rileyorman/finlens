@@ -2,11 +2,29 @@ import json
 import re
 from pathlib import Path
 
-_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
+from config import ANALYSIS_CACHE_DIR, safe_write_bytes, safe_write_text
+
+_CACHE_DIR = ANALYSIS_CACHE_DIR
+_OLD_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
+
+
+def _migrate_old_cache() -> None:
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        if _OLD_CACHE_DIR.exists() and _OLD_CACHE_DIR != _CACHE_DIR:
+            for old_file in _OLD_CACHE_DIR.glob("*.json"):
+                new_file = _CACHE_DIR / old_file.name
+                if not new_file.exists():
+                    safe_write_bytes(new_file, old_file.read_bytes())
+    except Exception:
+        pass
+
+
+_migrate_old_cache()
 
 
 def analysis_cache_path(ticker: str, period: str) -> Path:
-    """Return path to library/analysis/{ticker}_{period}.json."""
+    """Return path to the local analysis cache JSON for ticker/period."""
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
     return _CACHE_DIR / f"{safe}.json"
 
@@ -18,8 +36,7 @@ def save_analysis(ticker: str, period: str, results: dict) -> bool:
             return False
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path = analysis_cache_path(ticker, period)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, default=str)
+        safe_write_text(path, json.dumps(results, indent=2, default=str))
         return True
     except Exception:
         return False

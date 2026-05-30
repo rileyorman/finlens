@@ -2,7 +2,43 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-_LIBRARY_PATH = Path(__file__).parent.parent / "filing_library.json"
+from config import FILING_LIBRARY_PATH, LIBRARY_PDFS_DIR, safe_write_bytes, safe_write_text
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+_OLD_LIBRARY_PATH = _PROJECT_ROOT / "filing_library.json"
+_OLD_PDFS_DIR = _PROJECT_ROOT / "library" / "pdfs"
+_LIBRARY_PATH = FILING_LIBRARY_PATH
+
+
+def _migrate_old_storage() -> None:
+    try:
+        _LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
+        if _OLD_LIBRARY_PATH.exists() and not _LIBRARY_PATH.exists():
+            safe_write_bytes(_LIBRARY_PATH, _OLD_LIBRARY_PATH.read_bytes())
+        if _OLD_PDFS_DIR.exists():
+            for old_file in _OLD_PDFS_DIR.iterdir():
+                if old_file.is_file():
+                    new_file = LIBRARY_PDFS_DIR / old_file.name
+                    if not new_file.exists():
+                        safe_write_bytes(new_file, old_file.read_bytes())
+    except Exception:
+        pass
+
+
+def _normalize_file_path(path_value: str | None) -> str | None:
+    if not path_value:
+        return path_value
+    try:
+        path = Path(path_value)
+        if path.parts[-2:] and len(path.parts) >= 2 and path.parts[-2] == "pdfs":
+            return str(LIBRARY_PDFS_DIR / path.name)
+    except Exception:
+        pass
+    return path_value
+
+
+_migrate_old_storage()
 
 
 def _load() -> dict:
@@ -10,14 +46,24 @@ def _load() -> dict:
         return {"entries": []}
     try:
         with open(_LIBRARY_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            library = json.load(f)
+        changed = False
+        for entry in library.get("entries", []):
+            old_path = entry.get("file_path")
+            new_path = _normalize_file_path(old_path)
+            if new_path != old_path:
+                entry["file_path"] = new_path
+                changed = True
+        if changed:
+            _save(library)
+        return library
     except Exception:
         return {"entries": []}
 
 
 def _save(library: dict) -> None:
-    with open(_LIBRARY_PATH, "w", encoding="utf-8") as f:
-        json.dump(library, f, indent=2)
+    _LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    safe_write_text(_LIBRARY_PATH, json.dumps(library, indent=2))
 
 
 def get_entries() -> list:
