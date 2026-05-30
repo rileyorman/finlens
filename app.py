@@ -219,6 +219,9 @@ except (KeyError, FileNotFoundError):
 if cookies.get("finlens_auth") == "true":
     st.session_state["authenticated"] = True
 
+if "onboarding_complete" not in st.session_state:
+    st.session_state["onboarding_complete"] = False
+
 if not st.session_state.get("authenticated"):
     st.markdown(
         """
@@ -250,6 +253,129 @@ if not st.session_state.get("authenticated"):
                 st.rerun()
             else:
                 st.error("Incorrect password")
+    st.stop()
+
+if not st.session_state["onboarding_complete"]:
+    st.markdown(
+        """
+        <style>
+        .onboarding-wrap {
+            max-width: 920px;
+            margin: 3.5rem auto 0;
+            text-align: center;
+        }
+        .onboarding-logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0.9rem;
+        }
+        .onboarding-title {
+            font-size: 42px;
+            font-weight: 500;
+            color: #F1F5F9;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .onboarding-tagline {
+            margin-top: 0.4rem;
+            color: #94A3B8;
+            font-size: 15px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .onboarding-copy {
+            max-width: 720px;
+            margin: 1.6rem auto 2rem;
+            color: #CBD5E1;
+            font-size: 17px;
+            line-height: 1.65;
+        }
+        .feature-card {
+            min-height: 150px;
+            background: #161B27;
+            border: 0.5px solid #2D3650;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 16px;
+        }
+        .feature-card h3 {
+            margin: 0 0 10px;
+            color: #F1F5F9;
+            font-size: 18px;
+            font-weight: 650;
+        }
+        .feature-card p {
+            margin: 0;
+            color: #94A3B8;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        </style>
+        <div class="onboarding-wrap">
+            <div class="onboarding-logo">
+                <svg width="64" height="64" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <defs><clipPath id="onboard-logo"><circle cx="20" cy="20" r="17"/></clipPath></defs>
+                    <circle cx="20" cy="20" r="18" fill="rgba(24,95,165,0.1)" stroke="#185FA5" stroke-width="1.5"/>
+                    <polyline points="6,30 11,22 16,26 22,13 34,8" fill="none" stroke="#378ADD"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        clip-path="url(#onboard-logo)"/>
+                    <circle cx="34" cy="8" r="3.5" fill="#4ADE80" clip-path="url(#onboard-logo)"/>
+                </svg>
+            </div>
+            <div class="onboarding-title">Fin<span style="color:#378ADD;font-weight:300">Lens</span></div>
+            <div class="onboarding-tagline">AI-Powered Financial Statement Analysis</div>
+            <div class="onboarding-copy">
+                Welcome to FinLens, an AI-powered workspace for turning filings into investment analysis.
+                Upload financial statements, compare language across periods, track market signals, and build a portfolio-level view from the companies you follow.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    feature_rows = [
+        [
+            (
+                "Single Analysis",
+                "Upload a 10-K or 10-Q and get an AI-powered investment analysis",
+            ),
+            (
+                "Filing Comparison",
+                "Compare two filings year-over-year to spot language shifts",
+            ),
+        ],
+        [
+            (
+                "Stock Tracker",
+                "Track live price, momentum, analyst consensus and earnings",
+            ),
+            (
+                "Portfolio Manager",
+                "Analyse multiple holdings and get a portfolio-level view",
+            ),
+        ],
+    ]
+
+    for row in feature_rows:
+        _, left, right, _ = st.columns([1, 2, 2, 1])
+        for col, (title, copy) in zip((left, right), row):
+            with col:
+                st.markdown(
+                    f"""
+                    <div class="feature-card">
+                        <h3>{title}</h3>
+                        <p>{copy}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    _, start_col, _ = st.columns([1, 2, 1])
+    with start_col:
+        if st.button("Get Started →", type="primary", use_container_width=True):
+            st.session_state["onboarding_complete"] = True
+            st.rerun()
     st.stop()
 
 with open("assets/style.css") as _f:
