@@ -250,12 +250,19 @@ def _education_topic_param() -> str | None:
         return None
 
 
+def _has_education_topic_param() -> bool:
+    try:
+        return "education" in st.query_params
+    except Exception:
+        return False
+
+
 def _learn_more(topic: str, label: str | None = None) -> None:
     if topic not in EDUCATION:
         return
     link_text = f"Learn more about {label} →" if label else "Learn more →"
     st.markdown(
-        f'<a href="?education={topic}" target="_self" '
+        f'<a href="?education={topic}#education-topic" target="_self" '
         f'style="font-size:12px;color:#378ADD;text-decoration:none;font-weight:600">'
         f'{link_text}</a>',
         unsafe_allow_html=True,
@@ -325,7 +332,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
     for section_title, section_topics in education_sections.items():
         st.markdown(f"### {section_title}")
         topic_links = [
-            f'<a href="?education={topic}" target="_self" '
+            f'<a href="?education={topic}#education-topic" target="_self" '
             f'style="color:#378ADD;text-decoration:none;font-weight:600">'
             f'{EDUCATION[topic]["title"]}</a>'
             for topic in section_topics
@@ -342,6 +349,8 @@ def _render_education_page(default_topic: str | None = None) -> None:
         if topic in EDUCATION
     ]
     default_topic = default_topic if default_topic in EDUCATION else topics[0]
+    if _has_education_topic_param():
+        st.session_state["education_topic_select"] = default_topic
     topic = st.selectbox(
         "Topic",
         topics,
@@ -350,6 +359,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
         key="education_topic_select",
     )
     st.divider()
+    st.markdown('<div id="education-topic"></div>', unsafe_allow_html=True)
     _render_education_entry(topic)
 
 
@@ -361,6 +371,12 @@ except (KeyError, FileNotFoundError):
 
 if cookies.get("finlens_auth") == "true":
     st.session_state["authenticated"] = True
+
+_education_topic_requested = _has_education_topic_param()
+_education_topic = _education_topic_param()
+if _education_topic_requested:
+    st.session_state["onboarding_complete"] = True
+    st.session_state["nav_mode"] = "🎓 Education"
 
 if "onboarding_complete" not in st.session_state:
     st.session_state["onboarding_complete"] = False
