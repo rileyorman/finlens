@@ -293,6 +293,204 @@ hr {
     letter-spacing: -0.02em;
 }
 
+.finlens-sidebar-brand {
+    margin: 0 0 1rem;
+}
+
+.finlens-sidebar-wordmark {
+    font-size: 18px !important;
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.finlens-sidebar-wordmark-fin {
+    color: #F1F5F9;
+    font-weight: 600;
+}
+
+.finlens-sidebar-wordmark-lens {
+    color: #185FA5;
+    font-weight: 300;
+}
+
+.finlens-sidebar-tagline {
+    color: #64748B;
+    font-size: 9px !important;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    margin-top: 0.35rem;
+}
+
+/* -- Sidebar nav -- */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0.25rem 0 0.8rem;
+}
+
+.sidebar-nav-item {
+    align-items: center;
+    background: transparent;
+    border-left: 2px solid transparent;
+    border-radius: 6px;
+    color: #64748B;
+    display: flex;
+    font-size: 13px !important;
+    font-weight: 400;
+    gap: 0.55rem;
+    line-height: 1.25;
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+}
+
+.sidebar-nav-item:hover {
+    background: rgba(255,255,255,0.04);
+    color: #94A3B8;
+    text-decoration: none;
+}
+
+.sidebar-nav-item.active {
+    background: rgba(24,95,165,0.1);
+    border-left-color: #185FA5;
+    color: #F1F5F9;
+    font-weight: 500;
+}
+
+.sidebar-nav-icon {
+    align-items: center;
+    color: currentColor;
+    display: inline-flex;
+    flex: 0 0 14px;
+    height: 14px;
+    justify-content: center;
+    width: 14px;
+}
+
+.sidebar-nav-icon svg {
+    display: block;
+}
+
+/* -- Filing library cards -- */
+[class*="st-key-filing_row_"] button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    border-radius: 0;
+    color: #64748B;
+    display: flex;
+    justify-content: space-between;
+    min-height: 32px;
+    padding: 0.35rem 0;
+    text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+    width: 100%;
+}
+
+[class*="st-key-filing_row_"] button:hover {
+    background: rgba(255,255,255,0.04);
+    border: 0;
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    color: #94A3B8;
+}
+
+[class*="st-key-filing_row_"] button:focus,
+[class*="st-key-filing_row_"] button:active {
+    background: transparent;
+    border: 0;
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    box-shadow: none;
+    color: #94A3B8;
+}
+
+[class*="st-key-filing_row_"] button p {
+    color: #64748B;
+    display: flex;
+    font-size: 11px !important;
+    gap: 0.45rem;
+    justify-content: space-between;
+    line-height: 1;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
+[class*="st-key-filing_row_"] button p strong {
+    color: #F1F5F9;
+    font-size: 12px !important;
+    font-weight: 700;
+}
+
+.filing-library-row {
+    align-items: center;
+    background: transparent;
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    border-radius: 0;
+    color: #64748B;
+    display: flex;
+    justify-content: space-between;
+    min-height: 32px;
+    padding: 0.35rem 0;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    width: 100%;
+}
+
+.filing-library-row:hover {
+    background: rgba(255,255,255,0.04);
+    color: #94A3B8;
+    text-decoration: none;
+}
+
+.filing-library-row.expanded {
+    color: #F1F5F9;
+}
+
+.filing-library-row-text {
+    align-items: baseline;
+    display: flex;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.filing-library-row-text strong {
+    color: #F1F5F9;
+    font-size: 12px !important;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filing-library-row-text span {
+    color: #64748B;
+    font-size: 11px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filing-library-chevron {
+    align-items: center;
+    color: #64748B;
+    display: inline-flex;
+    flex: 0 0 14px;
+    height: 14px;
+    justify-content: center;
+    transition: transform 0.18s ease, color 0.15s ease;
+    width: 14px;
+}
+
+.filing-library-row.expanded .filing-library-chevron {
+    color: #94A3B8;
+    transform: rotate(180deg);
+}
+
 /* Section labels */
 .section-label {
     font-size: 10px;

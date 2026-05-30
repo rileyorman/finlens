@@ -504,7 +504,7 @@ _education_topic_requested = _has_education_topic_param()
 _education_topic = _education_topic_param()
 if _education_topic_requested:
     st.session_state["onboarding_complete"] = True
-    st.session_state["nav_mode"] = "🎓 Education"
+    st.session_state["nav_mode"] = "Education"
 
 if "onboarding_complete" not in st.session_state:
     st.session_state["onboarding_complete"] = False
@@ -758,32 +758,86 @@ else:
 _hydrate_library_from_supabase()
 _education_topic = _education_topic_param()
 if _education_topic:
-    st.session_state["nav_mode"] = "🎓 Education"
+    st.session_state["nav_mode"] = "Education"
+
+_NAV_ITEMS = [
+    (
+        "Single Analysis",
+        "single",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    ),
+    (
+        "Portfolio Manager",
+        "portfolio",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
+    ),
+    (
+        "Filing Comparison",
+        "comparison",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>',
+    ),
+    (
+        "Stock Tracker",
+        "stocks",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    ),
+    (
+        "Education",
+        "education",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    ),
+]
+_NAV_BY_SLUG = {slug: label for label, slug, _ in _NAV_ITEMS}
+_NAV_SLUG_BY_LABEL = {label: slug for label, slug, _ in _NAV_ITEMS}
+
+
+def _query_param_value(name: str) -> str | None:
+    value = st.query_params.get(name)
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+
+def _nav_href(slug: str) -> str:
+    return f"?nav={quote_plus(slug)}"
+
+
+def _filing_key(entry: dict) -> str:
+    ticker = entry.get("ticker") or "NA"
+    period = entry.get("fiscal_year") or entry.get("period") or "unknown"
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{ticker}_{period}_{entry['id']}")
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
     st.markdown(
-        f'<img src="data:image/svg+xml;base64,{_svg_b64("assets/logo_compact.svg")}"'
-        f' width="180" style="margin-bottom:1rem">',
+        """
+        <div class="finlens-sidebar-brand">
+            <div class="finlens-sidebar-wordmark">
+                <span class="finlens-sidebar-wordmark-fin">Fin</span><span class="finlens-sidebar-wordmark-lens">Lens</span>
+            </div>
+            <div class="finlens-sidebar-tagline">AI FINANCIAL ANALYSIS</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    _nav_options = [
-        "📊 Single Analysis",
-        "📈 Portfolio Manager",
-        "📂 Filing Comparison",
-        "📈 Stock Tracker",
-        "🎓 Education",
-    ]
-    if st.session_state.get("nav_mode") not in _nav_options:
-        st.session_state["nav_mode"] = "🎓 Education" if _education_topic else "📊 Single Analysis"
-    page = st.radio(
-        "Mode",
-        _nav_options,
-        index=_nav_options.index("🎓 Education") if _education_topic else 0,
-        key="nav_mode",
-        label_visibility="collapsed",
-    )
-    if page != "🎓 Education" and _education_topic:
+    _nav_from_query = _query_param_value("nav")
+    if _nav_from_query in _NAV_BY_SLUG:
+        st.session_state["nav_mode"] = _NAV_BY_SLUG[_nav_from_query]
+    if st.session_state.get("nav_mode") not in _NAV_SLUG_BY_LABEL:
+        st.session_state["nav_mode"] = "Education" if _education_topic else "Single Analysis"
+    page = st.session_state["nav_mode"]
+    st.markdown('<nav class="sidebar-nav" aria-label="Primary navigation">', unsafe_allow_html=True)
+    for _label, _slug, _icon in _NAV_ITEMS:
+        _active = " active" if page == _label else ""
+        st.markdown(
+            f'<a class="sidebar-nav-item{_active}" href="{_nav_href(_slug)}">'
+            f'<span class="sidebar-nav-icon">{_icon}</span>'
+            f'<span>{escape(_label)}</span>'
+            f'</a>',
+            unsafe_allow_html=True,
+        )
+    st.markdown("</nav>", unsafe_allow_html=True)
+    if page != "Education" and _education_topic:
         try:
             del st.query_params["education"]
         except Exception:
@@ -797,7 +851,7 @@ with st.sidebar:
 
     # --- Portfolio management (Portfolio Manager mode only) ---------------
     selected_portfolio = None
-    if page == "📈 Portfolio Manager":
+    if page == "Portfolio Manager":
         pf_names = get_portfolio_names()
         options  = pf_names + ["+ New Portfolio"]
         active   = st.session_state.get("pm_active_portfolio")
@@ -983,7 +1037,7 @@ document.addEventListener('focusin', function(e) {
             if st.session_state.get("al_no_text_warning"):
                 st.warning(
                     f"No PDF stored for **{st.session_state.al_no_text_warning}** — "
-                    "switch to 📊 Single Analysis to re-upload."
+                    "switch to Single Analysis to re-upload."
                 )
                 st.session_state.al_no_text_warning = None
             al_entries = lib_get()
@@ -1076,7 +1130,7 @@ document.addEventListener('focusin', function(e) {
         st.divider()
 
     # --- Filing Library (Single Analysis mode only) --------------------
-    if page == "📊 Single Analysis":
+    if page == "Single Analysis":
         st.markdown("""
         <style>
         section[data-testid="stSidebar"] .stButton button {
@@ -1090,73 +1144,79 @@ document.addEventListener('focusin', function(e) {
 
         lib_entries = lib_get()
         lib_count   = len(lib_entries)
-        label       = f"📚 Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
+        label       = f"Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
         with st.expander(label, expanded=lib_count > 0):
             if not lib_entries:
                 st.caption("No filings saved yet. Analyse a PDF to add it here.")
             for entry in lib_entries:
                 eid        = entry["id"]
                 ticker     = entry.get("ticker", "—")
-                ticker_str = f" · {ticker}" if ticker and ticker != "—" else ""
                 fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
-                date_str   = entry.get("analysed_at", "")[:10]
-                st.markdown(
-                    f"<span style='font-size:13px;font-weight:700'>{entry['company_name']}{ticker_str}</span>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f"<small style='color:#888;font-size:11px'>{fy} · {date_str}</small>",
-                    unsafe_allow_html=True,
-                )
-                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
-                    fd = entry["financial_data"]
-                    sd = entry.get("summary_data")
-                    bb = entry.get("bear_bull_data")
-                    st.session_state.financial_data      = fd
-                    st.session_state.summary_data        = sd
-                    st.session_state.bear_bull_data      = bb
-                    st.session_state.dashboard_data      = entry.get("dashboard_data")
-                    st.session_state.mda_sentiment       = entry.get("mda_sentiment")
-                    st.session_state.market_data         = {}
-                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
-                    st.session_state.last_filename       = entry.get("file_name", "")
-                    st.session_state.resolved_ticker     = ticker if ticker != "—" else None
-                    st.session_state.cache_hit           = False
-                    st.session_state.dcf_result          = None
-                    st.session_state.loaded_from_library = True
-                    if ticker and ticker != "—":
-                        st.session_state["manual_ticker"] = ticker
-                    # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
-                    try:
-                        _lp = _pdf_cache_path(
-                            ticker if ticker != "—" else None,
-                            entry.get("fiscal_year") or entry.get("period", ""),
-                        )
-                        st.session_state.cached_pdf_bytes = (
-                            open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
-                        )
-                        if st.session_state.cached_pdf_bytes is None:
-                            st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
-                                ticker if ticker != "—" else None,
-                                entry.get("fiscal_year") or entry.get("period", ""),
-                            )
-                    except Exception:
-                        st.session_state.cached_pdf_bytes = None
+                filing_key = _filing_key(entry)
+                expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
+                row_ticker  = ticker if ticker and ticker != "—" else "N/A"
+                row_period  = fy or "Unknown period"
+                chevron     = "⌃" if expanded else "⌄"
+                if st.button(
+                    f"**{row_ticker}**    {row_period}    {chevron}",
+                    key=f"filing_row_{filing_key}",
+                    use_container_width=True,
+                ):
+                    st.session_state["sidebar_expanded_filing"] = None if expanded else filing_key
                     st.rerun()
-                if st.button("♻️ Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
-                             help="Re-analyse with fresh Claude calls"):
-                    st.session_state.confirm_reanalyse = eid
-                    st.session_state.confirm_delete    = None
-                    st.rerun()
-                st.caption("~$0.08 per analysis")
-                if st.button("🗑️ Remove", key=f"lib_del_{eid}", use_container_width=True,
-                             help=f"Remove {entry['company_name']} from library"):
-                    st.session_state.confirm_delete    = eid
-                    st.session_state.confirm_reanalyse = None
-                    st.rerun()
+                if expanded:
+                    load_col, reanalyse_col = st.columns(2)
+                    with load_col:
+                        if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                            fd = entry["financial_data"]
+                            sd = entry.get("summary_data")
+                            bb = entry.get("bear_bull_data")
+                            st.session_state.financial_data      = fd
+                            st.session_state.summary_data        = sd
+                            st.session_state.bear_bull_data      = bb
+                            st.session_state.dashboard_data      = entry.get("dashboard_data")
+                            st.session_state.mda_sentiment       = entry.get("mda_sentiment")
+                            st.session_state.market_data         = {}
+                            st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                            st.session_state.last_filename       = entry.get("file_name", "")
+                            st.session_state.resolved_ticker     = ticker if ticker != "—" else None
+                            st.session_state.cache_hit           = False
+                            st.session_state.dcf_result          = None
+                            st.session_state.loaded_from_library = True
+                            if ticker and ticker != "—":
+                                st.session_state["manual_ticker"] = ticker
+                            # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
+                            try:
+                                _lp = _pdf_cache_path(
+                                    ticker if ticker != "—" else None,
+                                    entry.get("fiscal_year") or entry.get("period", ""),
+                                )
+                                st.session_state.cached_pdf_bytes = (
+                                    open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                                )
+                                if st.session_state.cached_pdf_bytes is None:
+                                    st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
+                                        ticker if ticker != "—" else None,
+                                        entry.get("fiscal_year") or entry.get("period", ""),
+                                    )
+                            except Exception:
+                                st.session_state.cached_pdf_bytes = None
+                            st.rerun()
+                    with reanalyse_col:
+                        if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                                     help="Re-analyse with fresh Claude calls"):
+                            st.session_state.confirm_reanalyse = eid
+                            st.session_state.confirm_delete    = None
+                            st.rerun()
+                    st.caption("~$0.08 per analysis")
+                    if st.button("Remove", key=f"lib_del_{eid}", use_container_width=True,
+                                 help=f"Remove {entry['company_name']} from library"):
+                        st.session_state.confirm_delete    = eid
+                        st.session_state.confirm_reanalyse = None
+                        st.rerun()
 
                 # --- Delete confirmation ---
-                if st.session_state.get("confirm_delete") == eid:
+                if expanded and st.session_state.get("confirm_delete") == eid:
                     st.caption(f"Delete **{entry['company_name']}**? This cannot be undone.")
                     yes_col, no_col = st.columns(2)
                     with yes_col:
@@ -1172,7 +1232,7 @@ document.addEventListener('focusin', function(e) {
                             st.rerun()
 
                 # --- Re-analyse confirmation ---
-                if st.session_state.get("confirm_reanalyse") == eid:
+                if expanded and st.session_state.get("confirm_reanalyse") == eid:
                     st.caption(
                         f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
                         f"(~$0.10–0.15 cost) and overwrite the existing result."
@@ -1207,12 +1267,6 @@ document.addEventListener('focusin', function(e) {
                                      use_container_width=True):
                             st.session_state.confirm_reanalyse = None
                             st.rerun()
-
-                st.markdown(
-                    "<hr style='margin: 2px 0; border: none; border-top: 0.5px solid #e0e0e0;'>",
-                    unsafe_allow_html=True,
-                )
-
         st.divider()
         n = cache_count()
         st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
@@ -1224,7 +1278,7 @@ document.addEventListener('focusin', function(e) {
                 st.rerun()
 
 # --- Portfolio Manager page --------------------------------------------
-if page == "📈 Portfolio Manager":
+if page == "Portfolio Manager":
     import pandas as pd
 
     # Re-analysis triggered from Analysis Library sidebar fires here
@@ -1355,7 +1409,7 @@ if page == "📈 Portfolio Manager":
     if unanalysed:
         st.caption(
             f"💡 {len(unanalysed)} holding(s) have no FinLens analysis — "
-            f"switch to 📊 Single Analysis and upload the filing PDF to add them."
+            f"switch to Single Analysis and upload the filing PDF to add them."
         )
 
     if not analysed:
@@ -1843,7 +1897,7 @@ if page == "📈 Portfolio Manager":
 
 
 # --- Filing Comparison page --------------------------------------------
-if page == "📂 Filing Comparison":
+if page == "Filing Comparison":
 
     if not API_KEY:
         st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
@@ -2041,13 +2095,13 @@ if page == "📂 Filing Comparison":
 
 
 # --- Education page ----------------------------------------------------
-if page == "🎓 Education":
+if page == "Education":
     _render_education_page(_education_topic)
     st.stop()
 
 
 # --- Stock Tracker page ------------------------------------------------
-if page == "📈 Stock Tracker":
+if page == "Stock Tracker":
     from modules.stock_tracker import get_stock_data
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
@@ -2489,7 +2543,7 @@ if page == "📈 Stock Tracker":
 
 
 # --- Single Analysis page ----------------------------------------------
-if page != "📊 Single Analysis":
+if page != "Single Analysis":
     st.stop()
 
 if not API_KEY:
