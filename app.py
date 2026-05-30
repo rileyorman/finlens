@@ -19,6 +19,7 @@ from modules.edgar_fetcher import (
     get_financial_data as get_edgar_financial_data,
     _fmt as _fmt_edgar_value,
 )
+from modules.education_content import EDUCATION
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.peer_comparison import get_peer_data, peer_map
@@ -238,6 +239,87 @@ def _financial_data_to_text(financial_data: dict) -> str:
             )
         lines.append("")
     return "\n".join(lines)
+
+
+def _education_topic_param() -> str | None:
+    try:
+        topic = st.query_params.get("education")
+        if isinstance(topic, list):
+            topic = topic[0] if topic else None
+        return topic if topic in EDUCATION else None
+    except Exception:
+        return None
+
+
+def _learn_more(topic: str, label: str | None = None) -> None:
+    if topic not in EDUCATION:
+        return
+    link_text = f"Learn more about {label} →" if label else "Learn more →"
+    st.markdown(
+        f'<a href="?education={topic}" target="_self" '
+        f'style="font-size:12px;color:#378ADD;text-decoration:none;font-weight:600">'
+        f'{link_text}</a>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_education_entry(topic: str) -> None:
+    import html as _html
+
+    entry = EDUCATION[topic]
+    title = entry.get("title", topic)
+    emoji = entry.get("emoji") or ""
+    st.markdown(f"## {emoji + ' ' if emoji else ''}{title}")
+    st.markdown(entry.get("plain_english", ""))
+
+    if entry.get("formula"):
+        st.markdown("**Formula**")
+        st.code(entry["formula"])
+    if entry.get("interpretation"):
+        st.markdown("**Interpretation**")
+        st.markdown(entry["interpretation"])
+    if entry.get("key_items"):
+        st.markdown("**Key Items**")
+        for item in entry["key_items"]:
+            st.markdown(f"**{item['name']}** — {item['description']}")
+
+    st.markdown("**Why It Matters**")
+    st.markdown(entry.get("why_it_matters", ""))
+
+    good, bad = st.columns(2)
+    with good:
+        st.markdown(
+            f'<div style="background:#052e16;border:1px solid #166534;'
+            f'border-radius:8px;padding:14px 16px;color:#CFFFE0">'
+            f'<div style="font-weight:700;color:#4ADE80;margin-bottom:6px">Good Sign</div>'
+            f'{_html.escape(entry.get("good_sign", ""))}</div>',
+            unsafe_allow_html=True,
+        )
+    with bad:
+        st.markdown(
+            f'<div style="background:#1F0000;border:1px solid #991B1B;'
+            f'border-radius:8px;padding:14px 16px;color:#FFE1E1">'
+            f'<div style="font-weight:700;color:#F87171;margin-bottom:6px">Red Flag</div>'
+            f'{_html.escape(entry.get("red_flag", ""))}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+def _render_education_page(default_topic: str | None = None) -> None:
+    st.markdown("## FinLens Education")
+    st.caption("Plain-English explanations of the financial statements, valuation metrics, and analysis tools used in FinLens.")
+
+    topics = list(EDUCATION.keys())
+    default_topic = default_topic if default_topic in EDUCATION else topics[0]
+    topic = st.selectbox(
+        "Topic",
+        topics,
+        index=topics.index(default_topic),
+        format_func=lambda key: EDUCATION[key]["title"],
+        key="education_topic_select",
+    )
+    st.divider()
+    _render_education_entry(topic)
 
 
 # --- Password gate ---
@@ -521,6 +603,9 @@ else:
 """, unsafe_allow_html=True)
 
 _hydrate_library_from_supabase()
+_education_topic = _education_topic_param()
+if _education_topic:
+    st.session_state["nav_mode"] = "🎓 Education"
 
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
@@ -529,12 +614,22 @@ with st.sidebar:
         f' width="180" style="margin-bottom:1rem">',
         unsafe_allow_html=True,
     )
+    _nav_options = [
+        "📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison",
+        "📚 Methodology", "🎓 Education", "📈 Stock Tracker",
+    ]
     page = st.radio(
         "Mode",
-        ["📊 Single Analysis", "📈 Portfolio Manager", "📂 Filing Comparison",
-         "📚 Methodology", "📈 Stock Tracker"],
+        _nav_options,
+        index=_nav_options.index("🎓 Education") if _education_topic else 0,
+        key="nav_mode",
         label_visibility="collapsed",
     )
+    if page != "🎓 Education" and _education_topic:
+        try:
+            del st.query_params["education"]
+        except Exception:
+            pass
     if st.button("Logout", use_container_width=True):
         cookies["finlens_auth"] = ""
         cookies.save()
@@ -1817,6 +1912,12 @@ if page == "📚 Methodology":
     st.stop()
 
 
+# --- Education page ----------------------------------------------------
+if page == "🎓 Education":
+    _render_education_page(_education_topic)
+    st.stop()
+
+
 # --- Stock Tracker page ------------------------------------------------
 if page == "📈 Stock Tracker":
     from modules.stock_tracker import get_stock_data
@@ -2861,8 +2962,7 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
-        with st.expander("ℹ️ How this works"):
-            st.markdown(info_tooltip("signal"))
+        _learn_more("signal")
 
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
@@ -2946,8 +3046,7 @@ if st.session_state.financial_data:
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
 
-        with st.expander("ℹ️ How this works"):
-            st.markdown(info_tooltip("red_flags"))
+        _learn_more("red_flags")
 
         with st.expander(exp_label, expanded=(red_count > 0)):
             if not flags:
@@ -2972,8 +3071,7 @@ if st.session_state.financial_data:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
 
         # --- MD&A Sentiment ---
-        with st.expander("ℹ️ How this works"):
-            st.markdown(info_tooltip("mda_sentiment"))
+        _learn_more("mda_sentiment")
 
         if mda_sentiment and not mda_sentiment.get("error"):
             _tone = mda_sentiment.get("overall_tone") or "—"
@@ -3038,11 +3136,9 @@ if st.session_state.financial_data:
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
 
         # --- Scenario Simulator ---
-        with st.expander("ℹ️ How the Distress Score works"):
-            st.markdown(info_tooltip("distress_score"))
+        _learn_more("distress_score")
 
-        with st.expander("ℹ️ How the Scenario Simulator works"):
-            st.markdown(info_tooltip("scenario_simulator"))
+        _learn_more("scenario_simulator")
 
         with st.expander("🔮 Scenario Simulator", expanded=False):
             _metrics = _calc_summary_metrics(financial_data)
@@ -3257,8 +3353,7 @@ if st.session_state.financial_data:
                 st.info("Not found in document.")
 
         # --- Bull / Bear Case ---
-        with st.expander("ℹ️ How this works"):
-            st.markdown(info_tooltip("bull_bear"))
+        _learn_more("bull_bear")
 
         if bear_bull_data and "error" not in bear_bull_data:
             with st.expander("Bull / Bear Case", expanded=False):
@@ -3404,8 +3499,7 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            with st.expander("ℹ️ How this works"):
-                st.markdown(info_tooltip("quality_score"))
+            _learn_more("quality_score", "Quality Score")
 
         with beta_col:
             beta_val = market_data.get("beta")
@@ -3418,8 +3512,7 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            with st.expander("ℹ️ How this works"):
-                st.markdown(info_tooltip("beta"))
+            _learn_more("beta", "Beta")
 
         with mos_col:
             _dcf_hdr = st.session_state.get("dcf_result") or {}
@@ -3446,15 +3539,13 @@ if st.session_state.financial_data:
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-            with st.expander("ℹ️ How this works"):
-                st.markdown(info_tooltip("margin_of_safety"))
+            _learn_more("margin_of_safety", "Margin of Safety")
 
         st.divider()
 
         # --- DCF Calculator ---
         st.markdown("#### DCF Calculator")
-        with st.expander("ℹ️ How this works"):
-            st.markdown(info_tooltip("dcf"))
+        _learn_more("dcf", "DCF Calculator")
 
         _dcf_c1, _dcf_c2, _dcf_c3, _dcf_c4 = st.columns([2, 2, 2, 1])
         with _dcf_c1:
@@ -3821,8 +3912,7 @@ if st.session_state.financial_data:
         with lc_col:
             with st.container(border=True):
                 st.markdown("##### Lynch Category")
-                with st.expander("ℹ️ How this works"):
-                    st.markdown(info_tooltip("lynch_category"))
+                _learn_more("lynch_category")
                 cat = dd.get("lynch_category") or "—"
                 st.markdown(f"**{cat}**")
                 _LYNCH_DESCS = {
