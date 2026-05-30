@@ -1,4 +1,6 @@
 import re
+import ssl
+import sys
 from urllib.parse import quote
 from xml.etree import ElementTree
 
@@ -6,8 +8,22 @@ import requests
 from requests.adapters import HTTPAdapter
 
 
+class _WindowsCertAdapter(HTTPAdapter):
+    """Load the Windows system cert store so Avast HTTPS inspection is trusted.
+    Avast's CA is in the Windows store but not in certifi's bundle.
+    """
+    def init_poolmanager(self, *args, **kwargs):
+        if sys.platform == "win32":
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.load_default_certs()
+            ctx.check_hostname = True
+            kwargs["ssl_context"] = ctx
+        super().init_poolmanager(*args, **kwargs)
+
+
 _SESSION = requests.Session()
 _SESSION.trust_env = False
+_SESSION.mount("https://", _WindowsCertAdapter())
 HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
 
 
