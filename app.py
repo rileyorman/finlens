@@ -3147,18 +3147,11 @@ if st.session_state.financial_data:
                         st.info(_sr["narrative"])
 
         # --- Financial statement tables ---
-        if st.session_state.get("loaded_from_edgar"):
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.TextColumn(fy_prior),
-                "value":       st.column_config.TextColumn(fy),
-            }
-        else:
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
-                "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
-            }
+        col_cfg = {
+            "line_item":   st.column_config.TextColumn("Line Item"),
+            "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
+            "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
+        }
 
         def _display_rows(rows):
             return [
