@@ -94,6 +94,11 @@ _EMPTY = {
     "shares_outstanding":  None,
     "pe_ratio":            None,
     "beta":                None,
+    "ev_ebitda":           None,
+    "pb":                  None,
+    "ps":                  None,
+    "rev_growth":          None,
+    "gross_margin":        None,
     "fifty_two_week_high": None,
     "fifty_two_week_low":  None,
 }
@@ -119,10 +124,20 @@ def get_market_data(ticker: str) -> dict:
         # P/E and Beta require the heavier info call — best-effort, won't block the rest
         pe_ratio = None
         beta = None
+        ev_ebitda = None
+        pb = None
+        ps = None
+        rev_growth = None
+        gross_margin = None
         try:
             info = t.info
             pe_ratio = info.get("trailingPE")
             beta = info.get("beta")
+            ev_ebitda = info.get("enterpriseToEbitda")
+            pb = info.get("priceToBook")
+            ps = info.get("priceToSalesTrailing12Months")
+            rev_growth = info.get("revenueGrowth")
+            gross_margin = info.get("grossMargins")
         except Exception:
             pass
 
@@ -132,6 +147,11 @@ def get_market_data(ticker: str) -> dict:
             "shares_outstanding":  getattr(fi, "shares", None),
             "pe_ratio":            pe_ratio,
             "beta":                beta,
+            "ev_ebitda":           ev_ebitda,
+            "pb":                  pb,
+            "ps":                  ps,
+            "rev_growth":          rev_growth,
+            "gross_margin":        gross_margin,
             "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
             "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
         }
