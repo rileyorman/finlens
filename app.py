@@ -19,6 +19,11 @@ from modules.edgar_fetcher import (
     get_financial_data as get_edgar_financial_data,
     _fmt as _fmt_edgar_value,
 )
+from modules.sedar_fetcher import (
+    search_company as search_sedar_company,
+    get_filings as get_sedar_filings,
+    get_financial_data as get_sedar_financial_data,
+)
 from modules.education_content import EDUCATION
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
@@ -2465,6 +2470,7 @@ if "financial_data" not in st.session_state:
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
+    st.session_state.loaded_from_sedar   = False
     st.session_state.uploader_key        = 0
     os.makedirs(os.path.join("library", "pdfs"), exist_ok=True)
 
@@ -2476,135 +2482,306 @@ if "market_data" not in st.session_state:
 
 # --- Main area ---------------------------------------------------------
 with st.expander("Fetch from SEC EDGAR", expanded=False):
-    st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
-    _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
-    if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
-        st.session_state["edgar_filings"] = []
-        st.session_state.loaded_from_edgar = False
-        _tk = _edgar_ticker.strip().upper()
-        if not _tk:
-            st.warning("Enter a ticker first.")
-        else:
-            with st.spinner(f"Finding SEC filings for {_tk}..."):
-                _cik = get_cik(_tk)
-                _filings = get_recent_filings(_cik) if _cik else []
-            if not _cik:
-                st.error(f"Could not find a CIK for {_tk}.")
-            elif not _filings:
-                st.error(f"No recent 10-K filings found for {_tk}.")
+    _edgar_tab, _sedar_tab = st.tabs(["SEC EDGAR", "SEDAR+"])
+
+    with _edgar_tab:
+        st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
+        _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
+        if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
+            st.session_state["edgar_filings"] = []
+            st.session_state.loaded_from_edgar = False
+            _tk = _edgar_ticker.strip().upper()
+            if not _tk:
+                st.warning("Enter a ticker first.")
             else:
-                st.session_state["edgar_cik"] = _cik
-                st.session_state["edgar_filings"] = _filings
-                st.session_state["edgar_loaded_accession"] = None
-                st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_tk}.")
+                with st.spinner(f"Finding SEC filings for {_tk}..."):
+                    _cik = get_cik(_tk)
+                    _filings = get_recent_filings(_cik) if _cik else []
+                if not _cik:
+                    st.error(f"Could not find a CIK for {_tk}.")
+                elif not _filings:
+                    st.error(f"No recent 10-K filings found for {_tk}.")
+                else:
+                    st.session_state["edgar_cik"] = _cik
+                    st.session_state["edgar_filings"] = _filings
+                    st.session_state["edgar_loaded_accession"] = None
+                    st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_tk}.")
 
-    _edgar_filings = st.session_state.get("edgar_filings") or []
-    if _edgar_filings:
-        _filing_labels = [
-            f"{row.get('form')} filed {row.get('filingDate')} — report {row.get('reportDate')}"
-            for row in _edgar_filings
-        ]
-        _selected_label = st.selectbox("Recent filings", _filing_labels, key="edgar_filing_select")
-        _selected_idx = _filing_labels.index(_selected_label)
-        _selected_filing = _edgar_filings[_selected_idx]
-        _selected_accession = _selected_filing.get("accessionNumber")
-        _load_selected = st.button(
-            "Load Selected Filing",
-            type="primary",
-            use_container_width=True,
-            key="edgar_load_selected_btn",
-        )
+        _edgar_filings = st.session_state.get("edgar_filings") or []
+        if _edgar_filings:
+            _filing_labels = [
+                f"{row.get('form')} filed {row.get('filingDate')} - report {row.get('reportDate')}"
+                for row in _edgar_filings
+            ]
+            _selected_label = st.selectbox("Recent filings", _filing_labels, key="edgar_filing_select")
+            _selected_idx = _filing_labels.index(_selected_label)
+            _selected_filing = _edgar_filings[_selected_idx]
+            _selected_accession = _selected_filing.get("accessionNumber")
+            _load_selected = st.button(
+                "Load Selected Filing",
+                type="primary",
+                use_container_width=True,
+                key="edgar_load_selected_btn",
+            )
 
-        if (
-            _load_selected
-            and _selected_accession
-            and st.session_state.get("edgar_loaded_accession") != _selected_accession
-        ):
-            _tk = (st.session_state.get("edgar_ticker") or "").strip().upper()
-            _cik = st.session_state.get("edgar_cik")
-            with st.spinner("Fetching SEC XBRL financial statements..."):
-                _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
+            if (
+                _load_selected
+                and _selected_accession
+                and st.session_state.get("edgar_loaded_accession") != _selected_accession
+            ):
+                _tk = (st.session_state.get("edgar_ticker") or "").strip().upper()
+                _cik = st.session_state.get("edgar_cik")
+                with st.spinner("Fetching SEC XBRL financial statements..."):
+                    _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
 
-            if not _edgar_fd:
-                st.error("Could not fetch structured financial data for that filing.")
-            else:
-                _edgar_text = _financial_data_to_text(_edgar_fd)
-                _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
-                _edgar_bb = None
-                _edgar_dd = None
-                with st.spinner("Generating investment signal from SEC data..."):
+                if not _edgar_fd:
+                    st.error("Could not fetch structured financial data for that filing.")
+                else:
+                    _edgar_text = _financial_data_to_text(_edgar_fd)
+                    _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
+                    _edgar_bb = None
+                    _edgar_dd = None
+                    with st.spinner("Generating investment signal from SEC data..."):
+                        try:
+                            _edgar_sd = analyze_summary(_edgar_text, _edgar_fd, API_KEY)
+                            if isinstance(_edgar_sd, dict):
+                                _edgar_sd.setdefault("ticker", _tk)
+                                _edgar_sd.setdefault("filing_date", _selected_filing.get("filingDate"))
+                        except Exception as e:
+                            st.warning(f"Investment signal could not be generated: {e}.")
+                    with st.spinner("Generating bull/bear case from SEC data..."):
+                        try:
+                            _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY)
+                        except Exception as e:
+                            st.warning(f"Bull/bear case could not be generated: {e}.")
+                    with st.spinner("Generating dashboard insights from SEC data..."):
+                        try:
+                            _edgar_dd = analyze_dashboard_insights(_edgar_text, _edgar_sd, _edgar_fd, API_KEY)
+                        except Exception as e:
+                            st.warning(f"Dashboard insights could not be generated: {e}.")
+
+                    _edgar_md = {}
+                    with st.spinner(f"Fetching market data for {_tk}..."):
+                        _edgar_md = get_market_data(_tk)
+                    _market_cap = _edgar_md.get("market_cap") or 0.0
                     try:
-                        _edgar_sd = analyze_summary(_edgar_text, _edgar_fd, API_KEY)
-                        if isinstance(_edgar_sd, dict):
-                            _edgar_sd.setdefault("ticker", _tk)
-                            _edgar_sd.setdefault("filing_date", _selected_filing.get("filingDate"))
+                        _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
                     except Exception as e:
-                        st.warning(f"Investment signal could not be generated: {e}.")
-                with st.spinner("Generating bull/bear case from SEC data..."):
+                        st.error(f"Could not generate Excel file: {e}")
+                        st.stop()
+
+                    _entry_id = f"edgar_{_cik}_{_selected_accession}"
+                    _file_name = f"{_tk}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
+                    st.session_state.financial_data      = _edgar_fd
+                    st.session_state.summary_data        = _edgar_sd
+                    st.session_state.bear_bull_data      = _edgar_bb
+                    st.session_state.dashboard_data      = _edgar_dd
+                    st.session_state.mda_sentiment       = None
+                    st.session_state.market_data         = _edgar_md
+                    st.session_state.excel_bytes         = _excel_bytes
+                    st.session_state.last_filename       = _file_name
+                    st.session_state.resolved_ticker     = _tk
+                    st.session_state.loaded_from_library = False
+                    st.session_state.loaded_from_edgar   = True
+                    st.session_state.loaded_from_sedar   = False
+                    st.session_state.cache_hit           = False
+                    st.session_state.dcf_result          = None
+                    st.session_state["manual_ticker"]    = _tk
+                    st.session_state["edgar_loaded_accession"] = _selected_accession
+                    st.session_state.pop("peer_data", None)
+
                     try:
-                        _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY)
-                    except Exception as e:
-                        st.warning(f"Bull/bear case could not be generated: {e}.")
-                with st.spinner("Generating dashboard insights from SEC data..."):
-                    try:
-                        _edgar_dd = analyze_dashboard_insights(_edgar_text, _edgar_sd, _edgar_fd, API_KEY)
-                    except Exception as e:
-                        st.warning(f"Dashboard insights could not be generated: {e}.")
-
-                _edgar_md = {}
-                with st.spinner(f"Fetching market data for {_tk}..."):
-                    _edgar_md = get_market_data(_tk)
-                _market_cap = _edgar_md.get("market_cap") or 0.0
-                try:
-                    _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
-                except Exception as e:
-                    st.error(f"Could not generate Excel file: {e}")
-                    st.stop()
-
-                _entry_id = f"edgar_{_cik}_{_selected_accession}"
-                _file_name = f"{_tk}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
-                st.session_state.financial_data      = _edgar_fd
-                st.session_state.summary_data        = _edgar_sd
-                st.session_state.bear_bull_data      = _edgar_bb
-                st.session_state.dashboard_data      = _edgar_dd
-                st.session_state.mda_sentiment       = None
-                st.session_state.market_data         = _edgar_md
-                st.session_state.excel_bytes         = _excel_bytes
-                st.session_state.last_filename       = _file_name
-                st.session_state.resolved_ticker     = _tk
-                st.session_state.loaded_from_library = False
-                st.session_state.loaded_from_edgar   = True
-                st.session_state.cache_hit           = False
-                st.session_state.dcf_result          = None
-                st.session_state["manual_ticker"]    = _tk
-                st.session_state["edgar_loaded_accession"] = _selected_accession
-                st.session_state.pop("peer_data", None)
-
-                try:
-                    lib_add(
-                        _entry_id,
-                        _file_name,
-                        len(_edgar_text),
+                        lib_add(
+                            _entry_id,
+                            _file_name,
+                            len(_edgar_text),
+                            _edgar_fd,
+                            _edgar_sd,
+                            _edgar_bb,
+                            _edgar_dd,
+                            raw_text=_edgar_text[:MAX_FILING_CHARS],
+                        )
+                    except Exception:
+                        pass
+                    _save_analysis_to_supabase(
+                        _tk,
                         _edgar_fd,
                         _edgar_sd,
                         _edgar_bb,
                         _edgar_dd,
                         raw_text=_edgar_text[:MAX_FILING_CHARS],
+                        file_name=_file_name,
+                        file_size=len(_edgar_text),
                     )
-                except Exception:
-                    pass
-                _save_analysis_to_supabase(
-                    _tk,
-                    _edgar_fd,
-                    _edgar_sd,
-                    _edgar_bb,
-                    _edgar_dd,
-                    raw_text=_edgar_text[:MAX_FILING_CHARS],
-                    file_name=_file_name,
-                    file_size=len(_edgar_text),
-                )
-                st.success(f"Loaded SEC EDGAR filing for {_tk}.")
-                st.rerun()
+                    st.success(f"Loaded SEC EDGAR filing for {_tk}.")
+                    st.rerun()
+
+    with _sedar_tab:
+        st.caption("Search Canadian public company filings on SEDAR+. Structured data depends on whether SEDAR+ exposes XBRL for the filing.")
+        _sedar_query = st.text_input("Company name or ticker", placeholder="e.g. Shopify, SHOP.TO", key="sedar_query")
+        if st.button("Search SEDAR+", type="primary", use_container_width=True, key="sedar_search_btn"):
+            st.session_state["sedar_companies"] = []
+            st.session_state["sedar_filings"] = []
+            st.session_state.loaded_from_sedar = False
+            _query = _sedar_query.strip()
+            if not _query:
+                st.warning("Enter a company name or ticker first.")
+            else:
+                with st.spinner(f"Searching SEDAR+ for {_query}..."):
+                    _companies = search_sedar_company(_query)
+                if not _companies:
+                    st.error("No SEDAR+ companies found.")
+                else:
+                    st.session_state["sedar_companies"] = _companies
+                    st.success(f"Found {len(_companies)} possible SEDAR+ match(es).")
+
+        _sedar_companies = st.session_state.get("sedar_companies") or []
+        if _sedar_companies:
+            _company_labels = []
+            for row in _sedar_companies:
+                _label = row.get("name", "Unknown")
+                if row.get("ticker"):
+                    _label = f"{_label} ({row.get('ticker')})"
+                if row.get("jurisdiction"):
+                    _label = f"{_label} - {row.get('jurisdiction')}"
+                _company_labels.append(_label)
+            _company_label = st.selectbox("Matching companies", _company_labels, key="sedar_company_select")
+            _company = _sedar_companies[_company_labels.index(_company_label)]
+            _issuer_no = _company.get("issuer_no", "")
+            if st.button("Find Recent SEDAR+ Filings", use_container_width=True, key="sedar_find_filings_btn"):
+                if not _issuer_no and _company.get("search_url"):
+                    _filings = [{
+                        "filing_id": "manual_sedar_search",
+                        "filing_date": "",
+                        "filing_type": "SEDAR+ manual search",
+                        "period_end": "",
+                        "document_url": _company.get("search_url", ""),
+                    }]
+                else:
+                    with st.spinner("Fetching recent SEDAR+ filings..."):
+                        _filings = get_sedar_filings(_issuer_no, filing_type="Annual", count=5)
+                if not _filings:
+                    st.error("No recent SEDAR+ filings found.")
+                else:
+                    st.session_state["sedar_selected_company"] = _company
+                    st.session_state["sedar_filings"] = _filings
+                    st.session_state["sedar_loaded_filing"] = None
+                    st.success(f"Found {len(_filings)} SEDAR+ filing option(s).")
+
+        _sedar_filings = st.session_state.get("sedar_filings") or []
+        if _sedar_filings:
+            _sedar_filing_labels = []
+            for row in _sedar_filings:
+                _label = row.get("filing_type", "Filing")
+                if row.get("filing_date"):
+                    _label = f"{_label} filed {row.get('filing_date')}"
+                if row.get("period_end"):
+                    _label = f"{_label} - period {row.get('period_end')}"
+                _sedar_filing_labels.append(_label)
+            _sedar_filing_label = st.selectbox("Recent SEDAR+ filings", _sedar_filing_labels, key="sedar_filing_select")
+            _sedar_filing = _sedar_filings[_sedar_filing_labels.index(_sedar_filing_label)]
+            _sedar_filing_id = _sedar_filing.get("filing_id", "")
+            if st.button("Load Selected Filing", type="primary", use_container_width=True, key="sedar_load_selected_btn"):
+                _company = st.session_state.get("sedar_selected_company") or {}
+                _issuer_no = _company.get("issuer_no", "")
+                _ticker = (_company.get("ticker") or st.session_state.get("sedar_query") or "").strip().upper()
+                if _sedar_filing_id == "manual_sedar_search":
+                    _sedar_fd = {
+                        "pdf_url": _sedar_filing.get("document_url", ""),
+                        "xbrl_available": False,
+                        "error": "PDF only — upload manually",
+                    }
+                else:
+                    with st.spinner("Fetching SEDAR+ filing data..."):
+                        _sedar_fd = get_sedar_financial_data(_issuer_no, _sedar_filing_id)
+
+                if not _sedar_fd:
+                    st.error("Could not fetch SEDAR+ filing data.")
+                elif not _sedar_fd.get("xbrl_available", True):
+                    st.info("This filing is PDF only. Download it from SEDAR+ and upload it manually.")
+                    _pdf_url = _sedar_fd.get("pdf_url") or _sedar_filing.get("document_url")
+                    if _pdf_url:
+                        st.markdown(f"[Open filing on SEDAR+]({_pdf_url})")
+                else:
+                    _sedar_text = _financial_data_to_text(_sedar_fd)
+                    _sedar_sd = {"ticker": _ticker, "filing_date": _sedar_filing.get("filing_date")}
+                    _sedar_bb = None
+                    _sedar_dd = None
+                    with st.spinner("Generating investment signal from SEDAR+ data..."):
+                        try:
+                            _sedar_sd = analyze_summary(_sedar_text, _sedar_fd, API_KEY)
+                            if isinstance(_sedar_sd, dict):
+                                _sedar_sd.setdefault("ticker", _ticker)
+                                _sedar_sd.setdefault("filing_date", _sedar_filing.get("filing_date"))
+                        except Exception as e:
+                            st.warning(f"Investment signal could not be generated: {e}.")
+                    with st.spinner("Generating bull/bear case from SEDAR+ data..."):
+                        try:
+                            _sedar_bb = analyze_bear_bull(_sedar_text, API_KEY)
+                        except Exception as e:
+                            st.warning(f"Bull/bear case could not be generated: {e}.")
+                    with st.spinner("Generating dashboard insights from SEDAR+ data..."):
+                        try:
+                            _sedar_dd = analyze_dashboard_insights(_sedar_text, _sedar_sd, _sedar_fd, API_KEY)
+                        except Exception as e:
+                            st.warning(f"Dashboard insights could not be generated: {e}.")
+
+                    _sedar_md = {}
+                    if _ticker:
+                        with st.spinner(f"Fetching market data for {_ticker}..."):
+                            _sedar_md = get_market_data(_ticker)
+                    _market_cap = _sedar_md.get("market_cap") or 0.0
+                    try:
+                        _excel_bytes = create_excel_file(_sedar_fd, _sedar_sd, _market_cap, _sedar_bb)
+                    except Exception as e:
+                        st.error(f"Could not generate Excel file: {e}")
+                        st.stop()
+
+                    _entry_id = f"sedar_{_issuer_no}_{_sedar_filing_id}"
+                    _file_name = f"{_ticker or 'SEDAR'}_{_sedar_filing.get('filing_type')}_{_sedar_filing.get('period_end')}.sedar"
+                    st.session_state.financial_data      = _sedar_fd
+                    st.session_state.summary_data        = _sedar_sd
+                    st.session_state.bear_bull_data      = _sedar_bb
+                    st.session_state.dashboard_data      = _sedar_dd
+                    st.session_state.mda_sentiment       = None
+                    st.session_state.market_data         = _sedar_md
+                    st.session_state.excel_bytes         = _excel_bytes
+                    st.session_state.last_filename       = _file_name
+                    st.session_state.resolved_ticker     = _ticker
+                    st.session_state.loaded_from_library = False
+                    st.session_state.loaded_from_edgar   = False
+                    st.session_state.loaded_from_sedar   = True
+                    st.session_state.cache_hit           = False
+                    st.session_state.dcf_result          = None
+                    st.session_state["manual_ticker"]    = _ticker
+                    st.session_state["sedar_loaded_filing"] = _sedar_filing_id
+                    st.session_state.pop("peer_data", None)
+
+                    try:
+                        lib_add(
+                            _entry_id,
+                            _file_name,
+                            len(_sedar_text),
+                            _sedar_fd,
+                            _sedar_sd,
+                            _sedar_bb,
+                            _sedar_dd,
+                            raw_text=_sedar_text[:MAX_FILING_CHARS],
+                        )
+                    except Exception:
+                        pass
+                    _save_analysis_to_supabase(
+                        _ticker,
+                        _sedar_fd,
+                        _sedar_sd,
+                        _sedar_bb,
+                        _sedar_dd,
+                        raw_text=_sedar_text[:MAX_FILING_CHARS],
+                        file_name=_file_name,
+                        file_size=len(_sedar_text),
+                    )
+                    st.success(f"Loaded SEDAR+ filing for {_ticker or _company.get('name', 'company')}.")
+                    st.rerun()
 
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
@@ -2651,7 +2828,11 @@ if st.session_state.get("reanalyse_no_text"):
         st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
 
 if uploaded_file is None:
-    if not st.session_state.get("loaded_from_library") and not st.session_state.get("loaded_from_edgar"):
+    if (
+        not st.session_state.get("loaded_from_library")
+        and not st.session_state.get("loaded_from_edgar")
+        and not st.session_state.get("loaded_from_sedar")
+    ):
         st.session_state.financial_data  = None
         st.session_state.summary_data    = None
         st.session_state.bear_bull_data  = None
@@ -2681,6 +2862,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
+    st.session_state.loaded_from_sedar   = False
     st.session_state.pop("peer_data", None)
     st.session_state.pop("manual_ticker", None)
 
@@ -2890,6 +3072,7 @@ if uploaded_file:
         st.session_state.resolved_ticker     = resolved_ticker
         st.session_state.loaded_from_library = False
         st.session_state.loaded_from_edgar   = False
+        st.session_state.loaded_from_sedar   = False
         if resolved_ticker:
             st.session_state["manual_ticker"] = resolved_ticker
 
@@ -3345,7 +3528,7 @@ if st.session_state.financial_data:
             st.markdown("**Income Statement**")
             rows = financial_data.get("income_statement", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar"):
+                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
                     st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
@@ -3356,7 +3539,7 @@ if st.session_state.financial_data:
             st.markdown("**Balance Sheet**")
             rows = financial_data.get("balance_sheet", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar"):
+                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
                     st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
@@ -3367,7 +3550,7 @@ if st.session_state.financial_data:
             st.markdown("**Cash Flow Statement**")
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar"):
+                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
                     st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
