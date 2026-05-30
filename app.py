@@ -549,6 +549,73 @@ def _financial_data_to_text(financial_data: dict) -> str:
     return "\n".join(lines)
 
 
+def _edgar_cache_identifier() -> str:
+    identifier = (
+        st.session_state.get("edgar_selected_ticker")
+        or st.session_state.get("edgar_company_name")
+        or ""
+    )
+    identifier = str(identifier).strip().upper()
+    if identifier:
+        return identifier
+    return (
+        str(st.session_state.get("edgar_cik", "UNKNOWN"))
+        .replace("000", "", 1)
+        .lstrip("0")
+        or "UNKNOWN"
+    )
+
+
+def _persist_loaded_edgar_to_library() -> None:
+    if not st.session_state.get("loaded_from_edgar"):
+        return
+
+    financial_data = st.session_state.get("financial_data")
+    accession = st.session_state.get("edgar_loaded_accession")
+    cik = st.session_state.get("edgar_cik")
+    if not financial_data or not accession or not cik:
+        return
+
+    ticker = _edgar_cache_identifier()
+    period = _analysis_period(financial_data)
+    if not ticker or not period:
+        return
+
+    filing_text = st.session_state.get("cached_filing_text") or _financial_data_to_text(financial_data)
+    text_path = _text_cache_path(ticker, period)
+    if text_path and (not os.path.exists(text_path)):
+        try:
+            os.makedirs(os.path.dirname(text_path), exist_ok=True)
+            with open(text_path, "w", encoding="utf-8") as _f:
+                _f.write(filing_text)
+        except Exception as _e:
+            st.warning(f"Could not save EDGAR text cache: {_e}")
+            text_path = None
+
+    entry_id = f"edgar_{cik}_{accession}"
+    existing = next((entry for entry in lib_get() if entry.get("id") == entry_id), None)
+    if existing and existing.get("source") == "edgar" and existing.get("file_path"):
+        return
+
+    try:
+        lib_add(
+            entry_id,
+            st.session_state.get("last_filename") or f"{ticker}_{period}.edgar",
+            len(filing_text),
+            financial_data,
+            st.session_state.get("summary_data"),
+            st.session_state.get("bear_bull_data"),
+            st.session_state.get("dashboard_data"),
+            raw_text=filing_text[:MAX_FILING_CHARS],
+            mda_sentiment=st.session_state.get("mda_sentiment"),
+            source="edgar",
+            file_path=text_path,
+        )
+        st.session_state["filing_library"] = lib_get()
+    except Exception as _e:
+        st.warning(f"Could not save to library: {_e}")
+
+
 def _education_topic_param() -> str | None:
     try:
         topic = st.query_params.get("education")
@@ -2975,18 +3042,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 and _selected_accession
                 and st.session_state.get("edgar_loaded_accession") != _selected_accession
             ):
-                _tk = (
-                    st.session_state.get("edgar_selected_ticker")
-                    or st.session_state.get("edgar_company_name")
-                    or ""
-                ).strip().upper()
-                if not _tk:
-                    _tk = (
-                        st.session_state.get("edgar_cik", "UNKNOWN")
-                        .replace("000", "", 1)
-                        .lstrip("0")
-                        or "UNKNOWN"
-                    )
+                _tk = _edgar_cache_identifier()
                 _company_name = (st.session_state.get("edgar_company_name") or _tk or "company").strip()
                 _cik = st.session_state.get("edgar_cik")
                 with st.spinner("Fetching SEC XBRL financial statements..."):
@@ -2996,6 +3052,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.error("Could not fetch structured financial data for that filing.")
                 else:
                     _edgar_text = _financial_data_to_text(_edgar_fd)
+                    st.session_state.cached_filing_text = _edgar_text
                     _edgar_period = _analysis_period(_edgar_fd)
                     _edgar_text_path = _text_cache_path(_tk, _edgar_period)
                     if _edgar_text_path:
@@ -3193,6 +3250,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 _external_link("Open filing on SEDAR+", _profile_url)
 
             st.info("Once you've downloaded a filing from SEDAR+, upload it below to analyze it with Claude.")
+
+_persist_loaded_edgar_to_library()
 
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
