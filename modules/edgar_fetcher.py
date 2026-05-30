@@ -3,8 +3,11 @@ from urllib.parse import quote
 from xml.etree import ElementTree
 
 import requests
+from requests.adapters import HTTPAdapter
 
 
+_SESSION = requests.Session()
+_SESSION.trust_env = False
 HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
 
 
@@ -88,7 +91,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 f"?action=getcompany&company=&CIK={quote(query)}&type=10-K"
                 "&dateb=&owner=include&count=10&search_text=&output=atom"
             )
-            response = requests.get(atom_url, headers=HEADERS, timeout=15)
+            response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
             if response.ok:
                 _append_atom_company_matches(response.content, query, matches, seen, count, ticker=query)
                 if matches:
@@ -99,7 +102,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
             f"?q={quote(f'\"{query}\"')}&dateRange=custom"
             "&startdt=2020-01-01&enddt=2026-12-31&forms=10-K"
         )
-        response = requests.get(search_url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
         if response.ok:
             payload = response.json()
             hits = payload.get("hits", [])
@@ -163,7 +166,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
             f"?company={quote(query)}&CIK=&type=10-K&dateb=&owner=include"
             "&count=10&search_text=&action=getcompany&output=atom"
         )
-        response = requests.get(atom_url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
         if not response.ok:
             return matches
         _append_atom_company_matches(response.content, query, matches, seen, count)
@@ -183,7 +186,7 @@ def get_cik(ticker: str) -> str | None:
             f"?q={quote(f'\"{ticker}\"')}&dateRange=custom&startdt=2020-01-01&forms=10-K"
         )
         try:
-            response = requests.get(search_url, headers=HEADERS, timeout=15)
+            response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
             if response.ok:
                 payload = response.json()
                 hits = payload.get("hits", {}).get("hits", [])
@@ -208,7 +211,7 @@ def get_cik(ticker: str) -> str | None:
             f"?action=getcompany&ticker={quote(ticker)}&type=10-K&dateb=&owner=include"
             "&count=10&search_text=&output=atom"
         )
-        response = requests.get(atom_url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
         if not response.ok:
             return None
         root = ElementTree.fromstring(response.content)
@@ -235,7 +238,7 @@ def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> lis
         if not cik:
             return []
         url = f"https://data.sec.gov/submissions/CIK{cik}.json"
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(url, headers=HEADERS, timeout=15)
         if not response.ok:
             return []
         recent = response.json().get("filings", {}).get("recent", {})
@@ -311,7 +314,7 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
         if not cik or not accession_number:
             return {}
         url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
-        response = requests.get(url, headers=HEADERS, timeout=20)
+        response = _SESSION.get(url, headers=HEADERS, timeout=20)
         if not response.ok:
             return {}
         facts = response.json()
@@ -366,3 +369,5 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
         }
     except Exception:
         return {}
+
+
