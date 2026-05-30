@@ -29,6 +29,7 @@ from modules.market_data import get_market_data, search_ticker, search_ticker_de
 from modules.peer_comparison import get_peer_data, peer_map
 from modules.dcf_calculator import calculate_dcf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
+from modules.analysis_cache import load_analysis, save_analysis
 from modules.filing_library import (
     add_entry as lib_add,
     get_entries as lib_get,
@@ -390,6 +391,138 @@ def _save_analysis_to_supabase(
             supabase_storage.save_pdf(ticker, period, pdf_bytes)
     except Exception:
         pass
+
+
+def _analysis_cache_payload(
+    ticker: str | None,
+    period: str | None,
+    source: str,
+    financial_data: dict | None,
+    summary_data: dict | None,
+    bear_bull_data: dict | None,
+    dashboard_data: dict | None,
+    mda_sentiment: dict | None,
+    market_data: dict | None,
+    sector_value: str | None = None,
+    hurdle_rate_value: float | None = None,
+) -> dict | None:
+    if not ticker or not period or not financial_data:
+        return None
+
+    payload = {
+        "ticker": ticker,
+        "period": period,
+        "source": source,
+        "timestamp": datetime.utcnow().isoformat(),
+        "company_name": financial_data.get("company_name", "Unknown"),
+        "financial_data": financial_data,
+    }
+
+    optional_values = {
+        "summary": summary_data,
+        "summary_data": summary_data,
+        "bear_bull": bear_bull_data,
+        "bear_bull_data": bear_bull_data,
+        "dashboard_insights": dashboard_data,
+        "dashboard_data": dashboard_data,
+        "mda_sentiment": mda_sentiment,
+        "market_data": market_data,
+        "sector": sector_value or (summary_data or {}).get("sector_inferred") or financial_data.get("sector"),
+        "hurdle_rate": hurdle_rate_value,
+        "market_cap": (market_data or {}).get("market_cap"),
+    }
+
+    for key, value in optional_values.items():
+        if value is not None:
+            payload[key] = value
+
+    try:
+        flags = detect_flags(financial_data)
+        payload["red_flags"] = flags.get("flags", [])
+    except Exception:
+        pass
+
+    try:
+        payload["ratio_data"] = _calc_summary_metrics(financial_data)
+    except Exception:
+        pass
+
+    return payload
+
+
+def _save_analysis_cache(
+    ticker: str | None,
+    period: str | None,
+    source: str,
+    financial_data: dict | None = None,
+    summary_data: dict | None = None,
+    bear_bull_data: dict | None = None,
+    dashboard_data: dict | None = None,
+    mda_sentiment: dict | None = None,
+    market_data: dict | None = None,
+    sector_value: str | None = None,
+    hurdle_rate_value: float | None = None,
+) -> bool:
+    payload = _analysis_cache_payload(
+        ticker,
+        period,
+        source,
+        financial_data if financial_data is not None else st.session_state.get("financial_data"),
+        summary_data if summary_data is not None else st.session_state.get("summary_data"),
+        bear_bull_data if bear_bull_data is not None else st.session_state.get("bear_bull_data"),
+        dashboard_data if dashboard_data is not None else st.session_state.get("dashboard_data"),
+        mda_sentiment if mda_sentiment is not None else st.session_state.get("mda_sentiment"),
+        market_data if market_data is not None else st.session_state.get("market_data"),
+        sector_value,
+        hurdle_rate_value,
+    )
+    if not payload:
+        return False
+    return save_analysis(ticker, period, payload)
+
+
+def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
+    financial_data = cached.get("financial_data")
+    if not isinstance(financial_data, dict):
+        return False
+
+    summary_data = cached.get("summary_data") or cached.get("summary")
+    bear_bull_data = cached.get("bear_bull_data") or cached.get("bear_bull")
+    dashboard_data = cached.get("dashboard_data") or cached.get("dashboard_insights")
+    market_data = cached.get("market_data") or {}
+    if not market_data and cached.get("market_cap") is not None:
+        market_data = {"market_cap": cached.get("market_cap")}
+
+    st.session_state.financial_data = financial_data
+    st.session_state.summary_data = summary_data
+    st.session_state.bear_bull_data = bear_bull_data
+    st.session_state.dashboard_data = dashboard_data
+    st.session_state.mda_sentiment = cached.get("mda_sentiment")
+    st.session_state.market_data = market_data
+    st.session_state.last_filename = (entry or {}).get("file_name", "")
+    st.session_state.resolved_ticker = cached.get("ticker") or (entry or {}).get("ticker")
+    st.session_state.cache_hit = False
+    st.session_state.dcf_result = None
+    st.session_state.loaded_from_library = True
+    st.session_state.loaded_from_edgar = cached.get("source") == "edgar"
+    st.session_state.loaded_from_sedar = False
+    st.session_state.analysis_loaded_from_cache = True
+
+    if st.session_state.resolved_ticker and st.session_state.resolved_ticker != "—":
+        st.session_state["manual_ticker"] = st.session_state.resolved_ticker
+
+    try:
+        market_cap = (market_data or {}).get("market_cap") or 0.0
+        st.session_state.excel_bytes = create_excel_file(
+            financial_data,
+            summary_data,
+            market_cap,
+            bear_bull_data,
+        )
+    except Exception:
+        st.session_state.excel_bytes = None
+
+    return True
 
 
 def _financial_data_to_text(financial_data: dict) -> str:
@@ -1220,6 +1353,24 @@ document.addEventListener('focusin', function(e) {
                     load_col, reanalyse_col = st.columns(2)
                     with load_col:
                         if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                            _entry_period = entry.get("fiscal_year") or entry.get("period", "")
+                            _entry_ticker = ticker if ticker != "—" else None
+                            _entry_text = _library_text_for_entry(entry)
+                            st.session_state.cached_filing_text = _entry_text
+                            _cached_analysis = load_analysis(_entry_ticker, _entry_period)
+                            if _cached_analysis and _restore_analysis_cache(_cached_analysis, entry):
+                                st.session_state.cached_pdf_bytes = None
+                                if entry.get("source") != "edgar":
+                                    # Keep PDF bytes preloaded for a later paid Re-Analyse when available.
+                                    try:
+                                        _lp = _pdf_cache_path(_entry_ticker, _entry_period)
+                                        st.session_state.cached_pdf_bytes = (
+                                            open(_lp, "rb").read() if _lp and os.path.exists(_lp) else None
+                                        )
+                                    except Exception:
+                                        st.session_state.cached_pdf_bytes = None
+                                st.rerun()
+
                             fd = entry["financial_data"]
                             sd = entry.get("summary_data")
                             bb = entry.get("bear_bull_data")
@@ -1238,8 +1389,9 @@ document.addEventListener('focusin', function(e) {
                             st.session_state.loaded_from_edgar   = entry.get("source") == "edgar"
                             st.session_state.loaded_from_sedar   = False
                             st.session_state.cached_filing_text  = (
-                                _library_text_for_entry(entry) if entry.get("source") == "edgar" else None
+                                _entry_text if entry.get("source") == "edgar" else None
                             )
+                            st.session_state.analysis_loaded_from_cache = False
                             if ticker and ticker != "—":
                                 st.session_state["manual_ticker"] = ticker
                             if entry.get("source") == "edgar":
@@ -1390,6 +1542,17 @@ if page == "Portfolio Manager":
             pdf_bytes=ra.get("pdf_bytes"),
             source=ra.get("source", "pdf"),
             file_path=ra.get("file_path"),
+        )
+        _save_analysis_cache(
+            (_ra_sd or {}).get("ticker"),
+            _analysis_period(_ra_fd),
+            ra.get("source", "pdf"),
+            financial_data=_ra_fd,
+            summary_data=_ra_sd,
+            bear_bull_data=_ra_bb,
+            dashboard_data=_ra_dd,
+            mda_sentiment=_ra_mda,
+            market_data={},
         )
         st.session_state.al_reanalyse_complete = ra["company_name"]
         st.session_state.pending_reanalyse     = None
@@ -2702,6 +2865,7 @@ if "financial_data" not in st.session_state:
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
     st.session_state.loaded_from_sedar   = False
+    st.session_state.analysis_loaded_from_cache = False
     st.session_state.uploader_key        = 0
     os.makedirs(os.path.join("library", "pdfs"), exist_ok=True)
 
@@ -2874,10 +3038,18 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.session_state.loaded_from_edgar   = True
                     st.session_state.loaded_from_sedar   = False
                     st.session_state.cache_hit           = False
+                    st.session_state.analysis_loaded_from_cache = False
                     st.session_state.dcf_result          = None
                     st.session_state["manual_ticker"]    = _tk
                     st.session_state["edgar_loaded_accession"] = _selected_accession
                     st.session_state.pop("peer_data", None)
+                    _save_analysis_cache(
+                        _tk,
+                        _edgar_period,
+                        "edgar",
+                        sector_value=(_edgar_sd or {}).get("sector_inferred"),
+                        hurdle_rate_value=None,
+                    )
 
                     try:
                         lib_add(
@@ -3086,6 +3258,7 @@ if uploaded_file is None:
         st.session_state.resolved_ticker = None
         st.session_state.dcf_result      = None
         st.session_state.cache_hit       = False
+        st.session_state.analysis_loaded_from_cache = False
         st.session_state.pop("peer_data", None)
         st.session_state.pop("manual_ticker", None)
 elif (not st.session_state.get("loaded_from_library", False) and
@@ -3106,6 +3279,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
     st.session_state.loaded_from_sedar   = False
+    st.session_state.analysis_loaded_from_cache = False
     st.session_state.pop("peer_data", None)
     st.session_state.pop("manual_ticker", None)
 
@@ -3199,6 +3373,22 @@ if st.session_state.get("pending_reanalyse"):
     st.session_state.resolved_ticker     = None
     st.session_state.dcf_result          = None
     st.session_state.loaded_from_library = True
+    st.session_state.loaded_from_edgar   = ra.get("source") == "edgar"
+    st.session_state.loaded_from_sedar   = False
+    st.session_state.analysis_loaded_from_cache = False
+    _save_analysis_cache(
+        (_ra_sd or {}).get("ticker"),
+        _analysis_period(_ra_fd),
+        ra.get("source", "pdf"),
+        financial_data=_ra_fd,
+        summary_data=_ra_sd,
+        bear_bull_data=_ra_bb,
+        dashboard_data=_ra_dd,
+        mda_sentiment=_ra_mda,
+        market_data={},
+        sector_value=sector,
+        hurdle_rate_value=hurdle_rate,
+    )
     st.session_state.pending_reanalyse   = None
     st.rerun()
 
@@ -3328,8 +3518,17 @@ if uploaded_file:
         st.session_state.loaded_from_library = False
         st.session_state.loaded_from_edgar   = False
         st.session_state.loaded_from_sedar   = False
+        st.session_state.analysis_loaded_from_cache = False
         if resolved_ticker:
             st.session_state["manual_ticker"] = resolved_ticker
+        _period_label = financial_data.get("fiscal_year") or financial_data.get("period", "")
+        _save_analysis_cache(
+            resolved_ticker,
+            _period_label,
+            "pdf",
+            sector_value=sector,
+            hurdle_rate_value=hurdle_rate,
+        )
 
         # Persist to Filing Library (permanent — survives cache clears).
         try:
@@ -3354,7 +3553,6 @@ if uploaded_file:
 
         # Save PDF bytes to disk so Re-Analyse can run without re-uploading.
         try:
-            _period_label = financial_data.get("fiscal_year") or financial_data.get("period", "")
             _pdf_disk_path = _pdf_cache_path(resolved_ticker, _period_label)
             if _pdf_disk_path:
                 with open(_pdf_disk_path, "wb") as _f:
