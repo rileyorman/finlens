@@ -12,3 +12,4 @@ certifi
 yfinance
 python-docx>=1.1.0
 supabase
+streamlit-cookies-manager
