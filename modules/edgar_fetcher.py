@@ -1,11 +1,30 @@
 import re
+import ssl
+import sys
 from urllib.parse import quote
 from xml.etree import ElementTree
 
 import requests
+from requests.adapters import HTTPAdapter
 
 
-HEADERS = {"User-Agent": "FinLens 264511560+rileyorman@users.noreply.github.com"}
+class _WindowsCertAdapter(HTTPAdapter):
+    """Load the Windows system cert store so Avast HTTPS inspection is trusted.
+    Avast's CA is in the Windows store but not in certifi's bundle.
+    """
+    def init_poolmanager(self, *args, **kwargs):
+        if sys.platform == "win32":
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.load_default_certs()
+            ctx.check_hostname = True
+            kwargs["ssl_context"] = ctx
+        super().init_poolmanager(*args, **kwargs)
+
+
+_SESSION = requests.Session()
+_SESSION.trust_env = False
+_SESSION.mount("https://", _WindowsCertAdapter())
+HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
 
 
 def _fmt(value):
@@ -35,37 +54,104 @@ def _zero_pad_cik(cik) -> str | None:
         return None
 
 
+def _company_name_from_atom_title(title: str, fallback: str) -> str:
+    name = re.sub(r"^\s*10-K(?:/A)?\s*-\s*", "", title or "", flags=re.I)
+    name = re.sub(r"\s+\(.*?(?:CIK|Filer|\d{10}).*?\)\s*", " ", name, flags=re.I)
+    return re.sub(r"\s+", " ", name).strip(" -") or fallback
+
+
+def _append_atom_company_matches(content: bytes, query: str, matches: list[dict], seen: set, count: int, ticker: str = "") -> None:
+    try:
+        root = ElementTree.fromstring(content)
+    except Exception:
+        return
+    for entry in root.iter():
+        if not entry.tag.lower().endswith("entry"):
+            continue
+        title = ""
+        cik = None
+        for child in entry:
+            tag = child.tag.lower()
+            text = child.text or ""
+            if tag.endswith("title"):
+                title = text.strip()
+            attr_text = " ".join(str(v) for v in child.attrib.values())
+            match = re.search(r"CIK=(\d+)|/CIK(\d+)|\((\d{10})\)", f"{text} {attr_text}", re.I)
+            if match:
+                cik = next((group for group in match.groups() if group), None)
+        padded = _zero_pad_cik(cik)
+        if not padded:
+            continue
+        name = _company_name_from_atom_title(title, query)
+        name_key = name.upper()
+        if name_key in seen:
+            continue
+        matches.append({"cik": padded, "name": name, "ticker": ticker.upper()})
+        seen.add(name_key)
+        if len(matches) >= count:
+            break
+
+
 def search_companies(company_name: str, count: int = 10) -> list[dict]:
     try:
         query = (company_name or "").strip()
         if not query:
             return []
 
+        matches = []
+        seen = set()
+
+        if re.fullmatch(r"[A-Za-z]{1,5}", query):
+            atom_url = (
+                "https://www.sec.gov/cgi-bin/browse-edgar"
+                f"?action=getcompany&company=&CIK={quote(query)}&type=10-K"
+                "&dateb=&owner=include&count=10&search_text=&output=atom"
+            )
+            response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
+            if response.ok:
+                _append_atom_company_matches(response.content, query, matches, seen, count, ticker=query)
+                if matches:
+                    return matches
+
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
             f"?q={quote(f'\"{query}\"')}&dateRange=custom"
             "&startdt=2020-01-01&enddt=2026-12-31&forms=10-K"
         )
-        response = requests.get(search_url, headers=HEADERS, timeout=15)
-        matches = []
-        seen = set()
+        response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
         if response.ok:
             payload = response.json()
-            hits = payload.get("hits", {}).get("hits", [])
+            hits = payload.get("hits", [])
+            if isinstance(hits, dict):
+                hits = hits.get("hits", [])
             for hit in hits:
-                source = hit.get("_source", {}) if isinstance(hit, dict) else {}
+                hit = hit if isinstance(hit, dict) else {}
+                source = hit.get("_source", {}) if isinstance(hit.get("_source"), dict) else {}
+                entities = hit.get("entity") or source.get("entity")
                 cik = (
-                    source.get("ciks")
+                    hit.get("cik")
+                    or hit.get("ciks")
+                    or source.get("ciks")
                     or source.get("cik")
                     or source.get("cikNumber")
+                    or source.get("cik_number")
                 )
                 if isinstance(cik, list):
                     cik = cik[0] if cik else None
+                if not cik and isinstance(entities, list):
+                    for entity in entities:
+                        match = re.search(r"\bCIK[:\s]+(\d+)\b", str(entity), re.I)
+                        if match:
+                            cik = match.group(1)
+                            break
                 padded = _zero_pad_cik(cik)
-                if not padded or padded in seen:
+                if not padded:
                     continue
                 company = (
-                    source.get("entity")
+                    entities
+                    or source.get("display_names")
+                    or source.get("entity_name")
+                    or source.get("entityName")
                     or source.get("companyName")
                     or source.get("displayNames")
                     or source.get("name")
@@ -73,47 +159,33 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 )
                 if isinstance(company, list):
                     company = company[0] if company else query
+                company = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", str(company)).strip()
+                company_key = company.upper()
+                if company_key in seen:
+                    continue
                 ticker = source.get("tickers") or source.get("ticker") or source.get("tickerSymbol")
                 if isinstance(ticker, list):
                     ticker = ticker[0] if ticker else ""
                 matches.append({
                     "cik": padded,
-                    "name": str(company).strip(),
+                    "name": company,
                     "ticker": str(ticker or "").strip().upper(),
                 })
-                seen.add(padded)
+                seen.add(company_key)
                 if len(matches) >= count:
                     return matches
+        if matches:
+            return matches
 
         atom_url = (
             "https://www.sec.gov/cgi-bin/browse-edgar"
             f"?company={quote(query)}&CIK=&type=10-K&dateb=&owner=include"
             "&count=10&search_text=&action=getcompany&output=atom"
         )
-        response = requests.get(atom_url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
         if not response.ok:
             return matches
-        root = ElementTree.fromstring(response.content)
-        for entry in root.iter():
-            if not entry.tag.lower().endswith("entry"):
-                continue
-            title = ""
-            cik = None
-            for child in entry:
-                tag = child.tag.lower()
-                text = child.text or ""
-                if tag.endswith("title"):
-                    title = text.strip()
-                match = re.search(r"CIK=(\d+)", text)
-                if match:
-                    cik = match.group(1)
-            padded = _zero_pad_cik(cik)
-            if padded and padded not in seen:
-                name = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", title).strip() or query
-                matches.append({"cik": padded, "name": name, "ticker": ""})
-                seen.add(padded)
-                if len(matches) >= count:
-                    break
+        _append_atom_company_matches(response.content, query, matches, seen, count)
         return matches
     except Exception:
         return []
@@ -130,7 +202,7 @@ def get_cik(ticker: str) -> str | None:
             f"?q={quote(f'\"{ticker}\"')}&dateRange=custom&startdt=2020-01-01&forms=10-K"
         )
         try:
-            response = requests.get(search_url, headers=HEADERS, timeout=15)
+            response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
             if response.ok:
                 payload = response.json()
                 hits = payload.get("hits", {}).get("hits", [])
@@ -155,7 +227,7 @@ def get_cik(ticker: str) -> str | None:
             f"?action=getcompany&ticker={quote(ticker)}&type=10-K&dateb=&owner=include"
             "&count=10&search_text=&output=atom"
         )
-        response = requests.get(atom_url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
         if not response.ok:
             return None
         root = ElementTree.fromstring(response.content)
@@ -182,7 +254,7 @@ def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> lis
         if not cik:
             return []
         url = f"https://data.sec.gov/submissions/CIK{cik}.json"
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        response = _SESSION.get(url, headers=HEADERS, timeout=15)
         if not response.ok:
             return []
         recent = response.json().get("filings", {}).get("recent", {})
@@ -258,7 +330,7 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
         if not cik or not accession_number:
             return {}
         url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
-        response = requests.get(url, headers=HEADERS, timeout=20)
+        response = _SESSION.get(url, headers=HEADERS, timeout=20)
         if not response.ok:
             return {}
         facts = response.json()
@@ -313,3 +385,5 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
         }
     except Exception:
         return {}
+
+
