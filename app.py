@@ -95,7 +95,7 @@ def _supabase_row_to_library_entry(row: dict) -> dict:
     data = row.get("data") or {}
     if not isinstance(data, dict):
         data = {}
-    financial_data = data.get("financial_data") if isinstance(data.get("financial_data"), dict) else data
+    financial_data = data.get("financial_data") if isinstance(data.get("financial_data"), dict) else {}
     summary_data = data.get("summary_data") if isinstance(data.get("summary_data"), dict) else None
     bear_bull_data = data.get("bear_bull_data") if isinstance(data.get("bear_bull_data"), dict) else None
     dashboard_data = data.get("dashboard_data") if isinstance(data.get("dashboard_data"), dict) else None
