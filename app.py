@@ -1443,10 +1443,8 @@ document.addEventListener('focusin', function(e) {
                     load_col, reanalyse_col = st.columns(2)
                     with load_col:
                         if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
-                            print(f"LIB LOAD DEBUG: ticker='{entry.get('ticker')}' period='{entry.get('period')}' source='{entry.get('source')}' file_path='{entry.get('file_path')}'")
                             _entry_period = entry.get("fiscal_year") or entry.get("period", "")
                             _entry_ticker = ticker if ticker != "—" else None
-                            print(f"LIB LOAD DEBUG2: _entry_ticker='{_entry_ticker}' _entry_period='{_entry_period}'")
                             _entry_text = _library_text_for_entry(entry)
                             st.session_state.cached_filing_text = _entry_text
                             _cached_analysis = load_analysis(_entry_ticker, _entry_period)
