@@ -3147,33 +3147,79 @@ if st.session_state.financial_data:
                         st.info(_sr["narrative"])
 
         # --- Financial statement tables ---
-        if st.session_state.get("loaded_from_edgar"):
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.TextColumn(fy_prior),
-                "value":       st.column_config.TextColumn(fy),
-            }
-        else:
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
-                "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
-            }
+        col_cfg = {
+            "line_item":   st.column_config.TextColumn("Line Item"),
+            "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
+            "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
+        }
 
         def _display_rows(rows):
-            if st.session_state.get("loaded_from_edgar"):
-                return [
-                    {
-                        "line_item": r.get("line_item"),
-                        "value_prior": _fmt_edgar_value(r.get("value_prior")) or "—",
-                        "value": _fmt_edgar_value(r.get("value")) or "—",
-                    }
-                    for r in rows
-                ]
             return [
                 {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
                 for r in rows
             ]
+
+        def _display_edgar_statement(rows):
+            import html as _html
+
+            body = ""
+            for row in rows:
+                line_item = _html.escape(str(row.get("line_item") or ""))
+                if row.get("row_type") == "section_header":
+                    body += (
+                        f'<tr><td colspan="3" style="background:#1E293B;color:#F1F5F9;'
+                        f'font-weight:700;text-transform:uppercase;letter-spacing:0.04em;'
+                        f'padding:8px 10px;border-top:1px solid #334155;'
+                        f'border-bottom:1px solid #334155">{line_item}</td></tr>'
+                    )
+                else:
+                    prior = _fmt_edgar_value(row.get("value_prior")) or "—"
+                    current = _fmt_edgar_value(row.get("value")) or "—"
+                    body += (
+                        f'<tr>'
+                        f'<td>{line_item}</td>'
+                        f'<td style="text-align:right">{prior}</td>'
+                        f'<td style="text-align:right">{current}</td>'
+                        f'</tr>'
+                    )
+            st.markdown(
+                f"""
+                <style>
+                .edgar-statement-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 13px;
+                }}
+                .edgar-statement-table th {{
+                    color: #94A3B8;
+                    font-weight: 700;
+                    text-align: right;
+                    border-bottom: 1px solid #2D3650;
+                    padding: 7px 8px;
+                }}
+                .edgar-statement-table th:first-child {{
+                    text-align: left;
+                }}
+                .edgar-statement-table td {{
+                    color: #CBD5E1;
+                    border-bottom: 1px solid #2D3650;
+                    padding: 7px 8px;
+                    vertical-align: top;
+                }}
+                </style>
+                <table class="edgar-statement-table">
+                    <thead>
+                        <tr>
+                            <th>Line Item</th>
+                            <th>{_html.escape(str(fy_prior))}</th>
+                            <th>{_html.escape(str(fy))}</th>
+                        </tr>
+                    </thead>
+                    <tbody>{body}</tbody>
+                </table>
+                """,
+                unsafe_allow_html=True,
+            )
 
         col1, col2, col3 = st.columns(3)
 
@@ -3181,7 +3227,10 @@ if st.session_state.financial_data:
             st.markdown("**Income Statement**")
             rows = financial_data.get("income_statement", [])
             if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                if st.session_state.get("loaded_from_edgar"):
+                    _display_edgar_statement(rows)
+                else:
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -3189,7 +3238,10 @@ if st.session_state.financial_data:
             st.markdown("**Balance Sheet**")
             rows = financial_data.get("balance_sheet", [])
             if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                if st.session_state.get("loaded_from_edgar"):
+                    _display_edgar_statement(rows)
+                else:
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -3197,7 +3249,10 @@ if st.session_state.financial_data:
             st.markdown("**Cash Flow Statement**")
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
-                st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                if st.session_state.get("loaded_from_edgar"):
+                    _display_edgar_statement(rows)
+                else:
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
             else:
                 st.info("Not found in document.")
 
