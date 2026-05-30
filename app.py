@@ -2975,7 +2975,18 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 and _selected_accession
                 and st.session_state.get("edgar_loaded_accession") != _selected_accession
             ):
-                _tk = (st.session_state.get("edgar_selected_ticker") or "").strip().upper()
+                _tk = (
+                    st.session_state.get("edgar_selected_ticker")
+                    or st.session_state.get("edgar_company_name")
+                    or ""
+                ).strip().upper()
+                if not _tk:
+                    _tk = (
+                        st.session_state.get("edgar_cik", "UNKNOWN")
+                        .replace("000", "", 1)
+                        .lstrip("0")
+                        or "UNKNOWN"
+                    )
                 _company_name = (st.session_state.get("edgar_company_name") or _tk or "company").strip()
                 _cik = st.session_state.get("edgar_cik")
                 with st.spinner("Fetching SEC XBRL financial statements..."):
@@ -3070,8 +3081,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             file_path=_edgar_text_path,
                         )
                         st.session_state["filing_library"] = lib_get()
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        st.warning(f"Could not save to library: {_e}")
                     _save_analysis_to_supabase(
                         _tk,
                         _edgar_fd,
