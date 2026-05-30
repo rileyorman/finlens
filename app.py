@@ -310,6 +310,8 @@ def _render_education_page(default_topic: str | None = None) -> None:
 
     education_sections = {
         "Markets & Investing Fundamentals": [
+            "what_is_a_stock", "what_is_a_bond", "what_is_a_market",
+            "what_is_a_10k", "what_is_venture_capital",
             "options", "warrants", "preferred_shares", "convertible_notes", "etfs", "derivatives",
         ],
         "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
