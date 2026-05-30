@@ -35,11 +35,64 @@ def _zero_pad_cik(cik) -> str | None:
         return None
 
 
+def _company_name_from_atom_title(title: str, fallback: str) -> str:
+    name = re.sub(r"^\s*10-K(?:/A)?\s*-\s*", "", title or "", flags=re.I)
+    name = re.sub(r"\s+\(.*?(?:CIK|Filer|\d{10}).*?\)\s*", " ", name, flags=re.I)
+    return re.sub(r"\s+", " ", name).strip(" -") or fallback
+
+
+def _append_atom_company_matches(content: bytes, query: str, matches: list[dict], seen: set, count: int, ticker: str = "") -> None:
+    try:
+        root = ElementTree.fromstring(content)
+    except Exception:
+        return
+    for entry in root.iter():
+        if not entry.tag.lower().endswith("entry"):
+            continue
+        title = ""
+        cik = None
+        for child in entry:
+            tag = child.tag.lower()
+            text = child.text or ""
+            if tag.endswith("title"):
+                title = text.strip()
+            attr_text = " ".join(str(v) for v in child.attrib.values())
+            match = re.search(r"CIK=(\d+)|/CIK(\d+)|\((\d{10})\)", f"{text} {attr_text}", re.I)
+            if match:
+                cik = next((group for group in match.groups() if group), None)
+        padded = _zero_pad_cik(cik)
+        if not padded:
+            continue
+        name = _company_name_from_atom_title(title, query)
+        name_key = name.upper()
+        if name_key in seen:
+            continue
+        matches.append({"cik": padded, "name": name, "ticker": ticker.upper()})
+        seen.add(name_key)
+        if len(matches) >= count:
+            break
+
+
 def search_companies(company_name: str, count: int = 10) -> list[dict]:
     try:
         query = (company_name or "").strip()
         if not query:
             return []
+
+        matches = []
+        seen = set()
+
+        if re.fullmatch(r"[A-Za-z]{1,5}", query):
+            atom_url = (
+                "https://www.sec.gov/cgi-bin/browse-edgar"
+                f"?action=getcompany&company=&CIK={quote(query)}&type=10-K"
+                "&dateb=&owner=include&count=10&search_text=&output=atom"
+            )
+            response = requests.get(atom_url, headers=HEADERS, timeout=15)
+            if response.ok:
+                _append_atom_company_matches(response.content, query, matches, seen, count, ticker=query)
+                if matches:
+                    return matches
 
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
@@ -47,8 +100,6 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
             "&startdt=2020-01-01&enddt=2026-12-31&forms=10-K"
         )
         response = requests.get(search_url, headers=HEADERS, timeout=15)
-        matches = []
-        seen = set()
         if response.ok:
             payload = response.json()
             hits = payload.get("hits", [])
@@ -115,31 +166,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
         response = requests.get(atom_url, headers=HEADERS, timeout=15)
         if not response.ok:
             return matches
-        root = ElementTree.fromstring(response.content)
-        for entry in root.iter():
-            if not entry.tag.lower().endswith("entry"):
-                continue
-            title = ""
-            cik = None
-            for child in entry:
-                tag = child.tag.lower()
-                text = child.text or ""
-                if tag.endswith("title"):
-                    title = text.strip()
-                attr_text = " ".join(str(v) for v in child.attrib.values())
-                match = re.search(r"CIK=(\d+)", f"{text} {attr_text}")
-                if match:
-                    cik = match.group(1)
-            padded = _zero_pad_cik(cik)
-            if padded:
-                name = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", title).strip() or query
-                name_key = name.upper()
-                if name_key in seen:
-                    continue
-                matches.append({"cik": padded, "name": name, "ticker": ""})
-                seen.add(name_key)
-                if len(matches) >= count:
-                    break
+        _append_atom_company_matches(response.content, query, matches, seen, count)
         return matches
     except Exception:
         return []
