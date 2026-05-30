@@ -1,12 +1,31 @@
 import json
 import re
+import shutil
 from pathlib import Path
 
-_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
+from config import ANALYSIS_CACHE_DIR
+
+_CACHE_DIR = ANALYSIS_CACHE_DIR
+_OLD_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
+
+
+def _migrate_old_cache() -> None:
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        if _OLD_CACHE_DIR.exists() and _OLD_CACHE_DIR != _CACHE_DIR:
+            for old_file in _OLD_CACHE_DIR.glob("*.json"):
+                new_file = _CACHE_DIR / old_file.name
+                if not new_file.exists():
+                    shutil.copy2(old_file, new_file)
+    except Exception:
+        pass
+
+
+_migrate_old_cache()
 
 
 def analysis_cache_path(ticker: str, period: str) -> Path:
-    """Return path to library/analysis/{ticker}_{period}.json."""
+    """Return path to the local analysis cache JSON for ticker/period."""
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
     return _CACHE_DIR / f"{safe}.json"
 
