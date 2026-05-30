@@ -2071,6 +2071,7 @@ if uploaded_file is None:
         st.session_state.resolved_ticker = None
         st.session_state.dcf_result      = None
         st.session_state.cache_hit       = False
+        st.session_state.pop("manual_ticker", None)
 elif (not st.session_state.get("loaded_from_library", False) and
       st.session_state.last_filename and
       uploaded_file is not None and
@@ -2087,6 +2088,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+    st.session_state.pop("manual_ticker", None)
 
 st.divider()
 
@@ -2281,6 +2283,8 @@ if uploaded_file:
         st.session_state.last_filename       = uploaded_file.name
         st.session_state.resolved_ticker     = resolved_ticker
         st.session_state.loaded_from_library = False
+        if resolved_ticker:
+            st.session_state["manual_ticker"] = resolved_ticker
 
         # Persist to Filing Library (permanent — survives cache clears).
         try:
@@ -2367,7 +2371,43 @@ if st.session_state.financial_data:
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
 
-        # --- Market data display or manual fallback ---
+        # --- Market data fetch (always visible) and display ---
+        # Pre-populate the ticker input the first time results appear, or after a
+        # new analysis — session state is set explicitly on analysis completion so
+        # this guard is mainly a safety net for cloud cold-starts.
+        if "manual_ticker" not in st.session_state:
+            _auto = st.session_state.get("resolved_ticker") or (summary_data or {}).get("ticker") or ""
+            if _auto:
+                st.session_state["manual_ticker"] = _auto
+
+        tk_col, btn_col = st.columns([2, 1])
+        with tk_col:
+            manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")
+        with btn_col:
+            st.write("")
+            if st.button("Fetch Market Data", use_container_width=True, type="primary"):
+                if manual_ticker.strip():
+                    with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
+                        fetched = get_market_data(manual_ticker.strip())
+                        if fetched.get("current_price"):
+                            st.session_state.market_data     = fetched
+                            st.session_state.resolved_ticker = manual_ticker.strip().upper()
+                            mc = fetched.get("market_cap") or 0.0
+                            try:
+                                st.session_state.excel_bytes = create_excel_file(
+                                    st.session_state.financial_data,
+                                    st.session_state.summary_data,
+                                    mc,
+                                    st.session_state.bear_bull_data,
+                                )
+                            except Exception as e:
+                                st.error(f"Could not regenerate Excel: {e}")
+                            st.rerun()
+                        else:
+                            st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
+                else:
+                    st.warning("Enter a ticker symbol first.")
+
         if market_data.get("current_price"):
             price = market_data["current_price"]
             mc    = market_data["market_cap"]
@@ -2396,34 +2436,7 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
         else:
-            st.caption("Ticker not found — enter the exchange ticker to fetch live market data and populate valuation multiples.")
-            tk_col, btn_col = st.columns([2, 1])
-            with tk_col:
-                manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")
-            with btn_col:
-                st.write("")
-                if st.button("Fetch Market Data", use_container_width=True, type="primary"):
-                    if manual_ticker.strip():
-                        with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
-                            fetched = get_market_data(manual_ticker.strip())
-                            if fetched.get("current_price"):
-                                st.session_state.market_data     = fetched
-                                st.session_state.resolved_ticker = manual_ticker.strip().upper()
-                                mc = fetched.get("market_cap") or 0.0
-                                try:
-                                    st.session_state.excel_bytes = create_excel_file(
-                                        st.session_state.financial_data,
-                                        st.session_state.summary_data,
-                                        mc,
-                                        st.session_state.bear_bull_data,
-                                    )
-                                except Exception as e:
-                                    st.error(f"Could not regenerate Excel: {e}")
-                                st.rerun()
-                            else:
-                                st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
-                    else:
-                        st.warning("Enter a ticker symbol first.")
+            st.caption("No market data yet — enter the ticker above and click Fetch Market Data to populate live price, multiples, and Beta.")
 
         # --- Red Flag Analysis ---
         flag_result  = detect_flags(financial_data)
