@@ -15,6 +15,7 @@ from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
+from modules.peer_comparison import get_peer_data, peer_map
 from modules.dcf_calculator import calculate_dcf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.filing_library import (
@@ -3286,6 +3287,163 @@ if st.session_state.financial_data:
                             hide_index=True,
                             use_container_width=True,
                         )
+
+        # --- Peer Comparison ---
+        _peer_ticker = (st.session_state.get("manual_ticker") or ticker or "").strip().upper()
+        if market_data.get("current_price") and _peer_ticker:
+            st.markdown("#### Peer Comparison")
+            _sector_options = list(peer_map.keys())
+            _sector_hint = (
+                financial_data.get("sector")
+                or financial_data.get("sector_inferred")
+                or summary_data.get("sector_inferred")
+                or ""
+            )
+            _sector_idx = 0
+            if _sector_hint:
+                _hint_l = _sector_hint.lower()
+                for _i, _sector_name in enumerate(_sector_options):
+                    if _sector_name.lower() in _hint_l or _hint_l in _sector_name.lower():
+                        _sector_idx = _i
+                        break
+
+            _pc_sector_col, _pc_btn_col = st.columns([2, 1])
+            with _pc_sector_col:
+                _peer_sector = st.selectbox(
+                    "Peer Sector",
+                    _sector_options,
+                    index=_sector_idx,
+                    key="peer_sector",
+                )
+            with _pc_btn_col:
+                st.write("")
+                if st.button("Load Peer Comparison", use_container_width=True, key="peer_load_btn"):
+                    with st.spinner("Fetching peer data from yfinance..."):
+                        st.session_state["peer_data"] = get_peer_data(_peer_ticker, _peer_sector)
+
+            _peer_data = st.session_state.get("peer_data")
+            if _peer_data:
+                if _peer_data.get("error"):
+                    st.warning(_peer_data["error"])
+                else:
+                    import html as _html
+
+                    _med = _peer_data.get("medians") or {}
+                    _rows = [
+                        {
+                            "ticker": _peer_ticker,
+                            "company": company,
+                            "pe": market_data.get("pe_trailing") or market_data.get("pe_ratio"),
+                            "ev_ebitda": market_data.get("ev_ebitda") or market_data.get("enterprise_to_ebitda"),
+                            "pb": market_data.get("price_to_book") or market_data.get("pb"),
+                            "ps": market_data.get("price_to_sales") or market_data.get("ps"),
+                            "rev_growth": market_data.get("revenue_growth"),
+                            "gross_margin": market_data.get("gross_margins") or market_data.get("gross_margin"),
+                            "is_current": True,
+                        }
+                    ]
+                    _rows.extend([{**row, "is_current": False} for row in (_peer_data.get("peers") or [])])
+                    _rows.append({
+                        "ticker": "Sector Median",
+                        "company": "",
+                        "pe": _med.get("pe"),
+                        "ev_ebitda": _med.get("ev_ebitda"),
+                        "pb": _med.get("pb"),
+                        "ps": _med.get("ps"),
+                        "rev_growth": _med.get("rev_growth"),
+                        "gross_margin": _med.get("gross_margin"),
+                        "is_median": True,
+                    })
+
+                    def _pc_num(v):
+                        try:
+                            return float(v) if v is not None else None
+                        except Exception:
+                            return None
+
+                    def _pc_fmt(metric, value):
+                        value = _pc_num(value)
+                        if value is None:
+                            return "—"
+                        if metric in ("rev_growth", "gross_margin"):
+                            return f"{value * 100:.1f}%"
+                        return f"{value:.1f}x"
+
+                    def _pc_cell(metric, value, is_median=False):
+                        text = _pc_fmt(metric, value)
+                        if is_median:
+                            return f'<td style="font-weight:700;color:#F1F5F9">{text}</td>'
+                        value = _pc_num(value)
+                        median_value = _pc_num(_med.get(metric))
+                        if value is None or median_value is None:
+                            color = "#94A3B8"
+                        else:
+                            lower_better = metric in ("pe", "ev_ebitda", "pb", "ps")
+                            better = value < median_value if lower_better else value > median_value
+                            color = "#4ADE80" if better else "#F87171"
+                        return f'<td style="color:{color};font-weight:600">{text}</td>'
+
+                    _metric_cols = [
+                        ("pe", "P/E"),
+                        ("ev_ebitda", "EV/EBITDA"),
+                        ("pb", "P/B"),
+                        ("ps", "P/S"),
+                        ("rev_growth", "Rev Growth %"),
+                        ("gross_margin", "Gross Margin %"),
+                    ]
+                    _thead = (
+                        "<tr><th>Ticker</th><th>Company</th>"
+                        + "".join(f"<th>{label}</th>" for _, label in _metric_cols)
+                        + "</tr>"
+                    )
+                    _tbody = ""
+                    for row in _rows:
+                        _is_current = row.get("is_current")
+                        _is_median = row.get("is_median")
+                        _row_style = (
+                            "background:#10243A;border-left:3px solid #378ADD;"
+                            if _is_current else
+                            "background:#111827;font-weight:700;"
+                            if _is_median else ""
+                        )
+                        _tbody += (
+                            f'<tr style="{_row_style}">'
+                            f'<td>{"<strong>" if _is_current or _is_median else ""}'
+                            f'{_html.escape(str(row.get("ticker") or ""))}'
+                            f'{"</strong>" if _is_current or _is_median else ""}</td>'
+                            f'<td>{_html.escape(str(row.get("company") or ""))}</td>'
+                            + "".join(_pc_cell(metric, row.get(metric), _is_median) for metric, _ in _metric_cols)
+                            + "</tr>"
+                        )
+
+                    st.markdown(
+                        f"""
+                        <style>
+                        .peer-table {{
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 13px;
+                        }}
+                        .peer-table th {{
+                            text-align: left;
+                            color: #94A3B8;
+                            font-weight: 700;
+                            border-bottom: 1px solid #2D3650;
+                            padding: 8px 10px;
+                        }}
+                        .peer-table td {{
+                            border-bottom: 1px solid #2D3650;
+                            padding: 8px 10px;
+                            color: #CBD5E1;
+                        }}
+                        </style>
+                        <table class="peer-table">
+                            <thead>{_thead}</thead>
+                            <tbody>{_tbody}</tbody>
+                        </table>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
         st.divider()
 
