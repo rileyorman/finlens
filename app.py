@@ -2336,6 +2336,7 @@ if "financial_data" not in st.session_state:
     st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+    st.session_state.loaded_from_edgar   = False
     st.session_state.uploader_key        = 0
     os.makedirs(os.path.join("library", "pdfs"), exist_ok=True)
 
@@ -2351,6 +2352,7 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
     _edgar_ticker = st.text_input("Ticker", placeholder="e.g. NVDA, AAPL", key="edgar_ticker")
     if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
         st.session_state["edgar_filings"] = []
+        st.session_state.loaded_from_edgar = False
         _tk = _edgar_ticker.strip().upper()
         if not _tk:
             st.warning("Enter a ticker first.")
@@ -2443,6 +2445,7 @@ with st.expander("Fetch from SEC EDGAR", expanded=False):
                 st.session_state.last_filename       = _file_name
                 st.session_state.resolved_ticker     = _tk
                 st.session_state.loaded_from_library = False
+                st.session_state.loaded_from_edgar   = True
                 st.session_state.cache_hit           = False
                 st.session_state.dcf_result          = None
                 st.session_state["manual_ticker"]    = _tk
@@ -2520,7 +2523,7 @@ if st.session_state.get("reanalyse_no_text"):
         st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
 
 if uploaded_file is None:
-    if not st.session_state.get("loaded_from_library"):
+    if not st.session_state.get("loaded_from_library") and not st.session_state.get("loaded_from_edgar"):
         st.session_state.financial_data  = None
         st.session_state.summary_data    = None
         st.session_state.bear_bull_data  = None
@@ -2549,6 +2552,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.dcf_result          = None
     st.session_state.cache_hit           = False
     st.session_state.loaded_from_library = False
+    st.session_state.loaded_from_edgar   = False
     st.session_state.pop("peer_data", None)
     st.session_state.pop("manual_ticker", None)
 
@@ -2757,6 +2761,7 @@ if uploaded_file:
         st.session_state.last_filename       = uploaded_file.name
         st.session_state.resolved_ticker     = resolved_ticker
         st.session_state.loaded_from_library = False
+        st.session_state.loaded_from_edgar   = False
         if resolved_ticker:
             st.session_state["manual_ticker"] = resolved_ticker
 
