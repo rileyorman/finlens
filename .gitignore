@@ -8,6 +8,7 @@ venv/
 *.pdf
 streamlit.log
 cache/
+logs/
 filing_library.json
 portfolio_registry.json
 library/watchlist.json
