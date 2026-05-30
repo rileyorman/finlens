@@ -21,7 +21,6 @@ from modules.edgar_fetcher import (
     get_cik,
     get_recent_filings,
     get_financial_data as get_edgar_financial_data,
-    search_companies as search_edgar_companies,
     _fmt as _fmt_edgar_value,
 )
 from modules.education_content import EDUCATION
@@ -90,6 +89,8 @@ SEDAR_QUICK_LINKS = [
     ("Annual Financial Statements", "Annual Financial Statements"),
     ("Interim Financial Statements", "Interim Financial Statements"),
 ]
+CANADIAN_EXCHANGES = {"TOR", "TSX", "CNQ", "VAN"}
+US_EXCHANGES = {"NMS", "NYQ", "NGM", "NCM", "ASE", "AMEX", "PCX", "NASDAQ", "NYSE"}
 
 
 def _ensure_yfinance_cache_location():
@@ -116,6 +117,52 @@ def _external_link(label: str, url: str):
         f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer">{safe_label}</a>',
         unsafe_allow_html=True,
     )
+
+
+def _yf_quote_name(quote: dict) -> str:
+    return (
+        quote.get("shortName")
+        or quote.get("shortname")
+        or quote.get("longName")
+        or quote.get("longname")
+        or quote.get("displayName")
+        or quote.get("symbol")
+        or "Unknown company"
+    )
+
+
+def _yf_quote_label(quote: dict) -> str:
+    name = _yf_quote_name(quote)
+    symbol = quote.get("symbol") or ""
+    exchange = quote.get("exchange") or ""
+    return f"{name} — {symbol} ({exchange})"
+
+
+def _search_yfinance_equities(query: str, max_results: int = 8) -> list[dict]:
+    try:
+        query = (query or "").strip()
+        if not query:
+            return []
+        _ensure_yfinance_cache_location()
+        results = yf.Search(query, max_results=max_results).quotes
+        return [
+            quote for quote in results
+            if isinstance(quote, dict) and (quote.get("quoteType") or "").upper() == "EQUITY"
+        ]
+    except Exception:
+        return []
+
+
+def _is_canadian_quote(quote: dict) -> bool:
+    symbol = (quote.get("symbol") or "").upper()
+    exchange = (quote.get("exchange") or "").upper()
+    return symbol.endswith(".TO") or exchange in CANADIAN_EXCHANGES
+
+
+def _is_us_quote(quote: dict) -> bool:
+    symbol = (quote.get("symbol") or "").upper()
+    exchange = (quote.get("exchange") or "").upper()
+    return "." not in symbol and exchange in US_EXCHANGES
 
 
 def _resolve_sedar_company_from_yfinance(ticker: str) -> dict | None:
@@ -2562,10 +2609,10 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
 
     with _edgar_tab:
         st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
-        _edgar_query = st.text_input("Company name or ticker", placeholder="e.g. NVDA, Apple", key="edgar_ticker")
-        if st.button("Fetch Filing", type="primary", use_container_width=True, key="edgar_fetch_btn"):
+        _edgar_query = st.text_input("Search by company name or ticker", placeholder="e.g. AAPL, Apple", key="edgar_ticker")
+        if st.button("Search", type="primary", use_container_width=True, key="edgar_fetch_btn"):
             st.session_state["edgar_filings"] = []
-            st.session_state["edgar_company_matches"] = []
+            st.session_state["edgar_yf_matches"] = []
             st.session_state.loaded_from_edgar = False
             _query = _edgar_query.strip()
             _tk = _query.upper()
@@ -2575,52 +2622,59 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 with st.spinner(f"Finding SEC filings for {_tk}..."):
                     _cik = get_cik(_tk)
                     _filings = get_recent_filings(_cik) if _cik else []
-                if not _cik:
-                    st.error(f"Could not find a CIK for {_tk}.")
-                elif not _filings:
-                    st.error(f"No recent 10-K filings found for {_tk}.")
-                else:
+                if _cik and _filings:
                     st.session_state["edgar_cik"] = _cik
                     st.session_state["edgar_company_name"] = _tk
                     st.session_state["edgar_selected_ticker"] = _tk
                     st.session_state["edgar_filings"] = _filings
                     st.session_state["edgar_loaded_accession"] = None
                     st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_tk}.")
-            else:
-                with st.spinner(f"Searching SEC EDGAR for {_query}..."):
-                    _matches = search_edgar_companies(_query)
-                if not _matches:
-                    st.error(f"No SEC EDGAR company matches found for {_query}.")
+                elif _cik:
+                    st.error(f"No recent 10-K filings found for {_tk}.")
                 else:
-                    st.session_state["edgar_company_matches"] = _matches
-                    st.success(f"Found {len(_matches)} possible SEC EDGAR match(es). Select one below.")
+                    with st.spinner(f"Searching yfinance for {_query}..."):
+                        _matches = _search_yfinance_equities(_query)
+                    if not _matches:
+                        st.error(f"No results found for '{_query}'. Try a ticker symbol directly (e.g. AAPL or SU.TO)")
+                    else:
+                        st.session_state["edgar_yf_matches"] = _matches
+                        st.success(f"Found {len(_matches)} possible match(es). Select one below.")
+            else:
+                with st.spinner(f"Searching yfinance for {_query}..."):
+                    _matches = _search_yfinance_equities(_query)
+                if not _matches:
+                    st.error(f"No results found for '{_query}'. Try a ticker symbol directly (e.g. AAPL or SU.TO)")
+                else:
+                    st.session_state["edgar_yf_matches"] = _matches
+                    st.success(f"Found {len(_matches)} possible match(es). Select one below.")
 
-        _edgar_matches = st.session_state.get("edgar_company_matches") or []
+        _edgar_matches = st.session_state.get("edgar_yf_matches") or []
         if _edgar_matches:
-            _match_labels = []
-            for row in _edgar_matches:
-                _label = row.get("name", "Unknown company")
-                if row.get("ticker"):
-                    _label = f"{_label} ({row.get('ticker')})"
-                _label = f"{_label} - CIK {row.get('cik')}"
-                _match_labels.append(_label)
+            _match_labels = [_yf_quote_label(row) for row in _edgar_matches]
             _selected_company_label = st.selectbox("Matching companies", _match_labels, key="edgar_company_select")
             _selected_company = _edgar_matches[_match_labels.index(_selected_company_label)]
             if st.button("Find Recent 10-K Filings", use_container_width=True, key="edgar_find_company_filings_btn"):
-                _cik = _selected_company.get("cik")
-                with st.spinner(f"Finding SEC filings for {_selected_company.get('name', 'selected company')}..."):
-                    _filings = get_recent_filings(_cik) if _cik else []
-                if not _cik:
-                    st.error("Could not find a CIK for the selected company.")
-                elif not _filings:
-                    st.error(f"No recent 10-K filings found for {_selected_company.get('name', 'the selected company')}.")
+                _symbol = (_selected_company.get("symbol") or "").upper()
+                _company_name = _yf_quote_name(_selected_company)
+                if _is_canadian_quote(_selected_company):
+                    st.warning("This appears to be a Canadian-listed company. For Canadian filings, use the SEDAR+ tab.")
+                elif not _is_us_quote(_selected_company):
+                    st.warning("Select a US-listed equity for SEC EDGAR filings.")
                 else:
-                    st.session_state["edgar_cik"] = _cik
-                    st.session_state["edgar_company_name"] = _selected_company.get("name", "")
-                    st.session_state["edgar_selected_ticker"] = _selected_company.get("ticker") or ""
-                    st.session_state["edgar_filings"] = _filings
-                    st.session_state["edgar_loaded_accession"] = None
-                    st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_selected_company.get('name', 'the selected company')}.")
+                    with st.spinner(f"Finding SEC filings for {_company_name}..."):
+                        _cik = get_cik(_symbol)
+                        _filings = get_recent_filings(_cik) if _cik else []
+                    if not _cik:
+                        st.error(f"Could not find a CIK for {_symbol}.")
+                    elif not _filings:
+                        st.error(f"No recent 10-K filings found for {_company_name}.")
+                    else:
+                        st.session_state["edgar_cik"] = _cik
+                        st.session_state["edgar_company_name"] = _company_name
+                        st.session_state["edgar_selected_ticker"] = _symbol
+                        st.session_state["edgar_filings"] = _filings
+                        st.session_state["edgar_loaded_accession"] = None
+                        st.success(f"Found {len(_filings)} recent 10-K filing(s) for {_company_name}.")
 
         _edgar_filings = st.session_state.get("edgar_filings") or []
         if _edgar_filings:
@@ -2735,28 +2789,64 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.rerun()
 
     with _sedar_tab:
-        st.caption("Resolve a Canadian ticker, open SEDAR+ in the right search context, then upload the downloaded PDF for Claude analysis.")
-        _sedar_ticker = st.text_input("Canadian ticker", placeholder="e.g. SU, CNQ, SHOP, RY", key="sedar_ticker")
-        if st.button("Find Filings", type="primary", use_container_width=True, key="sedar_find_filings_btn"):
+        st.caption("Search for a Canadian public company, open SEDAR+ in the right search context, then upload the downloaded PDF for Claude analysis.")
+        _sedar_query = st.text_input("Search by company name or ticker", placeholder="e.g. Suncor, SU.TO, Shopify", key="sedar_ticker")
+        if st.button("Search", type="primary", use_container_width=True, key="sedar_find_filings_btn"):
             st.session_state.pop("sedar_company", None)
+            st.session_state.pop("sedar_yf_matches", None)
             st.session_state.pop("sedar_selected_filing_url", None)
             st.session_state.pop("sedar_selected_filing_type", None)
             st.session_state.loaded_from_sedar = False
-            _ticker = _sedar_ticker.strip().upper()
-            if not _ticker:
-                st.warning("Enter a Canadian ticker first.")
+            _query = _sedar_query.strip()
+            if not _query:
+                st.warning("Enter a company name or ticker first.")
             else:
-                with st.spinner(f"Resolving {_ticker} with yfinance..."):
-                    _company = _resolve_sedar_company_from_yfinance(_ticker)
-                if not _company:
-                    st.error(f"Could not find company for ticker {_ticker}. Please check the ticker and try again.")
+                with st.spinner(f"Searching yfinance for {_query}..."):
+                    _matches = _search_yfinance_equities(_query)
+                if not _matches:
+                    st.error(f"No results found for '{_query}'. Try a ticker symbol directly (e.g. AAPL or SU.TO)")
                 else:
+                    _query_symbol = _query.upper()
+                    _direct_canadian = None
+                    for _match in _matches:
+                        _symbol = (_match.get("symbol") or "").upper()
+                        if _is_canadian_quote(_match) and (
+                            _symbol == _query_symbol
+                            or _symbol.removesuffix(".TO") == _query_symbol
+                        ):
+                            _direct_canadian = _match
+                            break
+                    if _direct_canadian:
+                        st.session_state["sedar_company"] = {
+                            "ticker": _direct_canadian.get("symbol") or _query_symbol,
+                            "symbol": _direct_canadian.get("symbol") or _query_symbol,
+                            "company_name": _yf_quote_name(_direct_canadian),
+                            "exchange": _direct_canadian.get("exchange") or "",
+                        }
+                        st.success(f"Resolved {_query} to {_yf_quote_name(_direct_canadian)}.")
+                    else:
+                        st.session_state["sedar_yf_matches"] = _matches
+                        st.success(f"Found {len(_matches)} possible match(es). Select one below.")
+
+        _sedar_matches = st.session_state.get("sedar_yf_matches") or []
+        if _sedar_matches:
+            _sedar_match_labels = [_yf_quote_label(row) for row in _sedar_matches]
+            _selected_sedar_label = st.selectbox("Matching companies", _sedar_match_labels, key="sedar_company_select")
+            _selected_sedar_company = _sedar_matches[_sedar_match_labels.index(_selected_sedar_label)]
+            if st.button("Use Selected Company", use_container_width=True, key="sedar_use_company_btn"):
+                if not _is_canadian_quote(_selected_sedar_company):
+                    st.warning("This appears to be a US-listed company. For US filings, use the SEC EDGAR tab.")
+                else:
+                    _symbol = (_selected_sedar_company.get("symbol") or "").upper()
                     st.session_state["sedar_company"] = {
-                        "ticker": _ticker,
-                        "symbol": _company["symbol"],
-                        "company_name": _company["company_name"],
+                        "ticker": _symbol,
+                        "symbol": _symbol,
+                        "company_name": _yf_quote_name(_selected_sedar_company),
+                        "exchange": _selected_sedar_company.get("exchange") or "",
                     }
-                    st.success(f"Resolved {_ticker} to {_company['company_name']}.")
+                    st.session_state.pop("sedar_selected_filing_url", None)
+                    st.session_state.pop("sedar_selected_filing_type", None)
+                    st.success(f"Resolved {_symbol} to {_yf_quote_name(_selected_sedar_company)}.")
 
         _sedar_company = st.session_state.get("sedar_company")
         if _sedar_company:
