@@ -3499,7 +3499,7 @@ if st.session_state.financial_data:
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            _learn_more("dcf", "Quality Score")
+            _learn_more("quality_score", "Quality Score")
 
         with beta_col:
             beta_val = market_data.get("beta")
