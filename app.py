@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import io
 import re
@@ -9,7 +12,6 @@ from pathlib import Path
 from urllib.parse import quote_plus
 import streamlit as st
 import yfinance as yf
-from dotenv import load_dotenv
 from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
@@ -71,8 +73,6 @@ cookies = CookieManager()
 cookies._default_expiry = datetime.now() + timedelta(days=30)
 if not cookies.ready():
     st.stop()
-
-load_dotenv()
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
@@ -776,6 +776,11 @@ try:
 except (KeyError, FileNotFoundError):
     _APP_PASSWORD = os.environ.get("APP_PASSWORD", "[dev-password-removed]")
 
+if os.environ.get("STREAMLIT_ENV") == "dev":
+    st.session_state["authenticated"] = True
+    if "nav_mode" not in st.session_state:
+        st.session_state["nav_mode"] = "Single Analysis"
+
 if cookies.get("finlens_auth") == "true":
     st.session_state["authenticated"] = True
 
@@ -784,6 +789,40 @@ _education_topic = _education_topic_param()
 if _education_topic_requested:
     st.session_state["onboarding_complete"] = True
     st.session_state["nav_mode"] = "Education"
+
+_NAV_ITEMS = [
+    (
+        "Single Analysis",
+        "single",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    ),
+    (
+        "Portfolio Manager",
+        "portfolio",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
+    ),
+    (
+        "Filing Comparison",
+        "comparison",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>',
+    ),
+    (
+        "Stock Tracker",
+        "stocks",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    ),
+    (
+        "Education",
+        "education",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    ),
+]
+
+_NAV_LABEL_BY_SLUG = {slug: label for label, slug, _ in _NAV_ITEMS}
+_page_from_url = st.query_params.get("page", "")
+if _page_from_url and _page_from_url in _NAV_LABEL_BY_SLUG:
+    st.session_state["onboarding_complete"] = True
+    st.session_state["nav_mode"] = _NAV_LABEL_BY_SLUG[_page_from_url]
 
 if "onboarding_complete" not in st.session_state:
     st.session_state["onboarding_complete"] = False
@@ -1039,33 +1078,6 @@ _education_topic = _education_topic_param()
 if _education_topic:
     st.session_state["nav_mode"] = "Education"
 
-_NAV_ITEMS = [
-    (
-        "Single Analysis",
-        "single",
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-    ),
-    (
-        "Portfolio Manager",
-        "portfolio",
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
-    ),
-    (
-        "Filing Comparison",
-        "comparison",
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>',
-    ),
-    (
-        "Stock Tracker",
-        "stocks",
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
-    ),
-    (
-        "Education",
-        "education",
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
-    ),
-]
 _NAV_SLUG_BY_LABEL = {label: slug for label, slug, _ in _NAV_ITEMS}
 
 
@@ -1168,6 +1180,7 @@ with st.sidebar:
     for _label, _slug, _ in _NAV_ITEMS:
         if st.button(_label, key=f"nav_{_slug}", use_container_width=True):
             st.session_state["nav_mode"] = _label
+            st.query_params["page"] = _slug
             st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
     if page != "Education" and _education_topic:
@@ -2608,6 +2621,7 @@ if page == "Stock Tracker":
     from modules.fiscal_ai import (
         get_adjusted_metrics_with_values,
         get_company_logo,
+        get_company_filings,
         get_company_news,
     )
     from modules.stock_tracker import (
@@ -3239,6 +3253,48 @@ if page == "Stock Tracker":
                         {title}
                     </a>
                     {summary_html}
+                </div>
+                ''',
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+            'Source: Fiscal AI</div>',
+            unsafe_allow_html=True,
+        )
+
+    company_filings = get_company_filings(
+        cur_ticker,
+        _fiscal_ai_exchange_for_ticker(cur_ticker),
+        limit=5,
+    )
+    if company_filings:
+        st.markdown("##### Recent Filings")
+        for filing in company_filings:
+            filing_type = escape(str(filing.get("type") or "Filing"))
+            filing_date = escape(str(filing.get("date") or ""))
+            description = escape(str(filing.get("description") or ""))
+            filing_url = escape(str(filing.get("url") or ""), quote=True)
+            link_html = (
+                f'<a href="{filing_url}" target="_blank" rel="noopener noreferrer" '
+                f'style="color:#93C5FD;text-decoration:none;font-weight:700">View filing</a>'
+                if filing_url else ""
+            )
+            st.markdown(
+                f'''
+                <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                            padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
+                        <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
+                                     padding:2px 8px;font-size:11px;font-weight:700">
+                            {filing_type}
+                        </span>
+                        <span style="color:#94A3B8;font-size:12px">{filing_date}</span>
+                    </div>
+                    <div style="color:#F1F5F9;font-size:15px;font-weight:700;margin-bottom:0.35rem">
+                        {description}
+                    </div>
+                    {link_html}
                 </div>
                 ''',
                 unsafe_allow_html=True,

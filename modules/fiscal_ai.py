@@ -142,6 +142,67 @@ def get_company_news(ticker, exchange="NASDAQ", limit=5):
         return []
 
 
+def get_company_filings(ticker, exchange="NASDAQ", limit=5):
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return []
+
+        company_key = f"{exchange}_{ticker}"
+        url = (
+            "https://api.fiscal.ai/v2/company/filings"
+            f"?companyKey={company_key}&apiKey={api_key}&limit={limit}"
+        )
+        session = _make_session()
+        response = session.get(url, timeout=10)
+        print(f"Status: {response.status_code}, Body: {response.text[:300]}")
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        if not isinstance(data, list):
+            return []
+
+        filings = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            filing_type = (
+                item.get("type")
+                or item.get("form")
+                or item.get("formType")
+                or item.get("filingType")
+                or item.get("secFormType")
+                or ""
+            )
+            date = item.get("date") or item.get("filingDate") or item.get("filedAt") or ""
+            description = (
+                item.get("description")
+                or item.get("title")
+                or item.get("documentType")
+                or filing_type
+            )
+            filing_url = (
+                item.get("url")
+                or item.get("sourceUrl")
+                or item.get("filingUrl")
+                or item.get("pdfUrl")
+                or ""
+            )
+            if not filing_type and not description:
+                continue
+            filings.append({
+                "type": filing_type,
+                "date": date,
+                "description": description,
+                "url": filing_url,
+            })
+        return filings[:limit]
+    except Exception as e:
+        print(f"Exception: {e}")
+        return []
+
+
 def get_income_statement(ticker, exchange="NASDAQ"):
     """Get income statement"""
     try:
