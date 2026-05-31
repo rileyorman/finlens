@@ -3152,6 +3152,12 @@ if not API_KEY:
     st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
     st.stop()
 
+st.markdown("""
+<style>
+button[kind="secondary"] { background: none; border: none; color: #4a9eda; font-size: 0.8rem; padding: 0; }
+</style>
+""", unsafe_allow_html=True)
+
 # --- Ticker Lookup (Dev Tool) ------------------------------------------
 with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
     st.caption("Verify yfinance can find the right company before running a full analysis. No API calls, no cost.")
@@ -3980,10 +3986,9 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
-        st.markdown(
-            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Investment Signals →</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button("Learn more about Investment Signals →", key="lm_investment_signals"):
+            st.session_state["nav_mode"] = "Education"
+            st.rerun()
 
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
@@ -4054,10 +4059,9 @@ if st.session_state.financial_data:
             )
         else:
             st.caption("No market data yet — enter the ticker above and click Fetch Market Data to populate live price, multiples, and Beta.")
-        st.markdown(
-            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Market Data & Multiples →</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button("Learn more about Market Data & Multiples →", key="lm_market_data"):
+            st.session_state["nav_mode"] = "Education"
+            st.rerun()
 
         # --- Red Flag Analysis ---
         flag_result  = detect_flags(financial_data)
@@ -4071,10 +4075,9 @@ if st.session_state.financial_data:
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
 
-        st.markdown(
-            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Red Flag Analysis →</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button("Learn more about Red Flag Analysis →", key="lm_red_flags"):
+            st.session_state["nav_mode"] = "Education"
+            st.rerun()
 
         with st.expander(exp_label, expanded=(red_count > 0)):
             if not flags:
@@ -4128,10 +4131,9 @@ if st.session_state.financial_data:
                 )
 
             with st.expander("📝 MD&A Sentiment", expanded=False):
-                st.markdown(
-                    '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about MD&A Sentiment →</a>',
-                    unsafe_allow_html=True,
-                )
+                if st.button("Learn more about MD&A Sentiment →", key="lm_mda_sentiment"):
+                    st.session_state["nav_mode"] = "Education"
+                    st.rerun()
                 tone_col, scores_col = st.columns([1, 2])
 
                 with tone_col:
@@ -4167,10 +4169,9 @@ if st.session_state.financial_data:
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
 
         # --- Scenario Simulator ---
-        st.markdown(
-            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Scenario Analysis →</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button("Learn more about Scenario Analysis →", key="lm_scenario"):
+            st.session_state["nav_mode"] = "Education"
+            st.rerun()
 
         with st.expander("🔮 Scenario Simulator", expanded=False):
             _metrics = _calc_summary_metrics(financial_data)
@@ -4385,10 +4386,9 @@ if st.session_state.financial_data:
                 st.info("Not found in document.")
 
         # --- Bull / Bear Case ---
-        st.markdown(
-            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Financial Statements →</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button("Learn more about Financial Statements →", key="lm_financial_statements"):
+            st.session_state["nav_mode"] = "Education"
+            st.rerun()
 
         if bear_bull_data and "error" not in bear_bull_data:
             with st.expander("Bull / Bear Case", expanded=False):
