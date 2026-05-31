@@ -997,13 +997,66 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Market Ticker Tape ------------------------------------------------
-_ticker_data = get_ticker_data()
+def _fetch_tape_index(symbol: str, name: str) -> dict | None:
+    try:
+        _ensure_yfinance_cache_location()
+        info = yf.Ticker(symbol).fast_info
+        price = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None)
+        prev = getattr(info, "previous_close", None)
+        if price is None or prev is None:
+            return None
+        price = float(price)
+        prev = float(prev)
+        change = price - prev
+        pct = (change / prev * 100) if prev else 0.0
+        if symbol == "^TNX":
+            price_fmt = f"{price:.2f}%"
+        elif symbol == "^VIX":
+            price_fmt = f"{price:.2f}"
+        elif price >= 1000:
+            price_fmt = f"{price:,.0f}"
+        else:
+            price_fmt = f"{price:,.2f}"
+        return {
+            "name": name,
+            "price": price,
+            "price_fmt": price_fmt,
+            "change": change,
+            "pct_change": pct,
+            "positive": change >= 0,
+        }
+    except Exception:
+        return None
+
+
+_equity_index_symbols = [
+    ("^GSPC", "S&P 500"),
+    ("^IXIC", "Nasdaq"),
+    ("^DJI", "DOW"),
+    ("^GSPTSE", "TSX"),
+    ("^RUT", "Russell 2000"),
+    ("^VIX", "VIX"),
+    ("^TNX", "US 10yr Yield"),
+]
+_equity_index_data = [
+    item for symbol, name in _equity_index_symbols
+    if (item := _fetch_tape_index(symbol, name)) is not None
+]
+_existing_ticker_data = get_ticker_data()
+_index_names = {
+    "S&P 500", "Nasdaq", "Dow", "DOW", "TSX", "Russell 2000",
+    "VIX", "US 10yr", "US 10yr Yield", "US 30yr",
+}
+_ticker_data = _equity_index_data + [
+    item for item in _existing_ticker_data
+    if item.get("name") not in _index_names
+]
 
 if not _ticker_data:
     st.markdown(
-        "<div style='width:100%;background:#161B27;border-top:0.5px solid #2D3650;"
-        "border-bottom:0.5px solid #2D3650;padding:6px 16px;margin-bottom:1.5rem;"
-        "font-size:12px;color:#64748B;font-family:sans-serif'>Loading market data...</div>",
+        "<div style='width:100%;background:rgba(0,0,0,0.3);"
+        "border-bottom:1px solid rgba(255,255,255,0.08);padding:6px 16px;margin-bottom:1.5rem;"
+        "font-size:0.85rem;color:#64748B;font-family:sans-serif'>Loading market data...</div>",
         unsafe_allow_html=True,
     )
 else:
@@ -1015,6 +1068,7 @@ else:
             f"<span class='ticker-name'>{item['name']}</span>"
             f"<span class='ticker-price'>{item['price_fmt']}</span>"
             f"<span class='{cls}'>{arrow} {abs(item['pct_change']):.2f}%</span>"
+            f"<span class='ticker-dot'>·</span>"
             f"</div>"
         )
 
@@ -1025,19 +1079,24 @@ else:
     st.markdown(f"""
 <style>
 .ticker-wrap {{
+    position: sticky;
+    top: 0;
+    z-index: 999;
     width: 100%;
     overflow: hidden;
-    background: #161B27;
-    border-top: 0.5px solid #2D3650;
-    border-bottom: 0.5px solid #2D3650;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.3);
     padding: 6px 0;
     margin-bottom: 1.5rem;
 }}
 .ticker-content {{
     display: inline-flex;
     gap: 0;
-    animation: ticker-scroll 60s linear infinite;
+    animation: ticker-scroll 70s linear infinite;
     white-space: nowrap;
+    will-change: transform;
 }}
 .ticker-content:hover {{
     animation-play-state: paused;
@@ -1045,28 +1104,34 @@ else:
 .ticker-item {{
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 24px;
-    border-right: 0.5px solid #2D3650;
-    font-size: 14px;
+    gap: 7px;
+    padding: 0 12px;
+    font-size: 0.85rem;
     font-family: sans-serif;
 }}
 .ticker-name {{
-    color: #94A3B8;
-    font-weight: 500;
+    color: #CBD5E1;
+    font-weight: 700;
     letter-spacing: 0.03em;
 }}
 .ticker-price {{
     color: #F1F5F9;
-    font-weight: 400;
+    font-weight: 500;
 }}
 .ticker-change-pos {{
-    color: #4ADE80;
-    font-size: 13px;
+    color: #00c896;
+    font-size: 0.85rem;
+    font-weight: 600;
 }}
 .ticker-change-neg {{
-    color: #F87171;
-    font-size: 13px;
+    color: #ff4d4d;
+    font-size: 0.85rem;
+    font-weight: 600;
+}}
+.ticker-dot {{
+    color: rgba(255,255,255,0.28);
+    font-weight: 600;
+    padding-left: 12px;
 }}
 @keyframes ticker-scroll {{
     0%   {{ transform: translateX(0); }}
