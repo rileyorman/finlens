@@ -78,6 +78,70 @@ def get_company_logo(ticker, exchange="NASDAQ"):
         return None
 
 
+def get_earnings_calendar(ticker, exchange="NASDAQ"):
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return None
+
+        company_key = f"{exchange}_{ticker}"
+        session = _make_session()
+        urls = [
+            (
+                "https://api.fiscal.ai/v1/company/earnings-calendar"
+                f"?companyKey={company_key}&apiKey={api_key}"
+            ),
+            (
+                "https://api.fiscal.ai/v2/company/earnings-calendar"
+                f"?companyKey={company_key}&apiKey={api_key}"
+            ),
+        ]
+        for url in urls:
+            response = session.get(url, timeout=10)
+            print(f"Status: {response.status_code}, Body: {response.text[:500]}")
+            if response.status_code == 200:
+                return response.json()
+        return None
+    except Exception as e:
+        print(f"Exception: {e}")
+        return None
+
+
+def get_company_news(ticker, exchange="NASDAQ", limit=5):
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return []
+
+        company_key = f"{exchange}_{ticker}"
+        url = (
+            "https://api.fiscal.ai/v1/company/news"
+            f"?companyKey={company_key}&apiKey={api_key}&limit={limit}"
+        )
+        data = _get_json(url)
+        if not isinstance(data, list):
+            return []
+
+        news_items = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            title = item.get("title") or ""
+            url = item.get("sourceUrl") or item.get("url") or ""
+            if not title or not url:
+                continue
+            news_items.append({
+                "title": title,
+                "date": item.get("date") or item.get("collectedAt") or "",
+                "url": url,
+                "category": item.get("eventType") or item.get("category") or "",
+                "summary": item.get("summary") or item.get("description") or "",
+            })
+        return news_items[:limit]
+    except Exception:
+        return []
+
+
 def get_income_statement(ticker, exchange="NASDAQ"):
     """Get income statement"""
     try:

@@ -2605,7 +2605,11 @@ if page == "Education":
 if page == "Stock Tracker":
     import io
 
-    from modules.fiscal_ai import get_adjusted_metrics_with_values, get_company_logo
+    from modules.fiscal_ai import (
+        get_adjusted_metrics_with_values,
+        get_company_logo,
+        get_company_news,
+    )
     from modules.stock_tracker import (
         _fiscal_ai_exchange_for_ticker,
         get_fiscal_ai_ratios,
@@ -3198,6 +3202,50 @@ if page == "Stock Tracker":
         st.markdown(
             '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
             'Source: Fiscal AI — Adjusted figures</div>',
+            unsafe_allow_html=True,
+        )
+
+    company_news = get_company_news(
+        cur_ticker,
+        _fiscal_ai_exchange_for_ticker(cur_ticker),
+        limit=5,
+    )
+    if company_news:
+        st.markdown("##### Latest News")
+        for item in company_news:
+            news_date = escape(str(item.get("date") or ""))
+            category = escape(str(item.get("category") or "News").replace("_", " ").title())
+            title = escape(str(item.get("title") or ""))
+            url = escape(str(item.get("url") or ""), quote=True)
+            summary = escape(str(item.get("summary") or ""))
+            summary_html = (
+                f'<div style="color:#94A3B8;font-size:13px;line-height:1.45;margin-top:0.45rem">'
+                f'{summary}</div>'
+                if summary else ""
+            )
+            st.markdown(
+                f'''
+                <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                            padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
+                        <span style="color:#94A3B8;font-size:12px">{news_date}</span>
+                        <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
+                                     padding:2px 8px;font-size:11px;font-weight:700">
+                            {category}
+                        </span>
+                    </div>
+                    <a href="{url}" target="_blank" rel="noopener noreferrer"
+                       style="color:#F1F5F9;text-decoration:none;font-weight:700;font-size:15px">
+                        {title}
+                    </a>
+                    {summary_html}
+                </div>
+                ''',
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+            'Source: Fiscal AI</div>',
             unsafe_allow_html=True,
         )
 
