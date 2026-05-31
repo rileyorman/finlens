@@ -51,6 +51,33 @@ def get_company_profile(ticker, exchange="NASDAQ"):
         return None
 
 
+def get_company_logo(ticker, exchange="NASDAQ"):
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return None
+
+        company_key = f"{exchange}_{ticker}"
+        session = _make_session()
+        urls = [
+            (
+                "https://api.fiscal.ai/v2/company/logo"
+                f"?companyKey={company_key}&apiKey={api_key}&variant=icon"
+            ),
+            (
+                "https://api.fiscal.ai/v2/company/logo"
+                f"?companyKey={company_key}&apiKey={api_key}"
+            ),
+        ]
+        for url in urls:
+            response = session.get(url, timeout=10)
+            if response.status_code == 200 and response.content:
+                return response.content
+        return None
+    except Exception:
+        return None
+
+
 def get_income_statement(ticker, exchange="NASDAQ"):
     """Get income statement"""
     try:

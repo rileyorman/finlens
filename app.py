@@ -2603,7 +2603,14 @@ if page == "Education":
 
 # --- Stock Tracker page ------------------------------------------------
 if page == "Stock Tracker":
-    from modules.stock_tracker import get_stock_data, render_business_segments_card
+    import io
+
+    from modules.fiscal_ai import get_company_logo
+    from modules.stock_tracker import (
+        _fiscal_ai_exchange_for_ticker,
+        get_stock_data,
+        render_business_segments_card,
+    )
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
     import pandas as _pd
@@ -2774,12 +2781,24 @@ if page == "Stock Tracker":
             return empty
 
     # --- SECTION 1: Price & Momentum ---
-    st.markdown(f"## {comp['name'] or st_ticker.upper()}")
+    cur_ticker = st.session_state.get("st_current_ticker", "")
+    company_name = comp["name"] or cur_ticker or st_ticker.upper()
+    logo_bytes = None
+    if cur_ticker:
+        logo_bytes = get_company_logo(cur_ticker, _fiscal_ai_exchange_for_ticker(cur_ticker))
+
+    if logo_bytes:
+        col_logo, col_name = st.columns([1, 10])
+        with col_logo:
+            st.image(io.BytesIO(logo_bytes), width=48)
+        with col_name:
+            st.markdown(f"## {company_name}")
+    else:
+        st.markdown(f"## {company_name}")
     sector_parts = [p for p in [comp.get("sector"), comp.get("industry")] if p]
     if sector_parts:
         st.caption("  ·  ".join(sector_parts))
 
-    cur_ticker = st.session_state.get("st_current_ticker", "")
     if cur_ticker:
         wl_now     = load_watchlist()
         already_in = cur_ticker.upper() in [t.upper() for t in wl_now]
