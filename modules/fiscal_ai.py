@@ -52,6 +52,47 @@ def get_company_profile(ticker, exchange="NASDAQ"):
         return None
 
 
+def get_shares_outstanding(ticker, exchange="NASDAQ"):
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return None
+
+        company_key = f"{exchange}_{ticker}"
+        url = (
+            "https://api.fiscal.ai/v1/company/shares-outstanding"
+            f"?companyKey={company_key}&apiKey={api_key}"
+        )
+        session = _make_session()
+        response = session.get(url, timeout=10)
+        print(f"Status: {response.status_code}, Body: {response.text[:300]}")
+        if response.status_code != 200:
+            return None
+
+        data = response.json()
+        if not isinstance(data, list) or not data:
+            return None
+
+        latest = max(data, key=lambda row: row.get("date") or "")
+        shares = latest.get("totalSharesOutstanding")
+        if not isinstance(shares, (int, float)):
+            return None
+
+        share_classes = latest.get("shareClasses") or []
+        main_class = next(
+            (row for row in share_classes if row.get("isMainShareClass")),
+            share_classes[0] if share_classes else {},
+        )
+        return {
+            "date": latest.get("date"),
+            "shares_outstanding": shares,
+            "share_class": main_class.get("shareClass"),
+        }
+    except Exception as e:
+        print(f"Exception: {e}")
+        return None
+
+
 def get_company_logo(ticker, exchange="NASDAQ"):
     try:
         api_key = FISCAL_AI_KEY

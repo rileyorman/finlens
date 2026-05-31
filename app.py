@@ -2640,6 +2640,7 @@ if page == "Stock Tracker":
         get_company_logo,
         get_company_filings,
         get_company_news,
+        get_shares_outstanding,
     )
     from modules.stock_tracker import (
         _fiscal_ai_exchange_for_ticker,
@@ -2785,6 +2786,25 @@ if page == "Stock Tracker":
         if abs(value) >= 1_000:
             return f"{value / 1_000:.1f}K"
         return f"{value:,.0f}"
+
+    def _fmt_shares_outstanding(value):
+        if value is None:
+            return "—"
+        value = float(value)
+        if abs(value) >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.1f}B"
+        if abs(value) >= 1_000_000:
+            return f"{value / 1_000_000:.1f}M"
+        return f"{value:,.0f}"
+
+    def _fmt_month_year(date_text):
+        if not date_text:
+            return ""
+        try:
+            from datetime import datetime as _dt
+            return _dt.strptime(str(date_text)[:10], "%Y-%m-%d").strftime("%b %Y")
+        except Exception:
+            return str(date_text)
 
     def _short_interest_badge(short_pct):
         if short_pct is None:
@@ -3200,6 +3220,38 @@ if page == "Stock Tracker":
         st.markdown(
             '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
             'Source: Fiscal AI</div>',
+            unsafe_allow_html=True,
+        )
+
+    shares_outstanding = get_shares_outstanding(
+        cur_ticker,
+        _fiscal_ai_exchange_for_ticker(cur_ticker),
+    )
+    if shares_outstanding:
+        shares_value = shares_outstanding.get("shares_outstanding")
+        share_class = shares_outstanding.get("share_class") or "Shares"
+        share_date = _fmt_month_year(shares_outstanding.get("date"))
+        subtitle_parts = [part for part in [share_class, share_date] if part]
+        st.markdown(
+            f'''
+            <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                        padding:0.85rem 1rem;margin:0.85rem 0;background:rgba(15,23,42,0.28);
+                        max-width:360px">
+                <div style="font-size:12px;font-weight:700;color:#94A3B8;
+                            text-transform:uppercase;letter-spacing:0.05em">
+                    Shares Outstanding
+                </div>
+                <div style="font-size:28px;font-weight:700;color:#F1F5F9;margin-top:0.25rem">
+                    {escape(_fmt_shares_outstanding(shares_value))}
+                </div>
+                <div style="font-size:12px;color:#94A3B8;margin-top:0.2rem">
+                    {escape(" · ".join(subtitle_parts))}
+                </div>
+                <div style="font-size:12px;color:#94A3B8;margin-top:0.65rem">
+                    Source: Fiscal AI
+                </div>
+            </div>
+            ''',
             unsafe_allow_html=True,
         )
 
