@@ -729,7 +729,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
             "short_interest",
         ],
         "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
-        "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "beta", "margin_of_safety", "dcf"],
+        "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "wacc", "dcf", "beta", "margin_of_safety"],
         "FinLens Analysis Tools": [
             "signal", "quality_score", "distress_score", "red_flags",
             "mda_sentiment", "scenario_simulator", "bull_bear", "lynch_category",
@@ -3377,6 +3377,12 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             _edgar_dd = analyze_dashboard_insights(_edgar_text, _edgar_sd, _edgar_fd, API_KEY)
                         except Exception as e:
                             st.warning(f"Dashboard insights could not be generated: {e}.")
+                    mda_result = None
+                    with st.spinner("Scoring MD&A sentiment..."):
+                        try:
+                            mda_result = analyze_mda_sentiment(_edgar_text, API_KEY)
+                        except Exception as e:
+                            st.warning(f"MD&A sentiment could not be scored: {e}")
 
                     _edgar_md = {}
                     if _tk and re.fullmatch(r"[A-Z]{1,5}", _tk):
@@ -3396,7 +3402,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.session_state.summary_data        = _edgar_sd
                     st.session_state.bear_bull_data      = _edgar_bb
                     st.session_state.dashboard_data      = _edgar_dd
-                    st.session_state.mda_sentiment       = None
+                    st.session_state.mda_sentiment       = mda_result
                     st.session_state.market_data         = _edgar_md
                     st.session_state.excel_bytes         = _excel_bytes
                     st.session_state.last_filename       = _file_name
@@ -3416,6 +3422,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                         "edgar",
                         sector_value=(_edgar_sd or {}).get("sector_inferred"),
                         hurdle_rate_value=None,
+                        mda_sentiment=mda_result,
                     )
 
                     try:
@@ -3428,6 +3435,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             _edgar_bb,
                             _edgar_dd,
                             raw_text=_edgar_text[:MAX_FILING_CHARS],
+                            mda_sentiment=mda_result,
                             source="edgar",
                             file_path=_edgar_text_path,
                         )
@@ -3780,7 +3788,7 @@ if uploaded_file:
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
-            mda_sentiment  = None
+            mda_sentiment  = cached.get("mda_sentiment")
             st.session_state.cache_hit = True
             st.success(f"Loaded **{uploaded_file.name}** from cache.")
         else:
@@ -3844,7 +3852,7 @@ if uploaded_file:
                     st.warning(f"MD&A sentiment could not be scored: {e}.")
 
             save_cache(cache_key, uploaded_file.name, financial_data, summary_data,
-                       bear_bull_data, dashboard_data)
+                       bear_bull_data, dashboard_data, mda_sentiment=mda_sentiment)
 
         # Step 4 — Fetch market data; fall back to company-name search if filing has no ticker
         market_data = {}

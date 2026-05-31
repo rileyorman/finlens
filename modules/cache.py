@@ -28,7 +28,8 @@ def load_cache(cache_key: str) -> dict | None:
 def save_cache(cache_key: str, filename: str,
                financial_data: dict, summary_data: dict | None,
                bear_bull_data: dict | None = None,
-               dashboard_data: dict | None = None) -> None:
+               dashboard_data: dict | None = None,
+               mda_sentiment: dict | None = None) -> None:
     """Persist all Claude API responses to a single JSON file."""
     _CACHE_DIR.mkdir(exist_ok=True)
     path = _CACHE_DIR / f"{cache_key}.json"
@@ -39,6 +40,7 @@ def save_cache(cache_key: str, filename: str,
         "summary_data":   summary_data,
         "bear_bull_data": bear_bull_data,
         "dashboard_data": dashboard_data,
+        "mda_sentiment":  mda_sentiment,
     }
     safe_write_text(path, json.dumps(payload, indent=2))
 

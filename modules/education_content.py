@@ -245,6 +245,20 @@ EDUCATION = {
         "good_sign": "EV/EBITDA at or below sector peers.",
         "red_flag": "EV/EBITDA significantly above peers without superior growth or margins.",
     },
+    "wacc": {
+        "term": "WACC — Weighted Average Cost of Capital",
+        "plain_english": "WACC is the minimum return a company must earn to satisfy all its investors — both shareholders and lenders. Think of it as the 'hurdle rate': if a project earns less than WACC, it destroys value. If it earns more, it creates value.",
+        "formula": "WACC = (E/V × Re) + (D/V × Rd × (1 − Tax Rate))\n\nWhere:\n• E = Market value of equity\n• D = Market value of debt\n• V = E + D (total firm value)\n• Re = Cost of equity (from CAPM)\n• Rd = Cost of debt (interest rate)\n• Tax Rate = Corporate tax rate (debt interest is tax-deductible)",
+        "why_it_matters": "WACC is the discount rate used in DCF analysis. A higher WACC means future cash flows are worth less today — making the company appear less valuable. A lower WACC (cheap debt, low-risk business) inflates valuations.",
+        "key_metrics": [
+            "Cost of Equity (Re): Estimated using CAPM → Re = Rf + β × (Rm − Rf), where Rf = risk-free rate, β = beta, Rm = market return",
+            "Cost of Debt (Rd): The interest rate the company pays on its debt, reduced by the tax shield",
+            "Capital Structure (E/V and D/V): The proportion of equity vs debt financing — a highly leveraged company has a different WACC than a debt-free one",
+            "Tax Shield: Interest payments are tax-deductible, which lowers the effective cost of debt"
+        ],
+        "example": "If a company is 70% equity (cost 12%) and 30% debt (cost 5%, tax rate 30%): WACC = (0.70 × 12%) + (0.30 × 5% × 0.70) = 8.4% + 1.05% = 9.45%. Any project earning above 9.45% creates shareholder value.",
+        "finlens_connection": "FinLens uses WACC as the discount rate in the DCF Calculator. Try adjusting WACC up and down on the Dashboard — you will see intrinsic value move inversely."
+    },
     "distress_score": {
         "title": "Altman Z-Score (Distress Score)",
         "emoji": "⚠️",
@@ -256,34 +270,47 @@ EDUCATION = {
         "red_flag": "Z-Score below 1.8 or rapidly declining.",
     },
     "beta": {
-        "title": "Beta",
-        "emoji": "",
-        "plain_english": "Beta measures how much a stock moves relative to the overall market. A beta of 1.0 means the stock moves exactly with the market. Above 1.0 means more volatile, below 1.0 means less volatile.",
-        "formula": "Beta = Covariance(Stock Returns, Market Returns) / Variance(Market Returns)",
-        "interpretation": "Beta 0.5 = half as volatile as market. Beta 1.5 = 50% more volatile than market.",
-        "why_it_matters": "Core input in CAPM for calculating required return. Helps with position sizing — high beta stocks need smaller positions for the same risk.",
-        "good_sign": "Beta appropriate for the investment thesis — low beta for defensive holdings, higher beta acceptable for growth.",
-        "red_flag": "Unexpectedly high beta in a supposedly defensive stock.",
+        "term": "Beta (β) — Market Sensitivity",
+        "plain_english": "Beta measures how much a stock moves relative to the overall market. A beta of 1.0 means the stock moves exactly with the market. Beta of 2.0 means it moves twice as much — up and down. Beta of 0.5 means it is half as volatile. Negative beta means it moves opposite to the market (like gold sometimes does).",
+        "formula": "β = Covariance(Stock Returns, Market Returns) / Variance(Market Returns)\n\nIn CAPM:\nRequired Return = Rf + β × (Rm − Rf)\n\nWhere:\n• Rf = Risk-free rate (e.g. 10-year government bond yield)\n• Rm = Expected market return (e.g. historical S&P 500 average ~10%)\n• (Rm − Rf) = Equity risk premium — the extra return for taking market risk\n• β × (Rm − Rf) = Additional return required for this stock's specific risk",
+        "why_it_matters": "Beta feeds directly into WACC through CAPM. A high-beta company (like a tech startup) has a higher cost of equity, which raises WACC, which lowers its DCF valuation. A low-beta utility company gets a lower WACC and higher valuation for the same cash flows.",
+        "key_metrics": [
+            "β < 1.0: Less volatile than market — defensive stocks like utilities and consumer staples",
+            "β = 1.0: Moves with the market — typical large-cap index stocks",
+            "β > 1.0: More volatile than market — tech, growth, and speculative stocks",
+            "β < 0: Moves opposite to market — rare, seen in some commodity or hedging instruments",
+            "Levered vs Unlevered Beta: Levered beta includes the effect of debt. Unlevered beta strips out financial risk to compare operating risk across companies"
+        ],
+        "example": "NVIDIA has a beta around 2.0. If the S&P 500 drops 10%, NVIDIA might drop ~20%. If the S&P rises 15%, NVIDIA might rise ~30%. Using CAPM with Rf = 4.5% and Rm = 10%: Required Return = 4.5% + 2.0 × (10% − 4.5%) = 4.5% + 11% = 15.5%. That 15.5% becomes the cost of equity in WACC.",
+        "finlens_connection": "FinLens displays Beta on the Dashboard for every analysed company. It is sourced from yfinance and reflects the stock's 5-year monthly regression against the S&P 500."
     },
     "margin_of_safety": {
-        "title": "Margin of Safety",
-        "emoji": "️",
-        "plain_english": "Margin of Safety is the discount between what a stock is worth (intrinsic value from DCF) and what you pay for it (market price). The bigger the discount, the safer the investment.",
-        "formula": "Margin of Safety = (Intrinsic Value - Current Price) / Intrinsic Value × 100%",
-        "interpretation": "Positive % = stock trading below intrinsic value (undervalued). Negative % = stock trading above intrinsic value (overvalued).",
-        "why_it_matters": "Benjamin Graham's core concept — buying with a margin of safety protects against errors in your assumptions and unexpected bad news.",
-        "good_sign": "Margin of Safety above 20% provides a meaningful buffer.",
-        "red_flag": "Negative margin of safety means you are paying more than the stock is worth.",
+        "term": "Margin of Safety",
+        "plain_english": "Margin of Safety is the gap between what you think a company is worth (intrinsic value from DCF) and what the market is currently charging for it (stock price). Buying at a discount protects you if your assumptions turn out to be slightly wrong — the bigger the discount, the more cushion you have.",
+        "formula": "Margin of Safety = (Intrinsic Value − Current Price) / Intrinsic Value × 100\n\nExample:\n• Intrinsic Value = $150 per share\n• Current Price = $100 per share\n• Margin of Safety = ($150 − $100) / $150 × 100 = 33.3%\n\nRule of thumb:\n• MoS > 20%: Potentially undervalued — worth investigating\n• MoS 0–20%: Fairly valued — limited upside\n• MoS < 0%: Overvalued — paying more than intrinsic value",
+        "why_it_matters": "DCF models are built on assumptions that may be wrong. A 33% margin of safety means even if your FCF estimate is off by 20% and your growth rate is too optimistic, you still might not overpay. Benjamin Graham, Warren Buffett's mentor, called this the central concept of intelligent investing.",
+        "key_metrics": [
+            "Intrinsic Value: Estimated from DCF — what the business is mathematically worth based on future cash flows",
+            "Current Price: What the market is charging — driven by sentiment, momentum, and expectations",
+            "The Gap: A large positive gap = potential opportunity. A negative gap = market expects more than your model does",
+            "Sensitivity check: Run your DCF with pessimistic assumptions (lower growth, higher WACC) — if MoS is still positive, conviction is higher"
+        ],
+        "example": "In 2020, many investors ran DCF models on Amazon with conservative assumptions and found intrinsic values far above the market price — giving a large margin of safety. Those who bought held through volatility with confidence because the math supported it. Contrast with a stock trading at 50x earnings with no margin of safety — any miss in earnings sends it crashing.",
+        "finlens_connection": "The Margin of Safety card on the FinLens Dashboard turns green when the DCF intrinsic value exceeds the current market price by more than 20%, amber for 0–20%, and red when the stock appears overvalued. Adjust your WACC and growth assumptions to see how sensitive the verdict is."
     },
     "dcf": {
-        "title": "Discounted Cash Flow (DCF)",
-        "emoji": "",
-        "plain_english": "DCF calculates what a company is worth today based on the cash it will generate in the future. A dollar today is worth more than a dollar tomorrow — DCF accounts for this by discounting future cash flows back to present value.",
-        "formula": "Intrinsic Value = Σ [FCF_t / (1+WACC)^t] + Terminal Value / (1+WACC)^n",
-        "interpretation": "If intrinsic value > market price, the stock may be undervalued. If intrinsic value < market price, it may be overvalued.",
-        "why_it_matters": "The foundational valuation methodology in investment banking, equity research, and value investing.",
-        "good_sign": "Intrinsic value significantly above market price with conservative assumptions.",
-        "red_flag": "DCF only works if FCF projections are realistic — garbage in, garbage out.",
+        "term": "DCF — Discounted Cash Flow",
+        "plain_english": "DCF is a method to figure out what a company is worth today based on the cash it will generate in the future. The core idea: a dollar today is worth more than a dollar tomorrow because you can invest that dollar and earn a return. DCF mathematically reverses this to find today's value of future cash.",
+        "formula": "Intrinsic Value = Σ [FCF_t / (1 + WACC)^t] + Terminal Value / (1 + WACC)^n\n\nTerminal Value = FCF_n × (1 + g) / (WACC − g)\n\nWhere:\n• FCF_t = Free Cash Flow in year t\n• WACC = Discount rate (hurdle rate)\n• g = Perpetual growth rate after forecast period\n• n = Length of forecast period (years)\n• Σ = Sum across all forecast years",
+        "why_it_matters": "DCF gives a valuation independent of what the market thinks. If the market prices a stock at $100 but your DCF says intrinsic value is $150, that is a potential buying opportunity — with a 33% margin of safety.",
+        "key_metrics": [
+            "Free Cash Flow (FCF): Operating cash flow minus capital expenditures — the actual cash a business generates after maintaining its assets",
+            "Forecast Period: Typically 5 or 10 years — how far out you project cash flows before using a terminal value",
+            "Terminal Value: Accounts for all cash flows beyond the forecast period, using the Gordon Growth Model",
+            "Sensitivity: DCF is highly sensitive to WACC and growth rate assumptions — small changes produce large swings in intrinsic value"
+        ],
+        "example": "A company generates $10B FCF today. You forecast 10% annual growth for 10 years and use a 10% WACC with a 3% terminal growth rate. Each year's FCF gets discounted back to today: Year 1 = $10B × 1.10 / 1.10 = $10B. Year 5 = $16.1B / 1.61 = $10B. Year 10 = $25.9B / 2.59 = $10B. The discounted values get smaller as uncertainty grows. The terminal value captures everything after year 10.",
+        "finlens_connection": "The FinLens DCF Calculator on the Dashboard tab pulls FCF directly from uploaded filings and lets you adjust WACC, growth rate, and forecast period to see intrinsic value and Margin of Safety in real time."
     },
     "mda_sentiment": {
         "title": "MD&A Sentiment",
