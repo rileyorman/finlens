@@ -666,7 +666,7 @@ def _render_education_entry(topic: str) -> None:
     import html as _html
 
     entry = EDUCATION[topic]
-    title = entry.get("title", topic)
+    title = entry.get("title") or entry.get("term") or topic
     emoji = entry.get("emoji") or ""
     st.markdown(f"## {emoji + ' ' if emoji else ''}{title}")
     st.markdown(entry.get("plain_english", ""))
@@ -681,27 +681,39 @@ def _render_education_entry(topic: str) -> None:
         st.markdown("**Key Items**")
         for item in entry["key_items"]:
             st.markdown(f"**{item['name']}** — {item['description']}")
+    if entry.get("key_metrics"):
+        st.markdown("**Key Metrics**")
+        for item in entry["key_metrics"]:
+            st.markdown(f"- {item}")
 
     st.markdown("**Why It Matters**")
     st.markdown(entry.get("why_it_matters", ""))
 
-    good, bad = st.columns(2)
-    with good:
-        st.markdown(
-            f'<div style="background:#052e16;border:1px solid #166534;'
-            f'border-radius:8px;padding:14px 16px;color:#CFFFE0">'
-            f'<div style="font-weight:700;color:#4ADE80;margin-bottom:6px">Good Sign</div>'
-            f'{_html.escape(entry.get("good_sign", ""))}</div>',
-            unsafe_allow_html=True,
-        )
-    with bad:
-        st.markdown(
-            f'<div style="background:#1F0000;border:1px solid #991B1B;'
-            f'border-radius:8px;padding:14px 16px;color:#FFE1E1">'
-            f'<div style="font-weight:700;color:#F87171;margin-bottom:6px">Red Flag</div>'
-            f'{_html.escape(entry.get("red_flag", ""))}</div>',
-            unsafe_allow_html=True,
-        )
+    if entry.get("example"):
+        st.markdown("**Example**")
+        st.markdown(entry["example"])
+    if entry.get("finlens_connection"):
+        st.markdown("**FinLens Connection**")
+        st.markdown(entry["finlens_connection"])
+
+    if entry.get("good_sign") or entry.get("red_flag"):
+        good, bad = st.columns(2)
+        with good:
+            st.markdown(
+                f'<div style="background:#052e16;border:1px solid #166534;'
+                f'border-radius:8px;padding:14px 16px;color:#CFFFE0">'
+                f'<div style="font-weight:700;color:#4ADE80;margin-bottom:6px">Good Sign</div>'
+                f'{_html.escape(entry.get("good_sign", ""))}</div>',
+                unsafe_allow_html=True,
+            )
+        with bad:
+            st.markdown(
+                f'<div style="background:#1F0000;border:1px solid #991B1B;'
+                f'border-radius:8px;padding:14px 16px;color:#FFE1E1">'
+                f'<div style="font-weight:700;color:#F87171;margin-bottom:6px">Red Flag</div>'
+                f'{_html.escape(entry.get("red_flag", ""))}</div>',
+                unsafe_allow_html=True,
+            )
 
 
 def _render_education_page(default_topic: str | None = None) -> None:
@@ -713,6 +725,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
             "what_is_a_stock", "what_is_a_bond", "what_is_a_market",
             "what_is_a_10k", "what_is_venture_capital",
             "options", "warrants", "preferred_shares", "convertible_notes", "etfs", "derivatives",
+            "short_interest",
         ],
         "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
         "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "beta", "margin_of_safety", "dcf"],
@@ -727,7 +740,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
         topic_links = [
             f'<a href="?education={topic}#education-topic" target="_self" '
             f'style="color:#378ADD;text-decoration:none;font-weight:600">'
-            f'{EDUCATION[topic]["title"]}</a>'
+            f'{EDUCATION[topic].get("title") or EDUCATION[topic].get("term") or topic}</a>'
             for topic in section_topics
             if topic in EDUCATION
         ]
@@ -748,7 +761,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
         "Topic",
         topics,
         index=topics.index(default_topic),
-        format_func=lambda key: EDUCATION[key]["title"],
+        format_func=lambda key: EDUCATION[key].get("title") or EDUCATION[key].get("term") or key,
         key="education_topic_select",
     )
     st.divider()
@@ -2551,6 +2564,54 @@ if page == "Stock Tracker":
             return f"${mc / 1_000:.2f}B"
         return f"${mc:,.0f}M"
 
+    def _fmt_short_pct(value):
+        return f"{float(value) * 100:.1f}%" if value is not None else "—"
+
+    def _fmt_short_ratio(value):
+        return f"{float(value):.1f} days" if value is not None else "—"
+
+    def _fmt_compact_int(value):
+        if value is None:
+            return "—"
+        value = float(value)
+        if abs(value) >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.1f}B"
+        if abs(value) >= 1_000_000:
+            return f"{value / 1_000_000:.1f}M"
+        if abs(value) >= 1_000:
+            return f"{value / 1_000:.1f}K"
+        return f"{value:,.0f}"
+
+    def _short_interest_badge(short_pct):
+        if short_pct is None:
+            return ("—", "#888", "#f5f5f5")
+        short_pct = float(short_pct)
+        if short_pct < 0.05:
+            return ("LOW", "#2d7a2d", "#e8f5e9")
+        if short_pct <= 0.15:
+            return ("ELEVATED", "#7d5a00", "#fffbea")
+        return ("HIGH", "#c0392b", "#fdecea")
+
+    @st.cache_data(ttl=900, show_spinner=False)
+    def _get_short_interest(ticker: str) -> dict:
+        empty = {
+            "short_percent_of_float": None,
+            "short_ratio": None,
+            "shares_short": None,
+        }
+        if not ticker or not ticker.strip():
+            return empty
+        try:
+            _ensure_yfinance_cache_location()
+            info = yf.Ticker(ticker.strip().upper()).info or {}
+            return {
+                "short_percent_of_float": info.get("shortPercentOfFloat"),
+                "short_ratio": info.get("shortRatio"),
+                "shares_short": info.get("sharesShort"),
+            }
+        except Exception:
+            return empty
+
     # --- SECTION 1: Price & Momentum ---
     st.markdown(f"## {comp['name'] or st_ticker.upper()}")
     sector_parts = [p for p in [comp.get("sector"), comp.get("industry")] if p]
@@ -2631,6 +2692,59 @@ if page == "Stock Tracker":
             f'</div>',
             unsafe_allow_html=True,
         )
+
+    # --- SECTION 1a: Short Interest ---
+    short_interest = _get_short_interest(cur_ticker)
+    short_pct = short_interest.get("short_percent_of_float")
+    short_ratio = short_interest.get("short_ratio")
+    shares_short = short_interest.get("shares_short")
+    si_badge, si_color, si_bg = _short_interest_badge(short_pct)
+    st.markdown(
+        f'''
+        <div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);
+                    border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;
+                    box-shadow:0 4px 24px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;
+                    padding:0.85rem 1rem;margin:1rem 0 0.25rem">
+            <div style="color:#F1F5F9;font-size:15px;font-weight:600;margin-bottom:0.85rem">
+                Short Interest
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem">
+                <div>
+                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                        % of Float Shorted
+                    </div>
+                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                        {escape(_fmt_short_pct(short_pct))}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                        Days to Cover
+                    </div>
+                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                        {escape(_fmt_short_ratio(short_ratio))}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                        Shares Short
+                    </div>
+                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                        {escape(_fmt_compact_int(shares_short))}
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top:0.85rem">
+                <span style="background:{si_bg};color:{si_color};padding:5px 12px;
+                             border-radius:20px;font-size:13px;font-weight:600;
+                             display:inline-block;margin:2px 4px 0 0">
+                    {escape(si_badge)}
+                </span>
+            </div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 

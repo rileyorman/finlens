@@ -168,6 +168,18 @@ EDUCATION = {
         "good_sign": "Derivatives are used for clear hedging needs, with transparent notional amounts and risk limits.",
         "red_flag": "Large opaque derivative positions, weak disclosure, or leveraged exposure that is hard to value.",
     },
+    "short_interest": {
+        "term": "Short Interest",
+        "plain_english": "Short interest tells you how many investors are betting that a stock's price will fall. When someone 'shorts' a stock, they borrow shares and sell them, hoping to buy them back cheaper later and pocket the difference.",
+        "why_it_matters": "High short interest can be a warning sign — it means sophisticated investors expect trouble. But it can also signal a potential 'short squeeze': if the stock rises, short sellers scramble to buy back shares, which can push the price even higher.",
+        "key_metrics": [
+            "% of Float Shorted: What percentage of tradeable shares are currently sold short. Under 5% is normal; above 15% is high.",
+            "Days to Cover (Short Ratio): How many days of average trading volume it would take for all short sellers to close their positions. Higher = harder to exit quickly.",
+            "Shares Short: The raw number of shares currently sold short."
+        ],
+        "example": "If a company has 10% of its float shorted and bad news comes out, the stock may drop sharply. But if good news surprises the market, short sellers may panic-buy, creating a short squeeze — like what happened with GameStop in 2021.",
+        "finlens_connection": "FinLens shows short interest alongside price data in the Stock Tracker tab so you can see whether the market is broadly bullish or has significant skeptics."
+    },
     "income_statement": {
         "title": "Income Statement",
         "emoji": "",
