@@ -103,6 +103,11 @@ def get_stock_data(ticker: str) -> dict:
     }
 
     try:
+        import tempfile, os
+        cache_dir = os.path.join(tempfile.gettempdir(), "finlens_yfinance_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        os.environ["YFINANCE_CACHE_DIR"] = cache_dir
+
         t    = yf.Ticker(ticker.strip().upper())
         info = t.info
         hist = t.history(period="1y")
