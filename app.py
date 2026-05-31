@@ -1080,6 +1080,49 @@ def _filing_key(entry: dict) -> str:
     period = entry.get("fiscal_year") or entry.get("period") or "unknown"
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", f"{ticker}_{period}_{entry['id']}")
 
+
+def _library_ticker(entry: dict) -> str:
+    ticker = str(entry.get("ticker") or "").strip().upper()
+    return ticker if ticker and ticker != "—" else "N/A"
+
+
+def _library_period_label(entry: dict) -> str:
+    return str(entry.get("fiscal_year") or entry.get("period") or "").strip()
+
+
+def _library_period_sort_key(entry: dict):
+    label = _library_period_label(entry)
+    years = [int(y) for y in re.findall(r"(?:19|20)\d{2}", label)]
+    if years:
+        return (0, -max(years), label.lower())
+    return (1, label.lower())
+
+
+def _library_company_header(ticker: str, entries: list[dict]) -> str:
+    company_name = ""
+    for entry in entries:
+        company_name = str(entry.get("company_name") or "").strip()
+        if company_name:
+            break
+
+    if not company_name and ticker and ticker != "N/A":
+        cache_key = f"company_name_{ticker}"
+        if cache_key not in st.session_state:
+            try:
+                _ensure_yfinance_cache_location()
+                st.session_state[cache_key] = (
+                    yf.Ticker(ticker).info or {}
+                ).get("longName", "") or ""
+            except Exception:
+                st.session_state[cache_key] = ""
+        company_name = str(st.session_state.get(cache_key) or "").strip()
+
+    if company_name and ticker and ticker != "N/A":
+        return f"{company_name.upper()} ({ticker})"
+    if company_name:
+        return company_name.upper()
+    return ticker
+
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
     st.markdown(
@@ -1431,162 +1474,183 @@ document.addEventListener('focusin', function(e) {
         lib_entries = lib_get()
         lib_count   = len(lib_entries)
         label       = f"Filing Library ({lib_count} filing{'s' if lib_count != 1 else ''})"
-        with st.expander(label, expanded=lib_count > 0):
-            if not lib_entries:
-                st.caption("No filings saved yet. Analyse a PDF to add it here.")
+        st.markdown(
+            f"<span style='font-size:10px;font-weight:700;color:#888;"
+            f"text-transform:uppercase;letter-spacing:0.06em'>{label}</span>",
+            unsafe_allow_html=True,
+        )
+        if not lib_entries:
+            st.caption("No filings saved yet. Analyse a PDF to add it here.")
+        else:
+            grouped_entries = {}
             for entry in lib_entries:
-                eid        = entry["id"]
-                ticker     = entry.get("ticker", "—")
-                fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
-                filing_key = _filing_key(entry)
-                expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
-                row_ticker  = ticker if ticker and ticker != "—" else "N/A"
-                row_period  = fy or "Unknown period"
-                if entry.get("source") == "edgar":
-                    row_period = f"{row_period} · EDGAR"
-                chevron     = "⌃" if expanded else "⌄"
-                if st.button(
-                    f"**{row_ticker}**    {row_period}    {chevron}",
-                    key=f"filing_row_{filing_key}",
-                    use_container_width=True,
+                grouped_entries.setdefault(_library_ticker(entry), []).append(entry)
+            expand_single_company = len(grouped_entries) == 1
+
+            for group_ticker in sorted(grouped_entries):
+                company_entries = sorted(
+                    grouped_entries[group_ticker],
+                    key=_library_period_sort_key,
+                )
+                with st.sidebar.expander(
+                    _library_company_header(group_ticker, company_entries),
+                    expanded=expand_single_company,
                 ):
-                    st.session_state["sidebar_expanded_filing"] = None if expanded else filing_key
-                    st.rerun()
-                if expanded:
-                    load_col, reanalyse_col = st.columns(2)
-                    with load_col:
-                        if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
-                            _entry_period = entry.get("fiscal_year") or entry.get("period", "")
-                            _entry_ticker = ticker if ticker != "—" else None
-                            _entry_text = _library_text_for_entry(entry)
-                            st.session_state.cached_filing_text = _entry_text
-                            _cached_analysis = load_analysis(_entry_ticker, _entry_period)
-                            if _cached_analysis and _restore_analysis_cache(_cached_analysis, entry):
-                                st.session_state.cached_pdf_bytes = None
-                                if entry.get("source") != "edgar":
-                                    # Keep PDF bytes preloaded for a later paid Re-Analyse when available.
-                                    try:
-                                        _lp = _pdf_cache_path(_entry_ticker, _entry_period)
-                                        st.session_state.cached_pdf_bytes = (
-                                            Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
-                                        )
-                                    except Exception:
+                    for entry in company_entries:
+                        eid        = entry["id"]
+                        ticker     = entry.get("ticker", "—")
+                        fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
+                        filing_key = _filing_key(entry)
+                        expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
+                        row_ticker  = ticker if ticker and ticker != "—" else "N/A"
+                        row_period  = fy or "Unknown period"
+                        if entry.get("source") == "edgar":
+                            row_period = f"{row_period} · EDGAR"
+                        else:
+                            row_period = f"{row_period} · PDF"
+                        chevron     = "⌃" if expanded else "⌄"
+                        if st.button(
+                            f"**{row_ticker}**    {row_period}    {chevron}",
+                            key=f"filing_row_{filing_key}",
+                            use_container_width=True,
+                        ):
+                            st.session_state["sidebar_expanded_filing"] = None if expanded else filing_key
+                            st.rerun()
+                        if expanded:
+                            load_col, reanalyse_col = st.columns(2)
+                            with load_col:
+                                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                                    _entry_period = entry.get("fiscal_year") or entry.get("period", "")
+                                    _entry_ticker = ticker if ticker != "—" else None
+                                    _entry_text = _library_text_for_entry(entry)
+                                    st.session_state.cached_filing_text = _entry_text
+                                    _cached_analysis = load_analysis(_entry_ticker, _entry_period)
+                                    if _cached_analysis and _restore_analysis_cache(_cached_analysis, entry):
                                         st.session_state.cached_pdf_bytes = None
+                                        if entry.get("source") != "edgar":
+                                            # Keep PDF bytes preloaded for a later paid Re-Analyse when available.
+                                            try:
+                                                _lp = _pdf_cache_path(_entry_ticker, _entry_period)
+                                                st.session_state.cached_pdf_bytes = (
+                                                    Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
+                                                )
+                                            except Exception:
+                                                st.session_state.cached_pdf_bytes = None
+                                        st.rerun()
+
+                                    fd = entry["financial_data"]
+                                    sd = entry.get("summary_data")
+                                    bb = entry.get("bear_bull_data")
+                                    st.session_state.financial_data      = fd
+                                    st.session_state.summary_data        = sd
+                                    st.session_state.bear_bull_data      = bb
+                                    st.session_state.dashboard_data      = entry.get("dashboard_data")
+                                    st.session_state.mda_sentiment       = entry.get("mda_sentiment")
+                                    st.session_state.market_data         = {}
+                                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                                    st.session_state.last_filename       = entry.get("file_name", "")
+                                    st.session_state.resolved_ticker     = ticker if ticker != "—" else None
+                                    st.session_state.cache_hit           = False
+                                    st.session_state.dcf_result          = None
+                                    st.session_state.loaded_from_library = True
+                                    st.session_state.loaded_from_edgar   = entry.get("source") == "edgar"
+                                    st.session_state.loaded_from_sedar   = False
+                                    st.session_state.cached_filing_text  = (
+                                        _entry_text if entry.get("source") == "edgar" else None
+                                    )
+                                    st.session_state.analysis_loaded_from_cache = False
+                                    if ticker and ticker != "—":
+                                        st.session_state["manual_ticker"] = ticker
+                                    if entry.get("source") == "edgar":
+                                        st.session_state.cached_pdf_bytes = None
+                                    else:
+                                        # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
+                                        try:
+                                            _lp = _pdf_cache_path(
+                                                ticker if ticker != "—" else None,
+                                                entry.get("fiscal_year") or entry.get("period", ""),
+                                            )
+                                            st.session_state.cached_pdf_bytes = (
+                                                Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
+                                            )
+                                            if st.session_state.cached_pdf_bytes is None:
+                                                st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
+                                                    ticker if ticker != "—" else None,
+                                                    entry.get("fiscal_year") or entry.get("period", ""),
+                                                )
+                                        except Exception:
+                                            st.session_state.cached_pdf_bytes = None
+                                    st.rerun()
+                            with reanalyse_col:
+                                if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                                             help="Re-analyse with fresh Claude calls"):
+                                    st.session_state.confirm_reanalyse = eid
+                                    st.session_state.confirm_delete    = None
+                                    st.rerun()
+                            st.caption("~$0.08 per analysis")
+                            if st.button("Remove", key=f"lib_del_{eid}", use_container_width=True,
+                                         help=f"Remove {entry['company_name']} from library"):
+                                st.session_state.confirm_delete    = eid
+                                st.session_state.confirm_reanalyse = None
                                 st.rerun()
 
-                            fd = entry["financial_data"]
-                            sd = entry.get("summary_data")
-                            bb = entry.get("bear_bull_data")
-                            st.session_state.financial_data      = fd
-                            st.session_state.summary_data        = sd
-                            st.session_state.bear_bull_data      = bb
-                            st.session_state.dashboard_data      = entry.get("dashboard_data")
-                            st.session_state.mda_sentiment       = entry.get("mda_sentiment")
-                            st.session_state.market_data         = {}
-                            st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
-                            st.session_state.last_filename       = entry.get("file_name", "")
-                            st.session_state.resolved_ticker     = ticker if ticker != "—" else None
-                            st.session_state.cache_hit           = False
-                            st.session_state.dcf_result          = None
-                            st.session_state.loaded_from_library = True
-                            st.session_state.loaded_from_edgar   = entry.get("source") == "edgar"
-                            st.session_state.loaded_from_sedar   = False
-                            st.session_state.cached_filing_text  = (
-                                _entry_text if entry.get("source") == "edgar" else None
+                        # --- Remove confirmation ---
+                        if expanded and st.session_state.get("confirm_delete") == eid:
+                            st.caption(f"Remove **{entry['company_name']}**? This cannot be undone.")
+                            yes_col, no_col = st.columns(2)
+                            with yes_col:
+                                if st.button("Yes, remove", key=f"lib_del_yes_{eid}",
+                                             use_container_width=True, type="primary"):
+                                    lib_delete(eid)
+                                    st.session_state.confirm_delete = None
+                                    st.rerun()
+                            with no_col:
+                                if st.button("Cancel", key=f"lib_del_no_{eid}",
+                                             use_container_width=True):
+                                    st.session_state.confirm_delete = None
+                                    st.rerun()
+
+                        # --- Re-analyse confirmation ---
+                        if expanded and st.session_state.get("confirm_reanalyse") == eid:
+                            st.caption(
+                                f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
+                                f"(~$0.10–0.15 cost) and overwrite the existing result."
                             )
-                            st.session_state.analysis_loaded_from_cache = False
-                            if ticker and ticker != "—":
-                                st.session_state["manual_ticker"] = ticker
-                            if entry.get("source") == "edgar":
-                                st.session_state.cached_pdf_bytes = None
-                            else:
-                                # Silently preload cached PDF bytes so Re-Analyse is instant if no raw_text
-                                try:
-                                    _lp = _pdf_cache_path(
-                                        ticker if ticker != "—" else None,
-                                        entry.get("fiscal_year") or entry.get("period", ""),
-                                    )
-                                    st.session_state.cached_pdf_bytes = (
-                                        Path(_lp).read_bytes() if _lp and Path(_lp).exists() else None
-                                    )
-                                    if st.session_state.cached_pdf_bytes is None:
-                                        st.session_state.cached_pdf_bytes = supabase_storage.load_pdf(
-                                            ticker if ticker != "—" else None,
-                                            entry.get("fiscal_year") or entry.get("period", ""),
-                                        )
-                                except Exception:
-                                    st.session_state.cached_pdf_bytes = None
-                            st.rerun()
-                    with reanalyse_col:
-                        if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
-                                     help="Re-analyse with fresh Claude calls"):
-                            st.session_state.confirm_reanalyse = eid
-                            st.session_state.confirm_delete    = None
-                            st.rerun()
-                    st.caption("~$0.08 per analysis")
-                    if st.button("Remove", key=f"lib_del_{eid}", use_container_width=True,
-                                 help=f"Remove {entry['company_name']} from library"):
-                        st.session_state.confirm_delete    = eid
-                        st.session_state.confirm_reanalyse = None
-                        st.rerun()
-
-                # --- Delete confirmation ---
-                if expanded and st.session_state.get("confirm_delete") == eid:
-                    st.caption(f"Delete **{entry['company_name']}**? This cannot be undone.")
-                    yes_col, no_col = st.columns(2)
-                    with yes_col:
-                        if st.button("Yes, delete", key=f"lib_del_yes_{eid}",
-                                     use_container_width=True, type="primary"):
-                            lib_delete(eid)
-                            st.session_state.confirm_delete = None
-                            st.rerun()
-                    with no_col:
-                        if st.button("Cancel", key=f"lib_del_no_{eid}",
-                                     use_container_width=True):
-                            st.session_state.confirm_delete = None
-                            st.rerun()
-
-                # --- Re-analyse confirmation ---
-                if expanded and st.session_state.get("confirm_reanalyse") == eid:
-                    st.caption(
-                        f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
-                        f"(~$0.10–0.15 cost) and overwrite the existing result."
-                    )
-                    yes_col, no_col = st.columns(2)
-                    with yes_col:
-                        if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
-                                     use_container_width=True, type="primary"):
-                            st.session_state.confirm_reanalyse = None
-                            _entry_text = _library_text_for_entry(entry)
-                            if _entry_text:
-                                st.session_state.pending_reanalyse = {
-                                    "raw_text":     _entry_text[:MAX_FILING_CHARS],
-                                    "company_name": entry["company_name"],
-                                    "entry_id":     eid,
-                                    "file_name":    entry.get("file_name", ""),
-                                    "file_size":    entry.get("file_size_bytes", 0),
-                                    "source":       entry.get("source", "pdf"),
-                                    "file_path":    entry.get("file_path"),
-                                }
-                            else:
-                                st.session_state.reanalyse_no_text = entry["company_name"]
-                                st.session_state.reanalyse_pdf_info = {
-                                    "ticker":       entry.get("ticker"),
-                                    "period":       entry.get("fiscal_year") or entry.get("period", ""),
-                                    "entry_id":     eid,
-                                    "company_name": entry["company_name"],
-                                    "file_name":    entry.get("file_name", ""),
-                                    "file_size":    entry.get("file_size_bytes", 0),
-                                    "source":       entry.get("source", "pdf"),
-                                    "file_path":    entry.get("file_path"),
-                                }
-                                st.session_state.uploader_key += 1
-                            st.rerun()
-                    with no_col:
-                        if st.button("Cancel", key=f"lib_ra_no_{eid}",
-                                     use_container_width=True):
-                            st.session_state.confirm_reanalyse = None
-                            st.rerun()
+                            yes_col, no_col = st.columns(2)
+                            with yes_col:
+                                if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
+                                             use_container_width=True, type="primary"):
+                                    st.session_state.confirm_reanalyse = None
+                                    _entry_text = _library_text_for_entry(entry)
+                                    if _entry_text:
+                                        st.session_state.pending_reanalyse = {
+                                            "raw_text":     _entry_text[:MAX_FILING_CHARS],
+                                            "company_name": entry["company_name"],
+                                            "entry_id":     eid,
+                                            "file_name":    entry.get("file_name", ""),
+                                            "file_size":    entry.get("file_size_bytes", 0),
+                                            "source":       entry.get("source", "pdf"),
+                                            "file_path":    entry.get("file_path"),
+                                        }
+                                    else:
+                                        st.session_state.reanalyse_no_text = entry["company_name"]
+                                        st.session_state.reanalyse_pdf_info = {
+                                            "ticker":       entry.get("ticker"),
+                                            "period":       entry.get("fiscal_year") or entry.get("period", ""),
+                                            "entry_id":     eid,
+                                            "company_name": entry["company_name"],
+                                            "file_name":    entry.get("file_name", ""),
+                                            "file_size":    entry.get("file_size_bytes", 0),
+                                            "source":       entry.get("source", "pdf"),
+                                            "file_path":    entry.get("file_path"),
+                                        }
+                                        st.session_state.uploader_key += 1
+                                    st.rerun()
+                            with no_col:
+                                if st.button("Cancel", key=f"lib_ra_no_{eid}",
+                                             use_container_width=True):
+                                    st.session_state.confirm_reanalyse = None
+                                    st.rerun()
         st.divider()
         n = cache_count()
         st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
