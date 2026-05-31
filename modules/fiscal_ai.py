@@ -150,6 +150,48 @@ def get_ratios(ticker, exchange="NASDAQ"):
         return None
 
 
+def get_ratios_with_values(ticker, exchange="NASDAQ"):
+    """Return selected most recent Fiscal AI ratio values."""
+    ratio_id_map = {
+        "pe_ratio": "ratio_price_to_earnings",
+        "ev_ebitda": "ratio_ev_to_ebitda",
+        "price_to_book": "ratio_price_to_book",
+        "price_to_sales": "ratio_price_to_sales",
+        "ev_revenue": "ratio_ev_to_sales",
+        "gross_margin": "ratio_gross_profit_margin",
+        "operating_margin": "ratio_operating_margin",
+        "net_margin": "ratio_net_profit_margin",
+    }
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return {}
+
+        company_key = f"{exchange}_{ticker}"
+        url = (
+            "https://api.fiscal.ai/v1/company/ratios"
+            f"?companyKey={company_key}&apiKey={api_key}&includeValues=true&period=latest"
+        )
+        data = _get_json(url)
+        if not isinstance(data, dict):
+            return {}
+
+        periods = data.get("data") or []
+        if not periods:
+            return {}
+
+        latest = periods[0]
+        values = latest.get("metricValues") or latest.get("metricsValues") or {}
+        result = {}
+        for friendly_id, fiscal_id in ratio_id_map.items():
+            value = values.get(fiscal_id)
+            if isinstance(value, (int, float)):
+                result[friendly_id] = value
+        return result
+    except Exception:
+        return {}
+
+
 def get_segments_and_kpis(ticker, exchange="NASDAQ"):
     """Get business segment revenue breakdown"""
     try:

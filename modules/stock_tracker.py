@@ -88,6 +88,32 @@ def render_business_segments_card(ticker: str, exchange: str | None = None) -> b
         return False
 
 
+def get_fiscal_ai_ratios(ticker, exchange="NASDAQ") -> dict:
+    try:
+        from modules.fiscal_ai import get_ratios_with_values
+
+        ratios = get_ratios_with_values(ticker, exchange)
+        if not ratios:
+            return {}
+
+        friendly_map = {
+            "P/E Ratio": "pe_ratio",
+            "EV/EBITDA": "ev_ebitda",
+            "P/B Ratio": "price_to_book",
+            "P/S Ratio": "price_to_sales",
+            "Gross Margin": "gross_margin",
+            "Operating Margin": "operating_margin",
+            "Net Margin": "net_margin",
+        }
+        return {
+            label: ratios[key]
+            for label, key in friendly_map.items()
+            if key in ratios
+        }
+    except Exception:
+        return {}
+
+
 def _calc_rsi(hist, period=14):
     delta = hist["Close"].diff()
     gain = delta.clip(lower=0).rolling(period).mean()

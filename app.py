@@ -2608,6 +2608,7 @@ if page == "Stock Tracker":
     from modules.fiscal_ai import get_company_logo
     from modules.stock_tracker import (
         _fiscal_ai_exchange_for_ticker,
+        get_fiscal_ai_ratios,
         get_stock_data,
         render_business_segments_card,
     )
@@ -3139,6 +3140,33 @@ if page == "Stock Tracker":
             st.metric(label, v_str)
             if note:
                 st.caption(note)
+
+    fiscal_ratios = get_fiscal_ai_ratios(
+        cur_ticker,
+        _fiscal_ai_exchange_for_ticker(cur_ticker),
+    )
+    if fiscal_ratios:
+        st.markdown("##### Institutional Ratios")
+
+        def _fmt_fiscal_ratio(label, value):
+            try:
+                value = float(value)
+            except Exception:
+                return "—"
+            if "Margin" in label:
+                return f"{value * 100:.2f}%"
+            return f"{value:.2f}"
+
+        ratio_items = list(fiscal_ratios.items())
+        ratio_cols = st.columns(2)
+        for idx, (label, value) in enumerate(ratio_items):
+            with ratio_cols[idx % 2]:
+                st.metric(label, _fmt_fiscal_ratio(label, value))
+        st.markdown(
+            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+            'Source: Fiscal AI</div>',
+            unsafe_allow_html=True,
+        )
 
     st.divider()
 
