@@ -2648,6 +2648,7 @@ if page == "Stock Tracker":
         _fiscal_ai_exchange_for_ticker,
         get_stock_data,
     )
+    from modules.fmp import get_earnings_calendar as get_fmp_earnings_calendar
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
     import pandas as _pd
@@ -2849,6 +2850,50 @@ if page == "Stock Tracker":
             return _dt.strptime(str(date_text)[:10], "%Y-%m-%d").strftime("%b %Y")
         except Exception:
             return str(date_text)
+
+    def _fmt_earnings_number(value, prefix=""):
+        if value is None:
+            return "—"
+        try:
+            value = float(value)
+        except Exception:
+            return "—"
+        if abs(value) >= 1_000_000_000:
+            return f"{prefix}{value / 1_000_000_000:.2f}B"
+        if abs(value) >= 1_000_000:
+            return f"{prefix}{value / 1_000_000:.2f}M"
+        return f"{prefix}{value:,.2f}"
+
+    def _earnings_badge(actual, estimated):
+        if actual is None or estimated is None:
+            return '<span style="color:#94A3B8;font-size:12px">—</span>'
+        try:
+            actual = float(actual)
+            estimated = float(estimated)
+        except Exception:
+            return '<span style="color:#94A3B8;font-size:12px">—</span>'
+        if actual > estimated:
+            label, color, bg = "Beat", "#2d7a2d", "#e8f5e9"
+        elif actual < estimated:
+            label, color, bg = "Miss", "#c0392b", "#fdecea"
+        else:
+            label, color, bg = "In Line", "#7d5a00", "#fffbea"
+        return (
+            f'<span style="background:{bg};color:{color};padding:2px 8px;'
+            f'border-radius:999px;font-size:11px;font-weight:700">{label}</span>'
+        )
+
+    def _fmt_surprise_pct(actual, estimated):
+        if actual is None or estimated in (None, 0):
+            return "—"
+        try:
+            actual = float(actual)
+            estimated = float(estimated)
+            if estimated == 0:
+                return "—"
+            return f"{(actual - estimated) / abs(estimated) * 100:+.1f}%"
+        except Exception:
+            return "—"
 
     def _short_interest_badge(short_pct):
         if short_pct is None:
@@ -3441,6 +3486,54 @@ if page == "Stock Tracker":
             'Source: Fiscal AI</div>',
             unsafe_allow_html=True,
         )
+
+    fmp_earnings_key = f"fmp_earnings_{cur_ticker}"
+    if fmp_earnings_key not in st.session_state:
+        st.session_state[fmp_earnings_key] = get_fmp_earnings_calendar(cur_ticker)
+    fmp_earnings = st.session_state[fmp_earnings_key]
+    if fmp_earnings:
+        rows_html = []
+        for row in fmp_earnings:
+            eps_actual = row.get("epsActual")
+            eps_estimated = row.get("epsEstimated")
+            rev_actual = row.get("revenueActual")
+            rev_estimated = row.get("revenueEstimated")
+            rows_html.append(
+                f'''
+                <tr>
+                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                        {escape(str(row.get("date") or "—"))}
+                    </td>
+                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                        <div>{escape(_fmt_earnings_number(eps_actual, "$"))} vs {escape(_fmt_earnings_number(eps_estimated, "$"))}</div>
+                        <div style="margin-top:0.25rem">{_earnings_badge(eps_actual, eps_estimated)}</div>
+                    </td>
+                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                        <div>{escape(_fmt_earnings_number(rev_actual, "$"))} vs {escape(_fmt_earnings_number(rev_estimated, "$"))}</div>
+                        <div style="margin-top:0.25rem">{_earnings_badge(rev_actual, rev_estimated)}</div>
+                    </td>
+                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                        {escape(_fmt_surprise_pct(eps_actual, eps_estimated))}
+                    </td>
+                </tr>
+                '''
+            )
+        st.markdown("##### Earnings History")
+        table_html = (
+            '<div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;'
+            'margin:0.65rem 0;background:rgba(15,23,42,0.28);overflow-x:auto">'
+            '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+            '<thead><tr>'
+            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Date</th>'
+            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Actual vs Estimated</th>'
+            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Revenue Actual vs Estimated</th>'
+            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Surprise %</th>'
+            '</tr></thead>'
+            f'<tbody>{"".join(rows_html)}</tbody>'
+            '</table></div>'
+        )
+        st.markdown(table_html, unsafe_allow_html=True)
+        st.caption("Source: Financial Modeling Prep")
 
     company_filings = _fiscal_session_cached(
         "get_company_filings",
