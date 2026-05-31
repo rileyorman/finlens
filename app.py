@@ -2704,22 +2704,66 @@ if page == "Stock Tracker":
 
         @st.cache_data(ttl=300)
         def _wl_summary(tickers_tuple):
+            def _fmt_watchlist_market_cap(value):
+                if not value:
+                    return "—"
+                value = float(value)
+                if value >= 1_000_000_000_000:
+                    return f"${value / 1_000_000_000_000:.2f}T"
+                if value >= 1_000_000_000:
+                    return f"${value / 1_000_000_000:.2f}B"
+                return f"${value / 1_000_000:.1f}M"
+
+            def _fmt_watchlist_volume(value):
+                if not value:
+                    return "—"
+                return f"{int(value):,}"
+
+            def _watchlist_market_cap_and_volume(ticker):
+                try:
+                    _ensure_yfinance_cache_location()
+                    yt = yf.Ticker(ticker)
+                    info = yt.info or {}
+                    volume = info.get("volume")
+                    if volume is None:
+                        try:
+                            fast_info = yt.fast_info
+                            volume = getattr(fast_info, "last_volume", None)
+                            if volume is None and hasattr(fast_info, "get"):
+                                volume = fast_info.get("last_volume")
+                        except Exception:
+                            volume = None
+                    return info.get("marketCap"), volume
+                except Exception:
+                    return None, None
+
             rows = []
             for tk in tickers_tuple:
                 d = get_stock_data(tk)
                 if d.get("error"):
-                    rows.append({"Ticker": tk, "Price": "—", "Day %": "—",
-                                 "52W High": "—", "52W Low": "—", "RSI": "—"})
+                    rows.append({
+                        "Ticker": tk,
+                        "Price": "—",
+                        "Day%": "—",
+                        "Market Cap": "—",
+                        "Volume": "—",
+                        "52W High": "—",
+                        "52W Low": "—",
+                        "RSI": "—",
+                    })
                     continue
                 p   = d["price"]
                 m   = d["momentum"]
+                market_cap, volume = _watchlist_market_cap_and_volume(tk)
                 rows.append({
-                    "Ticker":   tk,
-                    "Price":    f"${p['current']:,.2f}"        if p["current"]              else "—",
-                    "Day %":    f"{p['day_change_pct']:+.2f}%" if p["day_change_pct"] is not None else "—",
-                    "52W High": f"${p['week_52_high']:,.2f}"   if p["week_52_high"]         else "—",
-                    "52W Low":  f"${p['week_52_low']:,.2f}"    if p["week_52_low"]          else "—",
-                    "RSI":      f"{m['rsi_14']:.1f}"            if m["rsi_14"] is not None   else "—",
+                    "Ticker":     tk,
+                    "Price":      f"${p['current']:,.2f}"        if p["current"]              else "—",
+                    "Day%":       f"{p['day_change_pct']:+.2f}%" if p["day_change_pct"] is not None else "—",
+                    "Market Cap": _fmt_watchlist_market_cap(market_cap),
+                    "Volume":     _fmt_watchlist_volume(volume),
+                    "52W High":   f"${p['week_52_high']:,.2f}"   if p["week_52_high"]         else "—",
+                    "52W Low":    f"${p['week_52_low']:,.2f}"    if p["week_52_low"]          else "—",
+                    "RSI":        f"{m['rsi_14']:.1f}"            if m["rsi_14"] is not None   else "—",
                 })
             return rows
 
