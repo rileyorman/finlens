@@ -109,7 +109,7 @@ def analyze_mda_sentiment(raw_text: str, api_key: str) -> dict:
         response = client.messages.create(
             model      = EXTRACTION_MODEL,
             max_tokens = 512,
-            system     = _SYSTEM_PROMPT,
+            system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],
         )
 

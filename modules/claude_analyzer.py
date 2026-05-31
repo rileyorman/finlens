@@ -136,7 +136,7 @@ def analyze_financials(document_text: str, api_key: str) -> dict:
     response = client.messages.create(
         model=EXTRACTION_MODEL,
         max_tokens=8192,
-        system=SYSTEM_PROMPT,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[
             {
                 "role": "user",

@@ -116,7 +116,7 @@ def compare_filings(
         response = client.messages.create(
             model      = EXTRACTION_MODEL,
             max_tokens = 2048,
-            system     = _SYNTHESIS_SYSTEM,
+            system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": user_msg}],
         )
 
