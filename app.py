@@ -2640,13 +2640,13 @@ if page == "Stock Tracker":
         get_company_logo,
         get_company_filings,
         get_company_news,
+        get_ratios_with_values,
+        get_segments_with_values,
         get_shares_outstanding,
     )
     from modules.stock_tracker import (
         _fiscal_ai_exchange_for_ticker,
-        get_fiscal_ai_ratios,
         get_stock_data,
-        render_business_segments_card,
     )
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
@@ -2882,10 +2882,21 @@ if page == "Stock Tracker":
 
     # --- SECTION 1: Price & Momentum ---
     cur_ticker = st.session_state.get("st_current_ticker", "")
+    cur_exchange = _fiscal_ai_exchange_for_ticker(cur_ticker) if cur_ticker else "NASDAQ"
+
+    def _fiscal_session_cached(function_name, fetcher):
+        cache_key = f"fiscal_{function_name}_{cur_ticker}"
+        if cache_key not in st.session_state:
+            st.session_state[cache_key] = fetcher()
+        return st.session_state[cache_key]
+
     company_name = comp["name"] or cur_ticker or st_ticker.upper()
     logo_bytes = None
     if cur_ticker:
-        logo_bytes = get_company_logo(cur_ticker, _fiscal_ai_exchange_for_ticker(cur_ticker))
+        logo_bytes = _fiscal_session_cached(
+            "get_company_logo",
+            lambda: get_company_logo(cur_ticker, cur_exchange),
+        )
 
     if logo_bytes:
         col_logo, col_name = st.columns([1, 10])
@@ -3025,7 +3036,48 @@ if page == "Stock Tracker":
         ''',
         unsafe_allow_html=True,
     )
-    render_business_segments_card(cur_ticker)
+    segments = _fiscal_session_cached(
+        "get_segments_with_values",
+        lambda: get_segments_with_values(cur_ticker, cur_exchange),
+    )
+    if segments:
+        chart_segments = sorted(segments, key=lambda row: row["value"])
+        labels = [row["name"] for row in chart_segments]
+        values = [row["value"] for row in chart_segments]
+        text = [_fmt_mc(row["value"] / 1_000_000) for row in chart_segments]
+
+        st.markdown("#### Business Segments")
+        fig = go.Figure(
+            go.Bar(
+                x=values,
+                y=labels,
+                orientation="h",
+                text=text,
+                textposition="auto",
+                marker=dict(color="#378ADD"),
+                hovertemplate="%{y}<br>%{text}<extra></extra>",
+            )
+        )
+        fig.update_layout(
+            height=max(260, 42 * len(chart_segments)),
+            margin=dict(l=8, r=8, t=8, b=8),
+            xaxis_title=None,
+            yaxis_title=None,
+            showlegend=False,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#CBD5E1"),
+        )
+        fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
+        fig.update_yaxes(showgrid=False)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        period = segments[0].get("period")
+        period_text = f" · {period}" if period else ""
+        st.markdown(
+            f'<div style="color:#94A3B8;font-size:12px;margin-top:-0.5rem">'
+            f'Source: Fiscal AI{period_text}</div>',
+            unsafe_allow_html=True,
+        )
 
     st.divider()
 
@@ -3240,10 +3292,24 @@ if page == "Stock Tracker":
             if note:
                 st.caption(note)
 
-    fiscal_ratios = get_fiscal_ai_ratios(
-        cur_ticker,
-        _fiscal_ai_exchange_for_ticker(cur_ticker),
+    fiscal_ratio_values = _fiscal_session_cached(
+        "get_ratios_with_values",
+        lambda: get_ratios_with_values(cur_ticker, cur_exchange),
     )
+    fiscal_ratio_map = {
+        "P/E Ratio": "pe_ratio",
+        "EV/EBITDA": "ev_ebitda",
+        "P/B Ratio": "price_to_book",
+        "P/S Ratio": "price_to_sales",
+        "Gross Margin": "gross_margin",
+        "Operating Margin": "operating_margin",
+        "Net Margin": "net_margin",
+    }
+    fiscal_ratios = {
+        label: fiscal_ratio_values[key]
+        for label, key in fiscal_ratio_map.items()
+        if isinstance(fiscal_ratio_values, dict) and key in fiscal_ratio_values
+    }
     if fiscal_ratios:
         st.markdown("##### Institutional Ratios")
 
@@ -3267,9 +3333,9 @@ if page == "Stock Tracker":
             unsafe_allow_html=True,
         )
 
-    shares_outstanding = get_shares_outstanding(
-        cur_ticker,
-        _fiscal_ai_exchange_for_ticker(cur_ticker),
+    shares_outstanding = _fiscal_session_cached(
+        "get_shares_outstanding",
+        lambda: get_shares_outstanding(cur_ticker, cur_exchange),
     )
     if shares_outstanding:
         shares_value = shares_outstanding.get("shares_outstanding")
@@ -3299,9 +3365,9 @@ if page == "Stock Tracker":
             unsafe_allow_html=True,
         )
 
-    adjusted_metrics = get_adjusted_metrics_with_values(
-        cur_ticker,
-        _fiscal_ai_exchange_for_ticker(cur_ticker),
+    adjusted_metrics = _fiscal_session_cached(
+        "get_adjusted_metrics_with_values",
+        lambda: get_adjusted_metrics_with_values(cur_ticker, cur_exchange),
     )
     if adjusted_metrics:
         st.markdown("##### Adjusted Metrics")
@@ -3334,7 +3400,7 @@ if page == "Stock Tracker":
 
     company_news = get_company_news(
         cur_ticker,
-        _fiscal_ai_exchange_for_ticker(cur_ticker),
+        cur_exchange,
         limit=5,
     )
     if company_news:
@@ -3376,10 +3442,9 @@ if page == "Stock Tracker":
             unsafe_allow_html=True,
         )
 
-    company_filings = get_company_filings(
-        cur_ticker,
-        _fiscal_ai_exchange_for_ticker(cur_ticker),
-        limit=5,
+    company_filings = _fiscal_session_cached(
+        "get_company_filings",
+        lambda: get_company_filings(cur_ticker, cur_exchange, limit=5),
     )
     if company_filings:
         st.markdown("##### Recent Filings")
