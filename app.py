@@ -3997,6 +3997,25 @@ if uploaded_file:
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
             mda_sentiment  = cached.get("mda_sentiment")
+            if mda_sentiment is None:
+                with st.spinner("Backfilling MD&A sentiment for cached PDF..."):
+                    try:
+                        raw_text = extract_text_from_pdf(io.BytesIO(pdf_bytes))
+                        if len(raw_text) >= 200:
+                            mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_model())
+                            save_cache(
+                                cache_key,
+                                uploaded_file.name,
+                                financial_data,
+                                summary_data,
+                                bear_bull_data,
+                                dashboard_data,
+                                mda_sentiment=mda_sentiment,
+                            )
+                        else:
+                            st.warning("MD&A sentiment could not be backfilled because very little text was extracted.")
+                    except Exception as e:
+                        st.warning(f"MD&A sentiment could not be backfilled: {e}.")
             st.session_state.cache_hit = True
             st.success(f"Loaded **{uploaded_file.name}** from cache.")
         else:
@@ -4109,6 +4128,7 @@ if uploaded_file:
             resolved_ticker,
             _period_label,
             "pdf",
+            mda_sentiment=mda_sentiment,
             sector_value=sector,
             hurdle_rate_value=hurdle_rate,
         )
