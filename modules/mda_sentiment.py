@@ -9,6 +9,11 @@ import httpx
 from config import EXTRACTION_MODEL, MAX_FILING_CHARS
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+OPUS_48_MODEL = "claude-opus-4-8"
+
+
+def _text_content(response) -> str:
+    return next((b.text for b in response.content if b.type == "text"), "")
 
 
 def _make_client(api_key: str):
@@ -108,14 +113,24 @@ def analyze_mda_sentiment(raw_text: str, api_key: str, model: str = DEFAULT_MODE
         client  = _make_client(api_key)
         text    = (raw_text or "")[:MAX_FILING_CHARS]
 
-        response = client.messages.create(
-            model      = model,
-            max_tokens = 512,
-            system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],
-        )
+        if model == OPUS_48_MODEL:
+            response = client.messages.create(
+                model      = model,
+                max_tokens = 8000,
+                system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+                messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],
+                thinking   = {"type": "adaptive"},
+                output_config = {"effort": "high"},
+            )
+        else:
+            response = client.messages.create(
+                model      = model,
+                max_tokens = 512,
+                system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+                messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],
+            )
 
-        raw = response.content[0].text
+        raw = _text_content(response)
 
         data = _safe_json(raw)
         if data.get("error"):

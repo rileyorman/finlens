@@ -11,6 +11,11 @@ from modules.mda_sentiment import analyze_mda_sentiment
 
 _SYNTHESIS_CHARS = 40_000
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+OPUS_48_MODEL = "claude-opus-4-8"
+
+
+def _text_content(response) -> str:
+    return next((b.text for b in response.content if b.type == "text"), "")
 
 
 def _safe_json(raw: str) -> dict:
@@ -115,14 +120,24 @@ def compare_filings(
         user_msg = user_msg.replace("{text_1}", (raw_text_1 or "")[:_SYNTHESIS_CHARS])
         user_msg = user_msg.replace("{text_2}", (raw_text_2 or "")[:_SYNTHESIS_CHARS])
 
-        response = client.messages.create(
-            model      = model,
-            max_tokens = 2048,
-            system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
-            messages   = [{"role": "user", "content": user_msg}],
-        )
+        if model == OPUS_48_MODEL:
+            response = client.messages.create(
+                model      = model,
+                max_tokens = 8000,
+                system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
+                messages   = [{"role": "user", "content": user_msg}],
+                thinking   = {"type": "adaptive"},
+                output_config = {"effort": "high"},
+            )
+        else:
+            response = client.messages.create(
+                model      = model,
+                max_tokens = 2048,
+                system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
+                messages   = [{"role": "user", "content": user_msg}],
+            )
 
-        raw = response.content[0].text
+        raw = _text_content(response)
 
         comparison = _safe_json(raw)
         if comparison.get("error"):

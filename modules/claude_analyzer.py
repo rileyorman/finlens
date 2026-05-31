@@ -10,6 +10,11 @@ from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING
 # Model alias for the dashboard insights call (same tier as analysis)
 DASHBOARD_MODEL = ANALYSIS_MODEL
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+OPUS_48_MODEL = "claude-opus-4-8"
+
+
+def _text_content(response) -> str:
+    return next((b.text for b in response.content if b.type == "text"), "")
 
 
 def _sanitize(text: str) -> str:
@@ -256,14 +261,24 @@ def analyze_summary(
         filing_text=filing_text,
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=1024,
-        system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user_message}],
-    )
+    if model == OPUS_48_MODEL:
+        response = client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "adaptive"},
+            output_config={"effort": "high"},
+        )
+    else:
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user_message}],
+        )
 
-    raw = response.content[0].text
+    raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
@@ -341,14 +356,24 @@ def analyze_bear_bull(filing_text: str, api_key: str, model: str = DEFAULT_MODEL
 
     user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=1024,
-        system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user_message}],
-    )
+    if model == OPUS_48_MODEL:
+        response = client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "adaptive"},
+            output_config={"effort": "high"},
+        )
+    else:
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user_message}],
+        )
 
-    raw = response.content[0].text
+    raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
     match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
@@ -449,15 +474,26 @@ def analyze_dashboard_insights(
             filing_text    = filing_text,
         )
 
-        response = client.messages.create(
-            model     = model,
-            max_tokens= 1200,
-            system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
-                          "cache_control": {"type": "ephemeral"}}],
-            messages  = [{"role": "user", "content": user_message}],
-        )
+        if model == OPUS_48_MODEL:
+            response = client.messages.create(
+                model     = model,
+                max_tokens= 8000,
+                system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
+                              "cache_control": {"type": "ephemeral"}}],
+                messages  = [{"role": "user", "content": user_message}],
+                thinking  = {"type": "adaptive"},
+                output_config = {"effort": "high"},
+            )
+        else:
+            response = client.messages.create(
+                model     = model,
+                max_tokens= 1200,
+                system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
+                              "cache_control": {"type": "ephemeral"}}],
+                messages  = [{"role": "user", "content": user_message}],
+            )
 
-        raw = response.content[0].text
+        raw = _text_content(response)
 
         m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
         if m:
