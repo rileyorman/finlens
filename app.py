@@ -1138,7 +1138,7 @@ with st.sidebar:
             <div class="finlens-sidebar-wordmark">
                 <span class="finlens-sidebar-wordmark-fin">Fin</span><span class="finlens-sidebar-wordmark-lens">Lens</span>
             </div>
-            <div class="finlens-sidebar-tagline">AI FINANCIAL ANALYSIS</div>
+            <div class="finlens-sidebar-tagline">AI INVESTMENT ANALYSIS PLATFORM</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -3980,7 +3980,10 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
-        _learn_more("signal")
+        st.markdown(
+            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Investment Signals →</a>',
+            unsafe_allow_html=True,
+        )
 
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
@@ -4051,6 +4054,10 @@ if st.session_state.financial_data:
             )
         else:
             st.caption("No market data yet — enter the ticker above and click Fetch Market Data to populate live price, multiples, and Beta.")
+        st.markdown(
+            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Market Data & Multiples →</a>',
+            unsafe_allow_html=True,
+        )
 
         # --- Red Flag Analysis ---
         flag_result  = detect_flags(financial_data)
@@ -4064,7 +4071,10 @@ if st.session_state.financial_data:
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
 
-        _learn_more("red_flags")
+        st.markdown(
+            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Red Flag Analysis →</a>',
+            unsafe_allow_html=True,
+        )
 
         with st.expander(exp_label, expanded=(red_count > 0)):
             if not flags:
@@ -4089,7 +4099,6 @@ if st.session_state.financial_data:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
 
         # --- MD&A Sentiment ---
-        _learn_more("mda_sentiment")
 
         if mda_sentiment and not mda_sentiment.get("error"):
             _tone = mda_sentiment.get("overall_tone") or "—"
@@ -4119,6 +4128,10 @@ if st.session_state.financial_data:
                 )
 
             with st.expander("📝 MD&A Sentiment", expanded=False):
+                st.markdown(
+                    '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about MD&A Sentiment →</a>',
+                    unsafe_allow_html=True,
+                )
                 tone_col, scores_col = st.columns([1, 2])
 
                 with tone_col:
@@ -4154,9 +4167,10 @@ if st.session_state.financial_data:
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
 
         # --- Scenario Simulator ---
-        _learn_more("distress_score")
-
-        _learn_more("scenario_simulator")
+        st.markdown(
+            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Scenario Analysis →</a>',
+            unsafe_allow_html=True,
+        )
 
         with st.expander("🔮 Scenario Simulator", expanded=False):
             _metrics = _calc_summary_metrics(financial_data)
@@ -4371,7 +4385,10 @@ if st.session_state.financial_data:
                 st.info("Not found in document.")
 
         # --- Bull / Bear Case ---
-        _learn_more("bull_bear")
+        st.markdown(
+            '<a href="/?nav=education" style="color: #4a9eda; font-size: 0.8rem; text-decoration: none;">Learn more about Financial Statements →</a>',
+            unsafe_allow_html=True,
+        )
 
         if bear_bull_data and "error" not in bear_bull_data:
             with st.expander("Bull / Bear Case", expanded=False):
