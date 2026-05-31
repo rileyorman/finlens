@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import json
 import tempfile
 from html import escape
 from datetime import datetime, timedelta
@@ -2349,33 +2350,56 @@ if page == "Filing Comparison":
             _entry2 = _fc_library_by_id.get(fc_lib_2)
             _label1 = _fc_library_labels.get(fc_lib_1, "Filing 1")
             _label2 = _fc_library_labels.get(fc_lib_2, "Filing 2")
+            _sorted_id_1, _sorted_id_2 = sorted([fc_lib_1, fc_lib_2])
+            _comparison_cache_key = f"comparison_{_sorted_id_1}_{_sorted_id_2}"
+            _cached_comparison = None
+            try:
+                _cached_comparison = load_cache(_comparison_cache_key)
+            except Exception:
+                _cached_comparison = None
 
-            def _comparison_text_from_library(entry: dict | None, label: str) -> str | None:
-                if not entry:
-                    return None
-                _pdf_path = _pdf_cache_path(
-                    entry.get("ticker") if entry.get("ticker") != "—" else None,
-                    _library_period_label(entry),
-                )
-                if _pdf_path and Path(_pdf_path).exists():
-                    _pdf = io.BytesIO(Path(_pdf_path).read_bytes())
-                    with st.spinner(f"Extracting text from {Path(_pdf_path).name}..."):
-                        return extract_text_from_pdf(_pdf)
-                _cached_text = _library_text_for_entry(entry)
-                if _cached_text:
-                    return _cached_text
-                st.warning(f"No data found for {label} — please load and analyse it first in Single Analysis, then try again")
-                return None
-
-            _text1 = _comparison_text_from_library(_entry1, _label1)
-            _text2 = _comparison_text_from_library(_entry2, _label2)
-            if _text1 and _text2:
-
-                with st.spinner("Running comparison analysis (3 Claude calls)..."):
-                    _fc_result = compare_filings(_text1, _text2, _label1, _label2, API_KEY)
-
-                st.session_state["filing_comparison"] = _fc_result
+            if _cached_comparison:
+                st.session_state["filing_comparison"] = _cached_comparison
+                st.session_state["filing_comparison_cache_note"] = True
                 st.rerun()
+            else:
+                def _comparison_text_from_library(entry: dict | None, label: str) -> str | None:
+                    if not entry:
+                        return None
+                    _pdf_path = _pdf_cache_path(
+                        entry.get("ticker") if entry.get("ticker") != "—" else None,
+                        _library_period_label(entry),
+                    )
+                    if _pdf_path and Path(_pdf_path).exists():
+                        _pdf = io.BytesIO(Path(_pdf_path).read_bytes())
+                        with st.spinner(f"Extracting text from {Path(_pdf_path).name}..."):
+                            return extract_text_from_pdf(_pdf)
+                    _cached_text = _library_text_for_entry(entry)
+                    if _cached_text:
+                        return _cached_text
+                    st.warning(f"No data found for {label} — please load and analyse it first in Single Analysis, then try again")
+                    return None
+
+                _text1 = _comparison_text_from_library(_entry1, _label1)
+                _text2 = _comparison_text_from_library(_entry2, _label2)
+                if _text1 and _text2:
+
+                    with st.spinner("Running comparison analysis (3 Claude calls)..."):
+                        _fc_result = compare_filings(_text1, _text2, _label1, _label2, API_KEY)
+
+                    if not _fc_result.get("error"):
+                        try:
+                            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                            safe_write_text(
+                                CACHE_DIR / f"{_comparison_cache_key}.json",
+                                json.dumps(_fc_result, indent=2, default=str),
+                            )
+                        except Exception:
+                            pass
+
+                    st.session_state["filing_comparison"] = _fc_result
+                    st.session_state["filing_comparison_cache_note"] = False
+                    st.rerun()
 
     st.divider()
     st.caption("— or upload files manually —")
@@ -2408,8 +2432,11 @@ if page == "Filing Comparison":
             _fc_result = compare_filings(_text1, _text2, _lbl1, _lbl2, API_KEY)
 
         st.session_state["filing_comparison"] = _fc_result
+        st.session_state["filing_comparison_cache_note"] = False
         st.rerun()
     st.caption("~$0.03 per comparison")
+    if st.session_state.get("filing_comparison_cache_note"):
+        st.caption("Loaded from cache")
 
     # --- Display ---
     _fc = st.session_state.get("filing_comparison")
