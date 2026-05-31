@@ -9,6 +9,7 @@ from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING
 
 # Model alias for the dashboard insights call (same tier as analysis)
 DASHBOARD_MODEL = ANALYSIS_MODEL
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _sanitize(text: str) -> str:
@@ -125,7 +126,7 @@ USER_PROMPT_TEMPLATE = """Extract the financial statements from the following do
 """
 
 
-def analyze_financials(document_text: str, api_key: str) -> dict:
+def analyze_financials(document_text: str, api_key: str, model: str = DEFAULT_MODEL) -> dict:
     """Call 1: extract structured financial data from PDF text using Claude Haiku."""
     client = _make_client(api_key)
     # Front+back slice: captures business context at the top and financial
@@ -134,7 +135,7 @@ def analyze_financials(document_text: str, api_key: str) -> dict:
     document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
 
     response = client.messages.create(
-        model=EXTRACTION_MODEL,
+        model=model,
         max_tokens=8192,
         system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[
@@ -240,7 +241,12 @@ FULL FILING TEXT (read this for MD&A, risk factors, and management commentary):
 """
 
 
-def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) -> dict:
+def analyze_summary(
+    filing_text: str,
+    extracted_financials: dict,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+) -> dict:
     """Call 2: send filing text + Call 1 financials to Claude and return investment signal."""
     client = _make_client(api_key)
     filing_text = filing_text[:MAX_FILING_CHARS]
@@ -251,7 +257,7 @@ def analyze_summary(filing_text: str, extracted_financials: dict, api_key: str) 
     )
 
     response = client.messages.create(
-        model=ANALYSIS_MODEL,
+        model=model,
         max_tokens=1024,
         system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
@@ -328,7 +334,7 @@ BEAR_BULL_USER_PROMPT_TEMPLATE = """Generate the bull and bear case for this fin
 """
 
 
-def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
+def analyze_bear_bull(filing_text: str, api_key: str, model: str = DEFAULT_MODEL) -> dict:
     """Call 3: generate 3-point bull and bear cases from filing text using Claude Sonnet."""
     client = _make_client(api_key)
     filing_text = filing_text[:MAX_FILING_CHARS]
@@ -336,7 +342,7 @@ def analyze_bear_bull(filing_text: str, api_key: str) -> dict:
     user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
 
     response = client.messages.create(
-        model=BEAR_BULL_MODEL,
+        model=model,
         max_tokens=1024,
         system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
@@ -424,6 +430,7 @@ def analyze_dashboard_insights(
     summary_data: dict,
     financial_data: dict,
     api_key: str,
+    model: str = DEFAULT_MODEL,
 ) -> dict:
     """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard.
 
@@ -443,7 +450,7 @@ def analyze_dashboard_insights(
         )
 
         response = client.messages.create(
-            model     = DASHBOARD_MODEL,
+            model     = model,
             max_tokens= 1200,
             system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
                           "cache_control": {"type": "ephemeral"}}],

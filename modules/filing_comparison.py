@@ -10,6 +10,7 @@ from config import EXTRACTION_MODEL
 from modules.mda_sentiment import analyze_mda_sentiment
 
 _SYNTHESIS_CHARS = 40_000
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _safe_json(raw: str) -> dict:
@@ -89,6 +90,7 @@ def compare_filings(
     label_1: str,
     label_2: str,
     api_key: str,
+    model: str = DEFAULT_MODEL,
 ) -> dict:
     """Compare two filings: MD&A sentiment + synthesis. Always returns dict, never raises."""
     result = {
@@ -101,8 +103,8 @@ def compare_filings(
     }
 
     try:
-        result["sentiment_1"] = analyze_mda_sentiment(raw_text_1, api_key)
-        result["sentiment_2"] = analyze_mda_sentiment(raw_text_2, api_key)
+        result["sentiment_1"] = analyze_mda_sentiment(raw_text_1, api_key, model=model)
+        result["sentiment_2"] = analyze_mda_sentiment(raw_text_2, api_key, model=model)
 
         client = _make_client(api_key)
         user_msg = _SYNTHESIS_USER
@@ -114,7 +116,7 @@ def compare_filings(
         user_msg = user_msg.replace("{text_2}", (raw_text_2 or "")[:_SYNTHESIS_CHARS])
 
         response = client.messages.create(
-            model      = EXTRACTION_MODEL,
+            model      = model,
             max_tokens = 2048,
             system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": user_msg}],

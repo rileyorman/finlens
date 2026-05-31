@@ -7,6 +7,8 @@ import httpx
 from config import EXTRACTION_MODEL
 from modules.excel_exporter import _calc_summary_metrics, _lookup, _lookup2
 
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
 
 def _make_client(api_key: str):
     if sys.platform == "win32":
@@ -123,6 +125,7 @@ def run_scenario(
     base_financials: dict,
     scenario_inputs: dict,
     api_key: str,
+    model: str = DEFAULT_MODEL,
 ) -> dict:
     """Run a what-if scenario on base_financials. Always returns dict, never raises."""
     result = {
@@ -216,7 +219,7 @@ def run_scenario(
         )
 
         response = client.messages.create(
-            model      = EXTRACTION_MODEL,
+            model      = model,
             max_tokens = 256,
             messages   = [{
                 "role": "user",

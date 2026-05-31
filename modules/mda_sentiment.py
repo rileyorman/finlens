@@ -8,6 +8,8 @@ import httpx
 
 from config import EXTRACTION_MODEL, MAX_FILING_CHARS
 
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
 
 def _make_client(api_key: str):
     """Anthropic client with Windows SSL fix (mirrors claude_analyzer._make_client)."""
@@ -96,7 +98,7 @@ _EMPTY = {
 }
 
 
-def analyze_mda_sentiment(raw_text: str, api_key: str) -> dict:
+def analyze_mda_sentiment(raw_text: str, api_key: str, model: str = DEFAULT_MODEL) -> dict:
     """Call 5: score MD&A sentiment from filing text using Claude Haiku.
 
     Always returns a dict — never raises. On failure, error field is populated
@@ -107,7 +109,7 @@ def analyze_mda_sentiment(raw_text: str, api_key: str) -> dict:
         text    = (raw_text or "")[:MAX_FILING_CHARS]
 
         response = client.messages.create(
-            model      = EXTRACTION_MODEL,
+            model      = model,
             max_tokens = 512,
             system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],

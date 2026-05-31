@@ -76,6 +76,13 @@ if not cookies.ready():
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+
+def get_model():
+    if st.session_state.get("demo_mode", False):
+        return "claude-opus-4-8"
+    return "claude-haiku-4-5-20251001"
+
+
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
 ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1478,6 +1485,12 @@ document.addEventListener('focusin', function(e) {
 
         st.divider()
 
+    demo_mode = st.sidebar.toggle(" Demo Mode", value=False, key="demo_mode")
+    if demo_mode:
+        st.sidebar.caption("⚡ Opus 4.8 — Premium Analysis")
+    else:
+        st.sidebar.caption(" Haiku — Dev Mode")
+
     # --- Filing Library (Single Analysis mode only) --------------------
     if page == "Single Analysis":
         st.markdown("""
@@ -1692,15 +1705,15 @@ if page == "Portfolio Manager":
         st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
         _ra_text = ra["raw_text"]
         with st.spinner("Call 1: Extracting financials (Haiku)..."):
-            _ra_fd = analyze_financials(_ra_text, API_KEY)
+            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model())
         with st.spinner("Call 2: Generating investment signal..."):
-            _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY)
+            _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model())
         with st.spinner("Call 3: Generating bull/bear case..."):
-            _ra_bb = analyze_bear_bull(_ra_text, API_KEY)
+            _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model())
         with st.spinner("Call 4: Generating dashboard insights..."):
-            _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
+            _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model())
         with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
-            _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
+            _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_model())
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
                 safe_write_text(ra["file_path"], _ra_text)
@@ -2398,7 +2411,9 @@ if page == "Filing Comparison":
                 if _text1 and _text2:
 
                     with st.spinner("Running comparison analysis (3 Claude calls)..."):
-                        _fc_result = compare_filings(_text1, _text2, _label1, _label2, API_KEY)
+                        _fc_result = compare_filings(
+                            _text1, _text2, _label1, _label2, API_KEY, model=get_model()
+                        )
 
                     if not _fc_result.get("error"):
                         try:
@@ -2442,7 +2457,9 @@ if page == "Filing Comparison":
             pass  # compare_filings handles all three calls internally
 
         with st.spinner("Running comparison analysis (3 Claude calls)..."):
-            _fc_result = compare_filings(_text1, _text2, _lbl1, _lbl2, API_KEY)
+            _fc_result = compare_filings(
+                _text1, _text2, _lbl1, _lbl2, API_KEY, model=get_model()
+            )
 
         st.session_state["filing_comparison"] = _fc_result
         st.session_state["filing_comparison_cache_note"] = False
@@ -3546,7 +3563,9 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _edgar_dd = None
                     with st.spinner("Generating investment signal from SEC data..."):
                         try:
-                            _edgar_sd = analyze_summary(_edgar_text, _edgar_fd, API_KEY)
+                            _edgar_sd = analyze_summary(
+                                _edgar_text, _edgar_fd, API_KEY, model=get_model()
+                            )
                             if isinstance(_edgar_sd, dict):
                                 _edgar_sd.setdefault("ticker", _tk)
                                 _edgar_sd.setdefault("filing_date", _selected_filing.get("filingDate"))
@@ -3554,18 +3573,22 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             st.warning(f"Investment signal could not be generated: {e}.")
                     with st.spinner("Generating bull/bear case from SEC data..."):
                         try:
-                            _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY)
+                            _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY, model=get_model())
                         except Exception as e:
                             st.warning(f"Bull/bear case could not be generated: {e}.")
                     with st.spinner("Generating dashboard insights from SEC data..."):
                         try:
-                            _edgar_dd = analyze_dashboard_insights(_edgar_text, _edgar_sd, _edgar_fd, API_KEY)
+                            _edgar_dd = analyze_dashboard_insights(
+                                _edgar_text, _edgar_sd, _edgar_fd, API_KEY, model=get_model()
+                            )
                         except Exception as e:
                             st.warning(f"Dashboard insights could not be generated: {e}.")
                     mda_result = None
                     with st.spinner("Scoring MD&A sentiment..."):
                         try:
-                            mda_result = analyze_mda_sentiment(_edgar_text, API_KEY)
+                            mda_result = analyze_mda_sentiment(
+                                _edgar_text, API_KEY, model=get_model()
+                            )
                         except Exception as e:
                             st.warning(f"MD&A sentiment could not be scored: {e}")
 
@@ -3875,23 +3898,23 @@ if st.session_state.get("pending_reanalyse"):
     _ra_text = ra["raw_text"]
 
     with st.spinner("Call 1: Extracting financials (Haiku)..."):
-        _ra_fd = analyze_financials(_ra_text, API_KEY)
+        _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model())
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):
-        _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY)
+        _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model())
 
     _ra_bb = None
     with st.spinner("Call 3: Generating bull/bear case..."):
-        _ra_bb = analyze_bear_bull(_ra_text, API_KEY)
+        _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model())
 
     _ra_dd = None
     with st.spinner("Call 4: Generating dashboard insights..."):
-        _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY)
+        _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model())
 
     _ra_mda = None
     with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
-        _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY)
+        _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_model())
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
@@ -3997,7 +4020,7 @@ if uploaded_file:
             # Step 2 — Call 1: extract structured financials (claude-haiku)
             with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
                 try:
-                    financial_data = analyze_financials(raw_text, API_KEY)
+                    financial_data = analyze_financials(raw_text, API_KEY, model=get_model())
                 except Exception as e:
                     st.error(f"Claude analysis failed: {e}")
                     st.stop()
@@ -4006,7 +4029,7 @@ if uploaded_file:
             summary_data = None
             with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
                 try:
-                    summary_data = analyze_summary(raw_text, financial_data, API_KEY)
+                    summary_data = analyze_summary(raw_text, financial_data, API_KEY, model=get_model())
                 except Exception as e:
                     st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
@@ -4014,7 +4037,7 @@ if uploaded_file:
             bear_bull_data = None
             with st.spinner("Generating bull/bear case — this may take 15–25 seconds..."):
                 try:
-                    bear_bull_data = analyze_bear_bull(raw_text, API_KEY)
+                    bear_bull_data = analyze_bear_bull(raw_text, API_KEY, model=get_model())
                 except Exception as e:
                     st.warning(f"Bull/bear case could not be generated: {e}.")
 
@@ -4023,7 +4046,7 @@ if uploaded_file:
             with st.spinner("Generating dashboard insights — this may take 15–20 seconds..."):
                 try:
                     dashboard_data = analyze_dashboard_insights(
-                        raw_text, summary_data, financial_data, API_KEY
+                        raw_text, summary_data, financial_data, API_KEY, model=get_model()
                     )
                 except Exception as e:
                     st.warning(f"Dashboard insights could not be generated: {e}.")
@@ -4032,7 +4055,7 @@ if uploaded_file:
             mda_sentiment = None
             with st.spinner("Scoring MD&A sentiment (Haiku)..."):
                 try:
-                    mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY)
+                    mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_model())
                 except Exception as e:
                     st.warning(f"MD&A sentiment could not be scored: {e}.")
 
@@ -4143,6 +4166,7 @@ if st.session_state.financial_data:
                 st.session_state.summary_data,
                 financial_data,
                 API_KEY,
+                model=get_model(),
             )
             st.session_state.dashboard_data = dashboard_data
 
@@ -4387,7 +4411,7 @@ if st.session_state.financial_data:
                 }
                 with st.spinner("Running scenario — calling Claude for narrative..."):
                     st.session_state["scenario_result"] = run_scenario(
-                        financial_data, _sc_inputs, API_KEY
+                        financial_data, _sc_inputs, API_KEY, model=get_model()
                     )
             st.caption("~$0.01 per scenario")
 
