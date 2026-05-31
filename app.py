@@ -1123,6 +1123,12 @@ def _library_company_header(ticker: str, entries: list[dict]) -> str:
         return company_name.upper()
     return ticker
 
+
+def _library_comparison_label(entry: dict) -> str:
+    ticker = _library_ticker(entry)
+    period = _library_period_label(entry) or "Unknown period"
+    return f"{_library_company_header(ticker, [entry])} — {period}"
+
 # --- Sidebar -----------------------------------------------------------
 with st.sidebar:
     st.markdown(
@@ -2309,6 +2315,71 @@ if page == "Filing Comparison":
 
     st.markdown("### Filing Comparison")
     st.caption("Upload two filings from the same company to compare MD&A sentiment, theme shifts, and language changes year-over-year.")
+
+    st.markdown("#### Compare from Library")
+    _fc_library_entries = sorted(lib_get(), key=lambda entry: _library_comparison_label(entry).lower())
+    _fc_library_options = [""] + [entry["id"] for entry in _fc_library_entries]
+    _fc_library_by_id = {entry["id"]: entry for entry in _fc_library_entries}
+    _fc_library_labels = {
+        "": "— Select a filing —",
+        **{entry["id"]: _library_comparison_label(entry) for entry in _fc_library_entries},
+    }
+
+    lib_col1, lib_col2 = st.columns(2)
+    with lib_col1:
+        fc_lib_1 = st.selectbox(
+            "Library Filing 1",
+            _fc_library_options,
+            format_func=lambda option: _fc_library_labels.get(option, option),
+            key="fc_library_1",
+        )
+    with lib_col2:
+        fc_lib_2 = st.selectbox(
+            "Library Filing 2",
+            _fc_library_options,
+            format_func=lambda option: _fc_library_labels.get(option, option),
+            key="fc_library_2",
+        )
+
+    if st.button("Compare from Library", type="primary", use_container_width=True):
+        if not fc_lib_1 or not fc_lib_2:
+            st.warning("Please select two filings to compare")
+        else:
+            _entry1 = _fc_library_by_id.get(fc_lib_1)
+            _entry2 = _fc_library_by_id.get(fc_lib_2)
+            _label1 = _fc_library_labels.get(fc_lib_1, "Filing 1")
+            _label2 = _fc_library_labels.get(fc_lib_2, "Filing 2")
+            _pdf_path1 = _pdf_cache_path(
+                _entry1.get("ticker") if _entry1 and _entry1.get("ticker") != "—" else None,
+                _library_period_label(_entry1 or {}),
+            )
+            _pdf_path2 = _pdf_cache_path(
+                _entry2.get("ticker") if _entry2 and _entry2.get("ticker") != "—" else None,
+                _library_period_label(_entry2 or {}),
+            )
+            if not _pdf_path1 or not Path(_pdf_path1).exists():
+                st.warning(f"PDF not found for {_label1} — please use manual upload instead")
+            elif not _pdf_path2 or not Path(_pdf_path2).exists():
+                st.warning(f"PDF not found for {_label2} — please use manual upload instead")
+            else:
+                _pdf1 = io.BytesIO(Path(_pdf_path1).read_bytes())
+                _pdf2 = io.BytesIO(Path(_pdf_path2).read_bytes())
+                _name1 = Path(_pdf_path1).name
+                _name2 = Path(_pdf_path2).name
+
+                with st.spinner(f"Extracting text from {_name1}..."):
+                    _text1 = extract_text_from_pdf(_pdf1)
+                with st.spinner(f"Extracting text from {_name2}..."):
+                    _text2 = extract_text_from_pdf(_pdf2)
+
+                with st.spinner("Running comparison analysis (3 Claude calls)..."):
+                    _fc_result = compare_filings(_text1, _text2, _label1, _label2, API_KEY)
+
+                st.session_state["filing_comparison"] = _fc_result
+                st.rerun()
+
+    st.divider()
+    st.caption("— or upload files manually —")
 
     fc_col1, fc_col2 = st.columns(2)
     with fc_col1:
