@@ -1,6 +1,6 @@
+import platform
 import re
 import ssl
-import sys
 from urllib.parse import quote
 from xml.etree import ElementTree
 
@@ -13,17 +13,22 @@ class _WindowsCertAdapter(HTTPAdapter):
     Avast's CA is in the Windows store but not in certifi's bundle.
     """
     def init_poolmanager(self, *args, **kwargs):
-        if sys.platform == "win32":
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            ctx.load_default_certs()
-            ctx.check_hostname = True
-            kwargs["ssl_context"] = ctx
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.load_default_certs()
+        ctx.check_hostname = True
+        kwargs["ssl_context"] = ctx
         super().init_poolmanager(*args, **kwargs)
 
 
-_SESSION = requests.Session()
-_SESSION.trust_env = False
-_SESSION.mount("https://", _WindowsCertAdapter())
+def _make_session():
+    session = requests.Session()
+    session.trust_env = False
+    if platform.system() == "Windows":
+        session.mount("https://", _WindowsCertAdapter())
+    return session
+
+
+_SESSION = _make_session()
 HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
 
 

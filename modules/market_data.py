@@ -1,6 +1,6 @@
 import os
+import platform
 import ssl
-import sys
 import tempfile
 from difflib import SequenceMatcher
 import yfinance as yf
@@ -12,7 +12,7 @@ def _patch_windows_ssl():
     """Export Windows system cert store to a PEM file and set CURL_CA_BUNDLE /
     REQUESTS_CA_BUNDLE so that yfinance (curl_cffi + requests) trusts the
     Avast CA. No-op on non-Windows or if the env var is already set."""
-    if sys.platform != "win32":
+    if platform.system() != "Windows":
         return
     if os.environ.get("CURL_CA_BUNDLE"):
         return

@@ -1,10 +1,8 @@
 import os
+import platform
 
 import requests
 import urllib3
-
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 FISCAL_AI_KEY = os.environ.get("FISCAL_AI_KEY", "").strip()
@@ -13,7 +11,10 @@ FISCAL_AI_KEY = os.environ.get("FISCAL_AI_KEY", "").strip()
 def _make_session():
     session = requests.Session()
     session.trust_env = False
-    session.verify = False
+    if platform.system() == "Windows":
+        # Avast/corporate SSL inspection workaround - Windows only
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        session.verify = False
     return session
 
 

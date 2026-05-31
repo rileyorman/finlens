@@ -1,4 +1,4 @@
-import sys
+import platform
 import ssl
 import anthropic
 import httpx
@@ -52,7 +52,7 @@ def _make_client(api_key: str):
     Avast presents its own CA cert which is in the Windows system store but not
     in the certifi bundle, so we load system certs instead of using certifi.
     """
-    if sys.platform == "win32":
+    if platform.system() == "Windows":
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_ctx.load_default_certs()  # Windows system cert store includes Avast CA
         ssl_ctx.check_hostname = True

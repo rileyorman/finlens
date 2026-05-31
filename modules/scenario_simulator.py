@@ -1,4 +1,4 @@
-import sys
+import platform
 import ssl
 
 import anthropic
@@ -11,7 +11,7 @@ DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _make_client(api_key: str):
-    if sys.platform == "win32":
+    if platform.system() == "Windows":
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_ctx.load_default_certs()
         ssl_ctx.check_hostname = True
