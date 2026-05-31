@@ -2,6 +2,92 @@ import yfinance as yf
 import pandas as pd
 
 
+NYSE_TICKERS = {
+    "ABBV", "ABT", "ACN", "AMD", "AMT", "AXP", "BA", "BAC", "BABA", "BRK-B",
+    "CAT", "CRM", "CVX", "DE", "DIS", "F", "GE", "GM", "GS", "HD", "IBM",
+    "JNJ", "JPM", "KO", "LLY", "MA", "MCD", "MRK", "NKE", "NVO", "ORCL",
+    "PFE", "PG", "PLTR", "SHOP", "SNOW", "T", "TSM", "UBER", "UNH", "V",
+    "VZ", "WFC", "WMT", "XOM",
+}
+
+
+def _fiscal_ai_exchange_for_ticker(ticker: str) -> str:
+    symbol = (ticker or "").strip().upper()
+    if symbol.endswith(".TO") or symbol.endswith(".V"):
+        return "TSX"
+    return "NYSE" if symbol in NYSE_TICKERS else "NASDAQ"
+
+
+def _fmt_segment_value(value):
+    if value is None:
+        return ""
+    value = float(value)
+    if abs(value) >= 1_000_000_000:
+        return f"${value / 1_000_000_000:.1f}B"
+    if abs(value) >= 1_000_000:
+        return f"${value / 1_000_000:.1f}M"
+    return f"${value:,.0f}"
+
+
+def render_business_segments_card(ticker: str, exchange: str | None = None) -> bool:
+    """Render the Fiscal AI business segments card. Returns True if rendered."""
+    try:
+        import plotly.graph_objects as go
+        import streamlit as st
+
+        from modules.fiscal_ai import get_segments_with_values
+
+        symbol = (ticker or "").strip().upper()
+        if not symbol:
+            return False
+
+        exchange = exchange or _fiscal_ai_exchange_for_ticker(symbol)
+        segments = get_segments_with_values(symbol, exchange)
+        if not segments:
+            return False
+
+        chart_segments = sorted(segments, key=lambda row: row["value"])
+        labels = [row["name"] for row in chart_segments]
+        values = [row["value"] for row in chart_segments]
+        text = [_fmt_segment_value(row["value"]) for row in chart_segments]
+
+        st.markdown("#### Business Segments")
+        fig = go.Figure(
+            go.Bar(
+                x=values,
+                y=labels,
+                orientation="h",
+                text=text,
+                textposition="auto",
+                marker=dict(color="#378ADD"),
+                hovertemplate="%{y}<br>%{text}<extra></extra>",
+            )
+        )
+        fig.update_layout(
+            height=max(260, 42 * len(chart_segments)),
+            margin=dict(l=8, r=8, t=8, b=8),
+            xaxis_title=None,
+            yaxis_title=None,
+            showlegend=False,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#CBD5E1"),
+        )
+        fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
+        fig.update_yaxes(showgrid=False)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        period = segments[0].get("period")
+        period_text = f" · {period}" if period else ""
+        st.markdown(
+            f'<div style="color:#94A3B8;font-size:12px;margin-top:-0.5rem">'
+            f'Source: Fiscal AI{period_text}</div>',
+            unsafe_allow_html=True,
+        )
+        return True
+    except Exception:
+        return False
+
+
 def _calc_rsi(hist, period=14):
     delta = hist["Close"].diff()
     gain = delta.clip(lower=0).rolling(period).mean()

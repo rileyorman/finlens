@@ -2603,7 +2603,7 @@ if page == "Education":
 
 # --- Stock Tracker page ------------------------------------------------
 if page == "Stock Tracker":
-    from modules.stock_tracker import get_stock_data
+    from modules.stock_tracker import get_stock_data, render_business_segments_card
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
     import pandas as _pd
@@ -2906,6 +2906,7 @@ if page == "Stock Tracker":
         ''',
         unsafe_allow_html=True,
     )
+    render_business_segments_card(cur_ticker)
 
     st.divider()
 
