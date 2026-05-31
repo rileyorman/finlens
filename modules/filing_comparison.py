@@ -12,6 +12,22 @@ from modules.mda_sentiment import analyze_mda_sentiment
 _SYNTHESIS_CHARS = 40_000
 
 
+def _safe_json(raw: str) -> dict:
+    import re
+    text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text)
+    try:
+        return json.loads(text)
+    except Exception:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group())
+            except Exception:
+                pass
+    return {"error": f"Could not parse response: {raw[:200]}"}
+
+
 def _make_client(api_key: str):
     if sys.platform == "win32":
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -89,28 +105,27 @@ def compare_filings(
         result["sentiment_2"] = analyze_mda_sentiment(raw_text_2, api_key)
 
         client = _make_client(api_key)
-        user_msg = _SYNTHESIS_USER.format(
-            label_1    = label_1,
-            label_2    = label_2,
-            sentiment_1 = json.dumps(result["sentiment_1"], indent=2),
-            sentiment_2 = json.dumps(result["sentiment_2"], indent=2),
-            text_1     = (raw_text_1 or "")[:_SYNTHESIS_CHARS],
-            text_2     = (raw_text_2 or "")[:_SYNTHESIS_CHARS],
-        )
+        user_msg = _SYNTHESIS_USER
+        user_msg = user_msg.replace("{label_1}", label_1)
+        user_msg = user_msg.replace("{label_2}", label_2)
+        user_msg = user_msg.replace("{sentiment_1}", json.dumps(result["sentiment_1"], indent=2))
+        user_msg = user_msg.replace("{sentiment_2}", json.dumps(result["sentiment_2"], indent=2))
+        user_msg = user_msg.replace("{text_1}", (raw_text_1 or "")[:_SYNTHESIS_CHARS])
+        user_msg = user_msg.replace("{text_2}", (raw_text_2 or "")[:_SYNTHESIS_CHARS])
 
         response = client.messages.create(
             model      = EXTRACTION_MODEL,
-            max_tokens = 1024,
+            max_tokens = 2048,
             system     = _SYNTHESIS_SYSTEM,
             messages   = [{"role": "user", "content": user_msg}],
         )
 
         raw = response.content[0].text
-        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-        if m:
-            raw = m.group(1)
 
-        comparison = json.loads(raw)
+        comparison = _safe_json(raw)
+        if comparison.get("error"):
+            result["error"] = comparison["error"]
+            return result
         comparison.setdefault("tone_shift", None)
         comparison.setdefault("themes", [])
         comparison.setdefault("language_shifts", [])

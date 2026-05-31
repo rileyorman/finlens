@@ -68,6 +68,22 @@ _USER_TEMPLATE = """Analyse the MD&A sentiment in this financial filing:
 {filing_text}"""
 
 
+def _safe_json(raw: str) -> dict:
+    import re
+    text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text)
+    try:
+        return json.loads(text)
+    except Exception:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group())
+            except Exception:
+                pass
+    return {"error": f"Could not parse response: {raw[:200]}"}
+
+
 _EMPTY = {
     "overall_tone": None,
     "scores": {
@@ -99,12 +115,11 @@ def analyze_mda_sentiment(raw_text: str, api_key: str) -> dict:
 
         raw = response.content[0].text
 
-        # Strip accidental markdown fences
-        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-        if m:
-            raw = m.group(1)
-
-        data = json.loads(raw)
+        data = _safe_json(raw)
+        if data.get("error"):
+            result = {k: v for k, v in _EMPTY.items()}
+            result["error"] = data["error"]
+            return result
 
         # Clamp scores to valid range; treat missing as None
         for key in ("forward_outlook", "risk_language_density", "management_confidence"):

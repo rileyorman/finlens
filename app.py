@@ -871,10 +871,10 @@ if not st.session_state["onboarding_complete"]:
                 </svg>
             </div>
             <div class="onboarding-title">Fin<span style="color:#378ADD;font-weight:300">Lens</span></div>
-            <div class="onboarding-tagline">AI-Powered Financial Statement Analysis</div>
+            <div class="onboarding-tagline">AI-Powered Investment Analysis Platform</div>
             <div class="onboarding-copy">
-                Welcome to FinLens, an AI-powered workspace for turning filings into investment analysis.
-                Upload financial statements, compare language across periods, track market signals, and build a portfolio-level view from the companies you follow.
+                FinLens transforms raw filings, market data, and portfolio signals into institutional-grade investment intelligence.
+                Fetch filings from SEC EDGAR or SEDAR+, analyse financials with AI, track short interest and momentum, and stress-test your assumptions — all in one workspace.
             </div>
         </div>
         """,
@@ -885,21 +885,21 @@ if not st.session_state["onboarding_complete"]:
         [
             (
                 "Single Analysis",
-                "Upload a 10-K or 10-Q and get an AI-powered investment analysis",
+                "Upload or fetch a 10-K or 10-Q via SEC EDGAR or SEDAR+, get AI-powered investment analysis, red flag detection, and scenario simulation",
             ),
             (
                 "Filing Comparison",
-                "Compare two filings year-over-year to spot language shifts",
+                "Compare two filings year-over-year from your library or manual upload to spot language shifts and sentiment changes",
             ),
         ],
         [
             (
                 "Stock Tracker",
-                "Track live price, momentum, analyst consensus and earnings",
+                "Track live price, momentum, short interest, RSI, and moving averages for any ticker",
             ),
             (
                 "Portfolio Manager",
-                "Analyse multiple holdings and get a portfolio-level view",
+                "Analyse multiple holdings, score distress and momentum, and get a portfolio-level investment view",
             ),
         ],
     ]
@@ -2349,28 +2349,27 @@ if page == "Filing Comparison":
             _entry2 = _fc_library_by_id.get(fc_lib_2)
             _label1 = _fc_library_labels.get(fc_lib_1, "Filing 1")
             _label2 = _fc_library_labels.get(fc_lib_2, "Filing 2")
-            _pdf_path1 = _pdf_cache_path(
-                _entry1.get("ticker") if _entry1 and _entry1.get("ticker") != "—" else None,
-                _library_period_label(_entry1 or {}),
-            )
-            _pdf_path2 = _pdf_cache_path(
-                _entry2.get("ticker") if _entry2 and _entry2.get("ticker") != "—" else None,
-                _library_period_label(_entry2 or {}),
-            )
-            if not _pdf_path1 or not Path(_pdf_path1).exists():
-                st.warning(f"PDF not found for {_label1} — please use manual upload instead")
-            elif not _pdf_path2 or not Path(_pdf_path2).exists():
-                st.warning(f"PDF not found for {_label2} — please use manual upload instead")
-            else:
-                _pdf1 = io.BytesIO(Path(_pdf_path1).read_bytes())
-                _pdf2 = io.BytesIO(Path(_pdf_path2).read_bytes())
-                _name1 = Path(_pdf_path1).name
-                _name2 = Path(_pdf_path2).name
 
-                with st.spinner(f"Extracting text from {_name1}..."):
-                    _text1 = extract_text_from_pdf(_pdf1)
-                with st.spinner(f"Extracting text from {_name2}..."):
-                    _text2 = extract_text_from_pdf(_pdf2)
+            def _comparison_text_from_library(entry: dict | None, label: str) -> str | None:
+                if not entry:
+                    return None
+                _pdf_path = _pdf_cache_path(
+                    entry.get("ticker") if entry.get("ticker") != "—" else None,
+                    _library_period_label(entry),
+                )
+                if _pdf_path and Path(_pdf_path).exists():
+                    _pdf = io.BytesIO(Path(_pdf_path).read_bytes())
+                    with st.spinner(f"Extracting text from {Path(_pdf_path).name}..."):
+                        return extract_text_from_pdf(_pdf)
+                _cached_text = _library_text_for_entry(entry)
+                if _cached_text:
+                    return _cached_text
+                st.warning(f"No data found for {label} — please load and analyse it first in Single Analysis, then try again")
+                return None
+
+            _text1 = _comparison_text_from_library(_entry1, _label1)
+            _text2 = _comparison_text_from_library(_entry2, _label2)
+            if _text1 and _text2:
 
                 with st.spinner("Running comparison analysis (3 Claude calls)..."):
                     _fc_result = compare_filings(_text1, _text2, _label1, _label2, API_KEY)
