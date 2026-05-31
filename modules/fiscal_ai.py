@@ -308,6 +308,61 @@ def get_adjusted_metrics(ticker, exchange="NASDAQ"):
         return None
 
 
+def get_adjusted_metrics_with_values(ticker, exchange="NASDAQ"):
+    """Return selected most recent annual adjusted metrics from Fiscal AI."""
+    metric_map = {
+        "Adjusted Revenue": "adjusted_revenue",
+        "Adjusted Gross Profit": "adjusted_gross_profit",
+        "Adjusted EBITDA": "adjusted_ebitda",
+        "Adjusted EBIT": "adjusted_ebit",
+        "Adjusted Net Income": "adjusted_net_income",
+        "Adjusted EPS": "adjusted_eps",
+        "Adjusted FCF": "adjusted_free_cash_flow",
+        "Adjusted Gross Margin": "adjusted_gross_margin",
+        "Adjusted Operating Margin": "adjusted_ebit_margin",
+        "Adjusted Net Margin": "adjusted_net_income_margin",
+    }
+    try:
+        api_key = FISCAL_AI_KEY
+        if not api_key:
+            return {}
+
+        company_key = f"{exchange}_{ticker}"
+        url = (
+            "https://api.fiscal.ai/v1/company/adjusted-metrics"
+            f"?companyKey={company_key}&apiKey={api_key}&includeValues=true&period=annual"
+        )
+        data = _get_json(url)
+        if not isinstance(data, dict):
+            return {}
+
+        annual_periods = [
+            row for row in data.get("data", [])
+            if isinstance(row, dict) and row.get("periodType") == "Annual"
+        ]
+        if not annual_periods:
+            return {}
+
+        latest = max(
+            annual_periods,
+            key=lambda row: (
+                row.get("fiscalYear") or 0,
+                row.get("reportDate") or "",
+            ),
+        )
+        metric_values = latest.get("metricValues") or latest.get("metricsValues") or {}
+
+        result = {}
+        for label, metric_id in metric_map.items():
+            metric_value = metric_values.get(metric_id)
+            value = metric_value.get("value") if isinstance(metric_value, dict) else metric_value
+            if isinstance(value, (int, float)):
+                result[label] = value
+        return result
+    except Exception:
+        return {}
+
+
 if __name__ == "__main__":
     _api_key = FISCAL_AI_KEY
     _company_key = "NASDAQ_NVDA"
