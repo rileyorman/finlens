@@ -2726,6 +2726,7 @@ if page == "Stock Tracker":
         get_earnings_calendar as get_fmp_earnings_calendar,
         get_income_statement as get_fmp_income_statement,
     )
+    from modules.polymarket import get_macro_markets
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
     import pandas as _pd
@@ -3586,6 +3587,65 @@ if page == "Stock Tracker":
             'Source: Fiscal AI</div>',
             unsafe_allow_html=True,
         )
+
+    if "polymarket_macro" not in st.session_state:
+        st.session_state.polymarket_macro = get_macro_markets()
+    polymarket_macro = st.session_state.polymarket_macro
+    if polymarket_macro:
+        market_rows = []
+        for idx, market in enumerate(polymarket_macro):
+            probability = float(market.get("probability") or 0.0)
+            pct = max(0, min(100, round(probability * 100)))
+            if probability > 0.60:
+                bar_color = "#22C55E"
+            elif probability < 0.40:
+                bar_color = "#EF4444"
+            else:
+                bar_color = "#F59E0B"
+
+            question = escape(str(market.get("question") or ""))
+            url = escape(str(market.get("url") or ""), quote=True)
+            volume = float(market.get("volume") or 0.0)
+            market_rows.append(
+                f'''
+                <div style="padding:0.75rem 0;border-top:{'0' if idx == 0 else '1px solid rgba(148,163,184,0.16)'}">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+                        <a href="{url}" target="_blank" rel="noopener noreferrer"
+                           style="color:#F1F5F9;text-decoration:none;font-weight:700;font-size:14px;line-height:1.35">
+                            {question}
+                        </a>
+                        <div style="color:#94A3B8;font-size:12px;white-space:nowrap">
+                            ${volume / 1_000_000:.1f}M
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.6rem">
+                        <div style="height:8px;flex:1;background:rgba(148,163,184,0.18);border-radius:999px;overflow:hidden">
+                            <div style="height:100%;width:{pct}%;background:{bar_color};border-radius:999px"></div>
+                        </div>
+                        <div style="color:#CBD5E1;font-size:12px;font-weight:700;min-width:58px;text-align:right">
+                            {pct}% Yes
+                        </div>
+                    </div>
+                </div>
+                '''
+            )
+
+        html_content = f'''
+            <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                        padding:0.95rem 1rem;margin:0.85rem 0;background:rgba(15,23,42,0.28)">
+                <div style="font-size:16px;font-weight:700;color:#F1F5F9">
+                    Prediction Market Intelligence
+                </div>
+                <div style="font-size:13px;color:#94A3B8;margin-top:0.2rem;margin-bottom:0.55rem">
+                    Live prediction market probabilities on macro events
+                </div>
+                {''.join(market_rows)}
+                <div style="color:#94A3B8;font-size:12px;margin-top:0.35rem">
+                    Source: Polymarket — Prediction Market Intelligence
+                </div>
+            </div>
+            '''
+        st.markdown(html_content, unsafe_allow_html=True)
 
     fmp_earnings_key = f"fmp_earnings_{cur_ticker}"
     if fmp_earnings_key not in st.session_state:
