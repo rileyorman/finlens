@@ -30,7 +30,6 @@ def _test_url(label, url):
     try:
         session = _make_session()
         response = session.get(url, timeout=10)
-        print(f"{label}: Status {response.status_code}, Body: {response.text[:200]}")
     except Exception as e:
         print(f"{label}: Exception: {e}")
 
@@ -65,7 +64,6 @@ def get_shares_outstanding(ticker, exchange="NASDAQ"):
         )
         session = _make_session()
         response = session.get(url, timeout=10)
-        print(f"Status: {response.status_code}, Body: {response.text[:300]}")
         if response.status_code != 200:
             return None
 
@@ -140,7 +138,6 @@ def get_earnings_calendar(ticker, exchange="NASDAQ"):
         ]
         for url in urls:
             response = session.get(url, timeout=10)
-            print(f"Status: {response.status_code}, Body: {response.text[:500]}")
             if response.status_code == 200:
                 return response.json()
         return None
@@ -197,7 +194,6 @@ def get_company_filings(ticker, exchange="NASDAQ", limit=5):
         )
         session = _make_session()
         response = session.get(url, timeout=10)
-        print(f"Status: {response.status_code}, Body: {response.text[:300]}")
         if response.status_code != 200:
             return []
 

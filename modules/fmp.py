@@ -77,7 +77,6 @@ def _get_statement_list(endpoint, ticker, period="annual", limit=1, label="State
             f"?symbol={ticker}&period={period}&limit={limit}&apikey={FMP_API_KEY}"
         )
         response = session.get(url, timeout=10)
-        print(f"{label} Status: {response.status_code}, Body: {response.text[:300]}")
         if response.status_code != 200:
             return None
         data = response.json()
@@ -93,7 +92,6 @@ def get_company_profile(ticker):
     try:
         url = f"https://financialmodelingprep.com/stable/profile?symbol={ticker}&apikey={FMP_API_KEY}"
         response = session.get(url, timeout=10)
-        print(f"Company Profile Status: {response.status_code}, Body: {response.text[:300]}")
         if response.status_code != 200:
             return None
         data = response.json()
@@ -114,7 +112,6 @@ def get_earnings_calendar(ticker, limit=8):
             f"?symbol={ticker}&limit={limit}&apikey={FMP_API_KEY}"
         )
         response = session.get(url, timeout=10)
-        print(f"Earnings Calendar Status: {response.status_code}, Body: {response.text[:300]}")
         if response.status_code != 200:
             return []
         data = response.json()
