@@ -64,8 +64,30 @@ def _make_client(api_key: str):
         return anthropic.Anthropic(
             api_key=api_key,
             http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
+            betas=["prompt-caching-2024-07-31"],
         )
-    return anthropic.Anthropic(api_key=api_key)
+    return anthropic.Anthropic(api_key=api_key, betas=["prompt-caching-2024-07-31"])
+
+
+def build_filing_context(filing_text: str) -> list:
+    filing_text = filing_text[:MAX_FILING_CHARS]
+    return [
+        {
+            "type": "text",
+            "text": filing_text,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+
+def log_cache_usage(call_name: str, usage) -> dict:
+    log = {
+        "call": call_name,
+        "cache_read": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+        "cache_write": int(getattr(usage, "cache_creation_input_tokens", 0) or 0),
+        "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+    }
+    return log
 
 
 # ===========================================================================
@@ -251,15 +273,26 @@ def analyze_summary(
     extracted_financials: dict,
     api_key: str,
     model: str = DEFAULT_MODEL,
+    filing_context: list = None,
 ) -> dict:
     """Call 2: send filing text + Call 1 financials to Claude and return investment signal."""
     client = _make_client(api_key)
-    filing_text = filing_text[:MAX_FILING_CHARS]
 
-    user_message = SUMMARY_USER_PROMPT_TEMPLATE.format(
-        extracted_financials=json.dumps(extracted_financials, indent=2),
-        filing_text=filing_text,
-    )
+    if filing_context is not None:
+        question_text = SUMMARY_USER_PROMPT_TEMPLATE.format(
+            extracted_financials=json.dumps(extracted_financials, indent=2),
+            filing_text="Filing text provided above as cached context.",
+        )
+        user_message = [
+            *filing_context,
+            {"type": "text", "text": question_text},
+        ]
+    else:
+        filing_text = filing_text[:MAX_FILING_CHARS]
+        user_message = SUMMARY_USER_PROMPT_TEMPLATE.format(
+            extracted_financials=json.dumps(extracted_financials, indent=2),
+            filing_text=filing_text,
+        )
 
     if model == OPUS_48_MODEL:
         response = client.messages.create(
@@ -278,6 +311,7 @@ def analyze_summary(
             messages=[{"role": "user", "content": user_message}],
         )
 
+    print(log_cache_usage("analyze_summary", response.usage))
     raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -349,12 +383,26 @@ BEAR_BULL_USER_PROMPT_TEMPLATE = """Generate the bull and bear case for this fin
 """
 
 
-def analyze_bear_bull(filing_text: str, api_key: str, model: str = DEFAULT_MODEL) -> dict:
+def analyze_bear_bull(
+    filing_text: str,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    filing_context: list = None,
+) -> dict:
     """Call 3: generate 3-point bull and bear cases from filing text using Claude Sonnet."""
     client = _make_client(api_key)
-    filing_text = filing_text[:MAX_FILING_CHARS]
 
-    user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
+    if filing_context is not None:
+        question_text = BEAR_BULL_USER_PROMPT_TEMPLATE.format(
+            filing_text="Filing text provided above as cached context."
+        )
+        user_message = [
+            *filing_context,
+            {"type": "text", "text": question_text},
+        ]
+    else:
+        filing_text = filing_text[:MAX_FILING_CHARS]
+        user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
 
     if model == OPUS_48_MODEL:
         response = client.messages.create(
@@ -373,6 +421,7 @@ def analyze_bear_bull(filing_text: str, api_key: str, model: str = DEFAULT_MODEL
             messages=[{"role": "user", "content": user_message}],
         )
 
+    print(log_cache_usage("analyze_bear_bull", response.usage))
     raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -456,6 +505,7 @@ def analyze_dashboard_insights(
     financial_data: dict,
     api_key: str,
     model: str = DEFAULT_MODEL,
+    filing_context: list = None,
 ) -> dict:
     """Call 4: generate Dalio/Lynch/Marks framework insights for the dashboard.
 
@@ -466,13 +516,24 @@ def analyze_dashboard_insights(
     raw = ""
     try:
         client      = _make_client(api_key)
-        filing_text = filing_text[:MAX_FILING_CHARS]
 
-        user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
-            summary_json   = json.dumps(summary_data or {}, indent=2),
-            financials_json= json.dumps(financial_data,     indent=2),
-            filing_text    = filing_text,
-        )
+        if filing_context is not None:
+            question_text = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+                summary_json   = json.dumps(summary_data or {}, indent=2),
+                financials_json= json.dumps(financial_data,     indent=2),
+                filing_text    = "Filing text provided above as cached context.",
+            )
+            user_message = [
+                *filing_context,
+                {"type": "text", "text": question_text},
+            ]
+        else:
+            filing_text = filing_text[:MAX_FILING_CHARS]
+            user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+                summary_json   = json.dumps(summary_data or {}, indent=2),
+                financials_json= json.dumps(financial_data,     indent=2),
+                filing_text    = filing_text,
+            )
 
         if model == OPUS_48_MODEL:
             response = client.messages.create(
@@ -493,6 +554,7 @@ def analyze_dashboard_insights(
                 messages  = [{"role": "user", "content": user_message}],
             )
 
+        print(log_cache_usage("analyze_dashboard_insights", response.usage))
         raw = _text_content(response)
 
         m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
