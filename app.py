@@ -4203,11 +4203,11 @@ with st.expander("⚡ Quick Analysis — Public Companies (No Upload Required)")
     selected_period = st.selectbox("Period", period_options, index=2, key="quick_analysis_period")
     st.caption("Instantly analyse any US or Canadian public company using financial statement data. No PDF needed. ~$0.05 per analysis")
 
-    def _fmt_quick_preview_value(value):
+    def _fmt_quick_preview_value(value, scale=1):
         if value is None:
             return "—"
         try:
-            value = float(value)
+            value = float(value) * scale
         except (TypeError, ValueError):
             return "—"
         sign = "-" if value < 0 else ""
@@ -4253,7 +4253,17 @@ with st.expander("⚡ Quick Analysis — Public Companies (No Upload Required)")
     if _quick_fd_preview and _quick_preview_ticker == _quick_current_ticker and _quick_preview_period == selected_period:
         _quick_company = _quick_fd_preview.get("company") or _quick_fd_preview.get("company_name") or _quick_preview_ticker
         _quick_year = _quick_fd_preview.get("fiscal_year") or "latest fiscal year"
-        st.success(f"Fetched financials for {_quick_company} ({_quick_year}).")
+        _quick_preview_scale = _quick_fd_preview.get("scale") or 1
+        if selected_period == "Last 4 Quarters (TTM)":
+            st.success(f"Fetched last 4 quarters for {_quick_company}. Analysis will use TTM (trailing twelve months) totals.")
+        elif selected_period == "Latest Quarter":
+            st.success(f"Fetched {_quick_year} data for {_quick_company}.")
+        elif selected_period == "Latest Annual":
+            st.success(f"Fetched {_quick_year} data for {_quick_company}.")
+        elif selected_period == "Last 2 Years (Annual)":
+            st.success(f"Fetched 2 years of data for {_quick_company}.")
+        else:
+            st.success(f"Fetched 4 years of data for {_quick_company}.")
         if _quick_limit > 1:
             _quick_metric_map = [
                 ("Revenue", "revenue"),
@@ -4268,18 +4278,20 @@ with st.expander("⚡ Quick Analysis — Public Companies (No Upload Required)")
             for _label, _key in _quick_metric_map:
                 _row = {"Metric": _label}
                 for _period_row in _quick_history:
-                    _row[_period_row.get("label") or "Period"] = _fmt_quick_preview_value(_period_row.get(_key))
+                    _row[_period_row.get("label") or "Period"] = _fmt_quick_preview_value(_period_row.get(_key), _quick_preview_scale)
                 preview_df.append(_row)
         else:
             preview_df = [
-                {"Metric": "Revenue", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("revenue"))},
-                {"Metric": "Gross Profit", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("gross_profit"))},
-                {"Metric": "Net Income", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("net_income"))},
-                {"Metric": "FCF", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("free_cash_flow"))},
-                {"Metric": "Total Debt", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("total_debt"))},
-                {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"))},
+                {"Metric": "Revenue", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("revenue"), _quick_preview_scale)},
+                {"Metric": "Gross Profit", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("gross_profit"), _quick_preview_scale)},
+                {"Metric": "Net Income", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("net_income"), _quick_preview_scale)},
+                {"Metric": "FCF", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("free_cash_flow"), _quick_preview_scale)},
+                {"Metric": "Total Debt", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("total_debt"), _quick_preview_scale)},
+                {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"), _quick_preview_scale)},
             ]
         st.dataframe(preview_df, hide_index=True, use_container_width=True)
+        if selected_period == "Last 4 Quarters (TTM)":
+            st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
         if st.button("Analyse $", type="primary", use_container_width=True, key="quick_analysis_btn"):
             _quick_fd = _quick_fd_preview
@@ -5108,13 +5120,58 @@ if st.session_state.financial_data:
                         st.info(_sr["narrative"])
 
         # --- Financial statement tables ---
+        _is_fmp_source = financial_data.get("source") == "fmp"
+        _has_prior_values = any(
+            row.get("value_prior") is not None
+            for section in ("income_statement", "balance_sheet", "cash_flow_statement")
+            for row in financial_data.get(section, [])
+            if row.get("row_type") != "section_header"
+        )
         col_cfg = {
             "line_item":   st.column_config.TextColumn("Line Item"),
             "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
             "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
         }
+        if _is_fmp_source and not _has_prior_values:
+            col_cfg = {
+                "line_item": st.column_config.TextColumn("Line Item"),
+                "value":     st.column_config.TextColumn(fy),
+            }
+        elif _is_fmp_source:
+            col_cfg = {
+                "line_item":   st.column_config.TextColumn("Line Item"),
+                "value_prior": st.column_config.TextColumn(fy_prior),
+                "value":       st.column_config.TextColumn(fy),
+            }
 
         def _display_rows(rows):
+            if _is_fmp_source:
+                def _fmt_fmp_statement_value(value):
+                    if value is None:
+                        return None
+                    try:
+                        raw_value = float(value) * (financial_data.get("scale") or 1)
+                    except (TypeError, ValueError):
+                        return None
+                    sign = "-" if raw_value < 0 else ""
+                    abs_value = abs(raw_value)
+                    if abs_value >= 1_000_000_000:
+                        return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
+                    if abs_value >= 1_000_000:
+                        return f"{sign}${abs_value / 1_000_000:,.1f}M"
+                    return f"{sign}${abs_value:,.0f}"
+
+                display = []
+                for r in rows:
+                    row = {
+                        "line_item": r.get("line_item"),
+                        "value": _fmt_fmp_statement_value(r.get("value")),
+                    }
+                    if _has_prior_values:
+                        row["value_prior"] = _fmt_fmp_statement_value(r.get("value_prior"))
+                    display.append(row)
+                return display
+
             return [
                 {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
                 for r in rows

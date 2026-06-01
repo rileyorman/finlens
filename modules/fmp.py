@@ -32,6 +32,43 @@ def _ratio(numerator, denominator):
         return None
 
 
+def _scale_money(value, scale=1_000_000):
+    try:
+        if value is None:
+            return None
+        return float(value) / scale
+    except (TypeError, ValueError):
+        return None
+
+
+def _sum_values(*values):
+    numeric = []
+    for value in values:
+        if value is None:
+            continue
+        try:
+            numeric.append(float(value))
+        except (TypeError, ValueError):
+            continue
+    if not numeric:
+        return None
+    return sum(numeric)
+
+
+def _sum_field(rows, field):
+    if not isinstance(rows, list):
+        return None
+    values = []
+    for row in rows:
+        if not isinstance(row, dict) or row.get(field) is None:
+            continue
+        try:
+            values.append(float(row.get(field)))
+        except (TypeError, ValueError):
+            continue
+    return sum(values) if values else None
+
+
 def _get_statement_list(endpoint, ticker, period="annual", limit=1, label="Statement"):
     session = _make_session()
     try:
@@ -137,13 +174,29 @@ def get_balance_sheet(ticker, period="annual", limit=1):
         )
         if not latest:
             return None
+        total_current_assets = latest.get("totalCurrentAssets")
+        if total_current_assets is None:
+            total_current_assets = latest.get("currentAssets")
+
+        total_current_liabilities = latest.get("totalCurrentLiabilities")
+        if total_current_liabilities is None:
+            total_current_liabilities = latest.get("currentLiabilities")
+
+        total_debt = latest.get("totalDebt")
+        if total_debt is None:
+            total_debt = _sum_values(latest.get("longTermDebt"), latest.get("shortTermDebt"))
+
+        total_stockholders_equity = latest.get("totalStockholdersEquity")
+        if total_stockholders_equity is None:
+            total_stockholders_equity = latest.get("stockholdersEquity")
+
         return {
             "cashAndCashEquivalents": latest.get("cashAndCashEquivalents"),
-            "totalCurrentAssets": latest.get("totalCurrentAssets"),
+            "totalCurrentAssets": total_current_assets,
             "totalAssets": latest.get("totalAssets"),
-            "totalCurrentLiabilities": latest.get("totalCurrentLiabilities"),
-            "totalDebt": latest.get("totalDebt"),
-            "totalStockholdersEquity": latest.get("totalStockholdersEquity"),
+            "totalCurrentLiabilities": total_current_liabilities,
+            "totalDebt": total_debt,
+            "totalStockholdersEquity": total_stockholders_equity,
             "fiscalYear": latest.get("fiscalYear"),
         }
     except Exception as e:
@@ -194,6 +247,23 @@ def _period_label(item, selected_period="annual"):
     return f"FY{fiscal_year}" if fiscal_year else "Current"
 
 
+def _balance_field(item, key):
+    if not isinstance(item, dict):
+        return None
+    if key == "totalCurrentAssets":
+        return item.get("totalCurrentAssets") if item.get("totalCurrentAssets") is not None else item.get("currentAssets")
+    if key == "totalCurrentLiabilities":
+        value = item.get("totalCurrentLiabilities")
+        return value if value is not None else item.get("currentLiabilities")
+    if key == "totalDebt":
+        value = item.get("totalDebt")
+        return value if value is not None else _sum_values(item.get("longTermDebt"), item.get("shortTermDebt"))
+    if key == "totalStockholdersEquity":
+        value = item.get("totalStockholdersEquity")
+        return value if value is not None else item.get("stockholdersEquity")
+    return item.get(key)
+
+
 def build_financial_data_from_fmp(ticker, period="annual", limit=1):
     """Build app-compatible financial_data from FMP financial statement data."""
     try:
@@ -212,9 +282,45 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
         balance_history = _get_statement_list("balance-sheet-statement", ticker, period, limit, "Balance Sheet History")
         cashflow_history = _get_statement_list("cash-flow-statement", ticker, period, limit, "Cash Flow History")
         income_raw = _latest_statement_entry(income_history) or {}
-        income_prior = _second_statement_entry(income_history) or {}
-        balance_prior = _second_statement_entry(balance_history) or {}
-        cashflow_prior = _second_statement_entry(cashflow_history) or {}
+        income_prior = _second_statement_entry(income_history) if limit > 1 else None
+        balance_prior = _second_statement_entry(balance_history) if limit > 1 else None
+        cashflow_prior = _second_statement_entry(cashflow_history) if limit > 1 else None
+        income_prior = income_prior or {}
+        balance_prior = balance_prior or {}
+        cashflow_prior = cashflow_prior or {}
+        is_ttm = period == "quarter" and limit == 4
+
+        if is_ttm:
+            revenue = _sum_field(income_history, "revenue")
+            gross_profit = _sum_field(income_history, "grossProfit")
+            operating_income = _sum_field(income_history, "operatingIncome")
+            net_income = _sum_field(income_history, "netIncome")
+            income = {
+                "revenue": revenue,
+                "grossProfit": gross_profit,
+                "operatingIncome": operating_income,
+                "netIncome": net_income,
+                "ebitda": _sum_field(income_history, "ebitda"),
+                "grossProfitRatio": _ratio(gross_profit, revenue),
+                "operatingIncomeRatio": _ratio(operating_income, revenue),
+                "netIncomeRatio": _ratio(net_income, revenue),
+                "fiscalYear": "TTM",
+            }
+            cashflow = {
+                "operatingCashFlow": _sum_field(cashflow_history, "operatingCashFlow"),
+                "capitalExpenditure": _sum_field(cashflow_history, "capitalExpenditure"),
+                "freeCashFlow": _sum_field(cashflow_history, "freeCashFlow"),
+                "dividendsPaid": _sum_field(cashflow_history, "dividendsPaid"),
+                "fiscalYear": "TTM",
+            }
+            income_raw = {
+                "costOfRevenue": _sum_field(income_history, "costOfRevenue"),
+                "researchAndDevelopmentExpenses": _sum_field(income_history, "researchAndDevelopmentExpenses"),
+                "interestExpense": _sum_field(income_history, "interestExpense"),
+            }
+            income_prior = {}
+            balance_prior = {}
+            cashflow_prior = {}
 
         current_assets = balance.get("totalCurrentAssets") or 0
         current_liabilities = balance.get("totalCurrentLiabilities") or 1
@@ -222,7 +328,7 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
         company_name = profile.get("companyName") or ticker
         fiscal_year = income.get("fiscalYear")
         fiscal_year_prior = income_prior.get("fiscalYear")
-        period_label = _period_label(income_raw, period)
+        period_label = "TTM" if is_ttm else _period_label(income_raw, period)
 
         period_history = []
         income_rows = income_history if isinstance(income_history, list) else []
@@ -235,12 +341,12 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
             cashflow_item = cashflow_rows[idx] if idx < len(cashflow_rows) and isinstance(cashflow_rows[idx], dict) else {}
             period_history.append({
                 "label": _period_label(income_item, period),
-                "revenue": income_item.get("revenue"),
-                "gross_profit": income_item.get("grossProfit"),
-                "net_income": income_item.get("netIncome"),
-                "free_cash_flow": cashflow_item.get("freeCashFlow"),
-                "total_debt": balance_item.get("totalDebt"),
-                "cash": balance_item.get("cashAndCashEquivalents"),
+                "revenue": _scale_money(income_item.get("revenue")),
+                "gross_profit": _scale_money(income_item.get("grossProfit")),
+                "net_income": _scale_money(income_item.get("netIncome")),
+                "free_cash_flow": _scale_money(cashflow_item.get("freeCashFlow")),
+                "total_debt": _scale_money(_balance_field(balance_item, "totalDebt")),
+                "cash": _scale_money(balance_item.get("cashAndCashEquivalents")),
             })
 
         financial_data = {
@@ -249,23 +355,23 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
             "company_name": company_name,
             "period": period_label,
             "currency": profile.get("currency") or "USD",
-            "scale": 1,
-            "revenue": income.get("revenue"),
-            "revenue_prior": income_prior.get("revenue"),
-            "gross_profit": income.get("grossProfit"),
-            "operating_income": income.get("operatingIncome"),
-            "net_income": income.get("netIncome"),
-            "ebitda": income.get("ebitda"),
-            "total_assets": balance.get("totalAssets"),
-            "total_debt": balance.get("totalDebt"),
-            "cash": balance.get("cashAndCashEquivalents"),
-            "equity": balance.get("totalStockholdersEquity"),
-            "operating_cash_flow": cashflow.get("operatingCashFlow"),
-            "capex": cashflow.get("capitalExpenditure"),
-            "free_cash_flow": cashflow.get("freeCashFlow"),
+            "scale": 1_000_000,
+            "revenue": _scale_money(income.get("revenue")),
+            "revenue_prior": _scale_money(income_prior.get("revenue")),
+            "gross_profit": _scale_money(income.get("grossProfit")),
+            "operating_income": _scale_money(income.get("operatingIncome")),
+            "net_income": _scale_money(income.get("netIncome")),
+            "ebitda": _scale_money(income.get("ebitda")),
+            "total_assets": _scale_money(balance.get("totalAssets")),
+            "total_debt": _scale_money(balance.get("totalDebt")),
+            "cash": _scale_money(balance.get("cashAndCashEquivalents")),
+            "equity": _scale_money(balance.get("totalStockholdersEquity")),
+            "operating_cash_flow": _scale_money(cashflow.get("operatingCashFlow")),
+            "capex": _scale_money(cashflow.get("capitalExpenditure")),
+            "free_cash_flow": _scale_money(cashflow.get("freeCashFlow")),
             "current_ratio": current_ratio,
-            "interest_expense": income_raw.get("interestExpense"),
-            "rd_expense": income_raw.get("researchAndDevelopmentExpenses"),
+            "interest_expense": _scale_money(income_raw.get("interestExpense")),
+            "rd_expense": _scale_money(income_raw.get("researchAndDevelopmentExpenses")),
             "gross_margin": income.get("grossProfitRatio"),
             "fiscal_year": period_label,
             "fiscal_year_prior": f"FY{fiscal_year_prior}" if fiscal_year_prior else "Prior",
@@ -274,34 +380,34 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
             "period_history": period_history,
             "source": "fmp",
             "income_statement": [
-                _row("Revenue", income.get("revenue"), income_prior.get("revenue"), "total"),
-                _row("Cost of Revenue", income_raw.get("costOfRevenue"), income_prior.get("costOfRevenue")),
-                _row("Gross Profit", income.get("grossProfit"), income_prior.get("grossProfit"), "subtotal"),
-                _row("Research and Development Expenses", income_raw.get("researchAndDevelopmentExpenses"), income_prior.get("researchAndDevelopmentExpenses")),
-                _row("Operating Income", income.get("operatingIncome"), income_prior.get("operatingIncome"), "subtotal"),
-                _row("Interest Expense", income_raw.get("interestExpense"), income_prior.get("interestExpense")),
-                _row("EBITDA", income.get("ebitda"), income_prior.get("ebitda")),
-                _row("Net Income", income.get("netIncome"), income_prior.get("netIncome"), "total"),
+                _row("Revenue", _scale_money(income.get("revenue")), _scale_money(income_prior.get("revenue")), "total"),
+                _row("Cost of Revenue", _scale_money(income_raw.get("costOfRevenue")), _scale_money(income_prior.get("costOfRevenue"))),
+                _row("Gross Profit", _scale_money(income.get("grossProfit")), _scale_money(income_prior.get("grossProfit")), "subtotal"),
+                _row("Research and Development Expenses", _scale_money(income_raw.get("researchAndDevelopmentExpenses")), _scale_money(income_prior.get("researchAndDevelopmentExpenses"))),
+                _row("Operating Income", _scale_money(income.get("operatingIncome")), _scale_money(income_prior.get("operatingIncome")), "subtotal"),
+                _row("Interest Expense", _scale_money(income_raw.get("interestExpense")), _scale_money(income_prior.get("interestExpense"))),
+                _row("EBITDA", _scale_money(income.get("ebitda")), _scale_money(income_prior.get("ebitda"))),
+                _row("Net Income", _scale_money(income.get("netIncome")), _scale_money(income_prior.get("netIncome")), "total"),
             ],
             "balance_sheet": [
                 _row("ASSETS", None, None, "section_header"),
-                _row("Cash and Cash Equivalents", balance.get("cashAndCashEquivalents"), balance_prior.get("cashAndCashEquivalents")),
-                _row("Total Current Assets", balance.get("totalCurrentAssets"), balance_prior.get("totalCurrentAssets"), "subtotal"),
-                _row("Total Assets", balance.get("totalAssets"), balance_prior.get("totalAssets"), "total"),
+                _row("Cash and Cash Equivalents", _scale_money(balance.get("cashAndCashEquivalents")), _scale_money(balance_prior.get("cashAndCashEquivalents"))),
+                _row("Total Current Assets", _scale_money(balance.get("totalCurrentAssets")), _scale_money(_balance_field(balance_prior, "totalCurrentAssets")), "subtotal"),
+                _row("Total Assets", _scale_money(balance.get("totalAssets")), _scale_money(balance_prior.get("totalAssets")), "total"),
                 _row("LIABILITIES", None, None, "section_header"),
-                _row("Total Current Liabilities", balance.get("totalCurrentLiabilities"), balance_prior.get("totalCurrentLiabilities"), "subtotal"),
-                _row("Total Debt", balance.get("totalDebt"), balance_prior.get("totalDebt")),
+                _row("Total Current Liabilities", _scale_money(balance.get("totalCurrentLiabilities")), _scale_money(_balance_field(balance_prior, "totalCurrentLiabilities")), "subtotal"),
+                _row("Total Debt", _scale_money(balance.get("totalDebt")), _scale_money(_balance_field(balance_prior, "totalDebt"))),
                 _row("SHAREHOLDERS' EQUITY", None, None, "section_header"),
-                _row("Total Stockholders' Equity", balance.get("totalStockholdersEquity"), balance_prior.get("totalStockholdersEquity"), "total"),
+                _row("Total Stockholders' Equity", _scale_money(balance.get("totalStockholdersEquity")), _scale_money(_balance_field(balance_prior, "totalStockholdersEquity")), "total"),
             ],
             "cash_flow_statement": [
                 _row("OPERATING ACTIVITIES", None, None, "section_header"),
-                _row("Operating Cash Flow", cashflow.get("operatingCashFlow"), cashflow_prior.get("operatingCashFlow"), "subtotal"),
+                _row("Operating Cash Flow", _scale_money(cashflow.get("operatingCashFlow")), _scale_money(cashflow_prior.get("operatingCashFlow")), "subtotal"),
                 _row("INVESTING ACTIVITIES", None, None, "section_header"),
-                _row("Capital Expenditure", cashflow.get("capitalExpenditure"), cashflow_prior.get("capitalExpenditure")),
-                _row("Free Cash Flow", cashflow.get("freeCashFlow"), cashflow_prior.get("freeCashFlow"), "total"),
+                _row("Capital Expenditure", _scale_money(cashflow.get("capitalExpenditure")), _scale_money(cashflow_prior.get("capitalExpenditure"))),
+                _row("Free Cash Flow", _scale_money(cashflow.get("freeCashFlow")), _scale_money(cashflow_prior.get("freeCashFlow")), "total"),
                 _row("FINANCING ACTIVITIES", None, None, "section_header"),
-                _row("Dividends Paid", cashflow.get("dividendsPaid"), cashflow_prior.get("netDividendsPaid") or cashflow_prior.get("commonDividendsPaid")),
+                _row("Dividends Paid", _scale_money(cashflow.get("dividendsPaid")), _scale_money(cashflow_prior.get("netDividendsPaid") or cashflow_prior.get("commonDividendsPaid"))),
             ],
         }
         return financial_data
