@@ -3251,12 +3251,12 @@ if page == "Stock Tracker":
     st.divider()
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        " Technicals",
-        " Fundamentals",
-        " Earnings",
-        " Segments",
-        "️ News & Sentiment",
-        " Filings",
+        "📡 Technicals",
+        "📊 Fundamentals",
+        "📈 Earnings",
+        "🧩 Segments",
+        "🗞️ News & Sentiment",
+        "📂 Filings",
     ])
 
     with tab1:
