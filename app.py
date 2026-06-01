@@ -2754,105 +2754,118 @@ if page == "Stock Tracker":
             st.session_state.stock_data = get_stock_data(st_ticker.strip())
             st.session_state.st_current_ticker = st_ticker.strip().upper()
 
-    # --- WATCHLIST PANEL (navigation — always visible) ---
-    st.markdown("#### ⭐ Watchlist")
-    wl_tickers = load_watchlist()
-    if not wl_tickers:
-        st.caption("Your watchlist is empty. Track a ticker above and add it here.")
-    else:
-        st.caption("Click a ticker to load it, or ✕ to remove.")
-        cols_per_row = 4
-        for row_start in range(0, len(wl_tickers), cols_per_row):
-            row_tickers = wl_tickers[row_start : row_start + cols_per_row]
-            row_cols    = st.columns(cols_per_row)
-            for col, tk in zip(row_cols, row_tickers):
-                with col:
-                    sub_a, sub_b = st.columns([3, 1])
-                    with sub_a:
-                        if st.button(tk, key=f"wl_load_{tk}", use_container_width=True):
-                            with st.spinner(f"Loading {tk}…"):
-                                st.session_state.stock_data        = get_stock_data(tk)
-                                st.session_state.st_current_ticker = tk
-                            st.rerun()
-                    with sub_b:
-                        if st.button("✕", key=f"wl_rm_{tk}", help=f"Remove {tk}"):
-                            wl_remove(tk)
-                            st.rerun()
+    def _render_stock_tracker_sidebar_watchlist():
+        with st.sidebar:
+            st.divider()
+            st.subheader(" Watchlist")
+            cur_sidebar_ticker = st.session_state.get("st_current_ticker", "")
+            if cur_sidebar_ticker:
+                wl_now = load_watchlist()
+                already_in = cur_sidebar_ticker.upper() in [t.upper() for t in wl_now]
+                btn_label = "✓ In Watchlist" if already_in else f"+ Add {cur_sidebar_ticker} to Watchlist"
+                btn_type = "secondary" if already_in else "primary"
+                if st.button(btn_label, key="wl_add_btn", type=btn_type, disabled=already_in, use_container_width=True):
+                    wl_add(cur_sidebar_ticker)
+                    st.success(f"{cur_sidebar_ticker} added to watchlist.")
+                    st.rerun()
 
-        st.markdown("**Watchlist Summary**")
+            wl_tickers = load_watchlist()
+            if not wl_tickers:
+                st.caption("Your watchlist is empty. Track a ticker above and add it here.")
+            else:
+                st.caption("Click a ticker to load it, or ✕ to remove.")
+                cols_per_row = 2
+                for row_start in range(0, len(wl_tickers), cols_per_row):
+                    row_tickers = wl_tickers[row_start : row_start + cols_per_row]
+                    row_cols = st.columns(cols_per_row)
+                    for col, tk in zip(row_cols, row_tickers):
+                        with col:
+                            sub_a, sub_b = st.columns([3, 1])
+                            with sub_a:
+                                if st.button(tk, key=f"wl_load_{tk}", use_container_width=True):
+                                    with st.spinner(f"Loading {tk}…"):
+                                        st.session_state.stock_data = get_stock_data(tk)
+                                        st.session_state.st_current_ticker = tk
+                                    st.rerun()
+                            with sub_b:
+                                if st.button("✕", key=f"wl_rm_{tk}", help=f"Remove {tk}"):
+                                    wl_remove(tk)
+                                    st.rerun()
 
-        @st.cache_data(ttl=300)
-        def _wl_summary(tickers_tuple):
-            def _fmt_watchlist_market_cap(value):
-                if not value:
-                    return "—"
-                value = float(value)
-                if value >= 1_000_000_000_000:
-                    return f"${value / 1_000_000_000_000:.2f}T"
-                if value >= 1_000_000_000:
-                    return f"${value / 1_000_000_000:.2f}B"
-                return f"${value / 1_000_000:.1f}M"
+                st.markdown("**Watchlist Summary**")
 
-            def _fmt_watchlist_volume(value):
-                if not value:
-                    return "—"
-                return f"{int(value):,}"
+                @st.cache_data(ttl=300)
+                def _wl_summary(tickers_tuple):
+                    def _fmt_watchlist_market_cap(value):
+                        if not value:
+                            return "—"
+                        value = float(value)
+                        if value >= 1_000_000_000_000:
+                            return f"${value / 1_000_000_000_000:.2f}T"
+                        if value >= 1_000_000_000:
+                            return f"${value / 1_000_000_000:.2f}B"
+                        return f"${value / 1_000_000:.1f}M"
 
-            def _watchlist_market_cap_and_volume(ticker):
-                try:
-                    _ensure_yfinance_cache_location()
-                    yt = yf.Ticker(ticker)
-                    info = yt.info or {}
-                    volume = info.get("volume")
-                    if volume is None:
+                    def _fmt_watchlist_volume(value):
+                        if not value:
+                            return "—"
+                        return f"{int(value):,}"
+
+                    def _watchlist_market_cap_and_volume(ticker):
                         try:
-                            fast_info = yt.fast_info
-                            volume = getattr(fast_info, "last_volume", None)
-                            if volume is None and hasattr(fast_info, "get"):
-                                volume = fast_info.get("last_volume")
+                            _ensure_yfinance_cache_location()
+                            yt = yf.Ticker(ticker)
+                            info = yt.info or {}
+                            volume = info.get("volume")
+                            if volume is None:
+                                try:
+                                    fast_info = yt.fast_info
+                                    volume = getattr(fast_info, "last_volume", None)
+                                    if volume is None and hasattr(fast_info, "get"):
+                                        volume = fast_info.get("last_volume")
+                                except Exception:
+                                    volume = None
+                            return info.get("marketCap"), volume
                         except Exception:
-                            volume = None
-                    return info.get("marketCap"), volume
-                except Exception:
-                    return None, None
+                            return None, None
 
-            rows = []
-            for tk in tickers_tuple:
-                d = get_stock_data(tk)
-                if d.get("error"):
-                    rows.append({
-                        "Ticker": tk,
-                        "Price": "—",
-                        "Day%": "—",
-                        "Market Cap": "—",
-                        "Volume": "—",
-                        "52W High": "—",
-                        "52W Low": "—",
-                        "RSI": "—",
-                    })
-                    continue
-                p   = d["price"]
-                m   = d["momentum"]
-                market_cap, volume = _watchlist_market_cap_and_volume(tk)
-                rows.append({
-                    "Ticker":     tk,
-                    "Price":      f"${p['current']:,.2f}"        if p["current"]              else "—",
-                    "Day%":       f"{p['day_change_pct']:+.2f}%" if p["day_change_pct"] is not None else "—",
-                    "Market Cap": _fmt_watchlist_market_cap(market_cap),
-                    "Volume":     _fmt_watchlist_volume(volume),
-                    "52W High":   f"${p['week_52_high']:,.2f}"   if p["week_52_high"]         else "—",
-                    "52W Low":    f"${p['week_52_low']:,.2f}"    if p["week_52_low"]          else "—",
-                    "RSI":        f"{m['rsi_14']:.1f}"            if m["rsi_14"] is not None   else "—",
-                })
-            return rows
+                    rows = []
+                    for tk in tickers_tuple:
+                        d = get_stock_data(tk)
+                        if d.get("error"):
+                            rows.append({
+                                "Ticker": tk,
+                                "Price": "—",
+                                "Day%": "—",
+                                "Market Cap": "—",
+                                "Volume": "—",
+                                "52W High": "—",
+                                "52W Low": "—",
+                                "RSI": "—",
+                            })
+                            continue
+                        p = d["price"]
+                        m = d["momentum"]
+                        market_cap, volume = _watchlist_market_cap_and_volume(tk)
+                        rows.append({
+                            "Ticker": tk,
+                            "Price": f"${p['current']:,.2f}" if p["current"] else "—",
+                            "Day%": f"{p['day_change_pct']:+.2f}%" if p["day_change_pct"] is not None else "—",
+                            "Market Cap": _fmt_watchlist_market_cap(market_cap),
+                            "Volume": _fmt_watchlist_volume(volume),
+                            "52W High": f"${p['week_52_high']:,.2f}" if p["week_52_high"] else "—",
+                            "52W Low": f"${p['week_52_low']:,.2f}" if p["week_52_low"] else "—",
+                            "RSI": f"{m['rsi_14']:.1f}" if m["rsi_14"] is not None else "—",
+                        })
+                    return rows
 
-        with st.spinner("Loading watchlist prices…"):
-            summary_rows = _wl_summary(tuple(wl_tickers))
+                with st.spinner("Loading watchlist prices…"):
+                    summary_rows = _wl_summary(tuple(wl_tickers))
 
-        if summary_rows:
-            st.dataframe(_pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+                if summary_rows:
+                    st.dataframe(_pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
-    st.divider()
+    _render_stock_tracker_sidebar_watchlist()
 
     sd = st.session_state.stock_data
     if sd is None:
@@ -3044,761 +3057,746 @@ if page == "Stock Tracker":
             lambda: get_company_logo(cur_ticker, cur_exchange),
         )
 
-    if logo_bytes:
-        col_logo, col_name = st.columns([1, 10])
-        with col_logo:
-            st.image(io.BytesIO(logo_bytes), width=48)
-        with col_name:
-            st.markdown(f"## {company_name}")
-    else:
-        st.markdown(f"## {company_name}")
-    sector_parts = [p for p in [comp.get("sector"), comp.get("industry")] if p]
-    if sector_parts:
-        st.caption("  ·  ".join(sector_parts))
-
-    if cur_ticker:
-        wl_now     = load_watchlist()
-        already_in = cur_ticker.upper() in [t.upper() for t in wl_now]
-        btn_label  = "✓ In Watchlist" if already_in else f"+ Add {cur_ticker} to Watchlist"
-        btn_type   = "secondary" if already_in else "primary"
-        if st.button(btn_label, key="wl_add_btn", type=btn_type, disabled=already_in):
-            wl_add(cur_ticker)
-            st.success(f"{cur_ticker} added to watchlist.")
-            st.rerun()
-
-    st.divider()
-
-    st.markdown("#### Price & Momentum")
-    c1, c2, c3, c4 = st.columns(4)
-    cur     = price["current"]
+    cur = price["current"]
     day_pct = price["day_change_pct"]
-    with c1:
-        st.metric(
-            "Current Price",
-            f"${cur:,.2f}" if cur else "—",
-            delta=f"{day_pct:+.2f}%" if day_pct is not None else None,
-        )
-    with c2:
-        hi52    = price["week_52_high"]
-        pct_hi  = price["pct_from_52_high"]
-        st.metric(
-            "52W High",
-            f"${hi52:,.2f}" if hi52 else "—",
-            delta=f"{pct_hi:.1f}% from high" if pct_hi is not None else None,
-            delta_color="inverse",
-        )
-    with c3:
-        lo52   = price["week_52_low"]
-        pct_lo = price["pct_from_52_low"]
-        st.metric(
-            "52W Low",
-            f"${lo52:,.2f}" if lo52 else "—",
-            delta=f"{pct_lo:.1f}% from low" if pct_lo is not None else None,
-        )
-    with c4:
-        st.metric("Market Cap", _fmt_mc(comp["market_cap"]))
+    header_logo_col, header_identity_col, header_analyst_col = st.columns([1, 3, 2])
+    with header_logo_col:
+        if logo_bytes:
+            st.image(io.BytesIO(logo_bytes), width=48)
+    with header_identity_col:
+        st.markdown(f"## **{company_name}**")
+        sector_parts = [p for p in [comp.get("sector"), comp.get("industry")] if p]
+        if sector_parts:
+            for sector_part in sector_parts:
+                st.badge(sector_part)
+        desc = comp["description"]
+        if desc:
+            short_desc = desc[:200] + ("..." if len(desc) > 200 else "")
+            st.markdown(short_desc)
+            if len(desc) > 200:
+                with st.expander("Read more"):
+                    st.markdown(desc)
+    with header_analyst_col:
+        analyst = sd["analyst"]
+        rec = (analyst["recommendation"] or "").upper()
+        target = analyst["target_price"]
+        upside = analyst["upside_pct"]
+        num_an = analyst["num_analysts"]
 
-    # Moving average badges
-    st.markdown("**Moving Averages**")
-    badges_html = (
-        _pill("Above 50MA",  mom["above_50ma"]) +
-        _pill("Above 200MA", mom["above_200ma"])
-    )
-    gc = mom["golden_cross"]
-    if gc is not None:
-        badges_html += _pill("Golden Cross" if gc else "Death Cross", gc)
-    st.markdown(badges_html, unsafe_allow_html=True)
-
-    # RSI
-    rsi = mom["rsi_14"]
-    if rsi is not None:
-        if rsi < 30:
-            rsi_label, rsi_color = "Oversold", "#2d7a2d"
-            rsi_bg = "#e8f5e9"
-        elif rsi < 70:
-            rsi_label, rsi_color = "Neutral", "#555"
-            rsi_bg = "#f5f5f5"
+        if rec in ("BUY", "STRONG_BUY", "STRONG BUY"):
+            rec_color, rec_bg = "#2d7a2d", "#e8f5e9"
+        elif rec in ("SELL", "STRONG_SELL", "STRONG SELL", "UNDERPERFORM"):
+            rec_color, rec_bg = "#c0392b", "#fdecea"
         else:
-            rsi_label, rsi_color = "Overbought", "#c0392b"
-            rsi_bg = "#fdecea"
-        st.markdown(
-            f'<div style="margin:8px 0 0 0">'
-            f'<span style="font-weight:600">RSI (14):</span> {rsi:.1f} &nbsp;'
-            f'<span style="background:{rsi_bg};color:{rsi_color};padding:3px 10px;'
-            f'border-radius:12px;font-size:13px;font-weight:600">{rsi_label}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+            rec_color, rec_bg = "#7d5a00", "#fffbea"
 
-    # --- SECTION 1a: Short Interest ---
-    short_interest = _get_short_interest(cur_ticker)
-    short_pct = short_interest.get("short_percent_of_float")
-    short_ratio = short_interest.get("short_ratio")
-    shares_short = short_interest.get("shares_short")
-    si_badge, si_color, si_bg = _short_interest_badge(short_pct)
-    st.markdown(
-        f'''
-        <div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);
-                    border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;
-                    box-shadow:0 4px 24px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;
-                    padding:0.85rem 1rem;margin:1rem 0 0.25rem">
-            <div style="color:#F1F5F9;font-size:15px;font-weight:600;margin-bottom:0.85rem">
-                Short Interest
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem">
-                <div>
-                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
-                        % of Float Shorted
-                    </div>
-                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
-                        {escape(_fmt_short_pct(short_pct))}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
-                        Days to Cover
-                    </div>
-                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
-                        {escape(_fmt_short_ratio(short_ratio))}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
-                        Shares Short
-                    </div>
-                    <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
-                        {escape(_fmt_compact_int(shares_short))}
-                    </div>
-                </div>
-            </div>
-            <div style="margin-top:0.85rem">
-                <span style="background:{si_bg};color:{si_color};padding:5px 12px;
-                             border-radius:20px;font-size:13px;font-weight:600;
-                             display:inline-block;margin:2px 4px 0 0">
-                    {escape(si_badge)}
-                </span>
-            </div>
-        </div>
-        ''',
-        unsafe_allow_html=True,
-    )
-    segments = _fiscal_session_cached(
-        "get_segments_with_values",
-        lambda: get_segments_with_values(cur_ticker, cur_exchange),
-    )
-    if segments:
-        chart_segments = sorted(segments, key=lambda row: row["value"])
-        labels = [row["name"] for row in chart_segments]
-        values = [row["value"] for row in chart_segments]
-        text = [_fmt_mc(row["value"] / 1_000_000) for row in chart_segments]
-
-        st.markdown("#### Business Segments")
-        fig = go.Figure(
-            go.Bar(
-                x=values,
-                y=labels,
-                orientation="h",
-                text=text,
-                textposition="auto",
-                marker=dict(color="#378ADD"),
-                hovertemplate="%{y}<br>%{text}<extra></extra>",
-            )
-        )
-        fig.update_layout(
-            height=max(260, 42 * len(chart_segments)),
-            margin=dict(l=8, r=8, t=8, b=8),
-            xaxis_title=None,
-            yaxis_title=None,
-            showlegend=False,
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#CBD5E1"),
-        )
-        fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
-        fig.update_yaxes(showgrid=False)
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        period = segments[0].get("period")
-        period_text = f" · {period}" if period else ""
-        st.markdown(
-            f'<div style="color:#94A3B8;font-size:12px;margin-top:-0.5rem">'
-            f'Source: Fiscal AI{period_text}</div>',
-            unsafe_allow_html=True,
-        )
-
-    st.divider()
-
-    # --- SECTION 1b: Price Chart ---
-    hist_df = sd.get("hist")
-    if hist_df is not None and not hist_df.empty:
-        st.markdown("#### 📈 Price Chart (1 Year)")
-
-        closes  = hist_df["Close"]
-        ma50    = closes.rolling(50).mean()
-        ma200   = closes.rolling(200).mean()
-        dates   = hist_df.index
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=dates, y=closes,
-            name="Close", line=dict(color="#1f77b4", width=2),
-        ))
-        if len(closes) >= 50:
-            fig.add_trace(go.Scatter(
-                x=dates, y=ma50,
-                name="50-Day MA", line=dict(color="#ff7f0e", width=1.5, dash="dot"),
-            ))
-        if len(closes) >= 200:
-            fig.add_trace(go.Scatter(
-                x=dates, y=ma200,
-                name="200-Day MA", line=dict(color="#d62728", width=1.5, dash="dash"),
-            ))
-        fig.update_layout(
-            height=320, margin=dict(l=0, r=0, t=10, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis_rangeslider_visible=False,
-            yaxis_tickprefix="$",
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Volume bar chart
-        if "Volume" in hist_df.columns:
-            vol_fig = go.Figure()
-            vol_fig.add_trace(go.Bar(
-                x=dates, y=hist_df["Volume"],
-                name="Volume", marker_color="#aec7e8", opacity=0.7,
-            ))
-            vol_fig.update_layout(
-                height=120, margin=dict(l=0, r=0, t=0, b=0),
-                showlegend=False,
-                yaxis=dict(tickformat=".2s"),
-            )
-            st.plotly_chart(vol_fig, use_container_width=True)
-
-        st.divider()
-
-    # --- SECTION 2: Analyst Consensus ---
-    st.markdown("#### Analyst Consensus")
-    analyst = sd["analyst"]
-    rec     = (analyst["recommendation"] or "").upper()
-    target  = analyst["target_price"]
-    upside  = analyst["upside_pct"]
-    num_an  = analyst["num_analysts"]
-
-    if rec in ("BUY", "STRONG_BUY", "STRONG BUY"):
-        rec_color, rec_bg = "#2d7a2d", "#e8f5e9"
-    elif rec in ("SELL", "STRONG_SELL", "STRONG SELL", "UNDERPERFORM"):
-        rec_color, rec_bg = "#c0392b", "#fdecea"
-    else:
-        rec_color, rec_bg = "#7d5a00", "#fffbea"
-
-    if rec:
-        st.markdown(
-            f'<span style="background:{rec_bg};color:{rec_color};padding:6px 18px;'
-            f'border-radius:20px;font-size:15px;font-weight:700">'
-            f'{rec.replace("_", " ").title()}</span>',
-            unsafe_allow_html=True,
-        )
-        st.write("")
-
-    ac1, ac2, ac3 = st.columns(3)
-    with ac1:
-        st.metric("Price Target", f"${target:,.2f}" if target else "—")
-    with ac2:
-        if upside is not None:
-            st.metric("Upside / Downside", f"{upside:+.1f}%",
-                      delta=f"{upside:+.1f}%")
-        else:
-            st.metric("Upside / Downside", "—")
-    with ac3:
-        st.metric("Analysts Covering", str(num_an) if num_an else "—")
-
-    # Current vs target bar
-    if cur and target:
-        lo_b  = min(cur, target) * 0.92
-        hi_b  = max(cur, target) * 1.08
-        span  = hi_b - lo_b or 1
-        c_pct = (cur    - lo_b) / span * 100
-        t_pct = (target - lo_b) / span * 100
-        fill_left  = min(c_pct, t_pct)
-        fill_width = abs(t_pct - c_pct)
-        st.markdown(
-            f'<div style="margin:10px 0 4px">'
-            f'<div style="background:#e8e8e8;border-radius:6px;height:10px;position:relative">'
-            f'<div style="position:absolute;left:{fill_left:.0f}%;width:{fill_width:.0f}%;'
-            f'height:100%;background:#7cb9e8;border-radius:6px"></div>'
-            f'<div style="position:absolute;left:{c_pct:.0f}%;transform:translateX(-50%);'
-            f'width:3px;height:100%;background:#333;border-radius:2px" title="Current"></div>'
-            f'<div style="position:absolute;left:{t_pct:.0f}%;transform:translateX(-50%);'
-            f'width:3px;height:100%;background:#2d7a2d;border-radius:2px" title="Target"></div>'
-            f'</div>'
-            f'<div style="font-size:11px;color:#888;margin-top:4px">'
-            f'&#9632; Current: ${cur:,.2f} &nbsp;&nbsp; '
-            f'<span style="color:#2d7a2d">&#9632;</span> Target: ${target:,.2f}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-    st.divider()
-
-    # --- SECTION 3: Earnings Tracker ---
-    st.markdown("#### Earnings Tracker")
-    earnings  = sd["earnings"]
-    next_date = earnings["next_earnings_date"]
-
-    if next_date:
-        st.markdown(f"**Next Earnings Date:** {next_date}")
-        try:
-            from datetime import datetime as _dt
-            nd          = _dt.strptime(next_date[:10], "%Y-%m-%d").date()
-            days_until  = (nd - _date.today()).days
-            if 0 <= days_until <= 30:
-                st.warning(
-                    f"Earnings approaching in {days_until} day{'s' if days_until != 1 else ''}"
-                    " — elevated volatility risk."
-                )
-        except Exception:
-            pass
-    else:
-        st.caption("Next earnings date not available.")
-
-    e1, e2 = st.columns(2)
-    with e1:
-        st.markdown("**EPS**")
-        eps_est = earnings["eps_estimate"]
-        eps_act = earnings["eps_actual_last"]
-        surp    = earnings["earnings_surprise_pct"]
-        st.markdown(f"Estimate: **{'${:.2f}'.format(eps_est) if eps_est is not None else '—'}**")
-        st.markdown(f"Last Actual: **{'${:.2f}'.format(eps_act) if eps_act is not None else '—'}**")
-        if surp is not None:
-            s_sign  = "+" if surp >= 0 else ""
-            s_label = "Beat" if surp >= 0 else "Miss"
-            s_color = "#2d7a2d" if surp >= 0 else "#c0392b"
-            s_bg    = "#e8f5e9" if surp >= 0 else "#fdecea"
+        if rec:
             st.markdown(
-                f'Last Quarter: <span style="background:{s_bg};color:{s_color};'
-                f'padding:2px 8px;border-radius:10px;font-size:13px;font-weight:600">'
-                f'{s_label} {s_sign}{surp:.1f}%</span>',
+                f'<span style="background:{rec_bg};color:{rec_color};padding:6px 18px;'
+                f'border-radius:20px;font-size:15px;font-weight:700">'
+                f'{rec.replace("_", " ").title()}</span>',
                 unsafe_allow_html=True,
             )
-    with e2:
-        st.markdown("**Revenue**")
-        rev = earnings["revenue_estimate"]
-        if rev:
-            if rev >= 1_000_000_000_000:
-                rev_str = f"${rev / 1_000_000_000_000:.2f}T"
-            elif rev >= 1_000_000_000:
-                rev_str = f"${rev / 1_000_000_000:.2f}B"
-            elif rev >= 1_000_000:
-                rev_str = f"${rev / 1_000_000:.1f}M"
+            st.write("")
+
+        ac1, ac2, ac3 = st.columns(3)
+        with ac1:
+            st.metric("Price Target", f"${target:,.2f}" if target else "—")
+        with ac2:
+            if upside is not None:
+                st.metric("Upside / Downside", f"{upside:+.1f}%",
+                          delta=f"{upside:+.1f}%")
             else:
-                rev_str = f"${rev:,.0f}"
-        else:
-            rev_str = "—"
-        st.metric("Revenue (TTM)", rev_str)
+                st.metric("Upside / Downside", "—")
+        with ac3:
+            st.metric("Analysts Covering", str(num_an) if num_an else "—")
+
+        # Current vs target bar
+        if cur and target:
+            lo_b = min(cur, target) * 0.92
+            hi_b = max(cur, target) * 1.08
+            span = hi_b - lo_b or 1
+            c_pct = (cur - lo_b) / span * 100
+            t_pct = (target - lo_b) / span * 100
+            fill_left = min(c_pct, t_pct)
+            fill_width = abs(t_pct - c_pct)
+            st.markdown(
+                f'<div style="margin:10px 0 4px">'
+                f'<div style="background:#e8e8e8;border-radius:6px;height:10px;position:relative">'
+                f'<div style="position:absolute;left:{fill_left:.0f}%;width:{fill_width:.0f}%;'
+                f'height:100%;background:#7cb9e8;border-radius:6px"></div>'
+                f'<div style="position:absolute;left:{c_pct:.0f}%;transform:translateX(-50%);'
+                f'width:3px;height:100%;background:#333;border-radius:2px" title="Current"></div>'
+                f'<div style="position:absolute;left:{t_pct:.0f}%;transform:translateX(-50%);'
+                f'width:3px;height:100%;background:#2d7a2d;border-radius:2px" title="Target"></div>'
+                f'</div>'
+                f'<div style="font-size:11px;color:#888;margin-top:4px">'
+                f'&#9632; Current: ${cur:,.2f} &nbsp;&nbsp; '
+                f'<span style="color:#2d7a2d">&#9632;</span> Target: ${target:,.2f}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     st.divider()
 
-    # --- SECTION 4: Valuation Metrics ---
-    st.markdown("#### Valuation Metrics")
-    val = sd["valuation"]
+    price_metrics_col, price_chart_col = st.columns([1, 1])
+    with price_metrics_col:
+        st.markdown("#### Price & Momentum")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric(
+                "Current Price",
+                f"${cur:,.2f}" if cur else "—",
+                delta=f"{day_pct:+.2f}%" if day_pct is not None else None,
+            )
+        with c2:
+            hi52 = price["week_52_high"]
+            pct_hi = price["pct_from_52_high"]
+            st.metric(
+                "52W High",
+                f"${hi52:,.2f}" if hi52 else "—",
+                delta=f"{pct_hi:.1f}% from high" if pct_hi is not None else None,
+                delta_color="inverse",
+            )
+        with c3:
+            lo52 = price["week_52_low"]
+            pct_lo = price["pct_from_52_low"]
+            st.metric(
+                "52W Low",
+                f"${lo52:,.2f}" if lo52 else "—",
+                delta=f"{pct_lo:.1f}% from low" if pct_lo is not None else None,
+            )
+        with c4:
+            st.metric("Market Cap", _fmt_mc(comp["market_cap"]))
 
-    def _val_note(key, v):
-        if v is None:
-            return ""
-        if key == "pe_trailing":
-            if v > 30: return "Premium valuation"
-            if v < 15: return "Value territory"
-            return "Fairly valued"
-        if key == "pe_forward":
-            if v > 25: return "Premium valuation"
-            if v < 12: return "Value territory"
-            return "Fairly valued"
-        if key == "peg_ratio":
-            if v > 2:  return "Expensive relative to growth"
-            if v < 1:  return "Attractive relative to growth"
-            return ""
-        return ""
-
-    val_items = [
-        ("P/E (Trailing)", "pe_trailing",    val["pe_trailing"]),
-        ("P/E (Forward)",  "pe_forward",     val["pe_forward"]),
-        ("PEG Ratio",      "peg_ratio",      val["peg_ratio"]),
-        ("EV/EBITDA",      "ev_ebitda",      val["ev_ebitda"]),
-        ("Price / Book",   "price_to_book",  val["price_to_book"]),
-        ("Price / Sales",  "price_to_sales", val["price_to_sales"]),
-    ]
-    vr1 = st.columns(3)
-    vr2 = st.columns(3)
-    for i, (label, key, v) in enumerate(val_items):
-        col = vr1[i] if i < 3 else vr2[i - 3]
-        with col:
-            v_str = f"{v:.2f}x" if v is not None else "—"
-            note  = _val_note(key, v)
-            st.metric(label, v_str)
-            if note:
-                st.caption(note)
-
-    fiscal_ratio_values = _fiscal_session_cached(
-        "get_ratios_with_values",
-        lambda: get_ratios_with_values(cur_ticker, cur_exchange),
-    )
-    fiscal_ratio_map = {
-        "P/E Ratio": "pe_ratio",
-        "EV/EBITDA": "ev_ebitda",
-        "P/B Ratio": "price_to_book",
-        "P/S Ratio": "price_to_sales",
-        "Gross Margin": "gross_margin",
-        "Operating Margin": "operating_margin",
-        "Net Margin": "net_margin",
-    }
-    fiscal_ratios = {
-        label: fiscal_ratio_values[key]
-        for label, key in fiscal_ratio_map.items()
-        if isinstance(fiscal_ratio_values, dict) and key in fiscal_ratio_values
-    }
-    if fiscal_ratios:
-        st.markdown("##### Institutional Ratios")
-
-        def _fmt_fiscal_ratio(label, value):
-            try:
-                value = float(value)
-            except Exception:
-                return "—"
-            if "Margin" in label:
-                return f"{value * 100:.2f}%"
-            return f"{value:.2f}"
-
-        ratio_items = list(fiscal_ratios.items())
-        ratio_cols = st.columns(2)
-        for idx, (label, value) in enumerate(ratio_items):
-            with ratio_cols[idx % 2]:
-                st.metric(label, _fmt_fiscal_ratio(label, value))
-        st.markdown(
-            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
-            'Source: Fiscal AI</div>',
-            unsafe_allow_html=True,
+        # Moving average badges
+        st.markdown("**Moving Averages**")
+        badges_html = (
+            _pill("Above 50MA",  mom["above_50ma"]) +
+            _pill("Above 200MA", mom["above_200ma"])
         )
+        gc = mom["golden_cross"]
+        if gc is not None:
+            badges_html += _pill("Golden Cross" if gc else "Death Cross", gc)
+        st.markdown(badges_html, unsafe_allow_html=True)
 
-    shares_outstanding = _fiscal_session_cached(
-        "get_shares_outstanding",
-        lambda: get_shares_outstanding(cur_ticker, cur_exchange),
-    )
-    if shares_outstanding:
-        shares_value = shares_outstanding.get("shares_outstanding")
-        share_class = shares_outstanding.get("share_class") or "Shares"
-        share_date = _fmt_month_year(shares_outstanding.get("date"))
-        subtitle_parts = [part for part in [share_class, share_date] if part]
+        # RSI
+        rsi = mom["rsi_14"]
+        if rsi is not None:
+            if rsi < 30:
+                rsi_label, rsi_color = "Oversold", "#2d7a2d"
+                rsi_bg = "#e8f5e9"
+            elif rsi < 70:
+                rsi_label, rsi_color = "Neutral", "#555"
+                rsi_bg = "#f5f5f5"
+            else:
+                rsi_label, rsi_color = "Overbought", "#c0392b"
+                rsi_bg = "#fdecea"
+            st.markdown(
+                f'<div style="margin:8px 0 0 0">'
+                f'<span style="font-weight:600">RSI (14):</span> {rsi:.1f} &nbsp;'
+                f'<span style="background:{rsi_bg};color:{rsi_color};padding:3px 10px;'
+                f'border-radius:12px;font-size:13px;font-weight:600">{rsi_label}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    with price_chart_col:
+        # --- SECTION 1b: Price Chart ---
+        hist_df = sd.get("hist")
+        if hist_df is not None and not hist_df.empty:
+            st.markdown("#### 📈 Price Chart (1 Year)")
+
+            closes = hist_df["Close"]
+            ma50 = closes.rolling(50).mean()
+            ma200 = closes.rolling(200).mean()
+            dates = hist_df.index
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=dates, y=closes,
+                name="Close", line=dict(color="#1f77b4", width=2),
+            ))
+            if len(closes) >= 50:
+                fig.add_trace(go.Scatter(
+                    x=dates, y=ma50,
+                    name="50-Day MA", line=dict(color="#ff7f0e", width=1.5, dash="dot"),
+                ))
+            if len(closes) >= 200:
+                fig.add_trace(go.Scatter(
+                    x=dates, y=ma200,
+                    name="200-Day MA", line=dict(color="#d62728", width=1.5, dash="dash"),
+                ))
+            fig.update_layout(
+                height=320, margin=dict(l=0, r=0, t=10, b=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis_rangeslider_visible=False,
+                yaxis_tickprefix="$",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Volume bar chart
+            if "Volume" in hist_df.columns:
+                vol_fig = go.Figure()
+                vol_fig.add_trace(go.Bar(
+                    x=dates, y=hist_df["Volume"],
+                    name="Volume", marker_color="#aec7e8", opacity=0.7,
+                ))
+                vol_fig.update_layout(
+                    height=120, margin=dict(l=0, r=0, t=0, b=0),
+                    showlegend=False,
+                    yaxis=dict(tickformat=".2s"),
+                )
+                st.plotly_chart(vol_fig, use_container_width=True)
+
+    st.divider()
+
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        " Technicals",
+        " Fundamentals",
+        " Earnings",
+        " Segments",
+        "️ News & Sentiment",
+        " Filings",
+    ])
+
+    with tab1:
+        # --- SECTION 1a: Short Interest ---
+        short_interest = _get_short_interest(cur_ticker)
+        short_pct = short_interest.get("short_percent_of_float")
+        short_ratio = short_interest.get("short_ratio")
+        shares_short = short_interest.get("shares_short")
+        si_badge, si_color, si_bg = _short_interest_badge(short_pct)
         st.markdown(
             f'''
-            <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
-                        padding:0.85rem 1rem;margin:0.85rem 0;background:rgba(15,23,42,0.28);
-                        max-width:360px">
-                <div style="font-size:12px;font-weight:700;color:#94A3B8;
-                            text-transform:uppercase;letter-spacing:0.05em">
-                    Shares Outstanding
+            <div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);
+                        border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;
+                        box-shadow:0 4px 24px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;
+                        padding:0.85rem 1rem;margin:1rem 0 0.25rem">
+                <div style="color:#F1F5F9;font-size:15px;font-weight:600;margin-bottom:0.85rem">
+                    Short Interest
                 </div>
-                <div style="font-size:28px;font-weight:700;color:#F1F5F9;margin-top:0.25rem">
-                    {escape(_fmt_shares_outstanding(shares_value))}
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.75rem">
+                    <div>
+                        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                            % of Float Shorted
+                        </div>
+                        <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                            {escape(_fmt_short_pct(short_pct))}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                            Days to Cover
+                        </div>
+                        <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                            {escape(_fmt_short_ratio(short_ratio))}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748B">
+                            Shares Short
+                        </div>
+                        <div style="font-size:24px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em">
+                            {escape(_fmt_compact_int(shares_short))}
+                        </div>
+                    </div>
                 </div>
-                <div style="font-size:12px;color:#94A3B8;margin-top:0.2rem">
-                    {escape(" · ".join(subtitle_parts))}
-                </div>
-                <div style="font-size:12px;color:#94A3B8;margin-top:0.65rem">
-                    Source: Fiscal AI
+                <div style="margin-top:0.85rem">
+                    <span style="background:{si_bg};color:{si_color};padding:5px 12px;
+                                 border-radius:20px;font-size:13px;font-weight:600;
+                                 display:inline-block;margin:2px 4px 0 0">
+                        {escape(si_badge)}
+                    </span>
                 </div>
             </div>
             ''',
             unsafe_allow_html=True,
         )
 
-    adjusted_metrics = _fiscal_session_cached(
-        "get_adjusted_metrics_with_values",
-        lambda: get_adjusted_metrics_with_values(cur_ticker, cur_exchange),
-    )
-    if adjusted_metrics:
-        st.markdown("##### Adjusted Metrics")
+    with tab4:
+        segments = _fiscal_session_cached(
+            "get_segments_with_values",
+            lambda: get_segments_with_values(cur_ticker, cur_exchange),
+        )
+        if segments:
+            chart_segments = sorted(segments, key=lambda row: row["value"])
+            labels = [row["name"] for row in chart_segments]
+            values = [row["value"] for row in chart_segments]
+            text = [_fmt_mc(row["value"] / 1_000_000) for row in chart_segments]
 
-        def _fmt_adjusted_metric(label, value):
+            fig = go.Figure(
+                go.Bar(
+                    x=values,
+                    y=labels,
+                    orientation="h",
+                    text=text,
+                    textposition="auto",
+                    marker=dict(color="#378ADD"),
+                    hovertemplate="%{y}<br>%{text}<extra></extra>",
+                )
+            )
+            fig.update_layout(
+                height=max(260, 42 * len(chart_segments)),
+                margin=dict(l=8, r=8, t=8, b=8),
+                xaxis_title=None,
+                yaxis_title=None,
+                showlegend=False,
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#CBD5E1"),
+            )
+            fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
+            fig.update_yaxes(showgrid=False)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            period = segments[0].get("period")
+            period_text = f" · {period}" if period else ""
+            st.markdown(
+                f'<div style="color:#94A3B8;font-size:12px;margin-top:-0.5rem">'
+                f'Source: Fiscal AI{period_text}</div>',
+                unsafe_allow_html=True,
+            )
+
+    with tab3:
+        # --- SECTION 3: Earnings Tracker ---
+        earnings = sd["earnings"]
+        next_date = earnings["next_earnings_date"]
+
+        if next_date:
+            st.markdown(f"**Next Earnings Date:** {next_date}")
             try:
-                value = float(value)
+                from datetime import datetime as _dt
+                nd = _dt.strptime(next_date[:10], "%Y-%m-%d").date()
+                days_until = (nd - _date.today()).days
+                if 0 <= days_until <= 30:
+                    st.warning(
+                        f"Earnings approaching in {days_until} day{'s' if days_until != 1 else ''}"
+                        " — elevated volatility risk."
+                    )
             except Exception:
-                return "—"
-            if "Margin" in label:
-                return f"{value * 100:.2f}%"
-            if "EPS" in label:
-                return f"${value:.2f}"
-            if abs(value) >= 1_000_000_000:
-                return f"${value / 1_000_000_000:.2f}B"
-            if abs(value) >= 1_000_000:
-                return f"${value / 1_000_000:.2f}M"
-            return f"${value:,.0f}"
+                pass
+        else:
+            st.caption("Next earnings date not available.")
 
-        adjusted_items = list(adjusted_metrics.items())
-        adjusted_cols = st.columns(2)
-        for idx, (label, value) in enumerate(adjusted_items):
-            with adjusted_cols[idx % 2]:
-                st.metric(label, _fmt_adjusted_metric(label, value))
-        st.markdown(
-            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
-            'Source: Fiscal AI — Adjusted figures</div>',
-            unsafe_allow_html=True,
-        )
-
-    company_news = get_company_news(
-        cur_ticker,
-        cur_exchange,
-        limit=5,
-    )
-    if company_news:
-        st.markdown("##### Latest News")
-        for item in company_news:
-            news_date = escape(str(item.get("date") or ""))
-            category = escape(str(item.get("category") or "News").replace("_", " ").title())
-            title = escape(str(item.get("title") or ""))
-            url = escape(str(item.get("url") or ""), quote=True)
-            summary = escape(str(item.get("summary") or ""))
-            summary_html = (
-                f'<div style="color:#94A3B8;font-size:13px;line-height:1.45;margin-top:0.45rem">'
-                f'{summary}</div>'
-                if summary else ""
-            )
-            st.markdown(
-                f'''
-                <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
-                            padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
-                        <span style="color:#94A3B8;font-size:12px">{news_date}</span>
-                        <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
-                                     padding:2px 8px;font-size:11px;font-weight:700">
-                            {category}
-                        </span>
-                    </div>
-                    <a href="{url}" target="_blank" rel="noopener noreferrer"
-                       style="color:#F1F5F9;text-decoration:none;font-weight:700;font-size:15px">
-                        {title}
-                    </a>
-                    {summary_html}
-                </div>
-                ''',
-                unsafe_allow_html=True,
-            )
-        st.markdown(
-            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
-            'Source: Fiscal AI</div>',
-            unsafe_allow_html=True,
-        )
-
-    if "polymarket_macro" not in st.session_state:
-        st.session_state.polymarket_macro = get_macro_markets()
-    polymarket_macro = st.session_state.polymarket_macro
-    if polymarket_macro:
-        st.markdown("### Prediction Market Intelligence")
-        st.caption("Live prediction market probabilities on macro events")
-
-        for market in polymarket_macro:
-            probability = float(market.get("probability") or 0.0)
-            pct = max(0, min(100, round(probability * 100)))
-            question = market.get("question", "")
-            url = market.get("url", "")
-            volume = float(market.get("volume") or 0.0)
-
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.markdown(f"**[{question}]({url})**")
-                st.progress(probability)
-            with col2:
-                if probability > 0.60:
-                    st.success(f"{pct}% Yes")
-                elif probability < 0.40:
-                    st.error(f"{pct}% Yes")
+        e1, e2 = st.columns(2)
+        with e1:
+            st.markdown("**EPS**")
+            eps_est = earnings["eps_estimate"]
+            eps_act = earnings["eps_actual_last"]
+            surp = earnings["earnings_surprise_pct"]
+            st.markdown(f"Estimate: **{'${:.2f}'.format(eps_est) if eps_est is not None else '—'}**")
+            st.markdown(f"Last Actual: **{'${:.2f}'.format(eps_act) if eps_act is not None else '—'}**")
+            if surp is not None:
+                s_sign = "+" if surp >= 0 else ""
+                s_label = "Beat" if surp >= 0 else "Miss"
+                s_color = "#2d7a2d" if surp >= 0 else "#c0392b"
+                s_bg = "#e8f5e9" if surp >= 0 else "#fdecea"
+                st.markdown(
+                    f'Last Quarter: <span style="background:{s_bg};color:{s_color};'
+                    f'padding:2px 8px;border-radius:10px;font-size:13px;font-weight:600">'
+                    f'{s_label} {s_sign}{surp:.1f}%</span>',
+                    unsafe_allow_html=True,
+                )
+        with e2:
+            st.markdown("**Revenue**")
+            rev = earnings["revenue_estimate"]
+            if rev:
+                if rev >= 1_000_000_000_000:
+                    rev_str = f"${rev / 1_000_000_000_000:.2f}T"
+                elif rev >= 1_000_000_000:
+                    rev_str = f"${rev / 1_000_000_000:.2f}B"
+                elif rev >= 1_000_000:
+                    rev_str = f"${rev / 1_000_000:.1f}M"
                 else:
-                    st.warning(f"{pct}% Yes")
-            st.caption(f"Volume: ${volume / 1_000_000:.1f}M")
-            st.divider()
+                    rev_str = f"${rev:,.0f}"
+            else:
+                rev_str = "—"
+            st.metric("Revenue (TTM)", rev_str)
 
-        st.caption("Source: Polymarket · Prediction Market Intelligence")
+    with tab2:
+        # --- SECTION 4: Valuation Metrics ---
+        st.markdown("#### Valuation Metrics")
+        val = sd["valuation"]
 
-    fmp_earnings_key = f"fmp_earnings_{cur_ticker}"
-    if fmp_earnings_key not in st.session_state:
-        st.session_state[fmp_earnings_key] = get_fmp_earnings_calendar(cur_ticker)
-    fmp_earnings = st.session_state[fmp_earnings_key]
-    if fmp_earnings:
-        rows_html = []
-        for row in fmp_earnings:
-            eps_actual = row.get("epsActual")
-            eps_estimated = row.get("epsEstimated")
-            rev_actual = row.get("revenueActual")
-            rev_estimated = row.get("revenueEstimated")
-            rows_html.append(
-                f'''
-                <tr>
-                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
-                        {escape(str(row.get("date") or "—"))}
-                    </td>
-                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
-                        <div>{escape(_fmt_earnings_number(eps_actual, "$"))} vs {escape(_fmt_earnings_number(eps_estimated, "$"))}</div>
-                        <div style="margin-top:0.25rem">{_earnings_badge(eps_actual, eps_estimated)}</div>
-                    </td>
-                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
-                        <div>{escape(_fmt_earnings_number(rev_actual, "$"))} vs {escape(_fmt_earnings_number(rev_estimated, "$"))}</div>
-                        <div style="margin-top:0.25rem">{_earnings_badge(rev_actual, rev_estimated)}</div>
-                    </td>
-                    <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
-                        {escape(_fmt_surprise_pct(eps_actual, eps_estimated))}
-                    </td>
-                </tr>
-                '''
-            )
-        st.markdown("##### Earnings History")
-        table_html = (
-            '<div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;'
-            'margin:0.65rem 0;background:rgba(15,23,42,0.28);overflow-x:auto">'
-            '<table style="width:100%;border-collapse:collapse;font-size:13px">'
-            '<thead><tr>'
-            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Date</th>'
-            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Actual vs Estimated</th>'
-            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Revenue Actual vs Estimated</th>'
-            '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Surprise %</th>'
-            '</tr></thead>'
-            f'<tbody>{"".join(rows_html)}</tbody>'
-            '</table></div>'
+        def _val_note(key, v):
+            if v is None:
+                return ""
+            if key == "pe_trailing":
+                if v > 30: return "Premium valuation"
+                if v < 15: return "Value territory"
+                return "Fairly valued"
+            if key == "pe_forward":
+                if v > 25: return "Premium valuation"
+                if v < 12: return "Value territory"
+                return "Fairly valued"
+            if key == "peg_ratio":
+                if v > 2:  return "Expensive relative to growth"
+                if v < 1:  return "Attractive relative to growth"
+                return ""
+            return ""
+
+        val_items = [
+            ("P/E (Trailing)", "pe_trailing",    val["pe_trailing"]),
+            ("P/E (Forward)",  "pe_forward",     val["pe_forward"]),
+            ("PEG Ratio",      "peg_ratio",      val["peg_ratio"]),
+            ("EV/EBITDA",      "ev_ebitda",      val["ev_ebitda"]),
+            ("Price / Book",   "price_to_book",  val["price_to_book"]),
+            ("Price / Sales",  "price_to_sales", val["price_to_sales"]),
+        ]
+        vr1 = st.columns(3)
+        vr2 = st.columns(3)
+        for i, (label, key, v) in enumerate(val_items):
+            col = vr1[i] if i < 3 else vr2[i - 3]
+            with col:
+                v_str = f"{v:.2f}x" if v is not None else "—"
+                note  = _val_note(key, v)
+                st.metric(label, v_str)
+                if note:
+                    st.caption(note)
+
+        fiscal_ratio_values = _fiscal_session_cached(
+            "get_ratios_with_values",
+            lambda: get_ratios_with_values(cur_ticker, cur_exchange),
         )
-        st.markdown(table_html, unsafe_allow_html=True)
-        st.caption("Source: Financial Modeling Prep")
+        fiscal_ratio_map = {
+            "P/E Ratio": "pe_ratio",
+            "EV/EBITDA": "ev_ebitda",
+            "P/B Ratio": "price_to_book",
+            "P/S Ratio": "price_to_sales",
+            "Gross Margin": "gross_margin",
+            "Operating Margin": "operating_margin",
+            "Net Margin": "net_margin",
+        }
+        fiscal_ratios = {
+            label: fiscal_ratio_values[key]
+            for label, key in fiscal_ratio_map.items()
+            if isinstance(fiscal_ratio_values, dict) and key in fiscal_ratio_values
+        }
+        if fiscal_ratios:
+            st.markdown("##### Institutional Ratios")
 
-    fmp_financials_key = f"fmp_financials_{cur_ticker}"
-    if fmp_financials_key not in st.session_state:
-        _fmp_income = get_fmp_income_statement(cur_ticker)
-        _fmp_balance = get_fmp_balance_sheet(cur_ticker)
-        _fmp_cash_flow = get_fmp_cash_flow(cur_ticker)
-        st.session_state[fmp_financials_key] = (
-            {
-                "income": _fmp_income,
-                "balance": _fmp_balance,
-                "cash_flow": _fmp_cash_flow,
-            }
-            if _fmp_income and _fmp_balance and _fmp_cash_flow
-            else None
-        )
-    fmp_financials = st.session_state[fmp_financials_key]
-    if fmp_financials:
-        income = fmp_financials["income"]
-        balance = fmp_financials["balance"]
-        cash_flow = fmp_financials["cash_flow"]
-        fiscal_year = (
-            income.get("fiscalYear")
-            or balance.get("fiscalYear")
-            or cash_flow.get("fiscalYear")
-        )
-        title_suffix = f" (FY{fiscal_year})" if fiscal_year else ""
-        st.markdown(f"##### Financial Snapshot{title_suffix}")
-        income_col, balance_col, cash_flow_col = st.columns(3)
-        with income_col:
-            st.markdown("**Income**")
-            st.metric("Revenue", _fmt_financial_snapshot_value(income.get("revenue")))
-            st.metric(
-                "Gross Profit",
-                _fmt_financial_snapshot_value(income.get("grossProfit")),
-                delta=f"Gross Margin {_fmt_financial_margin(income.get('grossProfitRatio'))}",
-                delta_color="off",
-            )
-            st.metric(
-                "Operating Income",
-                _fmt_financial_snapshot_value(income.get("operatingIncome")),
-                delta=f"Operating Margin {_fmt_financial_margin(income.get('operatingIncomeRatio'))}",
-                delta_color="off",
-            )
-            st.metric(
-                "Net Income",
-                _fmt_financial_snapshot_value(income.get("netIncome")),
-                delta=f"Net Margin {_fmt_financial_margin(income.get('netIncomeRatio'))}",
-                delta_color="off",
-            )
-            st.metric("EBITDA", _fmt_financial_snapshot_value(income.get("ebitda")))
-        with balance_col:
-            st.markdown("**Balance Sheet**")
-            st.metric("Cash", _fmt_financial_snapshot_value(balance.get("cashAndCashEquivalents")))
-            st.metric("Total Assets", _fmt_financial_snapshot_value(balance.get("totalAssets")))
-            st.metric("Total Debt", _fmt_financial_snapshot_value(balance.get("totalDebt")))
-            st.metric(
-                "Shareholders Equity",
-                _fmt_financial_snapshot_value(balance.get("totalStockholdersEquity")),
-            )
-        with cash_flow_col:
-            st.markdown("**Cash Flow**")
-            st.metric(
-                "Operating Cash Flow",
-                _fmt_financial_snapshot_value(cash_flow.get("operatingCashFlow")),
-            )
-            st.metric(
-                "Capital Expenditure",
-                _fmt_financial_snapshot_value(cash_flow.get("capitalExpenditure")),
-            )
-            st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
-            st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
-        st.caption("Source: Financial Modeling Prep")
+            def _fmt_fiscal_ratio(label, value):
+                try:
+                    value = float(value)
+                except Exception:
+                    return "—"
+                if "Margin" in label:
+                    return f"{value * 100:.2f}%"
+                return f"{value:.2f}"
 
-    company_filings = _fiscal_session_cached(
-        "get_company_filings",
-        lambda: get_company_filings(cur_ticker, cur_exchange, limit=5),
-    )
-    if company_filings:
-        st.markdown("##### Recent Filings")
-        for filing in company_filings:
-            filing_type = escape(str(filing.get("type") or "Filing"))
-            filing_date = escape(str(filing.get("date") or ""))
-            description = escape(str(filing.get("description") or ""))
-            filing_url = escape(str(filing.get("url") or ""), quote=True)
-            link_html = (
-                f'<a href="{filing_url}" target="_blank" rel="noopener noreferrer" '
-                f'style="color:#93C5FD;text-decoration:none;font-weight:700">View filing</a>'
-                if filing_url else ""
+            ratio_items = list(fiscal_ratios.items())
+            ratio_cols = st.columns(2)
+            for idx, (label, value) in enumerate(ratio_items):
+                with ratio_cols[idx % 2]:
+                    st.metric(label, _fmt_fiscal_ratio(label, value))
+            st.markdown(
+                '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+                'Source: Fiscal AI</div>',
+                unsafe_allow_html=True,
             )
+
+        shares_outstanding = _fiscal_session_cached(
+            "get_shares_outstanding",
+            lambda: get_shares_outstanding(cur_ticker, cur_exchange),
+        )
+        if shares_outstanding:
+            shares_value = shares_outstanding.get("shares_outstanding")
+            share_class = shares_outstanding.get("share_class") or "Shares"
+            share_date = _fmt_month_year(shares_outstanding.get("date"))
+            subtitle_parts = [part for part in [share_class, share_date] if part]
             st.markdown(
                 f'''
                 <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
-                            padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
-                        <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
-                                     padding:2px 8px;font-size:11px;font-weight:700">
-                            {filing_type}
-                        </span>
-                        <span style="color:#94A3B8;font-size:12px">{filing_date}</span>
+                            padding:0.85rem 1rem;margin:0.85rem 0;background:rgba(15,23,42,0.28);
+                            max-width:360px">
+                    <div style="font-size:12px;font-weight:700;color:#94A3B8;
+                                text-transform:uppercase;letter-spacing:0.05em">
+                        Shares Outstanding
                     </div>
-                    <div style="color:#F1F5F9;font-size:15px;font-weight:700;margin-bottom:0.35rem">
-                        {description}
+                    <div style="font-size:28px;font-weight:700;color:#F1F5F9;margin-top:0.25rem">
+                        {escape(_fmt_shares_outstanding(shares_value))}
                     </div>
-                    {link_html}
+                    <div style="font-size:12px;color:#94A3B8;margin-top:0.2rem">
+                        {escape(" · ".join(subtitle_parts))}
+                    </div>
+                    <div style="font-size:12px;color:#94A3B8;margin-top:0.65rem">
+                        Source: Fiscal AI
+                    </div>
                 </div>
                 ''',
                 unsafe_allow_html=True,
             )
-        st.markdown(
-            '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
-            'Source: Fiscal AI</div>',
-            unsafe_allow_html=True,
+
+        adjusted_metrics = _fiscal_session_cached(
+            "get_adjusted_metrics_with_values",
+            lambda: get_adjusted_metrics_with_values(cur_ticker, cur_exchange),
         )
+        if adjusted_metrics:
+            st.markdown("##### Adjusted Metrics")
 
-    st.divider()
+            def _fmt_adjusted_metric(label, value):
+                try:
+                    value = float(value)
+                except Exception:
+                    return "—"
+                if "Margin" in label:
+                    return f"{value * 100:.2f}%"
+                if "EPS" in label:
+                    return f"${value:.2f}"
+                if abs(value) >= 1_000_000_000:
+                    return f"${value / 1_000_000_000:.2f}B"
+                if abs(value) >= 1_000_000:
+                    return f"${value / 1_000_000:.2f}M"
+                return f"${value:,.0f}"
 
-    # --- SECTION 5: Company Snapshot ---
-    st.markdown("#### Company Snapshot")
-    desc = comp["description"]
-    if desc:
-        st.markdown(desc)
+            adjusted_items = list(adjusted_metrics.items())
+            adjusted_cols = st.columns(2)
+            for idx, (label, value) in enumerate(adjusted_items):
+                with adjusted_cols[idx % 2]:
+                    st.metric(label, _fmt_adjusted_metric(label, value))
+            st.markdown(
+                '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+                'Source: Fiscal AI — Adjusted figures</div>',
+                unsafe_allow_html=True,
+            )
 
-    tags = [p for p in [comp.get("sector"), comp.get("industry")] if p]
-    if tags:
-        st.markdown(
-            " &nbsp; ".join(
-                f'<span style="background:#f0f0f0;border-radius:4px;'
-                f'padding:3px 10px;font-size:12px">{tg}</span>'
-                for tg in tags
-            ),
-            unsafe_allow_html=True,
+    with tab5:
+        company_news = get_company_news(
+            cur_ticker,
+            cur_exchange,
+            limit=5,
         )
+        if company_news:
+            st.markdown("##### Latest News")
+            for item in company_news:
+                news_date = escape(str(item.get("date") or ""))
+                category = escape(str(item.get("category") or "News").replace("_", " ").title())
+                title = escape(str(item.get("title") or ""))
+                url = escape(str(item.get("url") or ""), quote=True)
+                summary = escape(str(item.get("summary") or ""))
+                summary_html = (
+                    f'<div style="color:#94A3B8;font-size:13px;line-height:1.45;margin-top:0.45rem">'
+                    f'{summary}</div>'
+                    if summary else ""
+                )
+                st.markdown(
+                    f'''
+                    <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                                padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
+                            <span style="color:#94A3B8;font-size:12px">{news_date}</span>
+                            <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
+                                         padding:2px 8px;font-size:11px;font-weight:700">
+                                {category}
+                            </span>
+                        </div>
+                        <a href="{url}" target="_blank" rel="noopener noreferrer"
+                           style="color:#F1F5F9;text-decoration:none;font-weight:700;font-size:15px">
+                            {title}
+                        </a>
+                        {summary_html}
+                    </div>
+                    ''',
+                    unsafe_allow_html=True,
+                )
+            st.markdown(
+                '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+                'Source: Fiscal AI</div>',
+                unsafe_allow_html=True,
+            )
 
-    st.divider()
+        if "polymarket_macro" not in st.session_state:
+            st.session_state.polymarket_macro = get_macro_markets()
+        polymarket_macro = st.session_state.polymarket_macro
+        if polymarket_macro:
+            st.markdown("### Prediction Market Intelligence")
+            st.caption("Live prediction market probabilities on macro events")
+
+            for market in polymarket_macro:
+                probability = float(market.get("probability") or 0.0)
+                pct = max(0, min(100, round(probability * 100)))
+                question = market.get("question", "")
+                url = market.get("url", "")
+                volume = float(market.get("volume") or 0.0)
+
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.markdown(f"**[{question}]({url})**")
+                    st.progress(probability)
+                with col2:
+                    if probability > 0.60:
+                        st.success(f"{pct}% Yes")
+                    elif probability < 0.40:
+                        st.error(f"{pct}% Yes")
+                    else:
+                        st.warning(f"{pct}% Yes")
+                st.caption(f"Volume: ${volume / 1_000_000:.1f}M")
+                st.divider()
+
+            st.caption("Source: Polymarket · Prediction Market Intelligence")
+
+    with tab3:
+        fmp_earnings_key = f"fmp_earnings_{cur_ticker}"
+        if fmp_earnings_key not in st.session_state:
+            st.session_state[fmp_earnings_key] = get_fmp_earnings_calendar(cur_ticker)
+        fmp_earnings = st.session_state[fmp_earnings_key]
+        if fmp_earnings:
+            rows_html = []
+            for row in fmp_earnings:
+                eps_actual = row.get("epsActual")
+                eps_estimated = row.get("epsEstimated")
+                rev_actual = row.get("revenueActual")
+                rev_estimated = row.get("revenueEstimated")
+                rows_html.append(
+                    f'''
+                    <tr>
+                        <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                            {escape(str(row.get("date") or "—"))}
+                        </td>
+                        <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                            <div>{escape(_fmt_earnings_number(eps_actual, "$"))} vs {escape(_fmt_earnings_number(eps_estimated, "$"))}</div>
+                            <div style="margin-top:0.25rem">{_earnings_badge(eps_actual, eps_estimated)}</div>
+                        </td>
+                        <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                            <div>{escape(_fmt_earnings_number(rev_actual, "$"))} vs {escape(_fmt_earnings_number(rev_estimated, "$"))}</div>
+                            <div style="margin-top:0.25rem">{_earnings_badge(rev_actual, rev_estimated)}</div>
+                        </td>
+                        <td style="padding:0.65rem 0.75rem;border-top:1px solid rgba(148,163,184,0.16);color:#F1F5F9">
+                            {escape(_fmt_surprise_pct(eps_actual, eps_estimated))}
+                        </td>
+                    </tr>
+                    '''
+                )
+            st.markdown("##### Earnings History")
+            table_html = (
+                '<div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;'
+                'margin:0.65rem 0;background:rgba(15,23,42,0.28);overflow-x:auto">'
+                '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+                '<thead><tr>'
+                '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Date</th>'
+                '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Actual vs Estimated</th>'
+                '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Revenue Actual vs Estimated</th>'
+                '<th style="text-align:left;padding:0.65rem 0.75rem;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">EPS Surprise %</th>'
+                '</tr></thead>'
+                f'<tbody>{"".join(rows_html)}</tbody>'
+                '</table></div>'
+            )
+            st.markdown(table_html, unsafe_allow_html=True)
+            st.caption("Source: Financial Modeling Prep")
+
+    with tab2:
+        fmp_financials_key = f"fmp_financials_{cur_ticker}"
+        if fmp_financials_key not in st.session_state:
+            _fmp_income = get_fmp_income_statement(cur_ticker)
+            _fmp_balance = get_fmp_balance_sheet(cur_ticker)
+            _fmp_cash_flow = get_fmp_cash_flow(cur_ticker)
+            st.session_state[fmp_financials_key] = (
+                {
+                    "income": _fmp_income,
+                    "balance": _fmp_balance,
+                    "cash_flow": _fmp_cash_flow,
+                }
+                if _fmp_income and _fmp_balance and _fmp_cash_flow
+                else None
+            )
+        fmp_financials = st.session_state[fmp_financials_key]
+        if fmp_financials:
+            income = fmp_financials["income"]
+            balance = fmp_financials["balance"]
+            cash_flow = fmp_financials["cash_flow"]
+            fiscal_year = (
+                income.get("fiscalYear")
+                or balance.get("fiscalYear")
+                or cash_flow.get("fiscalYear")
+            )
+            title_suffix = f" (FY{fiscal_year})" if fiscal_year else ""
+            st.markdown(f"##### Financial Snapshot{title_suffix}")
+            income_col, balance_col, cash_flow_col = st.columns(3)
+            with income_col:
+                st.markdown("**Income**")
+                st.metric("Revenue", _fmt_financial_snapshot_value(income.get("revenue")))
+                st.metric(
+                    "Gross Profit",
+                    _fmt_financial_snapshot_value(income.get("grossProfit")),
+                    delta=f"Gross Margin {_fmt_financial_margin(income.get('grossProfitRatio'))}",
+                    delta_color="off",
+                )
+                st.metric(
+                    "Operating Income",
+                    _fmt_financial_snapshot_value(income.get("operatingIncome")),
+                    delta=f"Operating Margin {_fmt_financial_margin(income.get('operatingIncomeRatio'))}",
+                    delta_color="off",
+                )
+                st.metric(
+                    "Net Income",
+                    _fmt_financial_snapshot_value(income.get("netIncome")),
+                    delta=f"Net Margin {_fmt_financial_margin(income.get('netIncomeRatio'))}",
+                    delta_color="off",
+                )
+                st.metric("EBITDA", _fmt_financial_snapshot_value(income.get("ebitda")))
+            with balance_col:
+                st.markdown("**Balance Sheet**")
+                st.metric("Cash", _fmt_financial_snapshot_value(balance.get("cashAndCashEquivalents")))
+                st.metric("Total Assets", _fmt_financial_snapshot_value(balance.get("totalAssets")))
+                st.metric("Total Debt", _fmt_financial_snapshot_value(balance.get("totalDebt")))
+                st.metric(
+                    "Shareholders Equity",
+                    _fmt_financial_snapshot_value(balance.get("totalStockholdersEquity")),
+                )
+            with cash_flow_col:
+                st.markdown("**Cash Flow**")
+                st.metric(
+                    "Operating Cash Flow",
+                    _fmt_financial_snapshot_value(cash_flow.get("operatingCashFlow")),
+                )
+                st.metric(
+                    "Capital Expenditure",
+                    _fmt_financial_snapshot_value(cash_flow.get("capitalExpenditure")),
+                )
+                st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
+                st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
+            st.caption("Source: Financial Modeling Prep")
+
+    with tab6:
+        company_filings = _fiscal_session_cached(
+            "get_company_filings",
+            lambda: get_company_filings(cur_ticker, cur_exchange, limit=5),
+        )
+        if company_filings:
+            st.markdown("##### Recent Filings")
+            for filing in company_filings:
+                filing_type = escape(str(filing.get("type") or "Filing"))
+                filing_date = escape(str(filing.get("date") or ""))
+                description = escape(str(filing.get("description") or ""))
+                filing_url = escape(str(filing.get("url") or ""), quote=True)
+                link_html = (
+                    f'<a href="{filing_url}" target="_blank" rel="noopener noreferrer" '
+                    f'style="color:#93C5FD;text-decoration:none;font-weight:700">View filing</a>'
+                    if filing_url else ""
+                )
+                st.markdown(
+                    f'''
+                    <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                                padding:0.85rem 1rem;margin:0.65rem 0;background:rgba(15,23,42,0.28)">
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.45rem">
+                            <span style="background:#1E3A5F;color:#BFDBFE;border-radius:999px;
+                                         padding:2px 8px;font-size:11px;font-weight:700">
+                                {filing_type}
+                            </span>
+                            <span style="color:#94A3B8;font-size:12px">{filing_date}</span>
+                        </div>
+                        <div style="color:#F1F5F9;font-size:15px;font-weight:700;margin-bottom:0.35rem">
+                            {description}
+                        </div>
+                        {link_html}
+                    </div>
+                    ''',
+                    unsafe_allow_html=True,
+                )
+            st.markdown(
+                '<div style="color:#94A3B8;font-size:12px;margin-top:-0.25rem">'
+                'Source: Fiscal AI</div>',
+                unsafe_allow_html=True,
+            )
 
     st.stop()
 
