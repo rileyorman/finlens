@@ -2762,7 +2762,7 @@ if page == "Stock Tracker":
             if cur_sidebar_ticker:
                 wl_now = load_watchlist()
                 already_in = cur_sidebar_ticker.upper() in [t.upper() for t in wl_now]
-                btn_label = "✓ In Watchlist" if already_in else f"+ Add {cur_sidebar_ticker} to Watchlist"
+                btn_label = "✓ Added to Watchlist" if already_in else "+ Add to Watchlist"
                 btn_type = "secondary" if already_in else "primary"
                 if st.button(btn_label, key="wl_add_btn", type=btn_type, disabled=already_in, use_container_width=True):
                     wl_add(cur_sidebar_ticker)
@@ -3059,7 +3059,7 @@ if page == "Stock Tracker":
 
     cur = price["current"]
     day_pct = price["day_change_pct"]
-    header_logo_col, header_identity_col, header_analyst_col = st.columns([1, 3, 2])
+    header_logo_col, header_identity_col, header_analyst_col = st.columns([1, 2, 2])
     with header_logo_col:
         if logo_bytes:
             st.image(io.BytesIO(logo_bytes), width=48)
@@ -3071,7 +3071,7 @@ if page == "Stock Tracker":
                 st.badge(sector_part)
         desc = comp["description"]
         if desc:
-            short_desc = desc[:200] + ("..." if len(desc) > 200 else "")
+            short_desc = desc[:200] + "..."
             st.markdown(short_desc)
             if len(desc) > 200:
                 with st.expander("Read more"):
