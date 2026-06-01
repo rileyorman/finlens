@@ -350,6 +350,72 @@ EDUCATION = {
         "good_sign": "Consistent, confident forward-looking language with specific targets.",
         "red_flag": "Sudden increase in hedging language, vague outlook, or shift from confident to cautious tone year-over-year.",
     },
+    # Filing Analysis & Fund Manager Signals
+    "revenue_quality": {
+        "term": "Revenue Quality",
+        "plain_english": "Revenue quality measures whether a company's sales growth is real and sustainable, or manufactured through tricks like aggressive discounting, channel stuffing, or pulling future sales into the current quarter.",
+        "why_it_matters": "A company can report strong revenue growth while actually deteriorating underneath. High-quality revenue is organic, recurring, and backed by actual cash collection. Low-quality revenue looks good on paper but falls apart the next quarter.",
+        "key_metrics": [
+            "Organic growth rate: Revenue growth excluding acquisitions and currency effects — the real growth rate of the core business.",
+            "Receivables ratio: Accounts receivable growth vs revenue growth. If receivables grow 20% but revenue grows 10%, the company may be pulling forward future sales.",
+            "Revenue quality ratio: Organic growth / total reported growth. Below 0.7 means 30%+ of growth came from acquisitions or one-time items."
+        ],
+        "formula": "Revenue Quality Ratio = Organic Revenue Growth Rate ÷ Total Reported Revenue Growth Rate",
+        "example": "If a company reports 20% revenue growth but 15% came from an acquisition and only 5% was organic, the quality ratio is 0.25 — very low. The business itself is barely growing.",
+        "finlens_connection": "FinLens shows revenue trends in the Financial Snapshot and Filing Analysis tabs so you can spot deceleration before it becomes a crisis."
+    },
+    "margin_trajectory": {
+        "term": "Margin Trajectory",
+        "plain_english": "Margin trajectory tracks whether a company's profitability is improving or declining over time. One bad quarter is noise. Two consecutive quarters of margin compression is a warning. Three is a thesis breaker.",
+        "why_it_matters": "Margins reveal the underlying health of a business. Expanding gross margins mean pricing power. Expanding operating margins mean the business is scaling efficiently. Compressing margins — even with strong revenue growth — signal cost problems ahead.",
+        "key_metrics": [
+            "Gross margin: Revenue minus cost of goods sold, divided by revenue. Shows pricing power and production efficiency.",
+            "Operating margin: Operating income divided by revenue. Shows how efficiently management runs the business.",
+            "Operating leverage: % change in operating income divided by % change in revenue. Above 1.5x means the business scales beautifully."
+        ],
+        "formula": "Operating Leverage = (% Change in Operating Income) ÷ (% Change in Revenue)",
+        "example": "If revenue grows 10% and operating income grows 20%, operating leverage is 2.0x — costs are growing slower than revenue. If operating income only grows 5%, leverage is 0.5x — costs are out of control.",
+        "finlens_connection": "FinLens displays gross margin, operating margin, and net margin in the Fundamentals tab and Filing Analysis so you can track the trajectory quarter over quarter."
+    },
+    "fcf_quality": {
+        "term": "Free Cash Flow Quality",
+        "plain_english": "Net income is an opinion shaped by accounting rules. Free cash flow is a fact — it is the actual cash a business generates after paying to maintain and grow its assets. A company can legally report profits while burning cash.",
+        "why_it_matters": "FCF conversion below 0.8 means the company is not turning its reported profits into real cash. This can signal aggressive revenue recognition, capitalizing expenses that should be costs, or deteriorating working capital — all signs of weakening earnings quality.",
+        "key_metrics": [
+            "Free Cash Flow: Operating cash flow minus capital expenditure. The cash left over for shareholders after keeping the business running.",
+            "FCF conversion ratio: FCF divided by net income. Healthy businesses convert above 0.8x — meaning 80 cents of every dollar of profit becomes real cash.",
+            "FCF margin: FCF divided by revenue. Shows what percentage of sales actually becomes spendable cash."
+        ],
+        "formula": "FCF = Operating Cash Flow − Capital Expenditure\nFCF Conversion = Free Cash Flow ÷ Net Income",
+        "example": "If a company earns $100M net income but only generates $40M in FCF, conversion is 0.4x — very low. Warren Buffett calls FCF 'owner earnings' because it is the cash that actually belongs to shareholders.",
+        "finlens_connection": "FinLens shows operating cash flow, capital expenditure, and free cash flow in the Financial Snapshot Cash Flow section."
+    },
+    "balance_sheet_stress": {
+        "term": "Balance Sheet Stress",
+        "plain_english": "A profitable company can still go bankrupt if it runs out of cash or cannot repay its debts. Balance sheet stress builds slowly and then hits suddenly. Fund managers check three things every quarter: debt load, cash runway, and share dilution.",
+        "why_it_matters": "Companies with high debt are fragile — a recession, rising interest rates, or one bad quarter can tip them into crisis. Share dilution silently destroys your returns even when the stock price stays flat, because each new share issued reduces your ownership percentage.",
+        "key_metrics": [
+            "Net Debt / EBITDA: Total debt minus cash, divided by annual earnings before interest, taxes, depreciation, and amortization. Below 2x is healthy. Above 4x is high risk.",
+            "Cash runway: Cash divided by quarterly cash burn. How many quarters can the company operate without raising new capital.",
+            "Annual dilution rate: New shares issued divided by shares outstanding. Above 3% per year is shareholder-unfriendly."
+        ],
+        "formula": "Net Debt = Total Debt − Cash & Equivalents\nNet Debt / EBITDA = Net Debt ÷ Annual EBITDA",
+        "example": "If a company has $500M debt, $100M cash, and $150M EBITDA, net debt is $400M and the ratio is 2.7x — manageable but worth monitoring. If EBITDA falls 30% in a downturn, the ratio jumps to 3.8x — now concerning.",
+        "finlens_connection": "FinLens shows total debt, cash, and shareholders equity in the Balance Sheet section of the Financial Snapshot."
+    },
+    "mda_language_analysis": {
+        "term": "MD&A Language Analysis",
+        "plain_english": "The Management Discussion and Analysis section of a filing is where executives explain what happened and why. They cannot lie — but they can omit, soften, and reframe. Comparing language quarter over quarter reveals what changed before the numbers show it.",
+        "why_it_matters": "Language shifts in the MD&A often precede earnings misses by one to two quarters. When management stops talking about a growth initiative they were excited about last quarter, it usually means it is not working. When hedging words like 'may', 'could', and 'uncertain' start appearing more frequently, caution is warranted.",
+        "key_metrics": [
+            "Disappeared initiatives: Growth programs or products that were prominently discussed last quarter but are absent this quarter.",
+            "New risk factors: Additions to the Risk Factors section signal management is flagging new threats.",
+            "Tone shift: Increasing use of hedging language vs confident forward-looking statements."
+        ],
+        "formula": "No formula — this is qualitative analysis. AI excels at this because it can compare thousands of words across multiple filings in seconds.",
+        "example": "In Q2 a company discusses its international expansion 14 times in the MD&A. In Q3 it appears twice with no explanation. A fund manager reading carefully catches this. FinLens AI catches it instantly.",
+        "finlens_connection": "FinLens AI filing analysis reads the full MD&A and flags tone, sentiment, and key themes. The Filing Comparison tab lets you compare two filings side by side to spot language changes."
+    },
     "quick_analysis": {
         "term": "Quick Analysis",
         "plain_english": "Quick Analysis lets you analyse any publicly listed US company instantly — just type the ticker symbol. No PDF upload needed. FinLens fetches the financial statements directly from Financial Modeling Prep (FMP) and runs the same AI analysis as a full filing analysis.",
