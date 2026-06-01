@@ -49,6 +49,9 @@ from modules.portfolio_registry import (
     bulk_add_tickers, get_tickers,
 )
 from modules.portfolio_manager import get_portfolio_display_data
+from modules.position_tracker import (
+    load_positions, save_position, delete_position, calculate_portfolio_pl,
+)
 from modules.market_ticker import get_ticker_data
 from modules.fmp import build_financial_data_from_fmp
 from config import (
@@ -745,6 +748,7 @@ def _render_education_page(default_topic: str | None = None) -> None:
         "FinLens Analysis Tools": [
             "signal", "quality_score", "distress_score", "red_flags",
             "mda_sentiment", "scenario_simulator", "bull_bear", "lynch_category",
+            "dalio_framework", "lynch_story", "marks_framework",
             "quick_analysis", "financial_snapshot", "business_segments",
         ],
     }
@@ -1924,6 +1928,153 @@ if page == "Portfolio Manager":
     if not analysed:
         st.info("No FinLens analysis available yet. Sections below require at least one analysed filing.")
         st.stop()
+
+    st.divider()
+
+    # --- Section 2b: Positions ---
+    st.markdown("##### Positions")
+    st.caption("Track actual purchased positions — shares, cost basis, and unrealized P&L")
+
+    _positions = load_positions(selected_portfolio)
+    _price_map = {r["ticker"]: r["price"] for r in portfolio if r["price"] is not None}
+    _signal_map = {r["ticker"]: r.get("signal") for r in portfolio}
+
+    def _fmt_dollars(v):
+        av = abs(v)
+        if av >= 1_000_000_000:
+            return f"${v / 1_000_000_000:.2f}B"
+        if av >= 1_000_000:
+            return f"${v / 1_000_000:.2f}M"
+        return f"${v:,.2f}"
+
+    if not _positions:
+        st.info("No positions tracked yet. Use **Add / Update Position** below to add your first position.")
+    else:
+        _pl_data = calculate_portfolio_pl(_positions, _price_map)
+        _pl_rows = _pl_data["positions"]
+
+        if _pl_rows:
+            # Summary metric cards
+            pc1, pc2, pc3, pc4 = st.columns(4)
+            _total_cost  = _pl_data["total_cost_basis"]
+            _total_val   = _pl_data["total_current_value"]
+            _total_gain  = _pl_data["total_unrealized_gain"]
+            _total_pct   = _pl_data["total_unrealized_gain_pct"]
+
+            pc1.metric("Total Cost Basis", _fmt_dollars(_total_cost))
+            pc2.metric("Current Value",    _fmt_dollars(_total_val))
+
+            _gain_color = "#4ADE80" if _total_gain >= 0 else "#F87171"
+            _gain_sign  = "+" if _total_gain >= 0 else ""
+            with pc3:
+                st.markdown(
+                    f'<div style="border:1px solid #2D3650;border-radius:8px;padding:10px 14px;'
+                    f'text-align:center;margin-top:4px">'
+                    f'<div style="font-size:11px;color:#94A3B8;margin-bottom:4px">Unrealized Gain/Loss</div>'
+                    f'<div style="font-size:20px;font-weight:700;color:{_gain_color}">'
+                    f'{_gain_sign}{_fmt_dollars(_total_gain)}</div></div>',
+                    unsafe_allow_html=True,
+                )
+            _pct_color = "#4ADE80" if _total_pct >= 0 else "#F87171"
+            _pct_sign  = "+" if _total_pct >= 0 else ""
+            with pc4:
+                st.markdown(
+                    f'<div style="border:1px solid #2D3650;border-radius:8px;padding:10px 14px;'
+                    f'text-align:center;margin-top:4px">'
+                    f'<div style="font-size:11px;color:#94A3B8;margin-bottom:4px">Total Return</div>'
+                    f'<div style="font-size:20px;font-weight:700;color:{_pct_color}">'
+                    f'{_pct_sign}{_total_pct:.2f}%</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("<div style='margin-top:10px'></div>", unsafe_allow_html=True)
+
+            # Positions table
+            _weights = _pl_data["position_weights"]
+            _pos_table = []
+            for _r in _pl_rows:
+                _tk = _r["ticker"]
+                _sig = _signal_map.get(_tk, "")
+                _pos_table.append({
+                    "Ticker":        _tk,
+                    "Shares":        _r["shares"],
+                    "Avg Cost":      _r["avg_cost"],
+                    "Current Price": _r["current_price"],
+                    "Cost Basis":    _r["cost_basis"],
+                    "Current Value": _r["current_value"],
+                    "Gain/Loss $":   _r["unrealized_gain"],
+                    "Gain/Loss %":   _r["unrealized_gain_pct"],
+                    "Weight %":      _weights.get(_tk, 0.0),
+                    "Signal":        _SIG.get(_sig, "—") if _sig else "—",
+                })
+
+            st.dataframe(
+                _pos_table,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Shares":        st.column_config.NumberColumn("Shares",        format="%.4f"),
+                    "Avg Cost":      st.column_config.NumberColumn("Avg Cost",      format="$%.2f"),
+                    "Current Price": st.column_config.NumberColumn("Current Price", format="$%.2f"),
+                    "Cost Basis":    st.column_config.NumberColumn("Cost Basis",    format="$%.2f"),
+                    "Current Value": st.column_config.NumberColumn("Current Value", format="$%.2f"),
+                    "Gain/Loss $":   st.column_config.NumberColumn("Gain/Loss $",   format="$%.2f"),
+                    "Gain/Loss %":   st.column_config.NumberColumn("Gain/Loss %",   format="%.2f%%"),
+                    "Weight %":      st.column_config.NumberColumn("Weight %",      format="%.1f%%"),
+                },
+            )
+
+            # Per-position remove buttons with confirm step
+            st.caption("Remove a position:")
+            _rm_cols = st.columns(min(len(_pl_rows), 6))
+            for _idx, _r in enumerate(_pl_rows):
+                _tk = _r["ticker"]
+                with _rm_cols[_idx % len(_rm_cols)]:
+                    if st.session_state.get("pos_confirm_delete") == _tk:
+                        st.caption(f"Remove **{_tk}**?")
+                        _yc, _nc = st.columns(2)
+                        with _yc:
+                            if st.button("Yes", key=f"pos_del_yes_{_tk}",
+                                         type="primary", use_container_width=True):
+                                delete_position(selected_portfolio, _tk)
+                                st.session_state.pos_confirm_delete = None
+                                st.rerun()
+                        with _nc:
+                            if st.button("No", key=f"pos_del_no_{_tk}",
+                                         use_container_width=True):
+                                st.session_state.pos_confirm_delete = None
+                                st.rerun()
+                    else:
+                        if st.button(f"✕ {_tk}", key=f"pos_rm_{_tk}",
+                                     use_container_width=True):
+                            st.session_state.pos_confirm_delete = _tk
+                            st.rerun()
+        else:
+            st.caption("None of the tracked positions have live price data available in this portfolio.")
+
+    # Add / Update Position form
+    with st.expander("➕ Add / Update Position"):
+        with st.form("add_position_form"):
+            _ticker_opts = get_tickers(selected_portfolio)
+            _pos_ticker   = st.selectbox("Ticker", options=_ticker_opts)
+            _pos_shares   = st.number_input("Shares", min_value=0.01, step=0.01, value=1.0)
+            _pos_avg_cost = st.number_input("Average Cost per Share ($)", min_value=0.01, step=0.01, value=1.0)
+            _pos_date     = st.date_input("Purchase Date", value=datetime.today().date())
+            _pos_notes    = st.text_input("Notes (optional)")
+            if st.form_submit_button("Save Position"):
+                _ok = save_position(
+                    selected_portfolio,
+                    _pos_ticker,
+                    _pos_shares,
+                    _pos_avg_cost,
+                    str(_pos_date),
+                    _pos_notes or None,
+                )
+                if _ok:
+                    st.success(f"Position saved for {_pos_ticker}.")
+                    st.rerun()
+                else:
+                    st.error("Failed to save position.")
 
     st.divider()
 
