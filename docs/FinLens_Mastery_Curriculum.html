@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinLens Mastery — A 20-Hour Curriculum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4EFE3;
+    --bg-2: #ECE5D2;
+    --paper: #FBF7EC;
+    --ink: #1A1814;
+    --ink-2: #3D3934;
+    --muted: #8B8377;
+    --rule: #D9D2BE;
+    --rule-2: #C7BEA6;
+    --accent: #B8512A;
+    --accent-soft: #E8C8B4;
+    --forest: #1F3A2E;
+    --forest-soft: #C9D4CB;
+    --gold: #A38338;
+    --red: #8E2A2A;
+    --red-soft: #E8C8C8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Manrope', -apple-system, sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(184,81,42,0.025) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(31,58,46,0.025) 0%, transparent 50%);
+  }
+
+  /* ============ PROGRESS BAR ============ */
+  .progress-rail {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--rule); z-index: 100;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent);
+    width: 0%; transition: width 0.3s ease;
+  }
+
+  /* ============ LAYOUT ============ */
+  .shell {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    position: sticky; top: 0;
+    height: 100vh;
+    background: var(--bg-2);
+    border-right: 1px solid var(--rule);
+    padding: 32px 28px;
+    overflow-y: auto;
+  }
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .brand-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  .nav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .nav ol {
+    list-style: none;
+    counter-reset: chap;
+  }
+  .nav li { counter-increment: chap; margin-bottom: 2px; }
+  .nav a {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 10px;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 13.5px;
+    line-height: 1.4;
+    border-radius: 4px;
+    transition: background 0.15s ease, color 0.15s ease;
+    border-left: 2px solid transparent;
+  }
+  .nav a::before {
+    content: counter(chap, upper-roman);
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 28px;
+    padding-top: 1px;
+  }
+  .nav a:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .nav a.active {
+    background: var(--paper);
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+  .nav a.complete::after {
+    content: '●';
+    margin-left: auto;
+    color: var(--forest);
+    font-size: 10px;
+    padding-top: 4px;
+  }
+  .nav-stats {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .nav-stats strong { color: var(--ink); font-weight: 600; }
+  .reset-btn {
+    margin-top: 12px;
+    background: none;
+    border: 1px solid var(--rule-2);
+    color: var(--muted);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .reset-btn:hover { background: var(--paper); color: var(--ink); }
+
+  /* ============ MAIN ============ */
+  main {
+    padding: 64px 80px 120px;
+    max-width: 920px;
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 56px;
+    margin-bottom: 64px;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-variation-settings: "SOFT" 50;
+    font-size: 64px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    margin-bottom: 20px;
+    color: var(--ink);
+  }
+  .hero-title em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  .hero-dek {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    max-width: 640px;
+    margin-bottom: 36px;
+  }
+  .hero-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+  }
+  .meta-cell .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .meta-cell .value {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--ink);
+  }
+
+  .preface {
+    margin-bottom: 80px;
+  }
+  .preface h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 28px;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .preface p { margin-bottom: 16px; max-width: 680px; color: var(--ink-2); }
+
+  /* ============ CHAPTER ============ */
+  .chapter {
+    margin-bottom: 96px;
+    scroll-margin-top: 24px;
+  }
+  .chapter-num {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .chapter-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  .chapter-dek {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-bottom: 28px;
+    max-width: 640px;
+  }
+  .chapter-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 40px;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .chapter-bar > * { display: flex; align-items: center; gap: 6px; }
+  .chapter-bar .sep {
+    width: 1px; height: 14px; background: var(--rule);
+    display: block;
+  }
+  .complete-btn {
+    margin-left: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule-2);
+    color: var(--ink-2);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .complete-btn:hover {
+    border-color: var(--forest);
+    color: var(--forest);
+  }
+  .complete-btn.done {
+    background: var(--forest);
+    color: var(--paper);
+    border-color: var(--forest);
+  }
+
+  /* ============ CONTENT TYPOGRAPHY ============ */
+  .chapter h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+    margin-top: 44px;
+    margin-bottom: 14px;
+    color: var(--ink);
+  }
+  .chapter h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 18px;
+    margin-top: 28px;
+    margin-bottom: 10px;
+    color: var(--ink-2);
+  }
+  .chapter p { margin-bottom: 16px; color: var(--ink-2); max-width: 680px; }
+  .chapter p strong { color: var(--ink); font-weight: 600; }
+  .chapter ul, .chapter ol {
+    margin: 0 0 18px 22px;
+    color: var(--ink-2);
+  }
+  .chapter li { margin-bottom: 6px; max-width: 660px; }
+
+  .lead {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink);
+    margin-bottom: 28px;
+    max-width: 680px;
+  }
+  .lead::first-letter {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 64px;
+    line-height: 0.85;
+    float: left;
+    padding: 6px 10px 0 0;
+    color: var(--accent);
+  }
+
+  /* ============ OBJECTIVES ============ */
+  .objectives {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 22px 26px;
+    margin-bottom: 36px;
+    border-radius: 2px;
+  }
+  .objectives .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .objectives ul { margin: 0; padding-left: 20px; }
+  .objectives li {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  /* ============ FORMULAS ============ */
+  .formula {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 22px 26px;
+    margin: 24px 0;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .formula .name {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--accent-soft);
+    margin-bottom: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .formula .eq { font-weight: 500; color: var(--paper); }
+  .formula .where {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(245,241,232,0.18);
+    font-size: 12.5px;
+    color: rgba(245,241,232,0.7);
+    font-family: 'Manrope', sans-serif;
+  }
+  .formula .where b { color: var(--accent-soft); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    padding: 18px 22px;
+    margin: 24px 0;
+    border-left: 3px solid;
+    background: var(--paper);
+    border-radius: 0 2px 2px 0;
+  }
+  .callout .tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .callout p { margin-bottom: 8px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.vc { border-color: var(--forest); }
+  .callout.vc .tag { color: var(--forest); }
+  .callout.flag { border-color: var(--red); background: #FCF3F0; }
+  .callout.flag .tag { color: var(--red); }
+  .callout.note { border-color: var(--gold); }
+  .callout.note .tag { color: var(--gold); }
+
+  /* ============ EXERCISE ============ */
+  .exercise {
+    background: var(--forest);
+    color: var(--paper);
+    padding: 32px 36px;
+    margin: 36px 0;
+    border-radius: 2px;
+    position: relative;
+  }
+  .exercise::before {
+    content: '';
+    position: absolute;
+    top: 14px; right: 14px; bottom: 14px; left: 14px;
+    border: 1px solid rgba(245,241,232,0.15);
+    pointer-events: none;
+  }
+  .exercise .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--accent-soft);
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .exercise h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 22px;
+    color: var(--paper);
+    margin: 0 0 14px;
+    position: relative;
+  }
+  .exercise p, .exercise li {
+    color: rgba(245,241,232,0.88);
+    position: relative;
+  }
+  .exercise ol { margin: 12px 0 0 22px; }
+  .exercise li { margin-bottom: 6px; }
+  .exercise .deliverable {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(245,241,232,0.18);
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--accent-soft);
+    position: relative;
+  }
+
+  /* ============ TABLES & FRAMEWORKS ============ */
+  .framework {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 22px 26px;
+    margin: 24px 0;
+    border-radius: 2px;
+  }
+  .framework .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .framework h5 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 17px;
+    margin-bottom: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px 10px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--ink-2);
+  }
+  td:first-child { font-weight: 600; color: var(--ink); width: 25%; }
+  td code, p code, li code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--bg-2);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--accent);
+  }
+
+  /* ============ EPILOGUE ============ */
+  .epilogue {
+    margin-top: 80px;
+    padding-top: 56px;
+    border-top: 1px solid var(--rule);
+    text-align: center;
+  }
+  .epilogue h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 36px;
+    margin-bottom: 16px;
+  }
+  .epilogue p {
+    max-width: 540px;
+    margin: 0 auto 16px;
+    color: var(--ink-2);
+  }
+  .epilogue .sig {
+    margin-top: 32px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* ============ SCROLLBAR ============ */
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1100px) {
+    .shell { grid-template-columns: 240px 1fr; }
+    main { padding: 48px 48px 100px; }
+    .hero-title { font-size: 48px; }
+  }
+  @media (max-width: 768px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar {
+      position: relative; height: auto;
+      border-right: none; border-bottom: 1px solid var(--rule);
+    }
+    main { padding: 32px 24px 80px; }
+    .hero-title { font-size: 36px; }
+    .hero-dek { font-size: 18px; }
+    .chapter-title { font-size: 32px; }
+    .hero-meta { grid-template-columns: 1fr; gap: 16px; }
+  }
+
+  /* ============ PRINT ============ */
+  @media print {
+    .sidebar, .progress-rail, .complete-btn, .reset-btn { display: none; }
+    .shell { grid-template-columns: 1fr; }
+    main { padding: 20px; max-width: 100%; }
+    .chapter { page-break-before: always; }
+    body { background: white; }
+    .formula, .exercise { background: #f5f5f5; color: #000; border: 1px solid #ccc; }
+    .formula .where, .exercise p, .exercise li, .exercise .deliverable { color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="brand">Fintelligence</div>
+  <div class="brand-meta">FinLens Mastery · 20 hrs</div>
+
+  <nav class="nav">
+    <div class="nav-label">Curriculum</div>
+    <ol id="navList">
+      <li><a href="#ch-1" data-ch="1">Reading the Three Statements</a></li>
+      <li><a href="#ch-2" data-ch="2">Intrinsic Valuation &amp; DCF</a></li>
+      <li><a href="#ch-3" data-ch="3">Technical &amp; Price Action</a></li>
+      <li><a href="#ch-4" data-ch="4">Earnings &amp; Estimate Analysis</a></li>
+      <li><a href="#ch-5" data-ch="5">SEC, SEDAR+ &amp; the MD&amp;A</a></li>
+      <li><a href="#ch-6" data-ch="6">Macro &amp; Market Sentiment</a></li>
+      <li><a href="#ch-7" data-ch="7">Portfolio Construction &amp; Risk</a></li>
+      <li><a href="#ch-8" data-ch="8">The Analyst Workflow</a></li>
+    </ol>
+  </nav>
+
+  <div class="nav-stats">
+    <div><strong id="completedCount">0</strong> of 8 chapters complete</div>
+    <div><strong id="hoursLogged">0</strong> of 20 hours logged</div>
+    <button class="reset-btn" onclick="resetProgress()">Reset progress</button>
+  </div>
+</aside>
+
+<main>
+
+<header class="hero">
+  <div class="hero-eyebrow">Fintelligence · Internal Curriculum · Edition I</div>
+  <h1 class="hero-title">The investor's <em>field manual</em>.</h1>
+  <p class="hero-dek">Twenty hours to move from intermediate analyst to operator-grade investor — built around the FinLens workflow, written for the path to venture capital.</p>
+  <div class="hero-meta">
+    <div class="meta-cell">
+      <div class="label">Duration</div>
+      <div class="value">20 hours · 8 chapters</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Level</div>
+      <div class="value">Intermediate → Advanced</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Method</div>
+      <div class="value">Read · Frame · Apply</div>
+    </div>
+  </div>
+</header>
+
+<section class="preface">
+  <h2>How to use this book</h2>
+  <p>Each chapter has three layers. The <strong>reading</strong> establishes the concept and the formulas. The <strong>framework</strong> distils it into something you can hold in your head during a deal review. The <strong>FinLens exercise</strong> forces you to apply it inside the tool you are building — that's the rep that actually sticks.</p>
+  <p>Mark a chapter complete only when the exercise is done and the deliverable exists. Theory you can't deploy is not knowledge; it's trivia.</p>
+  <p>The curriculum is sequenced so that each chapter depends on the one before it. Chapters I–II are the spine: if you can read a statement and value a business, everything else is finishing. Chapters III–VI are sensors — different signals to triangulate on. Chapter VII is how you assemble those signals into a portfolio. Chapter VIII is the operating loop you'll run as a VC.</p>
+</section>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER I -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-1">
+  <div class="chapter-num">Chapter I</div>
+  <h2 class="chapter-title">Reading the Three Statements</h2>
+  <p class="chapter-dek">Income, balance, cash flow — and the linkages that turn them into a single document.</p>
+  <div class="chapter-bar">
+    <span>Duration · 3 hrs</span><span class="sep"></span>
+    <span>Prerequisite · none</span><span class="sep"></span>
+    <span>FinLens tab · Analysis</span>
+    <button class="complete-btn" data-ch="1" onclick="toggleComplete(1)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Read an income statement, balance sheet, and cash flow statement as a single linked system.</li>
+      <li>Compute and interpret working capital, free cash flow, and accruals quality.</li>
+      <li>Spot three classes of earnings-quality red flags before they appear in the press.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Every business, no matter how complicated its story, reduces to three documents and the bridges between them. A founder pitching a Series B is selling you a narrative; the statements are the only place where that narrative becomes falsifiable. The first thing you do before any meeting is read them.</p>
+
+  <h3>1.1 · The Income Statement</h3>
+  <p>The income statement answers one question: <em>did the business make money during the period</em>. It walks from <strong>revenue</strong> down through cost of revenue, operating expenses, interest, and tax to arrive at <strong>net income</strong>. Each subtotal along the way tells you something different.</p>
+
+  <table>
+    <thead><tr><th>Line</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td>Revenue</td><td>Scale and growth. Compare YoY and QoQ on the same basis (organic vs reported).</td></tr>
+      <tr><td>Gross profit</td><td>Unit economics. Is this a software business or a logistics one in disguise?</td></tr>
+      <tr><td>Operating income (EBIT)</td><td>Profitability of the core business before financing decisions.</td></tr>
+      <tr><td>EBITDA</td><td>Operating cash generation before capital structure and depreciation policy.</td></tr>
+      <tr><td>Net income</td><td>Bottom line after everything — financing, tax, one-offs. Often the least useful number.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.2 · The Balance Sheet</h3>
+  <p>The balance sheet is a snapshot at a single point in time: <strong>assets = liabilities + equity</strong>. It tells you what the company owns, what it owes, and what's left for shareholders. The income statement tells you the speed; the balance sheet tells you the position.</p>
+  <p>The most useful derivation from the balance sheet is <strong>working capital</strong> — current assets minus current liabilities — and specifically its <em>change</em> period-over-period. A growing business that consumes working capital is fundamentally different from one that releases it.</p>
+
+  <div class="formula">
+    <div class="name">Working capital and its movement</div>
+    <div class="eq">Working Capital = Current Assets − Current Liabilities</div>
+    <div class="eq">Δ WC = WC<sub>t</sub> − WC<sub>t−1</sub></div>
+    <div class="where"><b>Positive Δ WC</b> means cash was tied up in receivables or inventory — a drag on cash flow.<br><b>Negative Δ WC</b> means cash was released — often by stretching payables or collecting faster.</div>
+  </div>
+
+  <h3>1.3 · The Cash Flow Statement</h3>
+  <p>Net income is an opinion. Cash is a fact. The cash flow statement reconciles the two by walking net income through three buckets:</p>
+  <ul>
+    <li><strong>Operating cash flow</strong> — the cash the core business actually generated. Start with net income, add back non-cash charges (D&amp;A), subtract changes in working capital.</li>
+    <li><strong>Investing cash flow</strong> — capex, acquisitions, and divestitures. This is where capital intensity lives.</li>
+    <li><strong>Financing cash flow</strong> — debt raised or repaid, equity issued or bought back, dividends paid.</li>
+  </ul>
+  <p>From these you build the single most important investor number: <strong>free cash flow</strong>.</p>
+
+  <div class="formula">
+    <div class="name">Free cash flow (unlevered, to the firm)</div>
+    <div class="eq">FCFF = EBIT × (1 − t) + D&amp;A − Δ WC − CapEx</div>
+    <div class="where"><b>EBIT × (1−t)</b> is operating profit on a taxed basis (NOPAT).<br><b>D&amp;A</b> added back because depreciation is non-cash.<br><b>Δ WC</b> subtracted because growth ties up cash.<br><b>CapEx</b> subtracted because maintaining and growing the asset base costs real money.</div>
+  </div>
+
+  <h3>1.4 · The Linkages</h3>
+  <p>The three statements are not independent. They are one system viewed from three angles, and the linkages are how you check that you actually understand a business:</p>
+  <ul>
+    <li>Net income on the income statement flows into <strong>retained earnings</strong> on the balance sheet.</li>
+    <li>Depreciation on the income statement accumulates on the balance sheet as <strong>accumulated depreciation</strong> against PP&amp;E.</li>
+    <li>Cash at the bottom of the cash flow statement matches the change in <strong>cash on the balance sheet</strong> between periods.</li>
+    <li>CapEx on the cash flow statement increases <strong>gross PP&amp;E</strong> on the balance sheet.</li>
+  </ul>
+  <p>If you cannot trace each of these by hand on a real 10-K, you cannot yet read statements. The good news is that once you can, you can do it for any company in any sector.</p>
+
+  <h3>1.5 · Quality of Earnings</h3>
+  <p>Companies have wide latitude in <em>when</em> they recognise revenue and <em>how</em> they categorise expenses. Most use this latitude reasonably. Some don't. The gap between reported earnings and cash earnings — the <strong>accruals</strong> — is where you look.</p>
+
+  <div class="formula">
+    <div class="name">Accruals ratio (Sloan)</div>
+    <div class="eq">Accruals = Net Income − Cash Flow from Operations</div>
+    <div class="eq">Accruals Ratio = Accruals / Average Total Assets</div>
+    <div class="where">Persistently high accruals ratios are associated with lower future returns. Translation: when reported profit consistently outruns cash profit, the reported number is borrowing from the future.</div>
+  </div>
+
+  <div class="callout flag">
+    <div class="tag">Red flags</div>
+    <p><strong>Revenue growing faster than receivables for many quarters, then receivables suddenly accelerate.</strong> Channel stuffing or aggressive recognition.</p>
+    <p><strong>Capitalising costs that peers expense.</strong> Inflates current earnings, shows up later as impairment.</p>
+    <p><strong>Frequent non-GAAP exclusions that are described as "one-time" but recur every year.</strong> Restructuring charges every year are not restructuring; they're operating expenses.</p>
+    <p><strong>Auditor changes, CFO changes, and 10-K filing delays</strong> cluster around problems before the problems are public.</p>
+  </div>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens</div>
+    <p>In venture, the statements look different — most early companies are pre-profit and burning cash. Your job there is to read the <strong>unit economics</strong> embedded in the income statement (gross margin, contribution margin, cohort retention) and the <strong>runway</strong> embedded in the cash flow plus balance sheet. Burn × time-to-default is your investability ceiling. Everything else is narrative.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1.5 hrs</div>
+    <h4>Take a real company through the three statements</h4>
+    <p>Pick one ticker you don't already know well. Use FinLens to pull its most recent 10-K (EDGAR) or annual report (SEDAR+).</p>
+    <ol>
+      <li>Load the filing in the <strong>Analysis</strong> tab. Read the income statement first — write down YoY revenue growth, gross margin, operating margin, and net margin. Comment on whether growth was organic or acquired.</li>
+      <li>Open the balance sheet section. Compute working capital this year and last. Note Δ WC and what drove it (receivables? inventory? payables?).</li>
+      <li>Open the cash flow statement. Reconcile net income to operating cash flow line by line. Compute FCFF using the formula above.</li>
+      <li>Trace one linkage: confirm net income flowed to retained earnings, or that CapEx matches the change in gross PP&amp;E.</li>
+      <li>Run the Sloan accruals ratio. Flag whether it's elevated.</li>
+    </ol>
+    <div class="deliverable">Deliverable: a one-page note in your own words covering growth, margins, working capital story, FCFF, accruals flag, and one question you would ask the CFO.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER II -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-2">
+  <div class="chapter-num">Chapter II</div>
+  <h2 class="chapter-title">Intrinsic Valuation &amp; DCF</h2>
+  <p class="chapter-dek">What is a business worth — and why almost every published target price is a multiples opinion dressed up as a model.</p>
+  <div class="chapter-bar">
+    <span>Duration · 3 hrs</span><span class="sep"></span>
+    <span>Prerequisite · Chapter I</span><span class="sep"></span>
+    <span>FinLens tab · DCF Calculator</span>
+    <button class="complete-btn" data-ch="2" onclick="toggleComplete(2)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Build a DCF from first principles: project FCF, derive WACC, compute terminal value, discount, and stress test.</li>
+      <li>Know when to use EV/EBITDA, P/E, P/S, or P/B — and when not to.</li>
+      <li>Translate intrinsic value into a margin of safety and a position-sizing decision.</li>
+    </ul>
+  </div>
+
+  <p class="lead">A business is worth the present value of the cash it will return to its owners over its life. Every valuation method — DCF, multiples, dividend discount, sum-of-the-parts — is an attempt to estimate that one number. The DCF makes the assumptions explicit. The multiples shortcuts hide them.</p>
+
+  <h3>2.1 · The DCF in One Equation</h3>
+  <div class="formula">
+    <div class="name">Discounted cash flow — enterprise value</div>
+    <div class="eq">EV = Σ [ FCFF<sub>t</sub> / (1 + WACC)<sup>t</sup> ] + TV / (1 + WACC)<sup>n</sup></div>
+    <div class="eq">Equity Value = EV − Net Debt</div>
+    <div class="eq">Fair Value per Share = Equity Value / Diluted Shares</div>
+    <div class="where"><b>FCFF<sub>t</sub></b> is unlevered free cash flow in year <i>t</i>.<br><b>WACC</b> is the weighted average cost of capital (your discount rate).<br><b>TV</b> is terminal value at year <i>n</i>, capturing all cash flows beyond the forecast.</div>
+  </div>
+
+  <h3>2.2 · Projecting FCF</h3>
+  <p>A clean DCF forecasts five to ten years. Start with the revenue line, then build down: gross margin → operating margin → tax → working capital → CapEx → FCFF. Each driver should be defensible — anchored in history, peer benchmarks, or management guidance, and bounded by reality (revenue cannot grow at 40% forever).</p>
+  <p>Most DCFs fail at the revenue line. If your growth assumption is wrong by 200 basis points, your terminal value is wrong by an order of magnitude.</p>
+
+  <h3>2.3 · WACC</h3>
+  <div class="formula">
+    <div class="name">Weighted average cost of capital</div>
+    <div class="eq">WACC = (E/V) × R<sub>e</sub> + (D/V) × R<sub>d</sub> × (1 − t)</div>
+    <div class="eq">R<sub>e</sub> = R<sub>f</sub> + β × ERP   <span style="opacity:0.6">(CAPM)</span></div>
+    <div class="where"><b>R<sub>f</sub></b> is the risk-free rate — usually the 10Y Treasury.<br><b>β</b> is the stock's sensitivity to the market.<br><b>ERP</b> is the equity risk premium — empirically ~5–6% in mature markets.<br><b>R<sub>d</sub></b> is the company's cost of debt, after-tax.</div>
+  </div>
+  <p>The biggest mistake in WACC is using the company's <strong>book</strong> capital structure instead of its <strong>market</strong> structure. Equity is always at market value. Debt is at market or par-approximation.</p>
+
+  <h3>2.4 · Terminal Value</h3>
+  <p>Terminal value typically represents 60–80% of total DCF value. There are two ways to compute it and you should always do both as a sanity check.</p>
+  <div class="formula">
+    <div class="name">Gordon growth (perpetuity)</div>
+    <div class="eq">TV = FCFF<sub>n+1</sub> / (WACC − g)</div>
+    <div class="where"><b>g</b> is the perpetual growth rate. It must be ≤ long-run nominal GDP growth (~2–3% in developed markets). 4%+ is a flag.</div>
+  </div>
+  <div class="formula">
+    <div class="name">Exit multiple</div>
+    <div class="eq">TV = EBITDA<sub>n</sub> × Exit Multiple</div>
+    <div class="where">The exit multiple should reflect mature-state comparables, not today's growth multiple. A 25× SaaS multiple is not a terminal multiple.</div>
+  </div>
+
+  <h3>2.5 · Sensitivity and Margin of Safety</h3>
+  <p>A point estimate from a DCF is a lie. The real output is a <strong>range</strong> — a two-way sensitivity table varying WACC and terminal growth, or revenue growth and operating margin. The intersection of plausible assumptions is your valuation cone.</p>
+  <p>Benjamin Graham's <strong>margin of safety</strong> is the distance between fair value and market price expressed as a percentage. A 30% margin of safety on a stable business and 50% on a cyclical or speculative one is a defensible default.</p>
+
+  <div class="formula">
+    <div class="name">Margin of safety</div>
+    <div class="eq">MoS = (Fair Value − Market Price) / Fair Value</div>
+    <div class="where">Positive MoS = undervalued. The size of the position should scale with the size of the MoS and the conviction in the inputs.</div>
+  </div>
+
+  <h3>2.6 · Multiples: The Shortcut</h3>
+  <p>Multiples are a DCF compressed into a single ratio. They are useful for cross-sectional comparison and a sanity check on a DCF — but they hide their assumptions, so use them with discipline.</p>
+  <table>
+    <thead><tr><th>Multiple</th><th>Use when</th><th>Beware</th></tr></thead>
+    <tbody>
+      <tr><td>EV / EBITDA</td><td>Comparing capital structures and capital intensities. Standard for mature businesses.</td><td>Treats D&amp;A as fake — it's not, especially for asset-heavy firms.</td></tr>
+      <tr><td>P / E</td><td>Mature, stable earners. Easy to communicate.</td><td>Dirty by capital structure and one-offs. Unusable for loss-making firms.</td></tr>
+      <tr><td>EV / Sales</td><td>Early-stage growth where margins are not yet stable.</td><td>Says nothing about whether the revenue is profitable.</td></tr>
+      <tr><td>P / B</td><td>Banks, insurance, asset-heavy financials.</td><td>Useless for asset-light businesses (software, services).</td></tr>
+      <tr><td>EV / Gross Profit</td><td>SaaS comparisons where revenue mix varies.</td><td>Less standardised, harder to source comps.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens</div>
+    <p>Early-stage venture rarely runs DCFs. Valuation is set by <strong>negotiated price</strong>, anchored to comparable rounds, ownership targets, and exit-multiple math working backward. The DCF still matters — but as a thought experiment about what the exit needs to look like for the round to clear a fund-returning return. If a Series A needs a 30× exit to clear hurdle, that's a real-world constraint, not a model output.</p>
+  </div>
+
+  <div class="callout flag">
+    <div class="tag">Common mistakes</div>
+    <p><strong>Reusing the same WACC for every company.</strong> WACC is firm-specific.</p>
+    <p><strong>Terminal growth above long-run GDP.</strong> Mathematically requires the company to eventually become the economy.</p>
+    <p><strong>Discounting nominal cash flows at a real rate, or vice versa.</strong> Match nominal-to-nominal.</p>
+    <p><strong>Ignoring dilution.</strong> Use diluted shares outstanding, and forecast share count growth for high-issuance firms.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1.5 hrs</div>
+    <h4>Build a DCF from a real filing</h4>
+    <p>Use the same ticker as Chapter I. Open the <strong>DCF Calculator</strong> in FinLens.</p>
+    <ol>
+      <li>From the filing, pull historical revenue, operating margin, tax rate, D&amp;A, CapEx, and Δ WC for the last 3–5 years.</li>
+      <li>Project five years forward. Justify each driver in writing — what is your revenue growth based on? What is your terminal margin?</li>
+      <li>Compute WACC. Pull β from yfinance, use current 10Y rate, assume 5.5% ERP. Estimate after-tax cost of debt from the filing's interest expense.</li>
+      <li>Compute terminal value <em>both</em> ways. Reconcile the gap.</li>
+      <li>Discount, add up, subtract net debt, divide by diluted shares. Compare to market price. Compute MoS.</li>
+      <li>Build a 5×5 sensitivity grid varying WACC ±1% and terminal growth ±1%.</li>
+    </ol>
+    <div class="deliverable">Deliverable: one-page DCF summary with the sensitivity grid, your fair value range, and a one-line buy/hold/avoid recommendation.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER III -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-3">
+  <div class="chapter-num">Chapter III</div>
+  <h2 class="chapter-title">Technical &amp; Price Action</h2>
+  <p class="chapter-dek">Why even fundamental investors should know how the tape reads.</p>
+  <div class="chapter-bar">
+    <span>Duration · 2 hrs</span><span class="sep"></span>
+    <span>Prerequisite · none</span><span class="sep"></span>
+    <span>FinLens tab · Stock Tracker</span>
+    <button class="complete-btn" data-ch="3" onclick="toggleComplete(3)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Read trend, momentum, and volume on a chart without ceremony.</li>
+      <li>Use technicals as <em>entry timing</em> on a fundamentally-derived thesis, not as a thesis themselves.</li>
+      <li>Know the three indicators worth tracking and ignore the rest.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Pure technical analysis is one of the most heavily studied — and most often disappointing — domains in finance. As a standalone discipline it has weak out-of-sample evidence. But as a layer over a fundamental view, technicals do one useful job: they tell you what the marginal buyer or seller is currently doing, which is information your DCF doesn't have.</p>
+
+  <h3>3.1 · Trend</h3>
+  <p>The single most useful technical concept is trend. A stock in a clean uptrend tends to keep trending; a stock breaking a long-held trendline is information. The simplest way to define trend is the <strong>200-day moving average</strong> — above it the stock is "in trend," below it it's not.</p>
+  <div class="formula">
+    <div class="name">Simple and exponential moving averages</div>
+    <div class="eq">SMA<sub>n</sub> = (P<sub>1</sub> + P<sub>2</sub> + ... + P<sub>n</sub>) / n</div>
+    <div class="eq">EMA<sub>t</sub> = (P<sub>t</sub> × α) + (EMA<sub>t−1</sub> × (1 − α))   where α = 2 / (n + 1)</div>
+    <div class="where">SMA is equal-weighted across the lookback window. EMA weights recent prices more heavily and reacts faster. The 50-day and 200-day are the most-watched levels.</div>
+  </div>
+
+  <h3>3.2 · Momentum</h3>
+  <p>Momentum measures the <em>rate</em> of price change. The two indicators worth knowing are RSI and MACD. Both compress raw price moves into a bounded oscillator that's easier to read than the price itself.</p>
+  <div class="formula">
+    <div class="name">RSI · Relative Strength Index</div>
+    <div class="eq">RS = avg gain (n periods) / avg loss (n periods)</div>
+    <div class="eq">RSI = 100 − (100 / (1 + RS))</div>
+    <div class="where">Bounded 0–100. Standard period n = 14. Above 70 is conventionally "overbought," below 30 "oversold" — but in strong trends RSI can stay extended for weeks. Divergences (price makes a new high, RSI doesn't) are the more reliable signal.</div>
+  </div>
+  <div class="formula">
+    <div class="name">MACD · Moving Average Convergence Divergence</div>
+    <div class="eq">MACD line = EMA<sub>12</sub> − EMA<sub>26</sub></div>
+    <div class="eq">Signal = EMA<sub>9</sub>(MACD line)</div>
+    <div class="eq">Histogram = MACD line − Signal</div>
+    <div class="where">A crossover where MACD crosses above signal is bullish; below is bearish. Histogram size shows the strength of the move.</div>
+  </div>
+
+  <h3>3.3 · Volume</h3>
+  <p>Price without volume is gossip. A breakout on no volume is suspect; a breakdown on heavy volume is information. The rule of thumb: volume on up-days expanding relative to down-days means accumulation; the inverse is distribution.</p>
+
+  <h3>3.4 · Support, Resistance, and Patterns</h3>
+  <p>Support and resistance are price levels where supply or demand previously clustered. They are real because they are remembered — by the algorithms and the humans who set the orders. They are not magic; they fail regularly. Treat them as <em>zones</em>, not lines, and weight them by how many times they've been tested.</p>
+  <p>Most chart patterns (head-and-shoulders, cup-and-handle, flags) are post-hoc descriptions that work better in retrospect than in real time. Be skeptical of pattern-spotting as a substitute for thinking.</p>
+
+  <div class="callout note">
+    <div class="tag">Use case</div>
+    <p>You've done the DCF. Fair value is $120, current price $95, 21% margin of safety. Should you buy today, or wait? Technicals answer that. If the stock is in a clear downtrend on rising volume, you're catching a falling knife — wait for the trend to stabilise or set a scaled entry. If it's already bouncing off support with volume confirmation, size up.</p>
+  </div>
+
+  <div class="callout flag">
+    <div class="tag">What technicals cannot do</div>
+    <p><strong>Tell you what a business is worth.</strong> They have no concept of cash flow, only of price.</p>
+    <p><strong>Replace a thesis.</strong> "Stock went up 5% on volume" is not a reason to buy.</p>
+    <p><strong>Work in illiquid names.</strong> Patterns require enough participants to be meaningful.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1 hr</div>
+    <h4>Read three charts</h4>
+    <p>Open the <strong>Stock Tracker</strong> tab in FinLens. Pick three tickers: one in a clear uptrend, one in a clear downtrend, one in a sideways range.</p>
+    <ol>
+      <li>For each, identify the 50-day and 200-day moving averages and the trend they imply.</li>
+      <li>Note current RSI. Is it extended? Is there a divergence with price?</li>
+      <li>Mark two support and two resistance zones based on the last 12 months.</li>
+      <li>Compare volume on up-days vs down-days over the last month — accumulation or distribution?</li>
+    </ol>
+    <div class="deliverable">Deliverable: a one-paragraph "tape read" per ticker — trend, momentum, volume, and what you'd want to see before buying.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER IV -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-4">
+  <div class="chapter-num">Chapter IV</div>
+  <h2 class="chapter-title">Earnings &amp; Estimate Analysis</h2>
+  <p class="chapter-dek">Four times a year, every position you hold gets repriced — and the variance from consensus is half the game.</p>
+  <div class="chapter-bar">
+    <span>Duration · 2 hrs</span><span class="sep"></span>
+    <span>Prerequisite · Chapter I</span><span class="sep"></span>
+    <span>FinLens tab · Stock Tracker → Earnings</span>
+    <button class="complete-btn" data-ch="4" onclick="toggleComplete(4)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Decompose an earnings report into beats, misses, and guidance — and weight them correctly.</li>
+      <li>Read an earnings call for the things management does not want to say.</li>
+      <li>Track analyst revisions as a leading indicator of price.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Markets do not price the absolute level of earnings. They price the <em>delta</em> between actuals and expectations. A company that beats consensus on revenue and EPS but guides next quarter below expectations can be down 15% in after-hours. The number you care about is the surprise, not the print.</p>
+
+  <h3>4.1 · The Anatomy of an Earnings Print</h3>
+  <p>Every quarterly print has the same three components. Investors weight them differently, but in roughly this order:</p>
+  <table>
+    <thead><tr><th>Component</th><th>Importance</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Forward guidance</td><td>Highest</td><td>Markets are forward-looking. Guidance resets the consensus that drives the next 90 days of price action.</td></tr>
+      <tr><td>Revenue beat/miss</td><td>High</td><td>Hardest line to manage. A revenue miss is usually demand.</td></tr>
+      <tr><td>EPS beat/miss</td><td>Medium</td><td>Most managed line. Can be hit through buybacks, tax rate, or one-offs.</td></tr>
+      <tr><td>Margins and segment mix</td><td>Medium</td><td>Tells you whether growth came from the high-margin or low-margin business.</td></tr>
+      <tr><td>Cash flow</td><td>Underrated</td><td>The one number that's hardest to fake. Watch when it diverges from earnings.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.2 · Analyst Revisions</h3>
+  <p>Sell-side analysts publish estimates. Those estimates move. The <strong>direction and velocity of revisions</strong> tend to lead price action by weeks to months. Stocks with upward-revising estimates outperform; stocks with downward revisions underperform. This is one of the most robust factor signals in equity markets.</p>
+  <div class="formula">
+    <div class="name">Revision metrics</div>
+    <div class="eq">Revision % = (Estimate<sub>now</sub> − Estimate<sub>30d ago</sub>) / |Estimate<sub>30d ago</sub>|</div>
+    <div class="eq">Revision breadth = (#up − #down) / (#up + #down)</div>
+    <div class="where">Track 30-day and 90-day revision percentages. Persistent positive revisions across multiple analysts (broad consensus moving up) is more durable than a single bullish revision.</div>
+  </div>
+
+  <h3>4.3 · Reading the Earnings Call</h3>
+  <p>The press release gives you the numbers. The call gives you the colour. The transcript is more valuable than the deck, and the Q&amp;A portion is more valuable than the prepared remarks.</p>
+  <p>What to look for:</p>
+  <ul>
+    <li><strong>Hedging language.</strong> "We feel cautiously optimistic about the back half" is not the same as "we expect a strong Q4." Count the qualifiers.</li>
+    <li><strong>Repeated questions.</strong> If three analysts ask about the same thing in slightly different ways, they don't believe management's first answer. That topic is the live wire.</li>
+    <li><strong>Refusals to answer.</strong> "We don't break out that metric" is a non-trivial signal — especially if the company used to break it out.</li>
+    <li><strong>Tone of the CFO.</strong> CEOs sell vision; CFOs sell numbers. CFO discomfort is a stronger signal than CEO discomfort.</li>
+    <li><strong>Footnote changes.</strong> The 10-Q footnotes often contain the operational reality that the call narrative is trying to smooth over.</li>
+  </ul>
+
+  <h3>4.4 · Post-Earnings Drift</h3>
+  <p>One of the most studied anomalies in finance: stocks that beat expectations tend to keep outperforming for 30–60 days; stocks that miss tend to keep underperforming. Markets under-react to earnings surprises in the short run. This is exploitable, but the edge is narrow and the implementation is unforgiving (transaction costs eat returns).</p>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens</div>
+    <p>Private companies don't have earnings calls, but they do have <strong>investor updates</strong> — monthly or quarterly memos to the cap table. Read them the same way. What metrics is the founder choosing to highlight? What did they emphasise last quarter that's gone quiet this quarter? Founders, like CEOs, route attention. The omitted metric is often the most informative one.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1 hr</div>
+    <h4>Decompose one quarterly print</h4>
+    <p>Pick a company that reported in the last 30 days. Pull the press release, the earnings call transcript, and a sell-side reaction note.</p>
+    <ol>
+      <li>Write down: revenue actual vs consensus, EPS actual vs consensus, guidance vs prior guidance.</li>
+      <li>Identify the one number that drove the stock's after-hours reaction. (Hint: it's almost never EPS.)</li>
+      <li>Read the Q&amp;A portion of the call. List three topics analysts pushed on. What did management not answer cleanly?</li>
+      <li>Check analyst revisions in the days after. Net up or net down? By how much?</li>
+    </ol>
+    <div class="deliverable">Deliverable: a 200-word post-print note: what beat, what missed, what changed, and what you would do with the position if you owned it.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER V -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-5">
+  <div class="chapter-num">Chapter V</div>
+  <h2 class="chapter-title">SEC, SEDAR+ &amp; the MD&amp;A</h2>
+  <p class="chapter-dek">The filings most investors skim and the few sections inside them that actually matter.</p>
+  <div class="chapter-bar">
+    <span>Duration · 3 hrs</span><span class="sep"></span>
+    <span>Prerequisite · Chapter I</span><span class="sep"></span>
+    <span>FinLens tab · Analysis → Filing Search</span>
+    <button class="complete-btn" data-ch="5" onclick="toggleComplete(5)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Navigate a 10-K and a 10-Q like a map — knowing which sections to read deeply and which to skim.</li>
+      <li>Read MD&amp;A and risk factors for what's <em>new</em>, not what's repeated.</li>
+      <li>Understand the Canadian filing ecosystem (SEDAR+) and how it differs from EDGAR.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Most investors read filings the way most students read textbooks — front to back, until they get tired, which is usually somewhere in the middle. This is the wrong approach. A 10-K is a reference document, not a narrative. You read it the way a lawyer reads a contract: targeted, looking for specific signals, comparing against last year's version line by line.</p>
+
+  <h3>5.1 · The 10-K, Section by Section</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Read</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Item 1 · Business</td><td>Once, carefully</td><td>The clearest summary of the business model you'll get. Re-read only when the business changes.</td></tr>
+      <tr><td>Item 1A · Risk Factors</td><td>Diff vs last year</td><td>Most is boilerplate. The <em>new</em> language, or risks that were promoted from later in the list, is the signal.</td></tr>
+      <tr><td>Item 3 · Legal Proceedings</td><td>Skim</td><td>Material litigation will be flagged. Glance for new cases or changes in damages estimates.</td></tr>
+      <tr><td>Item 7 · MD&amp;A</td><td>Deeply, every time</td><td>Management's own explanation of results, liquidity, and outlook. The most useful section in the filing.</td></tr>
+      <tr><td>Item 7A · Market Risk</td><td>For financial firms</td><td>Sensitivity to rates, FX, commodities. Critical for banks, insurers, commodity producers.</td></tr>
+      <tr><td>Item 8 · Financial Statements &amp; Notes</td><td>Notes deeply</td><td>The statements are the headline. The footnotes are where the dead bodies are. Always read revenue recognition, debt, leases, and tax notes.</td></tr>
+      <tr><td>Item 9A · Controls &amp; Procedures</td><td>Diff vs last year</td><td>A material weakness disclosure is a five-alarm signal.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 · Reading the MD&amp;A</h3>
+  <p>The Management's Discussion and Analysis is the place where management has to walk you through the numbers in plain English. SEC rules require coverage of <strong>results of operations</strong>, <strong>liquidity and capital resources</strong>, and <strong>critical accounting estimates</strong>. Read in that order.</p>
+  <p>The discipline: do not let management's framing become your framing. They will lead with growth in the segment that grew and bury declines in subordinate clauses. Read with a highlighter and a list of comparable benchmarks.</p>
+
+  <div class="framework">
+    <div class="label">Framework · The Four-Question MD&amp;A Read</div>
+    <h5>Ask the document these questions before believing its narrative</h5>
+    <ol>
+      <li><strong>What changed?</strong> Compare current MD&amp;A language to the prior year's. Sections that were re-written are the live story.</li>
+      <li><strong>What's missing?</strong> Was there a metric in last year's MD&amp;A that's quietly absent this year? Disclosure regressions are signals.</li>
+      <li><strong>Does cash agree with the story?</strong> If the narrative says "strong demand," does OCF agree? If receivables grew faster than revenue, the narrative is at war with the statement.</li>
+      <li><strong>What are they preparing investors for?</strong> Management uses MD&amp;A to set expectations. Hedging language in the liquidity section often precedes a capital raise.</li>
+    </ol>
+  </div>
+
+  <h3>5.3 · The 10-Q</h3>
+  <p>The 10-Q is the quarterly cousin of the 10-K — shorter, unaudited, but with one critical feature: it shows you <strong>three months of change</strong> faster than the annual cycle. The Q is where stories first move. The K is where they're confirmed.</p>
+  <p>The 10-Q's most useful section is, again, the MD&amp;A — particularly the QoQ comparison. Many investors only look at YoY. The QoQ trend reveals turning points the YoY masks.</p>
+
+  <h3>5.4 · The 8-K</h3>
+  <p>The 8-K is the <em>material event</em> filing. Required within four business days of a triggering event. Categories include: acquisitions, departures of officers, changes in auditor, bankruptcy, results of operations (earnings releases are typically filed under 8-K Item 2.02), and amendments to material agreements.</p>
+  <p>The 8-K is your daily filing-monitoring tool. Most are routine. The non-routine ones — auditor change, CFO departure, debt covenant amendment — are signals worth a deep dive.</p>
+
+  <h3>5.5 · SEDAR+ — The Canadian Stack</h3>
+  <p>Canadian issuers file with provincial securities regulators through <strong>SEDAR+</strong> (the successor to SEDAR, launched 2023). The architecture is different from EDGAR but the function is similar.</p>
+  <table>
+    <thead><tr><th>SEDAR+ Document</th><th>U.S. Equivalent</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Annual Information Form (AIF)</td><td>~10-K (Items 1–3)</td><td>Business description, risk factors. Required for reporting issuers.</td></tr>
+      <tr><td>Annual MD&amp;A</td><td>10-K Item 7</td><td>Filed alongside annual financials.</td></tr>
+      <tr><td>Audited Annual Financial Statements</td><td>10-K Item 8</td><td>Prepared under IFRS (not US GAAP). Be alert to differences.</td></tr>
+      <tr><td>Interim MD&amp;A &amp; Financials</td><td>10-Q</td><td>Quarterly. Same diff-vs-prior discipline applies.</td></tr>
+      <tr><td>Material Change Report</td><td>8-K</td><td>Filed within 10 days of a material change.</td></tr>
+      <tr><td>Management Information Circular</td><td>Proxy (DEF 14A)</td><td>Exec compensation, related-party transactions, governance.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout note">
+    <div class="tag">IFRS vs GAAP — the differences that matter</div>
+    <p><strong>Inventory:</strong> IFRS prohibits LIFO; US GAAP allows it. Comparing a US firm using LIFO to a Canadian firm is apples-to-oranges on COGS.</p>
+    <p><strong>Development costs:</strong> IFRS capitalises certain development costs; GAAP expenses most R&amp;D. This inflates IFRS earnings and assets relative to GAAP for R&amp;D-heavy firms.</p>
+    <p><strong>Impairments:</strong> IFRS allows reversal of impairments under certain conditions; GAAP does not.</p>
+    <p><strong>Lease accounting:</strong> Largely converged post-ASC 842 and IFRS 16, but operating-lease income statement treatment still differs.</p>
+  </div>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens</div>
+    <p>Public filings teach you what to demand in private deals. Diligence on a private company should target the same questions — revenue recognition policy, customer concentration, cap table dilution mechanics, related-party transactions — but the data is non-standard. The investor who knows what a 10-K is <em>supposed</em> to disclose can build a much sharper private DD checklist.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1.5 hrs</div>
+    <h4>Two filings, one diff</h4>
+    <p>Pick one US ticker and one Canadian ticker, ideally in the same sector. Pull the latest 10-K from EDGAR and the latest AIF + annual MD&amp;A from SEDAR+ via the FinLens Filing Search.</p>
+    <ol>
+      <li>Read each business description (Item 1 / AIF). Write a one-sentence summary of each.</li>
+      <li>Diff the risk factors against the prior year's filing for each. List the three most material additions or rewordings.</li>
+      <li>Read each MD&amp;A using the four-question framework. Identify: what changed in narrative, what cash flow says vs narrative, what management is preparing investors for.</li>
+      <li>Note one accounting-policy difference (IFRS vs GAAP) that matters for the comparison.</li>
+    </ol>
+    <div class="deliverable">Deliverable: a one-page comparative note — what each filing says, what each filing won't say, and the cleanest investment angle on either name.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER VI -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-6">
+  <div class="chapter-num">Chapter VI</div>
+  <h2 class="chapter-title">Macro &amp; Market Sentiment</h2>
+  <p class="chapter-dek">The weather you cannot forecast but must dress for — and where the alternative-data crowd is genuinely useful.</p>
+  <div class="chapter-bar">
+    <span>Duration · 2 hrs</span><span class="sep"></span>
+    <span>Prerequisite · none</span><span class="sep"></span>
+    <span>FinLens tab · Market Sentiment</span>
+    <button class="complete-btn" data-ch="6" onclick="toggleComplete(6)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Know the four macro variables that actually move equity valuations.</li>
+      <li>Read the yield curve, credit spreads, and the VIX as a regime indicator.</li>
+      <li>Use alternative sentiment data (Reddit, short interest, prediction markets) without overweighting it.</li>
+    </ul>
+  </div>
+
+  <p class="lead">No one forecasts macro reliably. The ones who claim to have either gotten lucky once or kept the same view long enough that the world rotated underneath it. The job isn't prediction. The job is to know what regime you're in, dress accordingly, and recognise when the regime shifts.</p>
+
+  <h3>6.1 · The Four Variables That Move Equities</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Mechanism</th><th>Watch</th></tr></thead>
+    <tbody>
+      <tr><td>Real interest rates</td><td>The discount rate in every DCF. When rates rise, long-duration assets (growth equities, unprofitable tech) fall first.</td><td>10-year Treasury yield minus 10-year breakeven inflation.</td></tr>
+      <tr><td>Inflation</td><td>Erodes real earnings; squeezes margins for firms without pricing power.</td><td>CPI, core PCE, wage growth.</td></tr>
+      <tr><td>Credit conditions</td><td>The marginal price of corporate borrowing. Wider spreads → tighter capital → falling valuations.</td><td>Investment-grade and high-yield credit spreads (OAS).</td></tr>
+      <tr><td>Growth</td><td>Determines whether topline forecasts are achievable. Recession compresses both earnings and multiples.</td><td>ISM PMIs, payrolls, real GDP.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.2 · The Yield Curve as Regime Indicator</h3>
+  <p>The slope of the Treasury curve — typically 10-year yield minus 2-year — is one of the most-watched recession signals. An <strong>inverted curve</strong> (2y &gt; 10y) has preceded every U.S. recession in the modern era, usually with a lead of 12–18 months. False positives are rare but real (1998).</p>
+  <p>The curve does not cause recessions — it reflects the bond market's expectation that the Fed will cut rates in response to a slowdown. Inversion is the prediction; the steepening that follows (as the front-end falls faster than the long-end) is often the actual onset.</p>
+
+  <h3>6.3 · Volatility &amp; Credit Spreads</h3>
+  <div class="formula">
+    <div class="name">Two regime indicators worth a daily glance</div>
+    <div class="eq">VIX = Implied 30-day volatility on S&amp;P 500 options (annualised, %)</div>
+    <div class="eq">HY OAS = Option-adjusted spread of high-yield corporate bonds vs Treasuries (bps)</div>
+    <div class="where"><b>VIX below 15:</b> complacency. <b>15–25:</b> normal. <b>25–35:</b> stress. <b>35+:</b> panic.<br><b>HY OAS below 350 bps:</b> credit is open, capital is cheap. <b>500+:</b> credit is closing. <b>800+:</b> recessionary.</div>
+  </div>
+
+  <h3>6.4 · Sentiment — Surveys and Positioning</h3>
+  <p>Sentiment is contrarian at extremes. When the AAII bull-bear survey shows record bullishness or the put/call ratio shows record speculation, forward returns are typically below average. The mechanism is simple: when everyone is already positioned, there's no marginal buyer left.</p>
+  <ul>
+    <li><strong>AAII sentiment survey</strong> — retail bullishness, weekly. Extremes are the signal.</li>
+    <li><strong>Put/call ratio</strong> — equity-only daily put volume divided by call volume. Low values = speculative excess.</li>
+    <li><strong>NAAIM exposure index</strong> — active manager net equity exposure. Useful for institutional positioning.</li>
+    <li><strong>Commitment of Traders (COT)</strong> — futures positioning across speculators and commercials. Best for commodities and rates.</li>
+  </ul>
+
+  <h3>6.5 · Alternative Data — Reddit, Short Interest, Polymarket</h3>
+  <p>The information edge in 2026 isn't in EDGAR — everyone has EDGAR. The edge is in alternative data sources that take effort to aggregate and discipline to interpret.</p>
+  <ul>
+    <li><strong>Reddit / r/wallstreetbets sentiment</strong> — useful for detecting retail crowding and meme-stock dynamics. Track ticker mention frequency and sentiment polarity. Crowded retail names are higher beta both up and down.</li>
+    <li><strong>Short interest</strong> — percentage of float sold short. High SI is a both a thesis (someone informed thinks the stock is overvalued) and a setup (squeeze risk in either direction).</li>
+    <li><strong>Prediction markets (Polymarket, Kalshi)</strong> — real-money odds on event outcomes. More accurate than pundit forecasts for binary events with clear resolution criteria. Read for tail risks the equity market hasn't priced.</li>
+  </ul>
+
+  <div class="callout flag">
+    <div class="tag">Sentiment data pitfalls</div>
+    <p><strong>Survivorship bias in social data.</strong> Loud accounts are not representative of the market.</p>
+    <p><strong>Short interest is a snapshot.</strong> The path matters more than the level — rising SI on falling price is a different signal than rising SI on flat price.</p>
+    <p><strong>Prediction-market thinness.</strong> Most non-headline markets have low volume; prices move on small flows.</p>
+  </div>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens</div>
+    <p>Macro in venture is the <strong>fundraising and exit environment</strong>. A rising-rate, tight-credit, falling-multiples regime collapses LP appetite and shrinks public market exit windows. A 2021-style environment opens both. As a fund manager, your job is to know which regime you're underwriting into — the same Series B at a 15× ARR multiple in 2021 is a 6× ARR multiple in 2023 and an unreturnable position in 2025.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1 hr</div>
+    <h4>Build a regime snapshot</h4>
+    <p>Open the <strong>Market Sentiment</strong> tab in FinLens. Pull current values for:</p>
+    <ol>
+      <li>10-year Treasury yield, 2-year Treasury yield, and the spread.</li>
+      <li>VIX level and its 30-day average.</li>
+      <li>High-yield OAS and its trend over 90 days.</li>
+      <li>r/wallstreetbets top 10 mentioned tickers — note which of your holdings are on the list.</li>
+      <li>One Polymarket macro contract — pick a Fed decision, election, or recession-call market.</li>
+    </ol>
+    <div class="deliverable">Deliverable: a one-paragraph "regime call." What environment are you in? What positioning shifts (sector tilt, cash level, position sizing) does that imply for the rest of this quarter?</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER VII -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-7">
+  <div class="chapter-num">Chapter VII</div>
+  <h2 class="chapter-title">Portfolio Construction &amp; Risk</h2>
+  <p class="chapter-dek">Stock picks are only as good as the portfolio they sit in — and most retail portfolios are well-picked, badly constructed.</p>
+  <div class="chapter-bar">
+    <span>Duration · 3 hrs</span><span class="sep"></span>
+    <span>Prerequisite · Chapter II</span><span class="sep"></span>
+    <span>FinLens tab · Portfolio</span>
+    <button class="complete-btn" data-ch="7" onclick="toggleComplete(7)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Size positions based on conviction, volatility, and correlation — not gut feel.</li>
+      <li>Measure portfolio risk with Sharpe, Sortino, beta, and maximum drawdown.</li>
+      <li>Construct a rebalancing rule you can actually follow under emotional duress.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Two investors with identical stock picks can have wildly different outcomes. The difference is construction: how big each position is, how correlated the positions are, when capital gets added or removed, and whether the portfolio survives a 30% drawdown intact. Construction is invisible until it's the only thing that matters.</p>
+
+  <h3>7.1 · Position Sizing</h3>
+  <p>Position size should be a function of three things: <strong>conviction</strong> in the thesis, <strong>volatility</strong> of the underlying, and <strong>correlation</strong> with the existing book. Equal-weighting every position is a default — and a bad one for most investors with a real edge.</p>
+  <div class="formula">
+    <div class="name">Kelly criterion (simplified, for binary bets)</div>
+    <div class="eq">f* = (p × b − q) / b</div>
+    <div class="where"><b>f*</b> is the optimal fraction of capital to risk.<br><b>p</b> is probability of win, <b>q = 1−p</b>.<br><b>b</b> is the odds (payoff per unit risked).<br>Most practitioners use <b>half-Kelly</b> or <b>quarter-Kelly</b> to reduce the cost of being wrong about p.</div>
+  </div>
+  <p>For continuous-return positions (i.e., stocks rather than binary bets), volatility-targeted sizing is more practical:</p>
+  <div class="formula">
+    <div class="name">Volatility-targeted position size</div>
+    <div class="eq">w<sub>i</sub> = (σ<sub>target</sub> / σ<sub>i</sub>) × c<sub>i</sub></div>
+    <div class="where"><b>σ<sub>target</sub></b> is the per-position volatility budget (e.g., 1% portfolio vol per name).<br><b>σ<sub>i</sub></b> is the position's own annualised volatility.<br><b>c<sub>i</sub></b> is a conviction multiplier (e.g., 0.5 for low conviction, 1.5 for high).<br>This shrinks size in volatile names and expands it in stable ones.</div>
+  </div>
+
+  <h3>7.2 · Diversification — Real and Fake</h3>
+  <p>Holding 30 tech stocks is not diversification — it's a tech bet across 30 tickers. Real diversification requires <strong>low correlation</strong> across positions. Correlation rises in drawdowns (the phenomenon known as "correlation goes to one in crises"), so any diversification benefit estimated in calm markets is overstated.</p>
+  <p>Practical rules:</p>
+  <ul>
+    <li>No single position above 10% (lower for higher-conviction-but-volatile names).</li>
+    <li>No single sector above 30%.</li>
+    <li>Maintain at least one position class with structurally low or negative correlation to equities (cash, short-duration Treasuries, gold).</li>
+    <li>Audit correlations annually. Two stocks you thought were uncorrelated may have re-converged.</li>
+  </ul>
+
+  <h3>7.3 · Risk Metrics</h3>
+  <div class="formula">
+    <div class="name">Sharpe and Sortino — risk-adjusted return</div>
+    <div class="eq">Sharpe = (R<sub>p</sub> − R<sub>f</sub>) / σ<sub>p</sub></div>
+    <div class="eq">Sortino = (R<sub>p</sub> − R<sub>f</sub>) / σ<sub>downside</sub></div>
+    <div class="where"><b>R<sub>p</sub></b> is portfolio return, <b>R<sub>f</sub></b> the risk-free rate, <b>σ<sub>p</sub></b> total volatility, <b>σ<sub>downside</sub></b> the volatility of only the negative-return periods.<br>Sharpe penalises all volatility. Sortino only penalises the downside — usually more relevant for asymmetric strategies.<br>Sharpe &gt; 1.0 is solid. &gt; 2.0 is excellent. &gt; 3.0 is suspicious — usually short volatility in disguise.</div>
+  </div>
+  <div class="formula">
+    <div class="name">Maximum drawdown</div>
+    <div class="eq">MDD = max<sub>t</sub>[ (Peak<sub>≤t</sub> − Trough<sub>≥t</sub>) / Peak<sub>≤t</sub> ]</div>
+    <div class="where">The peak-to-trough percentage decline. A 50% drawdown requires a 100% gain to recover. MDD is the metric you should care about most as a long-only investor — it's what you actually experience in your account.</div>
+  </div>
+
+  <h3>7.4 · Beta and Factor Exposure</h3>
+  <p>Beta is a stock's (or portfolio's) sensitivity to the market. Beta of 1.0 moves with the market; 1.5 moves 50% more in either direction; 0.5 moves half as much. A portfolio's beta is the weighted average of its position betas — and many ostensibly "diversified" portfolios have a beta well above 1, meaning they're a leveraged bet on the broad market wrapped in stock-picking theatre.</p>
+  <p>Beyond beta, modern factor frameworks (Fama-French and successors) decompose returns into exposures: size (small vs large), value (cheap vs expensive), momentum, quality, low volatility. Knowing your factor exposures keeps you from accidentally being a factor bettor when you thought you were a stock picker.</p>
+
+  <h3>7.5 · Rebalancing</h3>
+  <p>Markets cause portfolios to drift. Winners become a larger fraction of the book; losers shrink. Without rebalancing, your portfolio is "buying high and not selling" — the opposite of the discipline you set when sizing.</p>
+  <p>Three rebalancing rules, in order of how disciplined you need to be:</p>
+  <ul>
+    <li><strong>Calendar:</strong> rebalance to targets every quarter or half-year. Simple, robust, slightly tax-inefficient.</li>
+    <li><strong>Threshold:</strong> rebalance whenever a position drifts more than ±25% of its target (e.g., a 5% target position drifts to 6.25% or 3.75%). More tax-efficient, requires monitoring.</li>
+    <li><strong>Hybrid:</strong> quarterly check, only trade if a position breaches threshold. The version most practitioners actually use.</li>
+  </ul>
+
+  <div class="callout vc">
+    <div class="tag">The VC lens — portfolio at the fund level</div>
+    <p>A venture fund is a portfolio. The same construction principles apply, with three modifications: positions are illiquid (you can't rebalance, only follow-on or pass), the return distribution is power-law (most positions return zero, one or two return the fund), and time-weighted returns matter less than IRR and DPI. Position sizing translates to <strong>check size and reserve ratio</strong> — and the choice of when to follow on is often more consequential than the initial entry.</p>
+    <p>A fund that invests $1M into 25 companies with no reserves loses optionality on the winners. A fund that invests $500K into 25 with $12.5M held back for follow-ons doubles down on the names that work and walks away from the ones that don't. The math of fund returns is built on reserve discipline.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">FinLens Exercise · 1.5 hrs</div>
+    <h4>Audit and reconstruct a portfolio</h4>
+    <p>Open the <strong>Portfolio</strong> page in FinLens. Either use a real portfolio or build a hypothetical one from your watchlist.</p>
+    <ol>
+      <li>List positions, weights, sectors, and individual betas. Compute the portfolio's weighted-average beta.</li>
+      <li>Identify the largest single position. Is it sized by conviction, by volatility, or by accident (a winner you didn't trim)?</li>
+      <li>Compute the trailing 12-month Sharpe and max drawdown of the portfolio.</li>
+      <li>Run a correlation check across your top five positions. Note any pairs above 0.7.</li>
+      <li>Propose two construction changes: one sizing change and one diversification change. Justify each in writing.</li>
+      <li>Write a rebalancing rule you would actually follow. Specify the cadence and the threshold.</li>
+    </ol>
+    <div class="deliverable">Deliverable: a one-page "portfolio architecture" document — current state, two changes, and a rebalancing rule.</div>
+  </div>
+</article>
+
+<!-- ====================================================================== -->
+<!-- CHAPTER VIII -->
+<!-- ====================================================================== -->
+<article class="chapter" id="ch-8">
+  <div class="chapter-num">Chapter VIII</div>
+  <h2 class="chapter-title">The Analyst Workflow</h2>
+  <p class="chapter-dek">The operating loop that turns everything in the previous seven chapters into a repeatable practice.</p>
+  <div class="chapter-bar">
+    <span>Duration · 2 hrs</span><span class="sep"></span>
+    <span>Prerequisite · Chapters I–VII</span><span class="sep"></span>
+    <span>FinLens tab · all</span>
+    <button class="complete-btn" data-ch="8" onclick="toggleComplete(8)">Mark complete</button>
+  </div>
+
+  <div class="objectives">
+    <div class="label">By the end of this chapter you will</div>
+    <ul>
+      <li>Run the full FinLens workflow on a single ticker from idea to decision.</li>
+      <li>Write an investment memo that a partner would actually read.</li>
+      <li>Build a decision framework that survives your own future biases.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Everything to this point has been components. This chapter is assembly. The analyst workflow is the loop you run, week after week, on idea after idea. Most analysts plateau not because they don't know enough but because their workflow is inconsistent — they do deep work on the names they happen to be excited about and skim the rest. The discipline is the deliverable.</p>
+
+  <h3>8.1 · The Six-Step Loop</h3>
+  <table>
+    <thead><tr><th>Step</th><th>FinLens tab</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Idea</td><td>Stock Tracker, Market Sentiment</td><td>A ticker on the watchlist with a one-line hypothesis.</td></tr>
+      <tr><td>2 · Screen</td><td>Comparison, Analysis</td><td>Quick check: is this in the right valuation zone, in the right sector regime, financially solvent?</td></tr>
+      <tr><td>3 · Research</td><td>Analysis → Filings, MD&amp;A, Earnings</td><td>Full read of the most recent 10-K/10-Q, MD&amp;A, last two earnings calls.</td></tr>
+      <tr><td>4 · Thesis</td><td>DCF Calculator, Comparison</td><td>Written thesis: bull case, bear case, base case, catalysts, kill criteria.</td></tr>
+      <tr><td>5 · Position</td><td>Portfolio</td><td>Sized entry, reserve plan, stop or scale-in rule.</td></tr>
+      <tr><td>6 · Monitor</td><td>Stock Tracker, Earnings, Sentiment</td><td>Calendar of catalysts; scheduled review dates; review on every print and material 8-K.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>8.2 · The Investment Memo</h3>
+  <p>The discipline of writing forces honesty. A thesis that survives in your head can collapse on paper. The investment memo is the artifact that makes you accountable to a future version of yourself — and, in a VC seat, to your partners.</p>
+
+  <div class="framework">
+    <div class="label">Framework · One-Page Investment Memo</div>
+    <h5>Eight sections, no more than 500 words total</h5>
+    <ol>
+      <li><strong>The trade.</strong> One sentence. "Long [TICKER], 4% position, target price $X, kill below $Y."</li>
+      <li><strong>The business.</strong> Two sentences. What it does, how it makes money.</li>
+      <li><strong>The thesis.</strong> Three sentences. Why this is mispriced. What the market is missing.</li>
+      <li><strong>Valuation.</strong> Two sentences. Fair value range and method. Margin of safety.</li>
+      <li><strong>Catalysts.</strong> Bullet list. Named events with dates where possible.</li>
+      <li><strong>Risks.</strong> Bullet list. Be specific. "Macro" is not a risk.</li>
+      <li><strong>Kill criteria.</strong> One sentence. What would make you exit. Pre-committed, not retrofitted.</li>
+      <li><strong>Sizing.</strong> One sentence. Why this size and not double or half.</li>
+    </ol>
+  </div>
+
+  <h3>8.3 · Pre-Mortem and Disconfirmation</h3>
+  <p>Once the memo is written, run two exercises before deploying capital:</p>
+  <ul>
+    <li><strong>Pre-mortem.</strong> "It is 18 months from now and this position is down 40%. Why?" Write the obituary. The exercise surfaces risks you systematically under-weight.</li>
+    <li><strong>Disconfirmation.</strong> Identify the smartest investor publicly bearish on this name and read their case. If you cannot articulate the bear case better than the bear, you do not understand the trade.</li>
+  </ul>
+
+  <h3>8.4 · Position Management</h3>
+  <p>Most investors over-emphasise entry and under-emphasise management. The decisions you make <em>after</em> you own a position — adding, trimming, holding through volatility, exiting on thesis breakage — drive most of the realised return. Three rules:</p>
+  <ul>
+    <li><strong>Add only on thesis confirmation, not on price weakness alone.</strong> A 20% drop is not a signal; new information that supports the original thesis is.</li>
+    <li><strong>Trim on thesis completion, not on price strength alone.</strong> A 50% rally is not a signal; the catalyst playing out as forecast is.</li>
+    <li><strong>Exit on thesis breakage, immediately.</strong> The cheapest mistake to fix is the recently-made one. Anchoring to entry price is the most expensive bias in investing.</li>
+  </ul>
+
+  <div class="callout vc">
+    <div class="tag">The VC operating loop</div>
+    <p>Translate this loop to venture. Step 1 (idea) is inbound/outbound deal sourcing. Step 2 (screen) is the first-meeting filter. Step 3 (research) is diligence — references, market sizing, technical assessment. Step 4 (thesis) is the IC memo. Step 5 (position) is term-sheet negotiation and check sizing. Step 6 (monitor) is board engagement, follow-on decisions, and exit planning.</p>
+    <p>The VCs who outperform aren't the ones with better ideas. They're the ones with better <em>loops</em> — faster reps, more disciplined memos, harder kill criteria, and the discipline to follow on into winners and walk from losers.</p>
+  </div>
+
+  <div class="callout note">
+    <div class="tag">Building FinLens against this loop</div>
+    <p>Notice the FinLens architecture maps onto this workflow. The Portfolio page is the hub because it's where the loop closes — every position is the output of one cycle and the input to the next. The Analysis tab is the research engine. The Comparison tab handles screening. The Stock Tracker provides ideas and monitoring. The Market Sentiment tab feeds regime context into both screening and position sizing.</p>
+    <p>When designing future FinLens features, ask: which step of the loop does this serve? Features that don't map to a step in the loop are decoration. Features that close a gap between two steps — automated thesis-update reminders, kill-criteria alerts, catalyst calendars — are the ones that compound the user's edge.</p>
+  </div>
+
+  <div class="exercise">
+    <div class="label">Capstone Exercise · 2 hrs</div>
+    <h4>Run the full loop on one ticker</h4>
+    <p>This is the integration exercise for the entire curriculum. Pick one ticker — ideally a name you've held for a while and never properly underwrote, or a name on your watchlist you've been curious about.</p>
+    <ol>
+      <li><strong>Idea (10 min):</strong> Write the one-line hypothesis. What do you think is true about this company that the market has wrong?</li>
+      <li><strong>Screen (15 min):</strong> Use FinLens Comparison to check valuation against three peers. Is the absolute and relative valuation in the zone where the thesis could clear?</li>
+      <li><strong>Research (45 min):</strong> Read the latest 10-K or AIF (Chapter V). Read the last two earnings calls (Chapter IV). Take notes on the three things that surprised you.</li>
+      <li><strong>Thesis (30 min):</strong> Build the DCF (Chapter II). Write the eight-section memo (Section 8.2 above). Run the pre-mortem and disconfirmation.</li>
+      <li><strong>Position (10 min):</strong> Decide size. Apply Chapter VII discipline — conviction × volatility-target × correlation check.</li>
+      <li><strong>Monitor (10 min):</strong> List the next three catalysts with dates. Set your review cadence.</li>
+    </ol>
+    <div class="deliverable">Deliverable: the one-page memo, the DCF output, the pre-mortem paragraph, and the sizing decision. This is your first real research artefact. Save it. Six months from now, re-read it with what actually happened and grade your own work. That re-read is where the next 100 hours of growth come from.</div>
+  </div>
+</article>
+
+<section class="epilogue">
+  <h2>On finishing</h2>
+  <p>You won't be an expert investor at the end of these twenty hours. You'll be something more useful — a person with a working loop, a vocabulary, and a tool they can keep sharpening. The expertise comes from running the loop a thousand times. The curriculum is just the scaffold that makes the first hundred reps coherent.</p>
+  <p>FinLens is, fundamentally, an instrument for that practice. Every feature you build should make the loop tighter — faster idea generation, deeper research, sharper thesis-writing, more honest position monitoring. Build the tool you wish you had when you were studying this book.</p>
+  <p class="sig">— Fintelligence, Edition I</p>
+</section>
+
+</main>
+
+</div>
+
+<script>
+  // ============ PROGRESS TRACKING ============
+  const TOTAL_CHAPTERS = 8;
+  const CHAPTER_HOURS = { 1: 3, 2: 3, 3: 2, 4: 2, 5: 3, 6: 2, 7: 3, 8: 2 };
+  const STORAGE_KEY = 'finlens_mastery_progress_v1';
+
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function saveProgress(p) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch (e) {}
+  }
+
+  function render() {
+    const p = loadProgress();
+    let completed = 0;
+    let hours = 0;
+    for (let i = 1; i <= TOTAL_CHAPTERS; i++) {
+      const isDone = !!p[i];
+      const btn = document.querySelector(`.complete-btn[data-ch="${i}"]`);
+      const navLink = document.querySelector(`.nav a[data-ch="${i}"]`);
+      if (btn) {
+        btn.textContent = isDone ? 'Completed ✓' : 'Mark complete';
+        btn.classList.toggle('done', isDone);
+      }
+      if (navLink) {
+        navLink.classList.toggle('complete', isDone);
+      }
+      if (isDone) {
+        completed++;
+        hours += CHAPTER_HOURS[i];
+      }
+    }
+    document.getElementById('completedCount').textContent = completed;
+    document.getElementById('hoursLogged').textContent = hours;
+    document.getElementById('progressFill').style.width = (completed / TOTAL_CHAPTERS * 100) + '%';
+  }
+
+  function toggleComplete(ch) {
+    const p = loadProgress();
+    p[ch] = !p[ch];
+    saveProgress(p);
+    render();
+  }
+
+  function resetProgress() {
+    if (confirm('Reset all curriculum progress? This cannot be undone.')) {
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+    }
+  }
+
+  // ============ ACTIVE NAV ON SCROLL ============
+  const chapters = document.querySelectorAll('.chapter');
+  const navLinks = document.querySelectorAll('.nav a');
+
+  function updateActiveNav() {
+    let current = null;
+    const scrollPos = window.scrollY + 200;
+    chapters.forEach(ch => {
+      if (ch.offsetTop <= scrollPos) current = ch.id;
+    });
+    navLinks.forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+    });
+  }
+
+  let scrollTimer;
+  window.addEventListener('scroll', () => {
+    if (scrollTimer) cancelAnimationFrame(scrollTimer);
+    scrollTimer = requestAnimationFrame(updateActiveNav);
+  });
+
+  // ============ INIT ============
+  render();
+  updateActiveNav();
+</script>
+
+</body>
+</html>

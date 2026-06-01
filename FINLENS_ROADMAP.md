@@ -1,8 +1,16 @@
 # FinLens — Product Roadmap
 
-**Last updated:** May 2026  
+**Last updated:** June 2026  
 **Goal:** World-class fund manager tool for financial statement analysis  
-**Demo target:** June 2026 family office meeting
+**Priority:** Columbia "AI for Business and Finance" certificate (Jul–Sep 2026); family office demo postponed
+
+## Related Documents
+- [Feature specs & tier mapping](docs/FinLens_Roadmap_Addendum.md) — detailed implementation specs for the next 10 priority features, plus 30+ commercial features mapped to pricing tiers ($49 / $199 / $499).
+- [20-Hour Mastery Curriculum](docs/FinLens_Mastery_Curriculum.html) — the user-facing curriculum that several roadmap features serve (Curriculum Mode, Memo Builder, Filing Diff Viewer, Catalyst Calendar).
+
+---
+
+[your existing roadmap content continues below this line, untouched]
 
 ---
 
