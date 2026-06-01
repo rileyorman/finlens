@@ -5,6 +5,7 @@ from urllib.parse import quote
 from xml.etree import ElementTree
 
 import requests
+from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 
 
@@ -327,6 +328,155 @@ def _row(facts: dict, label: str, concepts: list[str], accession_number: str, ro
 
 def _section(label: str) -> dict:
     return {"line_item": label, "value": None, "value_prior": None, "row_type": "section_header"}
+
+
+def get_earnings_press_release(cik: str, limit: int = 5) -> dict | None:
+    """
+    Fetch the most recent earnings press release 8-K from SEC EDGAR.
+
+    Returns a dict with:
+        text         - full extracted text of the 8-K exhibit
+        filing_date  - e.g. "2025-01-29"
+        report_date  - period of report
+        accession    - accession number
+        url          - direct URL to filing index
+    Or None if not found.
+    """
+    try:
+        cik_padded = _zero_pad_cik(cik)
+        if not cik_padded:
+            return None
+
+        # Fetch recent submissions from the EDGAR submissions endpoint
+        sub_url = f"https://data.sec.gov/submissions/CIK{cik_padded}.json"
+        sub_resp = _SESSION.get(sub_url, headers=HEADERS, timeout=10)
+        if not sub_resp.ok:
+            return None
+
+        recent = sub_resp.json().get("filings", {}).get("recent", {})
+        forms = recent.get("form", [])
+        accession_numbers = recent.get("accessionNumber", [])
+        filing_dates = recent.get("filingDate", [])
+        report_dates = recent.get("reportDate", [])
+        items_list = recent.get("items", [])
+
+        # Collect 8-K filings that report Results of Operations (item 2.02).
+        # Item 2.02 is the SEC-defined item for earnings/results disclosures,
+        # which reliably identifies earnings press releases without needing
+        # keyword matching on exhibit descriptions (which are often just "EX-99.1").
+        earnings_filings = []
+        for i, form in enumerate(forms):
+            if form != "8-K":
+                continue
+            items_val = items_list[i] if i < len(items_list) else ""
+            if "2.02" not in str(items_val):
+                continue
+            earnings_filings.append({
+                "accession": accession_numbers[i],
+                "filing_date": filing_dates[i],
+                "report_date": report_dates[i],
+            })
+            if len(earnings_filings) >= limit:
+                break
+
+        if not earnings_filings:
+            return None
+
+        earnings_keywords = (
+            "press release",
+            "earnings",
+            "results of operations",
+            "financial results",
+            "quarterly results",
+        )
+
+        # URL path requires CIK without leading zeros
+        cik_int = str(int(cik_padded))
+
+        for filing in earnings_filings:
+            accession = filing["accession"]
+            accession_nodash = accession.replace("-", "")
+            index_url = (
+                f"https://www.sec.gov/Archives/edgar/data/{cik_int}"
+                f"/{accession_nodash}/{accession}-index.htm"
+            )
+
+            # Parse the HTML filing index to enumerate documents and exhibits
+            index_resp = _SESSION.get(index_url, headers=HEADERS, timeout=10)
+            if not index_resp.ok:
+                continue
+
+            index_soup = BeautifulSoup(index_resp.text, "html.parser")
+            table = index_soup.find("table", class_="tableFile")
+            if not table:
+                continue
+
+            for row in table.find_all("tr"):
+                cols = row.find_all("td")
+                if len(cols) < 4:
+                    continue
+
+                description = cols[1].get_text(strip=True).lower()
+                link_tag = cols[2].find("a")
+                doc_type = cols[3].get_text(strip=True).upper()
+
+                if not link_tag:
+                    continue
+
+                href = link_tag.get("href", "")
+
+                # Strip the inline XBRL viewer prefix when present
+                if href.startswith("/ix?doc="):
+                    href = href[len("/ix?doc="):]
+
+                ext = href.lower()
+
+                # Only inspect exhibits, not the 8-K form body itself
+                if not doc_type.startswith("EX"):
+                    continue
+
+                # Match by description keyword (e.g. "press release", "earnings")
+                # or by the standard EX-99.1 type used for press releases.
+                # Companies vary — many omit a meaningful description and rely on the type.
+                desc_match = any(kw in description for kw in earnings_keywords)
+                type_match = doc_type in ("EX-99.1", "EX-99")
+                if not (desc_match or type_match):
+                    continue
+
+                # Prefer HTML or plain text — skip binary or XBRL-only files
+                if not (ext.endswith(".htm") or ext.endswith(".html") or ext.endswith(".txt")):
+                    continue
+
+                exhibit_url = (
+                    f"https://www.sec.gov{href}"
+                    if href.startswith("/")
+                    else href
+                )
+                exhibit_resp = _SESSION.get(exhibit_url, headers=HEADERS, timeout=10)
+                if not exhibit_resp.ok:
+                    continue
+
+                raw = exhibit_resp.text
+                if ext.endswith(".htm") or ext.endswith(".html"):
+                    exhibit_soup = BeautifulSoup(raw, "html.parser")
+                    text = exhibit_soup.get_text(separator="\n")
+                else:
+                    text = raw
+
+                # Collapse runs of blank lines left after HTML stripping
+                text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+                return {
+                    "text": text,
+                    "filing_date": filing["filing_date"],
+                    "report_date": filing["report_date"],
+                    "accession": accession,
+                    "url": index_url,
+                }
+
+        return None
+    except Exception:
+        return None
 
 
 def get_financial_data(cik: str, accession_number: str) -> dict:
