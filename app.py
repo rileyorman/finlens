@@ -738,10 +738,14 @@ def _render_education_page(default_topic: str | None = None) -> None:
             "short_interest",
         ],
         "Financial Statements": ["income_statement", "balance_sheet", "cash_flow"],
-        "Valuation & Market Metrics": ["pe_ratio", "ev_ebitda", "wacc", "dcf", "beta", "margin_of_safety"],
+        "Valuation & Market Metrics": [
+            "pe_ratio", "ev_ebitda", "wacc", "dcf", "beta", "margin_of_safety",
+            "ttm", "earnings_beat_miss",
+        ],
         "FinLens Analysis Tools": [
             "signal", "quality_score", "distress_score", "red_flags",
             "mda_sentiment", "scenario_simulator", "bull_bear", "lynch_category",
+            "quick_analysis", "financial_snapshot", "business_segments",
         ],
     }
 
@@ -3870,6 +3874,8 @@ if "market_data" not in st.session_state:
     st.session_state.market_data = None
 
 # --- Main area ---------------------------------------------------------
+quick_analysis_slot = st.container()
+
 with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
     _edgar_tab, _sedar_tab = st.tabs(["SEC EDGAR", "SEDAR+"])
 
@@ -4187,7 +4193,37 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
 
 _persist_loaded_edgar_to_library()
 
-with st.expander("⚡ Quick Analysis — Public Companies (No Upload Required)"):
+with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No Upload Required)"):
+    quick_company_query = st.text_input(
+        "Search by Company Name",
+        placeholder="e.g. Nvidia, Apple, Microsoft",
+        key="quick_company_search",
+    )
+    if st.button("Search", use_container_width=True, key="quick_company_search_btn"):
+        _quick_search_query = quick_company_query.strip()
+        if not _quick_search_query:
+            st.warning("Enter a company name first.")
+        else:
+            _quick_search_key = f"quick_search_{_quick_search_query.lower()}"
+            if _quick_search_key not in st.session_state:
+                with st.spinner("Searching yfinance..."):
+                    st.session_state[_quick_search_key] = _search_yfinance_equities(_quick_search_query, max_results=8)
+            st.session_state["quick_search_active_key"] = _quick_search_key
+
+    _quick_active_search_key = st.session_state.get("quick_search_active_key")
+    _quick_search_results = st.session_state.get(_quick_active_search_key, []) if _quick_active_search_key else []
+    if _quick_active_search_key:
+        if not _quick_search_results:
+            st.warning("No results found — try a ticker symbol directly")
+        else:
+            st.markdown("**Search Results**")
+            for _idx, _quote in enumerate(_quick_search_results[:5]):
+                _symbol = (_quote.get("symbol") or "").upper()
+                if not _symbol:
+                    continue
+                if st.button(_yf_quote_label(_quote), key=f"quick_search_result_{_idx}_{_symbol}", use_container_width=True):
+                    st.session_state["quick_analysis_ticker"] = _symbol
+
     quick_ticker = st.text_input(
         "Ticker Symbol",
         placeholder="e.g. NVDA or RY.TO",

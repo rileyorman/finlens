@@ -298,6 +298,34 @@ EDUCATION = {
         "example": "In 2020, many investors ran DCF models on Amazon with conservative assumptions and found intrinsic values far above the market price — giving a large margin of safety. Those who bought held through volatility with confidence because the math supported it. Contrast with a stock trading at 50x earnings with no margin of safety — any miss in earnings sends it crashing.",
         "finlens_connection": "The Margin of Safety card on the FinLens Dashboard turns green when the DCF intrinsic value exceeds the current market price by more than 20%, amber for 0–20%, and red when the stock appears overvalued. Adjust your WACC and growth assumptions to see how sensitive the verdict is."
     },
+    "ttm": {
+        "term": "TTM — Trailing Twelve Months",
+        "plain_english": "TTM means you're looking at the last 12 months of data, regardless of when the fiscal year ends. Instead of waiting for a company's annual report, you add up the last four quarterly reports to get a full year picture right now.",
+        "formula": "TTM Revenue = Q1 + Q2 + Q3 + Q4 (most recent four quarters)\n\nExample: If NVIDIA reported $46.7B, $57.0B, $68.1B, $81.6B in their last four quarters:\nTTM Revenue = $46.7B + $57.0B + $68.1B + $81.6B = $253.4B",
+        "why_it_matters": "Annual reports can be up to a year old. TTM gives you the freshest possible full-year picture. A company growing fast will look much better on TTM than on last year's annual report.",
+        "key_metrics": [
+            "TTM Revenue: Total revenue over the last four quarters — more current than annual",
+            "TTM Net Income: Total profit over the last four quarters",
+            "TTM FCF: Free cash flow over the last four quarters — shows current cash generation ability",
+            "TTM vs Annual: If TTM revenue is much higher than the last annual report, the company is accelerating"
+        ],
+        "example": "NVIDIA's last annual report (FY2026) showed $215.9B revenue. Their TTM including Q1 2027 is $253.4B — 17% higher. This tells you NVIDIA is still accelerating even after a massive year.",
+        "finlens_connection": "FinLens Quick Analysis uses TTM when you select 'Last 4 Quarters' — summing the four most recent quarters for income and cash flow metrics, while using the latest quarter for balance sheet items."
+    },
+    "earnings_beat_miss": {
+        "term": "Earnings Beat / Miss",
+        "plain_english": "Before a company reports earnings, analysts make predictions (estimates) for revenue and EPS. A 'beat' means the company did better than expected. A 'miss' means they fell short. The market often reacts dramatically to beats and misses — even small surprises can move a stock 10-20% in a day.",
+        "formula": "EPS Surprise % = (Actual EPS − Estimated EPS) / |Estimated EPS| × 100\n\nExample:\nEstimated EPS = $1.76\nActual EPS = $1.87\nSurprise = ($1.87 − $1.76) / $1.76 × 100 = +6.3% Beat",
+        "why_it_matters": "Consistent beats signal a management team that under-promises and over-delivers. Consistent misses signal execution problems or over-optimistic guidance. The trend matters as much as any single quarter.",
+        "key_metrics": [
+            "EPS Beat %: How much actual EPS exceeded estimates — positive = beat, negative = miss",
+            "Revenue Beat %: Same concept for total revenue",
+            "Beat Streak: How many consecutive quarters has the company beaten estimates?",
+            "Guidance: What the company says about next quarter — often more important than the current beat/miss"
+        ],
+        "example": "NVIDIA beat EPS estimates by +6.3% in their most recent quarter ($1.87 actual vs $1.76 estimated) and beat revenue by $3.2B. A company that consistently beats by 5-10% is often one where analysts are systematically too conservative.",
+        "finlens_connection": "FinLens shows Earnings History in the Stock Tracker with Beat/Miss badges and EPS Surprise % for the last several quarters — powered by Financial Modeling Prep data."
+    },
     "dcf": {
         "term": "DCF — Discounted Cash Flow",
         "plain_english": "DCF is a method to figure out what a company is worth today based on the cash it will generate in the future. The core idea: a dollar today is worth more than a dollar tomorrow because you can invest that dollar and earn a return. DCF mathematically reverses this to find today's value of future cash.",
@@ -321,6 +349,45 @@ EDUCATION = {
         "why_it_matters": "Management tone often leads reported financials. Cautious language can signal deterioration before the numbers show it.",
         "good_sign": "Consistent, confident forward-looking language with specific targets.",
         "red_flag": "Sudden increase in hedging language, vague outlook, or shift from confident to cautious tone year-over-year.",
+    },
+    "quick_analysis": {
+        "term": "Quick Analysis",
+        "plain_english": "Quick Analysis lets you analyse any publicly listed US company instantly — just type the ticker symbol. No PDF upload needed. FinLens fetches the financial statements directly from Financial Modeling Prep (FMP) and runs the same AI analysis as a full filing analysis.",
+        "why_it_matters": "Traditional analysis requires finding, downloading, and uploading a PDF filing — a 10-minute process. Quick Analysis does it in 10 seconds. For public companies, the data is cleaner and more structured than PDF extraction.",
+        "key_metrics": [
+            "Annual mode: Uses the most recent full fiscal year financial statements",
+            "Quarterly mode: Fetches the last 1-4 quarters individually",
+            "TTM mode: Sums the last 4 quarters for income and cash flow, uses latest quarter for balance sheet",
+            "Limitation: MD&A Sentiment is not available — no filing text to analyse. Use PDF upload for full analysis."
+        ],
+        "example": "Type 'NVDA' → select 'Last 4 Quarters (TTM)' → Fetch Financials → see quarterly revenue trend → Analyse $ → get full INVESTIGATE/PASS/DECLINE verdict with Bull/Bear case in under 30 seconds.",
+        "finlens_connection": "Quick Analysis is available in the Single Analysis tab above the PDF upload section. It costs ~$0.05 per analysis and works for any US public company. Canadian companies require a premium FMP subscription."
+    },
+    "financial_snapshot": {
+        "term": "Financial Snapshot",
+        "plain_english": "The Financial Snapshot gives you a clean three-column view of a company's Income Statement, Balance Sheet, and Cash Flow Statement all on one screen. Instead of reading through a 100-page annual report, you get the 12 most important numbers at a glance.",
+        "why_it_matters": "The three financial statements tell three different stories: Income Statement = is the business profitable? Balance Sheet = is it financially healthy? Cash Flow = is it generating real cash? You need all three to get a complete picture.",
+        "key_metrics": [
+            "Revenue & Margins: How much money comes in and what percentage is kept as profit",
+            "Total Debt vs Cash: Is the company borrowing more than it holds in cash?",
+            "Free Cash Flow: Operating cash flow minus capital expenditure — the actual cash the business generates",
+            "Shareholders Equity: What's left for owners after all debts are paid"
+        ],
+        "example": "NVIDIA FY2026: Revenue $215.9B, Gross Margin 71.1%, FCF $96.7B, Total Debt $11.4B, Cash $10.6B. Debt is almost entirely covered by cash — effectively debt-free. FCF is 45% of revenue — exceptional for any company at any scale.",
+        "finlens_connection": "The Financial Snapshot appears in the Stock Tracker tab for any tracked ticker, powered by Financial Modeling Prep. It updates automatically with the latest annual data."
+    },
+    "business_segments": {
+        "term": "Business Segments",
+        "plain_english": "Most large companies make money from multiple different products or divisions. Business Segments breaks down exactly how much revenue comes from each part of the business. This tells you which divisions are growing, which are shrinking, and how dependent the company is on any single product.",
+        "why_it_matters": "A company might report great overall revenue growth — but if one segment is carrying the entire company while others decline, that's a risk. Segment analysis reveals the real story behind the headline numbers.",
+        "key_metrics": [
+            "Segment Revenue: How much each division contributes to total revenue",
+            "Segment Mix: What percentage of total revenue each segment represents",
+            "Segment Growth: Which segments are growing faster or slower than the overall company",
+            "Concentration Risk: If one segment is more than 50% of revenue, the company is highly dependent on it"
+        ],
+        "example": "NVIDIA FY2026: Data Center Revenue $193.7B (90% of total), Gaming $16.0B (7%), Automotive $2.3B (1%). This tells you NVIDIA is almost entirely an AI data center company now — gaming is secondary. If data center spending slows, NVIDIA has limited diversification.",
+        "finlens_connection": "FinLens shows Business Segments as a horizontal bar chart in the Stock Tracker tab, powered by Fiscal AI's institutional-grade segment data. This data is typically only available on Bloomberg Terminal."
     },
     "signal": {
         "title": "Investment Signal",
