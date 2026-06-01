@@ -8,6 +8,13 @@ It helps analyze company filings, financial statements, market data, watchlists,
 
 FinLens should be treated as an investment analysis workspace, not just a PDF-to-Excel tool.
 
+## Strategic Context (June 2026)
+
+- **Roadmap addendum:** `docs/FinLens_Roadmap_Addendum.md` — 5 priority feature specs and 30+ tier-mapped commercial features. This supersedes older roadmap framings for any feature decisions.
+- **Mastery curriculum:** `docs/FinLens_Mastery_Curriculum.html` — 20-hour study guide. Several roadmap features serve specific chapters (Curriculum Mode, Memo Builder, Filing Diff Viewer, Catalyst Calendar).
+- **Weekly audit:** `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md` — run Sundays after CC's audit report.
+- **Build order priority:** Lot-level position tracking → Catalyst Calendar → Memo Builder → Filing Diff Viewer → Curriculum Mode. See addendum for full sequence.
+
 ## Core Architecture
 
 Primary workflow:
