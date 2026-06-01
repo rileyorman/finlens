@@ -2713,7 +2713,12 @@ if page == "Stock Tracker":
         _fiscal_ai_exchange_for_ticker,
         get_stock_data,
     )
-    from modules.fmp import get_earnings_calendar as get_fmp_earnings_calendar
+    from modules.fmp import (
+        get_balance_sheet as get_fmp_balance_sheet,
+        get_cash_flow as get_fmp_cash_flow,
+        get_earnings_calendar as get_fmp_earnings_calendar,
+        get_income_statement as get_fmp_income_statement,
+    )
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
     import pandas as _pd
@@ -2928,6 +2933,29 @@ if page == "Stock Tracker":
         if abs(value) >= 1_000_000:
             return f"{prefix}{value / 1_000_000:.2f}M"
         return f"{prefix}{value:,.2f}"
+
+    def _fmt_financial_snapshot_value(value):
+        if value is None:
+            return "—"
+        try:
+            value = float(value)
+        except Exception:
+            return "—"
+        sign = "-" if value < 0 else ""
+        value = abs(value)
+        if value >= 1_000_000_000:
+            return f"{sign}${value / 1_000_000_000:.2f}B"
+        if value >= 1_000_000:
+            return f"{sign}${value / 1_000_000:.2f}M"
+        return f"{sign}${value:,.0f}"
+
+    def _fmt_financial_margin(value):
+        if value is None:
+            return "—"
+        try:
+            return f"{float(value) * 100:.1f}%"
+        except Exception:
+            return "—"
 
     def _earnings_badge(actual, estimated):
         if actual is None or estimated is None:
@@ -3598,6 +3626,78 @@ if page == "Stock Tracker":
             '</table></div>'
         )
         st.markdown(table_html, unsafe_allow_html=True)
+        st.caption("Source: Financial Modeling Prep")
+
+    fmp_financials_key = f"fmp_financials_{cur_ticker}"
+    if fmp_financials_key not in st.session_state:
+        _fmp_income = get_fmp_income_statement(cur_ticker)
+        _fmp_balance = get_fmp_balance_sheet(cur_ticker)
+        _fmp_cash_flow = get_fmp_cash_flow(cur_ticker)
+        st.session_state[fmp_financials_key] = (
+            {
+                "income": _fmp_income,
+                "balance": _fmp_balance,
+                "cash_flow": _fmp_cash_flow,
+            }
+            if _fmp_income and _fmp_balance and _fmp_cash_flow
+            else None
+        )
+    fmp_financials = st.session_state[fmp_financials_key]
+    if fmp_financials:
+        income = fmp_financials["income"]
+        balance = fmp_financials["balance"]
+        cash_flow = fmp_financials["cash_flow"]
+        fiscal_year = (
+            income.get("fiscalYear")
+            or balance.get("fiscalYear")
+            or cash_flow.get("fiscalYear")
+        )
+        title_suffix = f" (FY{fiscal_year})" if fiscal_year else ""
+        st.markdown(f"##### Financial Snapshot{title_suffix}")
+        income_col, balance_col, cash_flow_col = st.columns(3)
+        with income_col:
+            st.markdown("**Income**")
+            st.metric("Revenue", _fmt_financial_snapshot_value(income.get("revenue")))
+            st.metric(
+                "Gross Profit",
+                _fmt_financial_snapshot_value(income.get("grossProfit")),
+                delta=f"Gross Margin {_fmt_financial_margin(income.get('grossProfitRatio'))}",
+                delta_color="off",
+            )
+            st.metric(
+                "Operating Income",
+                _fmt_financial_snapshot_value(income.get("operatingIncome")),
+                delta=f"Operating Margin {_fmt_financial_margin(income.get('operatingIncomeRatio'))}",
+                delta_color="off",
+            )
+            st.metric(
+                "Net Income",
+                _fmt_financial_snapshot_value(income.get("netIncome")),
+                delta=f"Net Margin {_fmt_financial_margin(income.get('netIncomeRatio'))}",
+                delta_color="off",
+            )
+            st.metric("EBITDA", _fmt_financial_snapshot_value(income.get("ebitda")))
+        with balance_col:
+            st.markdown("**Balance Sheet**")
+            st.metric("Cash", _fmt_financial_snapshot_value(balance.get("cashAndCashEquivalents")))
+            st.metric("Total Assets", _fmt_financial_snapshot_value(balance.get("totalAssets")))
+            st.metric("Total Debt", _fmt_financial_snapshot_value(balance.get("totalDebt")))
+            st.metric(
+                "Shareholders Equity",
+                _fmt_financial_snapshot_value(balance.get("totalStockholdersEquity")),
+            )
+        with cash_flow_col:
+            st.markdown("**Cash Flow**")
+            st.metric(
+                "Operating Cash Flow",
+                _fmt_financial_snapshot_value(cash_flow.get("operatingCashFlow")),
+            )
+            st.metric(
+                "Capital Expenditure",
+                _fmt_financial_snapshot_value(cash_flow.get("capitalExpenditure")),
+            )
+            st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
+            st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
         st.caption("Source: Financial Modeling Prep")
 
     company_filings = _fiscal_session_cached(
