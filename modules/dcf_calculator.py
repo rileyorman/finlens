@@ -62,7 +62,7 @@ def calculate_dcf(financial_data: dict, inputs: dict) -> dict:
             result["error"] = "WACC must be greater than terminal growth rate."
             return result
 
-        scale = _currency_scale(financial_data)
+        scale = financial_data.get("scale", 1) or _currency_scale(financial_data)
 
         # --- Base FCF (from reporting units → raw dollars) ---
         metrics = _calc_summary_metrics(financial_data)

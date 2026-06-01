@@ -4335,6 +4335,32 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.session_state.dcf_result          = None
             st.session_state["manual_ticker"]    = _quick_ticker
             st.session_state.pop("peer_data", None)
+            _quick_period_label = _quick_fd.get("fiscal_year") or _quick_fd.get("period", "")
+            _quick_entry_id = f"fmp_{_quick_ticker}_{_quick_period_label}"
+            _save_analysis_cache(
+                _quick_ticker,
+                _quick_period_label,
+                "fmp",
+                mda_sentiment=None,
+                sector_value=(_quick_sd or {}).get("sector_inferred"),
+            )
+            try:
+                lib_add(
+                    _quick_entry_id,
+                    f"{_quick_ticker}_quick_analysis",
+                    0,
+                    _quick_fd,
+                    _quick_sd,
+                    _quick_bb,
+                    _quick_dd,
+                    raw_text=_quick_text[:MAX_FILING_CHARS] if _quick_text else None,
+                    mda_sentiment=None,
+                    source="fmp",
+                )
+                st.session_state["filing_library"] = lib_get()
+                st.success("✓ Analysis saved to library")
+            except Exception as _e:
+                st.warning(f"Could not save to library: {_e}")
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
             st.rerun()
 
@@ -4877,7 +4903,7 @@ if st.session_state.financial_data:
 
         if st.button("Learn more about Investment Signals →", key="lm_investment_signals"):
             st.session_state["nav_mode"] = "Education"
-            st.rerun()
+            st.query_params["page"] = "education"
 
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
@@ -4953,7 +4979,7 @@ if st.session_state.financial_data:
             st.caption("No market data yet — enter the ticker above and click Fetch Market Data to populate live price, multiples, and Beta.")
         if st.button("Learn more about Market Data & Multiples →", key="lm_market_data"):
             st.session_state["nav_mode"] = "Education"
-            st.rerun()
+            st.query_params["page"] = "education"
 
         # --- Red Flag Analysis ---
         flag_result  = detect_flags(financial_data)
@@ -4969,7 +4995,7 @@ if st.session_state.financial_data:
 
         if st.button("Learn more about Red Flag Analysis →", key="lm_red_flags"):
             st.session_state["nav_mode"] = "Education"
-            st.rerun()
+            st.query_params["page"] = "education"
 
         with st.expander(exp_label, expanded=(red_count > 0)):
             if not flags:
@@ -5025,7 +5051,7 @@ if st.session_state.financial_data:
             with st.expander("📝 MD&A Sentiment", expanded=False):
                 if st.button("Learn more about MD&A Sentiment →", key="lm_mda_sentiment"):
                     st.session_state["nav_mode"] = "Education"
-                    st.rerun()
+                    st.query_params["page"] = "education"
                 tone_col, scores_col = st.columns([1, 2])
 
                 with tone_col:
@@ -5063,7 +5089,7 @@ if st.session_state.financial_data:
         # --- Scenario Simulator ---
         if st.button("Learn more about Scenario Analysis →", key="lm_scenario"):
             st.session_state["nav_mode"] = "Education"
-            st.rerun()
+            st.query_params["page"] = "education"
 
         with st.expander("🔮 Scenario Simulator", expanded=False):
             _metrics = _calc_summary_metrics(financial_data)
@@ -5325,7 +5351,7 @@ if st.session_state.financial_data:
         # --- Bull / Bear Case ---
         if st.button("Learn more about Financial Statements →", key="lm_financial_statements"):
             st.session_state["nav_mode"] = "Education"
-            st.rerun()
+            st.query_params["page"] = "education"
 
         if bear_bull_data and "error" not in bear_bull_data:
             with st.expander("Bull / Bear Case", expanded=False):
@@ -5599,7 +5625,10 @@ if st.session_state.financial_data:
                 or ""
             )
             _sector_idx = 0
-            if _sector_hint:
+            _auto_s = st.session_state.get("auto_sector")
+            if _auto_s and _auto_s in _sector_options:
+                _sector_idx = _sector_options.index(_auto_s)
+            elif _sector_hint:
                 _hint_l = _sector_hint.lower()
                 for _i, _sector_name in enumerate(_sector_options):
                     if _sector_name.lower() in _hint_l or _hint_l in _sector_name.lower():

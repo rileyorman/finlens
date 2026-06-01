@@ -402,7 +402,7 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
             ],
             "cash_flow_statement": [
                 _row("OPERATING ACTIVITIES", None, None, "section_header"),
-                _row("Operating Cash Flow", _scale_money(cashflow.get("operatingCashFlow")), _scale_money(cashflow_prior.get("operatingCashFlow")), "subtotal"),
+                _row("Net Cash from Operating Activities", _scale_money(cashflow.get("operatingCashFlow")), _scale_money(cashflow_prior.get("operatingCashFlow")), "subtotal"),
                 _row("INVESTING ACTIVITIES", None, None, "section_header"),
                 _row("Capital Expenditure", _scale_money(cashflow.get("capitalExpenditure")), _scale_money(cashflow_prior.get("capitalExpenditure"))),
                 _row("Free Cash Flow", _scale_money(cashflow.get("freeCashFlow")), _scale_money(cashflow_prior.get("freeCashFlow")), "total"),
