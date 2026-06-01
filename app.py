@@ -1925,12 +1925,6 @@ if page == "Portfolio Manager":
             f"switch to Single Analysis and upload the filing PDF to add them."
         )
 
-    if not analysed:
-        st.info("No FinLens analysis available yet. Sections below require at least one analysed filing.")
-        st.stop()
-
-    st.divider()
-
     # --- Section 2b: Positions ---
     st.markdown("##### Positions")
     st.caption("Track actual purchased positions — shares, cost basis, and unrealized P&L")
@@ -1942,9 +1936,9 @@ if page == "Portfolio Manager":
     def _fmt_dollars(v):
         av = abs(v)
         if av >= 1_000_000_000:
-            return f"${v / 1_000_000_000:.2f}B"
+            return f"${v / 1_000_000_000:.1f}B"
         if av >= 1_000_000:
-            return f"${v / 1_000_000:.2f}M"
+            return f"${v / 1_000_000:.1f}M"
         return f"${v:,.2f}"
 
     if not _positions:
@@ -2008,8 +2002,15 @@ if page == "Portfolio Manager":
                     "Signal":        _SIG.get(_sig, "—") if _sig else "—",
                 })
 
+            def _pl_cell_color(col):
+                return [
+                    "color: #4ADE80" if v >= 0 else "color: #F87171"
+                    for v in col
+                ]
+
+            _pos_df = pd.DataFrame(_pos_table)
             st.dataframe(
-                _pos_table,
+                _pos_df.style.apply(_pl_cell_color, subset=["Gain/Loss $", "Gain/Loss %"]),
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -2075,6 +2076,10 @@ if page == "Portfolio Manager":
                     st.rerun()
                 else:
                     st.error("Failed to save position.")
+
+    if not analysed:
+        st.info("No FinLens analysis available yet. Sections below require at least one analysed filing.")
+        st.stop()
 
     st.divider()
 
