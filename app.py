@@ -3786,66 +3786,6 @@ button[kind="secondary"] { background: none; border: none; color: #4a9eda; font-
 </style>
 """, unsafe_allow_html=True)
 
-# --- Ticker Lookup (Dev Tool) ------------------------------------------
-with st.expander("🔍 Ticker Lookup (Dev Tool)", expanded=False):
-    st.caption("Verify yfinance can find the right company before running a full analysis. No API calls, no cost.")
-    with st.form("ticker_lookup_form"):
-        tl_col1, tl_col2 = st.columns([3, 1])
-        with tl_col1:
-            lookup_query = st.text_input("Company name", placeholder="e.g. Mastech Digital")
-        with tl_col2:
-            st.write("")
-            lookup_clicked = st.form_submit_button("Look Up Ticker", use_container_width=True)
-
-    if lookup_clicked and lookup_query.strip():
-        with st.spinner("Searching yfinance..."):
-            try:
-                quotes = search_ticker_details(lookup_query.strip())
-            except Exception as e:
-                st.error(f"Search failed: {e}")
-                quotes = []
-
-        if not quotes:
-            st.warning("No results found. Try a different company name.")
-        else:
-            st.markdown("**Top Results**")
-            st.dataframe(
-                [
-                    {
-                        "Symbol":   q.get("symbol", "—"),
-                        "Company":  q.get("longname") or q.get("shortname", "—"),
-                        "Exchange": q.get("exchange", "—"),
-                        "Type":     q.get("quoteType", "—"),
-                    }
-                    for q in quotes[:5]
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            top_symbol = quotes[0].get("symbol")
-            if top_symbol:
-                st.markdown(f"**Market Data — {top_symbol}**")
-                with st.spinner(f"Fetching market data for {top_symbol}..."):
-                    md = get_market_data(top_symbol)
-                if md.get("current_price"):
-                    price = md["current_price"]
-                    mc    = md.get("market_cap")
-                    hi    = md.get("fifty_two_week_high")
-                    lo    = md.get("fifty_two_week_low")
-                    pe    = md.get("pe_ratio")
-                    mc_col, pr_col, rng_col, pe_col = st.columns(4)
-                    mc_col.metric("Price",          f"${price:,.2f}")
-                    pr_col.metric("Market Cap",     _fmt_market_cap(mc))
-                    rng_col.metric("52-week Range", f"${lo:,.2f} – ${hi:,.2f}" if (lo and hi) else "—")
-                    pe_col.metric("P/E (trailing)", f"{pe:.1f}x" if pe else "—")
-                else:
-                    st.warning(f"'{top_symbol}' found but no market data — may be OTC or delisted.")
-    elif lookup_clicked:
-        st.warning("Enter a company name first.")
-
-st.divider()
-
 # --- Session state — persists results across Streamlit reruns ----------
 if "financial_data" not in st.session_state:
     st.session_state.financial_data      = None
@@ -4510,14 +4450,86 @@ st.divider()
 
 # --- Valuation inputs --------------------------------------------------
 st.markdown("#### Valuation Inputs")
-st.caption("Market cap is fetched automatically from yfinance when the filing contains a ticker. Enter sector and hurdle rate manually.")
+st.caption("Market cap is fetched automatically from yfinance when the filing contains a ticker. Sector is auto-detected when available.")
+sector_options = [
+    "Enterprise SaaS", "Specialty Retail", "IT Services",
+    "Financial Services", "Upstream Oil & Gas", "Healthcare",
+    "Consumer Staples", "Industrials", "Real Estate", "Other",
+]
+sector_mapping = {
+    "Technology": "Enterprise SaaS",
+    "Information Technology": "Enterprise SaaS",
+    "Semiconductors": "Enterprise SaaS",
+    "Consumer Cyclical": "Specialty Retail",
+    "Consumer Defensive": "Consumer Staples",
+    "Energy": "Upstream Oil & Gas",
+    "Healthcare": "Healthcare",
+    "Financial Services": "Financial Services",
+    "Industrials": "Industrials",
+    "Real Estate": "Real Estate",
+    "Utilities": "Other",
+    "Communication Services": "Enterprise SaaS",
+    "Basic Materials": "Industrials",
+}
+
+
+def _map_sector_to_option(raw_sector):
+    if not raw_sector:
+        return None
+    raw_sector = str(raw_sector).strip()
+    if raw_sector in sector_options:
+        return raw_sector
+    mapped = sector_mapping.get(raw_sector)
+    if mapped in sector_options:
+        return mapped
+    raw_lower = raw_sector.lower()
+    for source, target in sector_mapping.items():
+        if source.lower() in raw_lower or raw_lower in source.lower():
+            return target if target in sector_options else None
+    return None
+
+
+def _lookup_yfinance_sector(ticker):
+    ticker = (ticker or "").strip().upper()
+    if not ticker:
+        return None
+    cache_key = f"yf_sector_{ticker}"
+    if cache_key not in st.session_state:
+        try:
+            _ensure_yfinance_cache_location()
+            st.session_state[cache_key] = yf.Ticker(ticker).info.get("sector")
+        except Exception:
+            st.session_state[cache_key] = None
+    return st.session_state.get(cache_key)
+
+
+_sector_ticker = (
+    st.session_state.get("resolved_ticker")
+    or st.session_state.get("ticker")
+    or st.session_state.get("manual_ticker")
+    or (st.session_state.get("quick_financial_data") or {}).get("ticker")
+)
+_quick_financial_data = st.session_state.get("quick_financial_data") or {}
+_raw_sector = (
+    _quick_financial_data.get("sector")
+    or _lookup_yfinance_sector(_sector_ticker)
+    or (st.session_state.get("market_data") or {}).get("sector")
+)
+_auto_sector = _map_sector_to_option(_raw_sector)
+if _auto_sector:
+    st.session_state["auto_sector"] = _auto_sector
+    if st.session_state.get("auto_sector_ticker") != _sector_ticker:
+        st.session_state["valuation_sector"] = _auto_sector
+        st.session_state["auto_sector_ticker"] = _sector_ticker
+
+_sector_index = 0
+if st.session_state.get("auto_sector") in sector_options:
+    _sector_index = sector_options.index(st.session_state["auto_sector"])
 vi_col1, vi_col2 = st.columns(2)
 with vi_col1:
-    sector = st.selectbox("Sector", [
-        "Enterprise SaaS", "Specialty Retail", "IT Services",
-        "Financial Services", "Upstream Oil & Gas", "Healthcare",
-        "Consumer Staples", "Industrials", "Real Estate", "Other",
-    ])
+    sector = st.selectbox("Sector", sector_options, index=_sector_index, key="valuation_sector")
+    if _auto_sector:
+        st.caption("Auto-detected from company data")
 with vi_col2:
     hurdle_rate = st.number_input("Hurdle Rate (%)", min_value=0.0, max_value=100.0, value=12.0, step=0.5)
 st.components.v1.html("""
