@@ -50,6 +50,7 @@ from modules.portfolio_registry import (
 )
 from modules.portfolio_manager import get_portfolio_display_data
 from modules.market_ticker import get_ticker_data
+from modules.fmp import build_financial_data_from_fmp
 from config import (
     MAX_FILING_CHARS,
     ANALYSIS_CACHE_DIR,
@@ -534,6 +535,7 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     st.session_state.loaded_from_library = True
     st.session_state.loaded_from_edgar = cached.get("source") == "edgar"
     st.session_state.loaded_from_sedar = False
+    st.session_state.loaded_from_quick = False
     st.session_state.analysis_loaded_from_cache = True
 
     if st.session_state.resolved_ticker and st.session_state.resolved_ticker != "—":
@@ -1653,6 +1655,7 @@ document.addEventListener('focusin', function(e) {
                                     st.session_state.loaded_from_library = True
                                     st.session_state.loaded_from_edgar   = entry.get("source") == "edgar"
                                     st.session_state.loaded_from_sedar   = False
+                                    st.session_state.loaded_from_quick   = False
                                     st.session_state.cached_filing_text  = (
                                         _entry_text if entry.get("source") == "edgar" else None
                                     )
@@ -3855,6 +3858,7 @@ if "financial_data" not in st.session_state:
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
     st.session_state.loaded_from_sedar   = False
+    st.session_state.loaded_from_quick   = False
     st.session_state.analysis_loaded_from_cache = False
     st.session_state.uploader_key        = 0
     LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
@@ -4037,6 +4041,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     st.session_state.loaded_from_library = False
                     st.session_state.loaded_from_edgar   = True
                     st.session_state.loaded_from_sedar   = False
+                    st.session_state.loaded_from_quick   = False
                     st.session_state.cache_hit           = False
                     st.session_state.analysis_loaded_from_cache = False
                     st.session_state.dcf_result          = None
@@ -4182,6 +4187,169 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
 
 _persist_loaded_edgar_to_library()
 
+with st.expander("⚡ Quick Analysis — Public Companies (No Upload Required)"):
+    quick_ticker = st.text_input(
+        "Ticker Symbol",
+        placeholder="e.g. NVDA or RY.TO",
+        key="quick_analysis_ticker",
+    )
+    period_options = [
+        "Latest Quarter",
+        "Last 4 Quarters (TTM)",
+        "Latest Annual",
+        "Last 2 Years (Annual)",
+        "Last 4 Years (Annual)",
+    ]
+    selected_period = st.selectbox("Period", period_options, index=2, key="quick_analysis_period")
+    st.caption("Instantly analyse any US or Canadian public company using financial statement data. No PDF needed. ~$0.05 per analysis")
+
+    def _fmt_quick_preview_value(value):
+        if value is None:
+            return "—"
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return "—"
+        sign = "-" if value < 0 else ""
+        abs_value = abs(value)
+        if abs_value >= 1_000_000_000:
+            return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
+        if abs_value >= 1_000_000:
+            return f"{sign}${abs_value / 1_000_000:,.1f}M"
+        if abs_value >= 1_000:
+            return f"{sign}${abs_value / 1_000:,.1f}K"
+        return f"{sign}${abs_value:,.0f}"
+
+    _quick_period_params = {
+        "Latest Quarter": ("quarter", 1),
+        "Last 4 Quarters (TTM)": ("quarter", 4),
+        "Latest Annual": ("annual", 1),
+        "Last 2 Years (Annual)": ("annual", 2),
+        "Last 4 Years (Annual)": ("annual", 4),
+    }
+    _quick_period, _quick_limit = _quick_period_params[selected_period]
+    _quick_current_ticker = quick_ticker.strip().upper()
+    _quick_is_canadian = _quick_current_ticker.endswith(".TO")
+    if _quick_is_canadian:
+        st.warning("⚠️ Canadian companies require a Premium FMP subscription. Use SEDAR+ or PDF upload instead.")
+
+    if st.button("Fetch Financials", use_container_width=True, key="quick_fetch_btn", disabled=_quick_is_canadian):
+        _quick_ticker = quick_ticker.strip().upper()
+        if not _quick_ticker:
+            st.warning("Enter a ticker symbol first.")
+        else:
+            with st.spinner(f"Fetching financial statements for {_quick_ticker}..."):
+                _quick_fd = build_financial_data_from_fmp(_quick_ticker, period=_quick_period, limit=_quick_limit)
+            if not _quick_fd:
+                st.error(f"Could not fetch data for {_quick_ticker} — check the ticker symbol and try again")
+                st.stop()
+            st.session_state["quick_financial_data"] = _quick_fd
+            st.session_state["quick_financial_ticker"] = _quick_ticker
+            st.session_state["quick_financial_period"] = selected_period
+
+    _quick_fd_preview = st.session_state.get("quick_financial_data")
+    _quick_preview_ticker = st.session_state.get("quick_financial_ticker")
+    _quick_preview_period = st.session_state.get("quick_financial_period")
+    if _quick_fd_preview and _quick_preview_ticker == _quick_current_ticker and _quick_preview_period == selected_period:
+        _quick_company = _quick_fd_preview.get("company") or _quick_fd_preview.get("company_name") or _quick_preview_ticker
+        _quick_year = _quick_fd_preview.get("fiscal_year") or "latest fiscal year"
+        st.success(f"Fetched financials for {_quick_company} ({_quick_year}).")
+        if _quick_limit > 1:
+            _quick_metric_map = [
+                ("Revenue", "revenue"),
+                ("Gross Profit", "gross_profit"),
+                ("Net Income", "net_income"),
+                ("FCF", "free_cash_flow"),
+                ("Total Debt", "total_debt"),
+                ("Cash", "cash"),
+            ]
+            _quick_history = list(reversed(_quick_fd_preview.get("period_history") or []))
+            preview_df = []
+            for _label, _key in _quick_metric_map:
+                _row = {"Metric": _label}
+                for _period_row in _quick_history:
+                    _row[_period_row.get("label") or "Period"] = _fmt_quick_preview_value(_period_row.get(_key))
+                preview_df.append(_row)
+        else:
+            preview_df = [
+                {"Metric": "Revenue", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("revenue"))},
+                {"Metric": "Gross Profit", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("gross_profit"))},
+                {"Metric": "Net Income", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("net_income"))},
+                {"Metric": "FCF", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("free_cash_flow"))},
+                {"Metric": "Total Debt", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("total_debt"))},
+                {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"))},
+            ]
+        st.dataframe(preview_df, hide_index=True, use_container_width=True)
+
+        if st.button("Analyse $", type="primary", use_container_width=True, key="quick_analysis_btn"):
+            _quick_fd = _quick_fd_preview
+            _quick_ticker = (_quick_preview_ticker or _quick_fd.get("ticker") or quick_ticker).strip().upper()
+
+            _quick_text = _financial_data_to_text(_quick_fd)
+            _quick_sd = None
+            with st.spinner("Generating investment signal from financial statements..."):
+                try:
+                    _quick_sd = analyze_summary(_quick_text, _quick_fd, API_KEY, model=get_model())
+                    if isinstance(_quick_sd, dict):
+                        _quick_sd.setdefault("ticker", _quick_ticker)
+                except Exception as e:
+                    st.warning(f"Investment signal could not be generated: {e}.")
+
+            _quick_bb = None
+            with st.spinner("Generating bull/bear case..."):
+                try:
+                    _quick_bb = analyze_bear_bull(_quick_text, API_KEY, model=get_model())
+                except Exception as e:
+                    st.warning(f"Bull/bear case could not be generated: {e}.")
+
+            _quick_dd = None
+            with st.spinner("Generating dashboard insights..."):
+                try:
+                    _quick_dd = analyze_dashboard_insights(
+                        _quick_text,
+                        _quick_sd,
+                        _quick_fd,
+                        API_KEY,
+                        model=get_model(),
+                    )
+                except Exception as e:
+                    st.warning(f"Dashboard insights could not be generated: {e}.")
+
+            _quick_market_data = {}
+            with st.spinner(f"Fetching market data for {_quick_ticker}..."):
+                try:
+                    _quick_market_data = get_market_data(_quick_ticker)
+                except Exception:
+                    _quick_market_data = {}
+
+            _quick_market_cap = _quick_market_data.get("market_cap") or 0.0
+            try:
+                _quick_excel = create_excel_file(_quick_fd, _quick_sd, _quick_market_cap, _quick_bb)
+            except Exception:
+                _quick_excel = None
+
+            st.session_state.financial_data      = _quick_fd
+            st.session_state.summary_data        = _quick_sd
+            st.session_state.bear_bull_data      = _quick_bb
+            st.session_state.dashboard_data      = _quick_dd
+            st.session_state.mda_sentiment       = None
+            st.session_state.market_data         = _quick_market_data
+            st.session_state.excel_bytes         = _quick_excel
+            st.session_state.last_filename       = f"{_quick_ticker}_quick_analysis"
+            st.session_state.resolved_ticker     = _quick_ticker
+            st.session_state["ticker"]           = _quick_ticker
+            st.session_state.loaded_from_library = False
+            st.session_state.loaded_from_edgar   = False
+            st.session_state.loaded_from_sedar   = False
+            st.session_state.loaded_from_quick   = True
+            st.session_state.analysis_loaded_from_cache = False
+            st.session_state.cache_hit           = False
+            st.session_state.dcf_result          = None
+            st.session_state["manual_ticker"]    = _quick_ticker
+            st.session_state.pop("peer_data", None)
+            st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
+            st.rerun()
+
 uploaded_file = st.file_uploader(
     "Upload Financial Statements PDF",
     type=["pdf"],
@@ -4251,6 +4419,7 @@ if uploaded_file is None:
         not st.session_state.get("loaded_from_library")
         and not st.session_state.get("loaded_from_edgar")
         and not st.session_state.get("loaded_from_sedar")
+        and not st.session_state.get("loaded_from_quick")
     ):
         st.session_state.financial_data  = None
         st.session_state.summary_data    = None
@@ -4263,6 +4432,7 @@ if uploaded_file is None:
         st.session_state.dcf_result      = None
         st.session_state.cache_hit       = False
         st.session_state.analysis_loaded_from_cache = False
+        st.session_state.loaded_from_quick = False
         st.session_state.pop("peer_data", None)
         st.session_state.pop("manual_ticker", None)
 elif (not st.session_state.get("loaded_from_library", False) and
@@ -4283,6 +4453,7 @@ elif (not st.session_state.get("loaded_from_library", False) and
     st.session_state.loaded_from_library = False
     st.session_state.loaded_from_edgar   = False
     st.session_state.loaded_from_sedar   = False
+    st.session_state.loaded_from_quick   = False
     st.session_state.analysis_loaded_from_cache = False
     st.session_state.pop("peer_data", None)
     st.session_state.pop("manual_ticker", None)
@@ -4377,6 +4548,7 @@ if st.session_state.get("pending_reanalyse"):
     st.session_state.loaded_from_library = True
     st.session_state.loaded_from_edgar   = ra.get("source") == "edgar"
     st.session_state.loaded_from_sedar   = False
+    st.session_state.loaded_from_quick   = False
     st.session_state.analysis_loaded_from_cache = False
     _save_analysis_cache(
         (_ra_sd or {}).get("ticker"),
@@ -4539,6 +4711,7 @@ if uploaded_file:
         st.session_state.loaded_from_library = False
         st.session_state.loaded_from_edgar   = False
         st.session_state.loaded_from_sedar   = False
+        st.session_state.loaded_from_quick   = False
         st.session_state.analysis_loaded_from_cache = False
         if resolved_ticker:
             st.session_state["manual_ticker"] = resolved_ticker
@@ -4648,6 +4821,9 @@ if st.session_state.financial_data:
 
         if st.session_state.get("cache_hit"):
             st.info("📦 Using cached response (dev mode) — no API call was made.")
+
+        if st.session_state.get("loaded_from_quick"):
+            st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
 
         # --- Market data fetch (always visible) and display ---
         # Pre-populate the ticker input the first time results appear, or after a
