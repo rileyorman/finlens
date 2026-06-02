@@ -51,6 +51,7 @@ from modules.portfolio_registry import (
 from modules.portfolio_manager import get_portfolio_display_data
 from modules.position_tracker import (
     load_positions, save_position, delete_position, calculate_portfolio_pl,
+    sell_position,
 )
 from modules.market_ticker import get_ticker_data
 from modules.fmp import build_financial_data_from_fmp
@@ -1942,7 +1943,7 @@ if page == "Portfolio Manager":
         return f"${v:,.2f}"
 
     if not _positions:
-        st.info("No positions tracked yet. Use **Add / Update Position** below to add your first position.")
+        st.info("No positions tracked yet. Use **Add Buy Lot** below to add your first position.")
     else:
         _pl_data = calculate_portfolio_pl(_positions, _price_map)
         _pl_rows = _pl_data["positions"]
@@ -2025,6 +2026,34 @@ if page == "Portfolio Manager":
                 },
             )
 
+            with st.expander("Show lots"):
+                for _r in _pl_rows:
+                    _lot_rows = []
+                    for _lot in _r.get("lots", []):
+                        _lot_shares = float(_lot.get("shares", 0) or 0)
+                        _lot_price = float(_lot.get("price", 0) or 0)
+                        _lot_rows.append({
+                            "Lot ID":     _lot.get("lot_id", ""),
+                            "Ticker":     _r["ticker"],
+                            "Shares":     _lot_shares,
+                            "Price":      _lot_price,
+                            "Cost Basis": _lot_shares * _lot_price,
+                            "Date":       _lot.get("date", ""),
+                            "Notes":      _lot.get("notes", "") or "",
+                        })
+                    if _lot_rows:
+                        st.markdown(f"**{_r['ticker']}**")
+                        st.dataframe(
+                            pd.DataFrame(_lot_rows),
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Shares":     st.column_config.NumberColumn("Shares",     format="%.4f"),
+                                "Price":      st.column_config.NumberColumn("Price",      format="$%.2f"),
+                                "Cost Basis": st.column_config.NumberColumn("Cost Basis", format="$%.2f"),
+                            },
+                        )
+
             # Per-position remove buttons with confirm step
             st.caption("Remove a position:")
             _rm_cols = st.columns(min(len(_pl_rows), 6))
@@ -2053,16 +2082,16 @@ if page == "Portfolio Manager":
         else:
             st.caption("None of the tracked positions have live price data available in this portfolio.")
 
-    # Add / Update Position form
-    with st.expander("➕ Add / Update Position"):
+    # Add Buy Lot form
+    with st.expander("➕ Add Buy Lot"):
         with st.form("add_position_form"):
             _ticker_opts = get_tickers(selected_portfolio)
             _pos_ticker   = st.selectbox("Ticker", options=_ticker_opts)
             _pos_shares   = st.number_input("Shares", min_value=0.01, step=0.01, value=1.0)
-            _pos_avg_cost = st.number_input("Average Cost per Share ($)", min_value=0.01, step=0.01, value=1.0)
+            _pos_avg_cost = st.number_input("Purchase Price per Share ($)", min_value=0.01, step=0.01, value=1.0)
             _pos_date     = st.date_input("Purchase Date", value=datetime.today().date())
             _pos_notes    = st.text_input("Notes (optional)")
-            if st.form_submit_button("Save Position"):
+            if st.form_submit_button("Add Buy Lot"):
                 _ok = save_position(
                     selected_portfolio,
                     _pos_ticker,
@@ -2072,10 +2101,46 @@ if page == "Portfolio Manager":
                     _pos_notes or None,
                 )
                 if _ok:
-                    st.success(f"Position saved for {_pos_ticker}.")
+                    st.success(f"Buy lot added for {_pos_ticker}.")
                     st.rerun()
                 else:
-                    st.error("Failed to save position.")
+                    st.error("Failed to add buy lot.")
+
+    with st.expander("Sell Position"):
+        if not _positions:
+            st.caption("Add a buy lot before recording a sale.")
+        else:
+            with st.form("sell_position_form"):
+                _held_tickers = [p.get("ticker", "") for p in _positions if p.get("ticker")]
+                _sell_ticker = st.selectbox("Ticker", options=_held_tickers, key="sell_position_ticker")
+                _sell_shares = st.number_input("Shares to Sell", min_value=0.01, step=0.01, value=1.0)
+                _sell_price = st.number_input("Sale Price per Share ($)", min_value=0.01, step=0.01, value=1.0)
+                _sell_date = st.date_input("Sale Date", value=datetime.today().date())
+                _sell_strategy = st.selectbox("Lot Strategy", options=["FIFO", "LIFO", "specific"])
+                _sell_lot_ids = None
+                if _sell_strategy == "specific":
+                    _selected_pos = next((p for p in _positions if p.get("ticker") == _sell_ticker), None)
+                    _lot_options = [lot.get("lot_id", "") for lot in (_selected_pos or {}).get("lots", []) if lot.get("lot_id")]
+                    _sell_lot_ids = st.multiselect("Lots", options=_lot_options)
+                    st.caption("Specific-lot sale uses the selected lots in the order shown.")
+                if st.form_submit_button("Record Sale"):
+                    try:
+                        _sale = sell_position(
+                            selected_portfolio,
+                            _sell_ticker,
+                            _sell_shares,
+                            _sell_price,
+                            str(_sell_date),
+                            _sell_strategy,
+                            _sell_lot_ids,
+                        )
+                        st.success(
+                            f"Sale recorded for {_sell_ticker}: realized gain/loss "
+                            f"{_fmt_dollars(_sale['realized_gain'])}."
+                        )
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Failed to record sale: {exc}")
 
     if not analysed:
         st.info("No FinLens analysis available yet. Sections below require at least one analysed filing.")
