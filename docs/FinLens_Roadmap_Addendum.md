@@ -10,7 +10,16 @@ These are the features the 20-hour curriculum surfaces as gaps. Each chapter's e
 
 ---
 
-### 1 · Position Tracking with Lot-Level Cost Basis
+> **Model selection for design phase (Claude.ai work before Codex/CC):**
+> Each feature is tagged with the recommended Claude model for the *design conversation* — the work you do in Claude.ai before sending a Codex prompt. The implementation tools (Codex, Claude Code) have their own model handling and are unaffected.
+>
+> - **Opus 4.8** — design conversations with non-obvious tradeoffs, new architecture, integration across multiple modules, measurable success criteria, or strategic implications
+> - **Sonnet 4.6** — Codex prompt writing for well-scoped features, CC review prompt writing, UI tweaks, copy changes, daily building
+> - **Haiku 4.5** — quick lookups, PowerShell syntax, single-file edits
+>
+> Default to Sonnet 4.6. Escalate to Opus 4.8 when the conversation requires judgment under ambiguity rather than executing a clear pattern.
+
+### 1 · Position Tracking with Lot-Level Cost Basis  ·  *Design: Opus 4.8*
 
 **Why this is first.** Without it, the Portfolio page is a watchlist with extra columns. Cost basis is the foundation everything else (P&L, margin-of-safety against fair value, performance attribution, tax-loss harvesting) sits on top of.
 
@@ -34,7 +43,7 @@ These are the features the 20-hour curriculum surfaces as gaps. Each chapter's e
 
 ---
 
-### 2 · Catalyst Calendar
+### 2 · Catalyst Calendar  ·  *Design: Sonnet 4.6*
 
 **Why.** Chapter VIII step 6 (Monitor) explicitly calls for a per-ticker catalyst list. Currently a FinLens user has to assemble this themselves from earnings dates on yfinance, conference schedules from IR sites, and ex-div dates scattered across sources. A unified calendar is cheap to build and high daily-engagement.
 
@@ -57,7 +66,7 @@ These are the features the 20-hour curriculum surfaces as gaps. Each chapter's e
 
 ---
 
-### 3 · Filing Diff Viewer
+### 3 · Filing Diff Viewer  ·  *Design: Opus 4.8*
 
 **Why this is the most defensible feature on this list.** Chapter V teaches the four-question MD&A read, and the discipline of diffing this year's filing against last year's. Nobody in the consumer fintech space does this well. AlphaSense and Sentieo do versions of it for enterprise. Building this puts FinLens in a category currently occupied only by enterprise tools.
 
@@ -83,7 +92,7 @@ These are the features the 20-hour curriculum surfaces as gaps. Each chapter's e
 
 ---
 
-### 4 · Research Notebook / Memo Builder
+### 4 · Research Notebook / Memo Builder  ·  *Design: Opus 4.8*
 
 **Why.** Chapter VIII step 4 is the one-page investment memo. The curriculum hammers that the discipline of writing is what makes the thesis honest. Currently a FinLens user writes their memo in Notion or a Google Doc — disconnected from the actual analysis. A native memo tool inside FinLens stitches everything together into the artifact a real analyst (and a real VC) produces.
 
@@ -108,7 +117,7 @@ These are the features the 20-hour curriculum surfaces as gaps. Each chapter's e
 
 ---
 
-### 5 · Curriculum Mode
+### 5 · Curriculum Mode  ·  *Design: Sonnet 4.6*
 
 **Why.** This is the commercial wedge that no competitor has. The HTML curriculum is a standalone document; Curriculum Mode is the curriculum living inside the tool, with progress synced and the right workspace surfaced for each chapter's exercise.
 
@@ -142,15 +151,15 @@ These are the features I'd add to drive conversion, retention, and tier upgrades
 
 These are features only an AI-native tool can ship well. They're also where FinLens's per-feature cost is highest, so they go behind paywalls or rate limits.
 
-**6 · AI Earnings Call Summarizer.** Paste a transcript (or auto-fetch from a provider), get a structured analysis: tone shift vs last quarter, hedging-language count, the topics analysts pushed back on, what management didn't answer cleanly. This operationalizes Chapter IV's "reading the earnings call" framework. Differentiator: most tools summarize the prepared remarks. This summarizes the *Q&A*, which is where the real signal lives.
+**6 · AI Earnings Call Summarizer** · *Design: Opus 4.8*. Paste a transcript (or auto-fetch from a provider), get a structured analysis: tone shift vs last quarter, hedging-language count, the topics analysts pushed back on, what management didn't answer cleanly. This operationalizes Chapter IV's "reading the earnings call" framework. Differentiator: most tools summarize the prepared remarks. This summarizes the *Q&A*, which is where the real signal lives.
 
-**7 · AI Filing Q&A.** Natural-language question against a loaded 10-K or AIF. "What's the customer concentration risk?" → answer with section citations. RAG-style: chunk the filing, embed, retrieve, answer with Claude. This is table stakes for AI-native financial tools in 2026; if FinLens doesn't have it, users will leave for Finchat.
+**7 · AI Filing Q&A** · *Design: Opus 4.8*. Natural-language question against a loaded 10-K or AIF. "What's the customer concentration risk?" → answer with section citations. RAG-style: chunk the filing, embed, retrieve, answer with Claude. This is table stakes for AI-native financial tools in 2026; if FinLens doesn't have it, users will leave for Finchat.
 
-**8 · AI Bear Case Generator.** User writes a bull thesis. Claude generates the strongest bear case it can construct from the same filings, ratios, and macro context. This is Chapter VIII's "disconfirmation" exercise automated. Powerful for new analysts who naturally over-weight their own thesis.
+**8 · AI Bear Case Generator** · *Design: Sonnet 4.6*. User writes a bull thesis. Claude generates the strongest bear case it can construct from the same filings, ratios, and macro context. This is Chapter VIII's "disconfirmation" exercise automated. Powerful for new analysts who naturally over-weight their own thesis.
 
-**9 · AI Peer Discovery.** "Find me 5 companies similar to NVDA in business model but different in geography." Better than rigid SIC/GICS peer matching — Claude can reason about business model overlap that industry codes miss. Use embeddings on business descriptions + Claude refinement.
+**9 · AI Peer Discovery** · *Design: Opus 4.8*. "Find me 5 companies similar to NVDA in business model but different in geography." Better than rigid SIC/GICS peer matching — Claude can reason about business model overlap that industry codes miss. Use embeddings on business descriptions + Claude refinement.
 
-**10 · AI Auto-Draft Investment Memo.** Given a ticker, Claude reads the filing, pulls financials, runs a peer comparison, and drafts the eight-section memo (feature 4 above). User edits. This is the "10× faster than writing from scratch" feature — the one that makes a single analyst feel like a team of three.
+**10 · AI Auto-Draft Investment Memo** · *Design: Opus 4.8*. Given a ticker, Claude reads the filing, pulls financials, runs a peer comparison, and drafts the eight-section memo (feature 4 above). User edits. This is the "10× faster than writing from scratch" feature — the one that makes a single analyst feel like a team of three.
 
 ---
 
@@ -158,17 +167,17 @@ These are features only an AI-native tool can ship well. They're also where FinL
 
 These are features competitors already have. You need most of them to be considered seriously, but don't try to out-Bloomberg Bloomberg — pick the high-value subset.
 
-**11 · Insider Transactions (Form 4 / SEDI).** Officer and 10%-owner buys and sells. SEDAR+ has SEDI (System for Electronic Disclosure by Insiders) for Canadian issuers, which is another SEDAR+ differentiator vs US-only tools. Display: per-ticker insider activity table + portfolio-wide insider-buying signal feed.
+**11 · Insider Transactions (Form 4 / SEDI)** · *Design: Sonnet 4.6*. Officer and 10%-owner buys and sells. SEDAR+ has SEDI (System for Electronic Disclosure by Insiders) for Canadian issuers, which is another SEDAR+ differentiator vs US-only tools. Display: per-ticker insider activity table + portfolio-wide insider-buying signal feed.
 
-**12 · 13F Institutional Ownership.** Quarterly. Who's accumulating, who's distributing, what % of float is held by the top 20 funds. The "who's smart-money holding" feature retail investors love.
+**12 · 13F Institutional Ownership** · *Design: Sonnet 4.6*. Quarterly. Who's accumulating, who's distributing, what % of float is held by the top 20 funds. The "who's smart-money holding" feature retail investors love.
 
-**13 · Short Interest with History.** Not just the level — the *path*. Rising SI on falling price is one signal; rising SI on flat price is another. Display: chart with price overlay.
+**13 · Short Interest with History** · *Design: Sonnet 4.6*. Not just the level — the *path*. Rising SI on falling price is one signal; rising SI on flat price is another. Display: chart with price overlay.
 
-**14 · Analyst Estimate Distribution.** Consensus is one number; the *distribution* is the information. High estimate, low estimate, dispersion, revision velocity, recent up/down ratios. This is Chapter IV's revisions framework as a live data product.
+**14 · Analyst Estimate Distribution** · *Design: Sonnet 4.6*. Consensus is one number; the *distribution* is the information. High estimate, low estimate, dispersion, revision velocity, recent up/down ratios. This is Chapter IV's revisions framework as a live data product.
 
-**15 · Dividend History & Coverage Ratio.** For income investors. Per-share dividend history, growth rate, payout ratio, coverage ratio (FCF / dividend). The conservative-investor demographic is more willing to pay for tools than the meme-stock demographic.
+**15 · Dividend History & Coverage Ratio** · *Design: Sonnet 4.6*. For income investors. Per-share dividend history, growth rate, payout ratio, coverage ratio (FCF / dividend). The conservative-investor demographic is more willing to pay for tools than the meme-stock demographic.
 
-**16 · Options Activity.** Unusual options volume, put/call ratio per ticker, implied volatility skew. Used by sophisticated retail and by event traders. Lower priority unless going after the active-trader segment.
+**16 · Options Activity** · *Design: Sonnet 4.6*. Unusual options volume, put/call ratio per ticker, implied volatility skew. Used by sophisticated retail and by event traders. Lower priority unless going after the active-trader segment.
 
 ---
 
@@ -176,15 +185,15 @@ These are features competitors already have. You need most of them to be conside
 
 These keep users in the product and drive virality.
 
-**17 · Conditional Alerts.** Price, RSI, ratio (P/E hits target), earnings beat by X%, insider buy above $Y, MD&A diff flagged. Email + in-app. This is the daily-utility feature that creates daily-open habit.
+**17 · Conditional Alerts** · *Design: Opus 4.8*. Price, RSI, ratio (P/E hits target), earnings beat by X%, insider buy above $Y, MD&A diff flagged. Email + in-app. This is the daily-utility feature that creates daily-open habit.
 
-**18 · Watchlists with Smart Sorting.** Not just a list. Sortable by margin-of-safety vs your saved DCF, by upcoming-catalyst proximity, by revision velocity, by insider activity. Smart watchlists (e.g., "all my financial-sector positions") that auto-update.
+**18 · Watchlists with Smart Sorting** · *Design: Sonnet 4.6*. Not just a list. Sortable by margin-of-safety vs your saved DCF, by upcoming-catalyst proximity, by revision velocity, by insider activity. Smart watchlists (e.g., "all my financial-sector positions") that auto-update.
 
-**19 · Public Memo Gallery & Track Record.** Opt-in. Users publish their memos; FinLens tracks the actual price action vs the memo's thesis over time and assigns each user a transparent track-record score. This is the *community* moat — every memo published makes the next user more likely to join. Also a recruiting signal for the user (publish memos → demonstrate analytical ability → get hired into a buy-side seat).
+**19 · Public Memo Gallery & Track Record** · *Design: Opus 4.8*. Opt-in. Users publish their memos; FinLens tracks the actual price action vs the memo's thesis over time and assigns each user a transparent track-record score. This is the *community* moat — every memo published makes the next user more likely to join. Also a recruiting signal for the user (publish memos → demonstrate analytical ability → get hired into a buy-side seat).
 
-**20 · Slack/Discord Integration.** Family offices, small funds, and study groups want to share analyses in channels. Send a FinLens memo or alert directly to a Slack channel. Cheap to build, high stickiness for teams.
+**20 · Slack/Discord Integration** · *Design: Sonnet 4.6*. Family offices, small funds, and study groups want to share analyses in channels. Send a FinLens memo or alert directly to a Slack channel. Cheap to build, high stickiness for teams.
 
-**21 · Browser Extension.** Right-click on a ticker on Bloomberg.com, SeekingAlpha, Reuters, or Twitter/X → "Open in FinLens." Reduces context-switching. Reduces churn (every easy path back into the app is a retention lever).
+**21 · Browser Extension** · *Design: Opus 4.8*. Right-click on a ticker on Bloomberg.com, SeekingAlpha, Reuters, or Twitter/X → "Open in FinLens." Reduces context-switching. Reduces churn (every easy path back into the app is a retention lever).
 
 ---
 
@@ -192,17 +201,17 @@ These keep users in the product and drive virality.
 
 Once cost basis exists, these compound on it.
 
-**22 · Performance Attribution.** What drove your returns over the last quarter/year? Position selection, sector tilt, market timing, FX. Critical for serious investors and required for any user calling themselves a "fund manager."
+**22 · Performance Attribution** · *Design: Opus 4.8*. What drove your returns over the last quarter/year? Position selection, sector tilt, market timing, FX. Critical for serious investors and required for any user calling themselves a "fund manager."
 
-**23 · Factor Exposure Analysis.** Your portfolio's exposure to size, value, momentum, quality, low-vol. Lets users see when they're accidentally a factor bettor rather than a stock picker (Chapter VII's framework).
+**23 · Factor Exposure Analysis** · *Design: Opus 4.8*. Your portfolio's exposure to size, value, momentum, quality, low-vol. Lets users see when they're accidentally a factor bettor rather than a stock picker (Chapter VII's framework).
 
-**24 · Rebalancing Engine.** Set target weights, FinLens tells you what to trim/add to get back to targets. Threshold + calendar options per Ch VII. Generates a one-click trade list.
+**24 · Rebalancing Engine** · *Design: Opus 4.8*. Set target weights, FinLens tells you what to trim/add to get back to targets. Threshold + calendar options per Ch VII. Generates a one-click trade list.
 
-**25 · Portfolio Stress Test.** "What happens to your portfolio in a 2008-like scenario? A 2020-like? A 2022 rate-shock?" Apply historical factor returns to current portfolio composition. Surprisingly cheap to build and a *killer* sales demo for the family-office tier.
+**25 · Portfolio Stress Test** · *Design: Opus 4.8*. "What happens to your portfolio in a 2008-like scenario? A 2020-like? A 2022 rate-shock?" Apply historical factor returns to current portfolio composition. Surprisingly cheap to build and a *killer* sales demo for the family-office tier.
 
-**26 · Tax-Lot Optimization.** For taxable accounts. Identifies the best lots to sell to minimize tax (or harvest losses). US and Canadian rule sets — Canada's superficial-loss rule is different from the US wash-sale rule, which is itself a SEDAR+-adjacent differentiator.
+**26 · Tax-Lot Optimization** · *Design: Opus 4.8*. For taxable accounts. Identifies the best lots to sell to minimize tax (or harvest losses). US and Canadian rule sets — Canada's superficial-loss rule is different from the US wash-sale rule, which is itself a SEDAR+-adjacent differentiator.
 
-**27 · Multi-Portfolio Support.** Real portfolio, model portfolio, paper-trading portfolio, family member's portfolio. Switch between them. Family offices manage 5–15 portfolios; advisors manage hundreds.
+**27 · Multi-Portfolio Support** · *Design: Sonnet 4.6*. Real portfolio, model portfolio, paper-trading portfolio, family member's portfolio. Switch between them. Family offices manage 5–15 portfolios; advisors manage hundreds.
 
 ---
 
@@ -210,23 +219,23 @@ Once cost basis exists, these compound on it.
 
 Because the long-term Riley-as-VC arc means FinLens should grow into adjacent VC workflows.
 
-**28 · Private Company Valuation Toolkit.** Pre-money / post-money calculator. Dilution waterfall across rounds. Option-pool top-up math. Liquidation preferences (1× non-participating vs participating).
+**28 · Private Company Valuation Toolkit** · *Design: Opus 4.8*. Pre-money / post-money calculator. Dilution waterfall across rounds. Option-pool top-up math. Liquidation preferences (1× non-participating vs participating).
 
-**29 · Fund Return Modeling.** IRR, TVPI, DPI calculators. Power-law portfolio simulation: "If 70% of your investments return 0, 20% return 1×, 8% return 5×, 2% return 50× — what's the expected fund return?" Includes reserve-allocation modeling (Ch VII VC sidebar).
+**29 · Fund Return Modeling** · *Design: Opus 4.8*. IRR, TVPI, DPI calculators. Power-law portfolio simulation: "If 70% of your investments return 0, 20% return 1×, 8% return 5×, 2% return 50× — what's the expected fund return?" Includes reserve-allocation modeling (Ch VII VC sidebar).
 
-**30 · Cap Table Modeling.** Multi-round cap tables with founder/employee/investor splits. Particularly valuable when paired with feature 28.
+**30 · Cap Table Modeling** · *Design: Opus 4.8*. Multi-round cap tables with founder/employee/investor splits. Particularly valuable when paired with feature 28.
 
-**31 · Term Sheet Comparator.** Side-by-side comparison of term sheets with plain-English translations of each clause and "this is unusual / market / favorable" annotations. Niche but high-value for first-time founders and emerging VCs.
+**31 · Term Sheet Comparator** · *Design: Opus 4.8*. Side-by-side comparison of term sheets with plain-English translations of each clause and "this is unusual / market / favorable" annotations. Niche but high-value for first-time founders and emerging VCs.
 
 ---
 
 ### F · Reports & Exports (Family Office Tier)
 
-**32 · Custom-Branded PDF Reports.** Family office logo, advisor's name, quarterly performance summary, position-level commentary auto-pulled from memos. Auto-generated, hand-editable.
+**32 · Custom-Branded PDF Reports** · *Design: Sonnet 4.6*. Family office logo, advisor's name, quarterly performance summary, position-level commentary auto-pulled from memos. Auto-generated, hand-editable.
 
-**33 · Client Sharing.** A family-office user can grant view-only access to a client (or beneficiary) for a specific portfolio. The client sees a clean dashboard, the advisor retains control.
+**33 · Client Sharing** · *Design: Opus 4.8*. A family-office user can grant view-only access to a client (or beneficiary) for a specific portfolio. The client sees a clean dashboard, the advisor retains control.
 
-**34 · API Access.** For sophisticated users who want to pull FinLens data into their own spreadsheets or notebooks. Read-only at first; eventually read-write.
+**34 · API Access** · *Design: Opus 4.8*. For sophisticated users who want to pull FinLens data into their own spreadsheets or notebooks. Read-only at first; eventually read-write.
 
 ---
 
@@ -315,3 +324,15 @@ That sequence gets you to a defensible $49 tier in 90 days, a saleable $199 tier
 ---
 
 *Living document. Update as features ship, users provide feedback, and the commercial mix becomes clearer.*
+
+## Part V — Model Selection Cheat Sheet
+
+When the conversation requires judgment under ambiguity → **Opus 4.8**
+When the conversation requires executing a clear pattern → **Sonnet 4.6**
+When the conversation requires a quick lookup → **Haiku 4.5**
+
+Use the per-feature tags above for the design phase only. Implementation tools (Codex, Claude Code) handle their own model selection.
+
+**Sundays:** Step 7 (strategic review) is always Opus 4.8. Steps 1-6 (mechanical audits) can be Sonnet 4.6.
+
+**Debugging:** Novel bugs / unexpected behavior → Opus 4.8. Reproducible bugs with clear repro steps → Sonnet 4.6.
