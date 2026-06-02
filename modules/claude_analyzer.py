@@ -11,6 +11,11 @@ from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING
 DASHBOARD_MODEL = ANALYSIS_MODEL
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 OPUS_48_MODEL = "claude-opus-4-8"
+MAX_CACHED_FILING_CHARS = 450_000
+
+
+def _cache_control() -> dict:
+    return {"type": "ephemeral", "ttl": "1h"}
 
 
 def _text_content(response) -> str:
@@ -69,12 +74,12 @@ def _make_client(api_key: str):
 
 
 def build_filing_context(filing_text: str) -> list:
-    filing_text = filing_text[:MAX_FILING_CHARS]
+    filing_text = filing_text[:MAX_CACHED_FILING_CHARS]
     return [
         {
             "type": "text",
             "text": filing_text,
-            "cache_control": {"type": "ephemeral"},
+            "cache_control": _cache_control(),
         }
     ]
 
@@ -89,15 +94,49 @@ def log_cache_usage(call_name: str, usage) -> dict:
     return log
 
 
+def _render_template(template: str, **values) -> str:
+    rendered = template
+    for key, value in values.items():
+        rendered = rendered.replace("{" + key + "}", str(value))
+    return rendered
+
+
 # ===========================================================================
 # CALL 1 — EXTRACTION
 # Model: claude-haiku (fast, cheap, structured extraction only)
-# SYSTEM_PROMPT defines Claude's role and the exact JSON shape to return.
-# USER_PROMPT_TEMPLATE injects the raw PDF text at runtime.
+# SYSTEM_PROMPT defines Claude's shared role across all analyzer calls.
+# USER_PROMPT_TEMPLATE injects call-specific instructions at runtime.
 # ===========================================================================
 
-SYSTEM_PROMPT = """You are a financial analyst assistant. Extract financial statements
-from raw document text and return them as a single JSON object.
+SYSTEM_PROMPT = """You are a senior financial analyst analyzing SEC filings, public-company financial statements, management commentary, and investor-relevant disclosures for a fund manager workflow. Treat the filing as primary evidence. Your role is to read carefully, reason from the text and numbers that are actually present, and produce decision-useful structured analysis when the user asks for it.
+
+You operate like an experienced analyst who has reviewed hundreds of 10-Ks, 10-Qs, annual reports, MD&A sections, risk factors, segment footnotes, cash flow statements, and management disclosures. You understand that filings are legal documents as well as business narratives. You look for what changed, what matters, what is recurring, what is temporary, and what management is emphasizing or avoiding. You distinguish accounting presentation from economic substance. You are attentive to revenue quality, margin structure, working capital, liquidity, leverage, free cash flow conversion, capital allocation, dilution, buybacks, dividends, restructuring charges, impairments, one-time gains or losses, tax effects, stock-based compensation, deferred revenue, inventory, receivables, debt maturities, covenants, operating leases, and contingent liabilities.
+
+Anchor every conclusion in the supplied filing context. Do not invent facts, figures, dates, tickers, segments, products, markets, management quotes, or forward guidance. If a requested field cannot be supported by the filing, use the fallback requested by the user prompt, such as null, an empty array, or a concise error field. When the user provides extracted financials in addition to filing text, use the extracted financials as a cross-reference, not as a substitute for reading the filing. If the filing text and extracted financials conflict, prefer the filing text when it is explicit and note ambiguity only if the requested output format allows it.
+
+Keep your analysis investment-grade and concrete. Avoid generic sector commentary unless the filing itself makes the sector issue material. Prefer named line items, disclosed metrics, management statements, dates, period labels, and numerical changes over vague language. When evaluating quality, consider the full context: growth alongside margin pressure, profitability alongside cash burn, improving income alongside working-capital strain, strong liquidity alongside refinancing risk, and management optimism alongside risk-factor language. Do not overreact to a single metric if the broader filing gives a clearer picture.
+
+Read MD&A, risk factors, footnotes, business description, segment disclosures, liquidity and capital resources, contractual obligations, subsequent events, and financial statement notes when they are present. Recognize common filing structures and terminology. A cash flow statement may be labeled consolidated, condensed consolidated, combined, statement of cash flows, or similar. Equity may be labeled shareholders' equity, stockholders' equity, members' equity, or deficit. Negative numbers may appear with parentheses. Currency and scale may appear in headings, captions, or table notes. Fiscal year labels and period end dates may be embedded in table headers rather than prose.
+
+When the user requests JSON, return only valid JSON with no markdown fences, no prose preamble, and no trailing commentary. Match the exact field names, enum values, array lengths, and data types requested in the user prompt. Do not add fields unless explicitly requested. Use plain numbers for numeric values. Do not include commas, currency symbols, or parentheses in numeric fields. Use null only when the requested value is genuinely absent or cannot be inferred reliably. Preserve original line-item names when extraction is requested. Sanitize prose for downstream display: use straight quotes, avoid special punctuation when requested, and keep wording concise.
+
+When the user asks for an investment signal, bear/bull case, dashboard insight, or sentiment score, make a judgment from the evidence rather than summarizing mechanically. Be decisive when the evidence supports a view, but do not fabricate certainty. A useful answer should help a portfolio manager decide what to investigate, pass on, or monitor. A weak answer lists obvious facts; a strong answer identifies the central driver, the evidence that matters, and the risk that would invalidate the view.
+
+When the user asks for financial extraction, focus on reliable structured capture. Identify the most recent comparable period, prior period, fiscal labels, currency, and scale. Include section headers and totals where they clarify the statement structure. Keep current and prior values aligned to the correct columns. If quarterly and year-to-date figures both appear, follow the specific instruction in the user prompt. Do not blend periods or infer missing numbers from unrelated tables unless the prompt explicitly asks you to calculate.
+
+When the user asks for qualitative sentiment, assess tone from management's actual language. Separate confident, specific, accountable language from promotional boilerplate. Separate prudent risk disclosure from pervasive hedging. Look for forward guidance, stated priorities, explanations of underperformance, language around demand, pricing, costs, supply chain, capital spending, liquidity, and competition. Choose representative phrases that are specific and meaningful.
+
+Maintain an institutional standard of evidence. Treat tables, prose disclosures, and footnotes as complementary sources. A filing may present strong headline results while revealing weaker unit economics, shrinking backlog, adverse mix shift, higher customer concentration, deteriorating credit quality, or aggressive accounting in the notes. A filing may also present weak headline earnings while revealing nonrecurring charges, temporary working-capital usage, improving order trends, or management actions that make the business more resilient. Your job is to reconcile those signals without flattening them into generic commentary.
+
+Think across time. Compare current-period figures with prior-period figures when available. Consider whether growth is organic or acquisition-driven, whether margin changes reflect price, volume, input costs, mix, restructuring, impairment, or operating leverage, and whether cash flow supports or contradicts earnings. Evaluate the balance sheet in relation to the business model: cash needs, debt maturity profile, interest expense, covenant pressure, capital intensity, inventory cycles, receivables collection, customer prepayments, and off-balance-sheet commitments. When disclosures mention subsequent events, litigation, regulatory matters, or going-concern language, treat them as potentially material even if they do not flow through the primary statements.
+
+Think like a capital allocator. Ask whether management is investing, harvesting, defending, or repairing the business. Buybacks can be accretive or wasteful depending on valuation, leverage, and reinvestment needs. Dividends can signal durability or capital scarcity. Acquisitions can create strategic value or mask organic weakness. Capex can be growth investment or maintenance burden. Stock-based compensation can be acceptable in a high-growth company or a persistent drag on shareholder returns. Do not judge these items in isolation; connect them to the company's financial trajectory and stated strategy.
+
+Be precise about uncertainty. If evidence is mixed, identify the specific unresolved issue rather than writing vague balance. If a number is unavailable, do not backfill it from memory. If a metric is not directly reported but can be calculated from disclosed values, calculate it only when the requested output allows calculations and keep the result consistent with the filing's scale and currency. If a filing is partial, synthetic, or generated from structured SEC data rather than a full narrative filing, adjust the depth of qualitative conclusions to the available evidence.
+
+Maintain consistency across calls for the same filing. The same filing context may be reused for extraction, summary, bull/bear analysis, dashboard frameworks, and MD&A sentiment. Treat that context as stable. Call-specific instructions, schemas, and output constraints are supplied in the user message; follow those instructions exactly while keeping this shared analyst role unchanged."""
+
+USER_PROMPT_TEMPLATE = """Extract the financial statements from the cached filing context or document text and return them as a single JSON object.
 
 Required structure:
 {
@@ -144,34 +183,50 @@ Additional rules:
 - Preserve the original line item names exactly as they appear in the document.
 - If a statement is not found in the document, return an empty array.
 - Return only the JSON object. No explanation, no markdown fences.
-"""
-
-USER_PROMPT_TEMPLATE = """Extract the financial statements from the following document:
 
 {document_text}
 """
 
 
-def analyze_financials(document_text: str, api_key: str, model: str = DEFAULT_MODEL) -> dict:
+def analyze_financials(
+    document_text: str,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    filing_context: list = None,
+) -> dict:
     """Call 1: extract structured financial data from PDF text using Claude Haiku."""
     client = _make_client(api_key)
-    # Front+back slice: captures business context at the top and financial
-    # statements at the end, which large filings (e.g. Walgreens 10-K) place
-    # well past the 150K character mark if front-only truncation is used.
-    document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
+    if filing_context is not None:
+        user_message = [
+            *filing_context,
+            {
+                "type": "text",
+                "text": _render_template(
+                    USER_PROMPT_TEMPLATE,
+                    document_text="Filing text provided above as cached context."
+                ),
+            },
+        ]
+    else:
+        # Front+back slice: captures business context at the top and financial
+        # statements at the end, which large filings (e.g. Walgreens 10-K) place
+        # well past the 150K character mark if front-only truncation is used.
+        document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
+        user_message = _render_template(USER_PROMPT_TEMPLATE, document_text=document_text)
 
     response = client.messages.create(
         model=model,
         max_tokens=8192,
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
         messages=[
             {
                 "role": "user",
-                "content": USER_PROMPT_TEMPLATE.format(document_text=document_text),
+                "content": user_message,
             }
         ],
     )
 
+    print(log_cache_usage("analyze_financials", response.usage))
     raw = response.content[0].text
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -188,10 +243,9 @@ def analyze_financials(document_text: str, api_key: str, model: str = DEFAULT_MO
 # Reads the full filing text (including MD&A, risk factors, management
 # commentary) plus the structured financials from Call 1, and returns a
 # structured investment signal with thesis, catalysts, and risks.
-# Do not modify SUMMARY_SYSTEM_PROMPT without design review.
 # ===========================================================================
 
-SUMMARY_SYSTEM_PROMPT = """You are a principal investor and fund manager with 20+ years deploying capital across public equities, private credit, and venture. You review financial filings to make allocation decisions — not to summarise, not to present options, but to form a view and act on it. You have seen hundreds of filings. You know what matters and what doesn't.
+SUMMARY_INSTRUCTIONS = """You are a principal investor and fund manager with 20+ years deploying capital across public equities, private credit, and venture. You review financial filings to make allocation decisions — not to summarise, not to present options, but to form a view and act on it. You have seen hundreds of filings. You know what matters and what doesn't.
 
 Your job is to read the full filing — including the financial statements, MD&A, management commentary, risk factors, and any forward guidance — and produce a structured investment signal with supporting analysis.
 
@@ -257,7 +311,9 @@ Respond with a single JSON object only. No markdown fences, no explanation, no p
 
 The catalysts array must contain 1 or 2 objects. The risks array must contain exactly 1 object. Do not add fields. Do not omit fields."""
 
-SUMMARY_USER_PROMPT_TEMPLATE = """Analyse the following financial filing and return your investment signal.
+SUMMARY_USER_PROMPT_TEMPLATE = SUMMARY_INSTRUCTIONS + """
+
+Analyse the following financial filing and return your investment signal.
 
 EXTRACTED FINANCIALS (from structured parsing — use as a cross-reference):
 {extracted_financials}
@@ -278,7 +334,8 @@ def analyze_summary(
     client = _make_client(api_key)
 
     if filing_context is not None:
-        question_text = SUMMARY_USER_PROMPT_TEMPLATE.format(
+        question_text = _render_template(
+            SUMMARY_USER_PROMPT_TEMPLATE,
             extracted_financials=json.dumps(extracted_financials, indent=2),
             filing_text="Filing text provided above as cached context.",
         )
@@ -288,7 +345,8 @@ def analyze_summary(
         ]
     else:
         filing_text = filing_text[:MAX_FILING_CHARS]
-        user_message = SUMMARY_USER_PROMPT_TEMPLATE.format(
+        user_message = _render_template(
+            SUMMARY_USER_PROMPT_TEMPLATE,
             extracted_financials=json.dumps(extracted_financials, indent=2),
             filing_text=filing_text,
         )
@@ -297,7 +355,7 @@ def analyze_summary(
         response = client.messages.create(
             model=model,
             max_tokens=8000,
-            system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
             thinking={"type": "adaptive"},
             output_config={"effort": "high"},
@@ -306,7 +364,7 @@ def analyze_summary(
         response = client.messages.create(
             model=model,
             max_tokens=1024,
-            system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
         )
 
@@ -349,7 +407,7 @@ def analyze_summary(
 # Prompt-cached so repeat runs within 5 minutes cost only input tokens.
 # ===========================================================================
 
-BEAR_BULL_SYSTEM_PROMPT = """You are a principal investor writing a structured bull and bear case for a financial filing.
+BEAR_BULL_INSTRUCTIONS = """You are a principal investor writing a structured bull and bear case for a financial filing.
 
 Read the filing carefully and identify the 3 strongest arguments FOR investing (bull case) and the 3 strongest arguments AGAINST investing (bear case). Ground every point in specific data, trends, or disclosures from this filing — not generic sector commentary or obvious macro risks.
 
@@ -376,7 +434,9 @@ Rules:
 - Bear points: specific risks, deteriorating trends, concerning disclosures, or valuation concerns grounded in the filing.
 - These points should complement — not repeat — the top-level investment signal thesis."""
 
-BEAR_BULL_USER_PROMPT_TEMPLATE = """Generate the bull and bear case for this financial filing:
+BEAR_BULL_USER_PROMPT_TEMPLATE = BEAR_BULL_INSTRUCTIONS + """
+
+Generate the bull and bear case for this financial filing:
 
 {filing_text}
 """
@@ -392,7 +452,8 @@ def analyze_bear_bull(
     client = _make_client(api_key)
 
     if filing_context is not None:
-        question_text = BEAR_BULL_USER_PROMPT_TEMPLATE.format(
+        question_text = _render_template(
+            BEAR_BULL_USER_PROMPT_TEMPLATE,
             filing_text="Filing text provided above as cached context."
         )
         user_message = [
@@ -401,13 +462,13 @@ def analyze_bear_bull(
         ]
     else:
         filing_text = filing_text[:MAX_FILING_CHARS]
-        user_message = BEAR_BULL_USER_PROMPT_TEMPLATE.format(filing_text=filing_text)
+        user_message = _render_template(BEAR_BULL_USER_PROMPT_TEMPLATE, filing_text=filing_text)
 
     if model == OPUS_48_MODEL:
         response = client.messages.create(
             model=model,
             max_tokens=8000,
-            system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
             thinking={"type": "adaptive"},
             output_config={"effort": "high"},
@@ -416,7 +477,7 @@ def analyze_bear_bull(
         response = client.messages.create(
             model=model,
             max_tokens=1024,
-            system=[{"type": "text", "text": BEAR_BULL_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
         )
 
@@ -452,7 +513,7 @@ def analyze_bear_bull(
 # Lynch (story/growth), Marks (value/risk), capital allocation, sentiment.
 # ===========================================================================
 
-DASHBOARD_SYSTEM_PROMPT = """You are a financial analyst generating framework-based insights for a fund manager dashboard.
+DASHBOARD_INSTRUCTIONS = """You are a financial analyst generating framework-based insights for a fund manager dashboard.
 
 Given a company's financial filing and investment signal, produce structured insights in the style of three legendary investors.
 
@@ -485,7 +546,9 @@ Rules:
 - marks_view must show genuine contrarian or second-level insight — not generic risk commentary
 - Important: never use em dashes (—) or special unicode punctuation. Use regular hyphens (-) or double hyphens (--) instead. Use straight quotes only."""
 
-DASHBOARD_USER_PROMPT_TEMPLATE = """Generate dashboard insights for this financial filing.
+DASHBOARD_USER_PROMPT_TEMPLATE = DASHBOARD_INSTRUCTIONS + """
+
+Generate dashboard insights for this financial filing.
 
 INVESTMENT SIGNAL (from prior analysis):
 {summary_json}
@@ -517,7 +580,8 @@ def analyze_dashboard_insights(
         client      = _make_client(api_key)
 
         if filing_context is not None:
-            question_text = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+            question_text = _render_template(
+                DASHBOARD_USER_PROMPT_TEMPLATE,
                 summary_json   = json.dumps(summary_data or {}, indent=2),
                 financials_json= json.dumps(financial_data,     indent=2),
                 filing_text    = "Filing text provided above as cached context.",
@@ -528,7 +592,8 @@ def analyze_dashboard_insights(
             ]
         else:
             filing_text = filing_text[:MAX_FILING_CHARS]
-            user_message = DASHBOARD_USER_PROMPT_TEMPLATE.format(
+            user_message = _render_template(
+                DASHBOARD_USER_PROMPT_TEMPLATE,
                 summary_json   = json.dumps(summary_data or {}, indent=2),
                 financials_json= json.dumps(financial_data,     indent=2),
                 filing_text    = filing_text,
@@ -538,8 +603,8 @@ def analyze_dashboard_insights(
             response = client.messages.create(
                 model     = model,
                 max_tokens= 8000,
-                system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
-                              "cache_control": {"type": "ephemeral"}}],
+                system    = [{"type": "text", "text": SYSTEM_PROMPT,
+                              "cache_control": _cache_control()}],
                 messages  = [{"role": "user", "content": user_message}],
                 thinking  = {"type": "adaptive"},
                 output_config = {"effort": "high"},
@@ -548,8 +613,8 @@ def analyze_dashboard_insights(
             response = client.messages.create(
                 model     = model,
                 max_tokens= 1200,
-                system    = [{"type": "text", "text": DASHBOARD_SYSTEM_PROMPT,
-                              "cache_control": {"type": "ephemeral"}}],
+                system    = [{"type": "text", "text": SYSTEM_PROMPT,
+                              "cache_control": _cache_control()}],
                 messages  = [{"role": "user", "content": user_message}],
             )
 
@@ -582,3 +647,149 @@ def analyze_dashboard_insights(
             "crowd_thinks":       "",
             "marks_question":     "",
         }
+
+
+# ===========================================================================
+# CALL 5 — MD&A SENTIMENT
+# Model: Haiku by default. Haiku prompt cache is model-scoped and separate from
+# the Sonnet cache written/read by the other analyzer calls.
+# ===========================================================================
+
+MDA_INSTRUCTIONS = """Your task: locate the Management Discussion & Analysis (MD&A) section in the filing text provided, then score its sentiment. If no distinct MD&A section exists, analyse whatever management commentary and forward-looking statements are present.
+
+Return ONLY a valid JSON object — no markdown fences, no preamble, no explanation:
+
+{
+  "overall_tone": "Positive" | "Cautious" | "Negative",
+  "scores": {
+    "forward_outlook": <integer 1-5>,
+    "risk_language_density": <integer 1-5>,
+    "management_confidence": <integer 1-5>
+  },
+  "key_phrases": ["phrase 1", "phrase 2"],
+  "error": null
+}
+
+Scoring scale — 5 = most positive for the investor on every dimension:
+
+overall_tone:
+  Positive  — management is confident, highlights achievements, uses constructive forward language
+  Cautious  — balanced language, hedging, uncertainty acknowledged alongside positives
+  Negative  — emphasis on challenges, deterioration, or defensive/apologetic framing
+
+forward_outlook (1=very bearish guidance, 5=very bullish guidance):
+  Based on forward guidance language, growth projections, and stated confidence in future performance.
+
+risk_language_density (1=pervasive hedging and risk warnings, 5=minimal risk language):
+  Based on frequency and weight of cautionary language, qualifiers, and risk disclosures.
+  A score of 5 means management writes plainly and with conviction; 1 means every sentence is hedged.
+
+management_confidence (1=very defensive or evasive, 5=very direct and confident):
+  Based on ownership of results, directness of statements, and proactive vs. reactive framing.
+
+key_phrases: exactly 2–3 verbatim phrases (one sentence maximum each) that most strongly influenced your overall_tone score. Choose phrases that are specific and representative — not generic boilerplate.
+
+Rules:
+- All score fields must be integers 1–5. Do not use null for scores.
+- key_phrases must have 2 or 3 entries.
+- Return ONLY the JSON object."""
+
+MDA_USER_PROMPT_TEMPLATE = MDA_INSTRUCTIONS + """
+
+Analyse the MD&A sentiment in this financial filing:
+
+{filing_text}"""
+
+
+def _safe_json(raw: str) -> dict:
+    text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text)
+    try:
+        return json.loads(text)
+    except Exception:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group())
+            except Exception:
+                pass
+    return {"error": f"Could not parse response: {raw[:200]}"}
+
+
+_EMPTY_MDA = {
+    "overall_tone": None,
+    "scores": {
+        "forward_outlook":       None,
+        "risk_language_density": None,
+        "management_confidence": None,
+    },
+    "key_phrases": [],
+    "error": None,
+}
+
+
+def analyze_mda_sentiment(
+    raw_text: str,
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    filing_context: list = None,
+) -> dict:
+    """Call 5: score MD&A sentiment from filing text using Claude Haiku."""
+    try:
+        client = _make_client(api_key)
+
+        if filing_context is not None:
+            user_message = [
+                *filing_context,
+                {
+                    "type": "text",
+                    "text": _render_template(
+                        MDA_USER_PROMPT_TEMPLATE,
+                        filing_text="Filing text provided above as cached context."
+                    ),
+                },
+            ]
+        else:
+            text = (raw_text or "")[:MAX_FILING_CHARS]
+            user_message = _render_template(MDA_USER_PROMPT_TEMPLATE, filing_text=text)
+
+        if model == OPUS_48_MODEL:
+            response = client.messages.create(
+                model=model,
+                max_tokens=8000,
+                system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
+                messages=[{"role": "user", "content": user_message}],
+                thinking={"type": "adaptive"},
+                output_config={"effort": "high"},
+            )
+        else:
+            response = client.messages.create(
+                model=model,
+                max_tokens=512,
+                system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
+                messages=[{"role": "user", "content": user_message}],
+            )
+
+        print(log_cache_usage("analyze_mda_sentiment", response.usage))
+        data = _safe_json(_text_content(response))
+        if data.get("error"):
+            result = {k: v for k, v in _EMPTY_MDA.items()}
+            result["error"] = data["error"]
+            return result
+
+        for key in ("forward_outlook", "risk_language_density", "management_confidence"):
+            v = (data.get("scores") or {}).get(key)
+            if isinstance(v, (int, float)):
+                data.setdefault("scores", {})[key] = max(1, min(5, int(v)))
+            else:
+                data.setdefault("scores", {})[key] = None
+
+        data.setdefault("overall_tone", None)
+        data.setdefault("key_phrases", [])
+        data["error"] = None
+        return data
+
+    except Exception as exc:
+        result = {k: v for k, v in _EMPTY_MDA.items()}
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return result

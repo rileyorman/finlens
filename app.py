@@ -15,8 +15,14 @@ import yfinance as yf
 from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
-from modules.claude_analyzer import analyze_financials, analyze_summary, analyze_bear_bull, analyze_dashboard_insights
-from modules.mda_sentiment import analyze_mda_sentiment
+from modules.claude_analyzer import (
+    analyze_financials,
+    analyze_summary,
+    analyze_bear_bull,
+    analyze_dashboard_insights,
+    analyze_mda_sentiment,
+    build_filing_context,
+)
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
@@ -56,6 +62,8 @@ from modules.position_tracker import (
 from modules.market_ticker import get_ticker_data
 from modules.fmp import build_financial_data_from_fmp
 from config import (
+    EXTRACTION_MODEL,
+    ANALYSIS_MODEL,
     MAX_FILING_CHARS,
     ANALYSIS_CACHE_DIR,
     CACHE_DIR,
@@ -82,10 +90,23 @@ if not cookies.ready():
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 
+def _get_filing_context(filing_text: str, ticker: str | None, period: str | None) -> list:
+    ticker_key = (ticker or "unknown").strip().upper() or "unknown"
+    period_key = re.sub(r"\s+", "_", (period or "unknown").strip()) or "unknown"
+    cache_key = f"filing_context::{ticker_key}::{period_key}"
+    if cache_key not in st.session_state:
+        st.session_state[cache_key] = build_filing_context(filing_text)
+    return st.session_state[cache_key]
+
+
 def get_model():
     if st.session_state.get("demo_mode", False):
         return "claude-opus-4-8"
-    return "claude-haiku-4-5-20251001"
+    return ANALYSIS_MODEL
+
+
+def get_mda_model():
+    return EXTRACTION_MODEL
 
 
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
@@ -1781,16 +1802,21 @@ if page == "Portfolio Manager":
         ra = st.session_state.pending_reanalyse
         st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
         _ra_text = ra["raw_text"]
+        _ra_context = _get_filing_context(
+            _ra_text,
+            ra.get("ticker") or ra.get("company_name"),
+            ra.get("period") or ra.get("file_name"),
+        )
         with st.spinner("Call 1: Extracting financials (Haiku)..."):
-            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model())
+            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 2: Generating investment signal..."):
-            _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model())
+            _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 3: Generating bull/bear case..."):
-            _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model())
+            _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 4: Generating dashboard insights..."):
-            _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model())
+            _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
-            _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_model())
+            _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
                 safe_write_text(ra["file_path"], _ra_text)
@@ -4171,6 +4197,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _edgar_text = _financial_data_to_text(_edgar_fd)
                     st.session_state.cached_filing_text = _edgar_text
                     _edgar_period = _analysis_period(_edgar_fd)
+                    _edgar_context = _get_filing_context(_edgar_text, _tk, _edgar_period)
                     _edgar_text_path = _text_cache_path(_tk, _edgar_period)
                     if _edgar_text_path:
                         try:
@@ -4183,7 +4210,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     with st.spinner("Generating investment signal from SEC data..."):
                         try:
                             _edgar_sd = analyze_summary(
-                                _edgar_text, _edgar_fd, API_KEY, model=get_model()
+                                _edgar_text, _edgar_fd, API_KEY, model=get_model(), filing_context=_edgar_context
                             )
                             if isinstance(_edgar_sd, dict):
                                 _edgar_sd.setdefault("ticker", _tk)
@@ -4192,13 +4219,13 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             st.warning(f"Investment signal could not be generated: {e}.")
                     with st.spinner("Generating bull/bear case from SEC data..."):
                         try:
-                            _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY, model=get_model())
+                            _edgar_bb = analyze_bear_bull(_edgar_text, API_KEY, model=get_model(), filing_context=_edgar_context)
                         except Exception as e:
                             st.warning(f"Bull/bear case could not be generated: {e}.")
                     with st.spinner("Generating dashboard insights from SEC data..."):
                         try:
                             _edgar_dd = analyze_dashboard_insights(
-                                _edgar_text, _edgar_sd, _edgar_fd, API_KEY, model=get_model()
+                                _edgar_text, _edgar_sd, _edgar_fd, API_KEY, model=get_model(), filing_context=_edgar_context
                             )
                         except Exception as e:
                             st.warning(f"Dashboard insights could not be generated: {e}.")
@@ -4206,7 +4233,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     with st.spinner("Scoring MD&A sentiment..."):
                         try:
                             mda_result = analyze_mda_sentiment(
-                                _edgar_text, API_KEY, model=get_model()
+                                _edgar_text, API_KEY, model=get_mda_model(), filing_context=_edgar_context
                             )
                         except Exception as e:
                             st.warning(f"MD&A sentiment could not be scored: {e}")
@@ -4524,10 +4551,11 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             _quick_ticker = (_quick_preview_ticker or _quick_fd.get("ticker") or quick_ticker).strip().upper()
 
             _quick_text = _financial_data_to_text(_quick_fd)
+            _quick_context = _get_filing_context(_quick_text, _quick_ticker, selected_period)
             _quick_sd = None
             with st.spinner("Generating investment signal from financial statements..."):
                 try:
-                    _quick_sd = analyze_summary(_quick_text, _quick_fd, API_KEY, model=get_model())
+                    _quick_sd = analyze_summary(_quick_text, _quick_fd, API_KEY, model=get_model(), filing_context=_quick_context)
                     if isinstance(_quick_sd, dict):
                         _quick_sd.setdefault("ticker", _quick_ticker)
                 except Exception as e:
@@ -4536,7 +4564,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             _quick_bb = None
             with st.spinner("Generating bull/bear case..."):
                 try:
-                    _quick_bb = analyze_bear_bull(_quick_text, API_KEY, model=get_model())
+                    _quick_bb = analyze_bear_bull(_quick_text, API_KEY, model=get_model(), filing_context=_quick_context)
                 except Exception as e:
                     st.warning(f"Bull/bear case could not be generated: {e}.")
 
@@ -4549,6 +4577,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                         _quick_fd,
                         API_KEY,
                         model=get_model(),
+                        filing_context=_quick_context,
                     )
                 except Exception as e:
                     st.warning(f"Dashboard insights could not be generated: {e}.")
@@ -4822,25 +4851,30 @@ if st.session_state.get("pending_reanalyse"):
     st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
 
     _ra_text = ra["raw_text"]
+    _ra_context = _get_filing_context(
+        _ra_text,
+        ra.get("ticker") or ra.get("company_name"),
+        ra.get("period") or ra.get("file_name"),
+    )
 
     with st.spinner("Call 1: Extracting financials (Haiku)..."):
-        _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model())
+        _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):
-        _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model())
+        _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_bb = None
     with st.spinner("Call 3: Generating bull/bear case..."):
-        _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model())
+        _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_dd = None
     with st.spinner("Call 4: Generating dashboard insights..."):
-        _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model())
+        _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_mda = None
     with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
-        _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_model())
+        _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
@@ -4929,7 +4963,14 @@ if uploaded_file:
                     try:
                         raw_text = extract_text_from_pdf(io.BytesIO(pdf_bytes))
                         if len(raw_text) >= 200:
-                            mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_model())
+                            _cached_context = _get_filing_context(
+                                raw_text,
+                                (financial_data or {}).get("company_name") or uploaded_file.name,
+                                (financial_data or {}).get("period") or uploaded_file.name,
+                            )
+                            mda_sentiment = analyze_mda_sentiment(
+                                raw_text, API_KEY, model=get_mda_model(), filing_context=_cached_context
+                            )
                             save_cache(
                                 cache_key,
                                 uploaded_file.name,
@@ -4962,11 +5003,12 @@ if uploaded_file:
                 st.stop()
 
             st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
+            _upload_context = _get_filing_context(raw_text, uploaded_file.name, cache_key)
 
             # Step 2 — Call 1: extract structured financials (claude-haiku)
             with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
                 try:
-                    financial_data = analyze_financials(raw_text, API_KEY, model=get_model())
+                    financial_data = analyze_financials(raw_text, API_KEY, model=get_model(), filing_context=_upload_context)
                 except Exception as e:
                     st.error(f"Claude analysis failed: {e}")
                     st.stop()
@@ -4975,7 +5017,7 @@ if uploaded_file:
             summary_data = None
             with st.spinner("Generating investment signal — this may take 20–30 seconds..."):
                 try:
-                    summary_data = analyze_summary(raw_text, financial_data, API_KEY, model=get_model())
+                    summary_data = analyze_summary(raw_text, financial_data, API_KEY, model=get_model(), filing_context=_upload_context)
                 except Exception as e:
                     st.warning(f"Investment signal could not be generated: {e}. The Excel report will be created without the Summary tab.")
 
@@ -4983,7 +5025,7 @@ if uploaded_file:
             bear_bull_data = None
             with st.spinner("Generating bull/bear case — this may take 15–25 seconds..."):
                 try:
-                    bear_bull_data = analyze_bear_bull(raw_text, API_KEY, model=get_model())
+                    bear_bull_data = analyze_bear_bull(raw_text, API_KEY, model=get_model(), filing_context=_upload_context)
                 except Exception as e:
                     st.warning(f"Bull/bear case could not be generated: {e}.")
 
@@ -4992,7 +5034,7 @@ if uploaded_file:
             with st.spinner("Generating dashboard insights — this may take 15–20 seconds..."):
                 try:
                     dashboard_data = analyze_dashboard_insights(
-                        raw_text, summary_data, financial_data, API_KEY, model=get_model()
+                        raw_text, summary_data, financial_data, API_KEY, model=get_model(), filing_context=_upload_context
                     )
                 except Exception as e:
                     st.warning(f"Dashboard insights could not be generated: {e}.")
@@ -5001,7 +5043,7 @@ if uploaded_file:
             mda_sentiment = None
             with st.spinner("Scoring MD&A sentiment (Haiku)..."):
                 try:
-                    mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_model())
+                    mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_mda_model(), filing_context=_upload_context)
                 except Exception as e:
                     st.warning(f"MD&A sentiment could not be scored: {e}.")
 
@@ -5109,12 +5151,23 @@ if st.session_state.financial_data:
     # filing_text is unavailable here, so we pass "" — Claude uses financials + signal.
     if dashboard_data is None:
         with st.spinner("Generating dashboard insights — this may take 15–20 seconds..."):
+            _display_text = st.session_state.get("cached_filing_text") or ""
+            _display_context = (
+                _get_filing_context(
+                    _display_text,
+                    st.session_state.get("resolved_ticker") or summary_data.get("ticker"),
+                    financial_data.get("period") or financial_data.get("fiscal_year"),
+                )
+                if _display_text
+                else None
+            )
             dashboard_data = analyze_dashboard_insights(
                 "",
                 st.session_state.summary_data,
                 financial_data,
                 API_KEY,
                 model=get_model(),
+                filing_context=_display_context,
             )
             st.session_state.dashboard_data = dashboard_data
 
