@@ -15,6 +15,26 @@ FinLens should be treated as an investment analysis workspace, not just a PDF-to
 - **Weekly audit:** `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md` — run Sundays after CC's audit report.
 - **Build order priority:** Lot-level position tracking → Catalyst Calendar → Memo Builder → Filing Diff Viewer → Curriculum Mode. See addendum for full sequence.
 
+## Engineering Principle: Empirical Evidence > Documentation
+
+When code is empirically demonstrated to work (real API call, real metrics
+captured), that evidence outweighs any documentation-based "correction."
+APIs change faster than docs. Working code should NEVER be replaced with
+"theoretically more correct" code based on docs alone.
+
+Correct sequence:
+1. Keep what empirically works
+2. If improvement is proposed, verify the change empirically BEFORE shipping
+3. Never assume the proposed change is safe just because it matches docs
+
+Reference incident: Jun 2 2026 — Anthropic API TTL format change from "1h"
+(working) to 3600 (docs-suggested) broke prompt caching. The API accepts
+string TTL values; documentation lagged behavior. Rolling back to "1h"
+restored function.
+
+When reviewing changes that touch external APIs: ask "is there an empirical
+test showing the current code works?" before suggesting changes.
+
 ## Core Architecture
 
 Primary workflow:
