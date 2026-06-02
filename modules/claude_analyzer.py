@@ -64,9 +64,8 @@ def _make_client(api_key: str):
         return anthropic.Anthropic(
             api_key=api_key,
             http_client=httpx.Client(verify=ssl_ctx, trust_env=False),
-            betas=["prompt-caching-2024-07-31"],
         )
-    return anthropic.Anthropic(api_key=api_key, betas=["prompt-caching-2024-07-31"])
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def build_filing_context(filing_text: str) -> list:
