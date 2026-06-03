@@ -29,6 +29,7 @@ from modules.excel_exporter import create_excel_file, _calc_summary_metrics
 from modules.memo_exporter import create_memo
 from modules.edgar_fetcher import (
     get_cik,
+    get_filing_text,
     get_recent_filings,
     get_financial_data as get_edgar_financial_data,
     search_companies as search_edgar_companies,
@@ -4188,15 +4189,29 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 _tk = _edgar_cache_identifier()
                 _company_name = (st.session_state.get("edgar_company_name") or _tk or "company").strip()
                 _cik = st.session_state.get("edgar_cik")
-                with st.spinner("Fetching SEC XBRL financial statements..."):
-                    _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
-
-                if not _edgar_fd:
-                    st.error("Could not fetch structured financial data for that filing.")
+                _raw_form_type = str(_selected_filing.get("form") or _selected_filing.get("formType") or "10-K").upper()
+                if _raw_form_type.startswith("10-Q"):
+                    _form_type = "10-Q"
                 else:
-                    _edgar_text = _financial_data_to_text(_edgar_fd)
+                    _form_type = "10-K"
+                with st.spinner("Fetching SEC filing (financials + MD&A + Risk Factors)..."):
+                    _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
+                    _filing_result = get_filing_text(_cik, form_type=_form_type)
+                    _filing_text = (_filing_result or {}).get("text")
+
+                if not _edgar_fd and not _filing_text:
+                    st.error("Could not fetch SEC financial data or filing text for that filing.")
+                else:
+                    if _filing_text:
+                        _edgar_text = _filing_text
+                    else:
+                        _edgar_text = _financial_data_to_text(_edgar_fd)
                     st.session_state.cached_filing_text = _edgar_text
-                    _edgar_period = _analysis_period(_edgar_fd)
+                    _edgar_period = (
+                        _analysis_period(_edgar_fd)
+                        if _edgar_fd
+                        else (_filing_result or {}).get("report_date") or _selected_filing.get("reportDate") or ""
+                    )
                     _edgar_context = _get_filing_context(_edgar_text, _tk, _edgar_period)
                     _edgar_text_path = _text_cache_path(_tk, _edgar_period)
                     if _edgar_text_path:
