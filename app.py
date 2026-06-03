@@ -1971,6 +1971,8 @@ if page == "Portfolio Manager":
 
     def _fmt_dollars(v):
         av = abs(v)
+        if av >= 1_000_000_000_000:
+            return f"${v / 1_000_000_000_000:.2f}T"
         if av >= 1_000_000_000:
             return f"${v / 1_000_000_000:.1f}B"
         if av >= 1_000_000:
@@ -3171,6 +3173,8 @@ if page == "Stock Tracker":
         if value is None:
             return "—"
         value = float(value)
+        if abs(value) >= 1_000_000_000_000:
+            return f"{value / 1_000_000_000_000:.2f}T"
         if abs(value) >= 1_000_000_000:
             return f"{value / 1_000_000_000:.1f}B"
         if abs(value) >= 1_000_000:
@@ -3183,6 +3187,8 @@ if page == "Stock Tracker":
         if value is None:
             return "—"
         value = float(value)
+        if abs(value) >= 1_000_000_000_000:
+            return f"{value / 1_000_000_000_000:.2f}T"
         if abs(value) >= 1_000_000_000:
             return f"{value / 1_000_000_000:.1f}B"
         if abs(value) >= 1_000_000:
@@ -3205,6 +3211,8 @@ if page == "Stock Tracker":
             value = float(value)
         except Exception:
             return "—"
+        if abs(value) >= 1_000_000_000_000:
+            return f"{prefix}{value / 1_000_000_000_000:.2f}T"
         if abs(value) >= 1_000_000_000:
             return f"{prefix}{value / 1_000_000_000:.2f}B"
         if abs(value) >= 1_000_000:
@@ -3220,6 +3228,8 @@ if page == "Stock Tracker":
             return "—"
         sign = "-" if value < 0 else ""
         value = abs(value)
+        if value >= 1_000_000_000_000:
+            return f"{sign}${value / 1_000_000_000_000:.2f}T"
         if value >= 1_000_000_000:
             return f"{sign}${value / 1_000_000_000:.2f}B"
         if value >= 1_000_000:
@@ -3798,6 +3808,8 @@ if page == "Stock Tracker":
                     return f"{value * 100:.2f}%"
                 if "EPS" in label:
                     return f"${value:.2f}"
+                if abs(value) >= 1_000_000_000_000:
+                    return f"${value / 1_000_000_000_000:.2f}T"
                 if abs(value) >= 1_000_000_000:
                     return f"${value / 1_000_000_000:.2f}B"
                 if abs(value) >= 1_000_000:
@@ -4512,6 +4524,8 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             return "—"
         sign = "-" if value < 0 else ""
         abs_value = abs(value)
+        if abs_value >= 1_000_000_000_000:
+            return f"{sign}${abs_value / 1_000_000_000_000:,.2f}T"
         if abs_value >= 1_000_000_000:
             return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
         if abs_value >= 1_000_000:
@@ -5488,6 +5502,8 @@ if st.session_state.financial_data:
                             _scale = 1
                         abs_v = abs(v) * _scale
                         sign  = "-" if v < 0 else ""
+                        if abs_v >= 1_000_000_000_000:
+                            return f"{sign}${abs_v / 1_000_000_000_000:.2f}T"
                         if abs_v >= 1_000_000_000:
                             return f"{sign}${abs_v / 1_000_000_000:.1f}B"
                         if abs_v >= 1_000_000:
@@ -5579,6 +5595,8 @@ if st.session_state.financial_data:
                         return None
                     sign = "-" if raw_value < 0 else ""
                     abs_value = abs(raw_value)
+                    if abs_value >= 1_000_000_000_000:
+                        return f"{sign}${abs_value / 1_000_000_000_000:,.2f}T"
                     if abs_value >= 1_000_000_000:
                         return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
                     if abs_value >= 1_000_000:
@@ -5935,6 +5953,8 @@ if st.session_state.financial_data:
                     if v is None:
                         return "—"
                     av = abs(v)
+                    if av >= 1_000_000_000_000:
+                        return f"${v / 1_000_000_000_000:.2f}T"
                     if av >= 1_000_000_000:
                         return f"${v / 1_000_000_000:.2f}B"
                     if av >= 1_000_000:

@@ -35,6 +35,44 @@ restored function.
 When reviewing changes that touch external APIs: ask "is there an empirical
 test showing the current code works?" before suggesting changes.
 
+## Engineering Principle: Number Formatters Must Handle Full Magnitude Range
+
+FinLens analyzes companies of all sizes — from microcaps ($10M revenue) to
+mega-caps ($500B+ revenue). Any helper function that formats a numeric value
+for display MUST handle the full range: K (thousands), M (millions), B
+(billions), and T (trillions).
+
+Bugs from missing magnitude handling are silent and misleading:
+- Palantir's $3.7B revenue displayed as "3.7M" because the formatter capped
+  at M (Jun 3 2026 incident, fixed in commit 6a126d9).
+- Apple's $371B total assets displayed as "371.0M" for the same reason.
+
+Required pattern for ANY new _fmt_* function:
+
+    def _fmt_num(v):
+        if v is None:
+            return "—"
+        if abs(v) >= 1_000_000_000_000:
+            return f"{v / 1_000_000_000_000:,.2f}T"
+        if abs(v) >= 1_000_000_000:
+            return f"{v / 1_000_000_000:,.2f}B"
+        if abs(v) >= 1_000_000:
+            return f"{v / 1_000_000:,.1f}M"
+        if abs(v) >= 1_000:
+            return f"{v / 1_000:,.0f}K"
+        return f"{v:,.0f}"
+
+Test cases to verify any number formatter:
+- 500 → "500"
+- 12_345 → "12K"
+- 3_700_000_000 → "3.70B"
+- 371_000_000_000 → "371.00B"
+- 4_600_000_000_000 → "4.60T"
+
+When reviewing code that creates a new formatter or modifies an existing
+one, CC MUST verify the test cases above mentally or in a script before
+approving.
+
 ## Core Architecture
 
 Primary workflow:

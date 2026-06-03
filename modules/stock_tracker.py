@@ -22,6 +22,8 @@ def _fmt_segment_value(value):
     if value is None:
         return ""
     value = float(value)
+    if abs(value) >= 1_000_000_000_000:
+        return f"${value / 1_000_000_000_000:.2f}T"
     if abs(value) >= 1_000_000_000:
         return f"${value / 1_000_000_000:.1f}B"
     if abs(value) >= 1_000_000:
