@@ -13,14 +13,17 @@ MAX_FILING_CHARS     = 80_000   # Sonnet cap for analysis/summary calls (Calls 2
 PROJECT_ROOT = Path(__file__).parent
 _PROJECT_LIBRARY_PATH = PROJECT_ROOT / "filing_library.json"
 
-# Mutable local storage. Windows Streamlit can fail to write to AppData on this
-# machine, so cache-like artifacts live in the system temp directory.
+# Persistent local storage outside both OneDrive (sync churn) and temp
+# (gets cleared by Windows). Lives in user home so it survives reboots
+# and disk cleanup, and stays out of any cloud sync folder.
 if sys.platform == "win32":
-    _TEMP_BASE = Path(tempfile.gettempdir()) / "FinLens"
-    LIBRARY_DIR = _TEMP_BASE
-    CACHE_DIR = _TEMP_BASE / "cache"
+    # %USERPROFILE%\.finlens — hidden-style dotfile in user home,
+    # avoids OneDrive Documents folder and avoids AppData permission quirks.
+    _APP_BASE = Path.home() / ".finlens"
+    LIBRARY_DIR = _APP_BASE
+    CACHE_DIR = _APP_BASE / "cache"
 else:
-    LIBRARY_DIR = PROJECT_ROOT / "library"
+    LIBRARY_DIR = Path.home() / ".finlens"
     CACHE_DIR = Path("/tmp/finlens_cache")
 
 LIBRARY_PDFS_DIR = LIBRARY_DIR / "pdfs"
@@ -83,3 +86,18 @@ for _dir in (LIBRARY_DIR, LIBRARY_PDFS_DIR, ANALYSIS_CACHE_DIR, EDGAR_TEXT_DIR, 
     _dir.mkdir(parents=True, exist_ok=True)
 FILING_LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 _migrate_appdata_storage()
+
+# Second migration: copy data from temp directory if it exists
+# (previous codebase stored data in %TEMP%\FinLens; new location is
+# ~/.finlens for persistence).
+try:
+    if sys.platform == "win32":
+        old_temp = Path(tempfile.gettempdir()) / "FinLens"
+        if old_temp.exists() and old_temp != LIBRARY_DIR:
+            _copy_file_if_missing(old_temp / "filing_library.json", FILING_LIBRARY_PATH)
+            _copy_file_if_missing(old_temp / "watchlist.json", LIBRARY_DIR / "watchlist.json")
+            _copy_dir_files_if_missing(old_temp / "pdfs", LIBRARY_PDFS_DIR)
+            _copy_dir_files_if_missing(old_temp / "analysis", ANALYSIS_CACHE_DIR, "*.json")
+            _copy_dir_files_if_missing(old_temp / "edgar_text", EDGAR_TEXT_DIR)
+except Exception:
+    pass

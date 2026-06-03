@@ -73,6 +73,49 @@ When reviewing code that creates a new formatter or modifies an existing
 one, CC MUST verify the test cases above mentally or in a script before
 approving.
 
+## Engineering Principle: Persistent Storage Lives Outside Temp and Cloud Sync
+
+Local data storage location matters more than it appears. Three traps to avoid:
+
+1. **System temp directories (`%TEMP%`, `/tmp`)** — Windows and macOS clear
+   these during cleanup, sleep recovery, or low-disk events. Data placed
+   here CAN disappear without warning. NEVER store persistent app data
+   here (cached filings, library entries, user state).
+
+2. **OneDrive / iCloud / Dropbox folders** — cloud sync churns on every file
+   write. Frequently-modified files (logs, caches, db files) cause CPU
+   spikes and sync conflicts. NEVER store frequently-written data inside
+   a sync folder, even if the project lives there.
+
+3. **AppData (Windows) / Library (macOS)** — generally fine, but some
+   anti-virus and permission setups block writes. Test before relying on it.
+
+**Canonical pattern for FinLens app data:**
+
+    if sys.platform == "win32":
+        _APP_BASE = Path.home() / ".finlens"
+    else:
+        _APP_BASE = Path.home() / ".finlens"
+    LIBRARY_DIR = _APP_BASE
+
+Path.home() resolves to:
+- Windows: C:\Users\{user}
+- macOS/Linux: /Users/{user} or /home/{user}
+
+This lives outside OneDrive (which mounts Documents/Desktop) and outside
+temp. It survives reboots, doesn't churn cloud sync, and works without
+admin permissions.
+
+Reference incident: Jun 3 2026 — FinLens library lived in
+`%TEMP%\FinLens\` because of an earlier AppData write issue. Files survived
+short-term but were silently truncated when filings were re-cached, and
+were vulnerable to Windows disk cleanup. Fixed by moving to
+`~/.finlens`.
+
+When designing any new feature that writes files: ask "does this need to
+persist across a reboot?" If yes, NOT temp. "Will this be written frequently
+during normal use?" If yes, NOT a cloud sync folder.
+
 ## Core Architecture
 
 Primary workflow:
