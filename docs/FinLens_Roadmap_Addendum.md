@@ -4,6 +4,90 @@
 
 ---
 
+## Critical Pre-Roadmap Finding (Jun 2 2026)
+
+**The EDGAR and TTM analysis paths deliver only structured financial data to
+the analyzer — no MD&A, no Risk Factors, no footnotes, no filing prose.**
+Only the PDF Upload path passes the full filing text to Claude.
+
+### What was discovered
+
+While verifying prompt caching (commits `3432f33` + `e4a3af2`), empirical testing
+showed:
+
+- **TTM Re-Analyse path:** caches ~2,000 tokens (system prompt only). The
+  "filing context" being passed is yfinance/FMP-derived structured financials,
+  not filing prose.
+- **EDGAR "Load Selected Filing" path:** UI text reads "Fetch structured 10-K
+  financial statement data directly from SEC XBRL filings" — this path is
+  XBRL-only. XBRL contains financial statement tables, NOT MD&A or Risk Factors.
+  Confirmed by the dropdown returning only 1995-2002 filings (XBRL was
+  mandated in 2009, so the fetcher only finds filings that pre-date the
+  modern XBRL-required era — a separate bug indicating sort order or query
+  filter issues).
+- **PDF Upload path:** parses the full filing via pdfplumber, delivers
+  ~30,000-60,000 tokens to the analyzer including MD&A, Risk Factors, and
+  footnotes. This is the only path that exercises FinLens's full analytical
+  capability.
+
+### Why this matters
+
+1. **Analysis quality on non-PDF paths is structurally limited.** Claude is
+   reasoning from financial summaries plus general knowledge, not from the
+   actual filing. For household names like AAPL, output looks coherent because
+   Claude knows the business. For less-covered names — exactly the names a
+   paying user needs help with — analysis quality will be unreliable in ways
+   the user can't detect.
+2. **The pricing tier strategy assumes Quick Analysis is genuinely useful.**
+   At ~2k tokens of context, it isn't — it's essentially a yfinance dashboard
+   with Claude commentary. Free-tier users may churn before converting; paid
+   users will be forced into manual PDF uploads.
+3. **The MD&A Sentiment feature (Call 5) is non-functional on EDGAR and TTM
+   paths.** The "MD&A Sentiment not available for Quick Analysis" banner is
+   the UI acknowledging this, but the underlying issue affects all signal
+   quality.
+4. **Filing Diff Viewer (roadmap feature #3, the $199 tier anchor) cannot be
+   built on the current data layer.** Diffing requires full filing prose.
+   Building this feature depends on first building a proper HTML/text
+   filing fetcher.
+5. **Prompt caching's cost savings are blunted.** The caching infrastructure
+   shipped today (commits `3432f33`+ `e4a3af2`) works correctly but only
+   delivers its full 60-90% savings on the PDF Upload path. The other paths
+   cache only the system prompt.
+
+### What needs to happen
+
+This is now the highest-priority pre-feature work item. Before any of the 10
+features in the build order below, the data layer needs:
+
+1. **A proper filing fetcher** that pulls SEC primary HTML documents (the
+   `.htm` file in each filing's index, not the XBRL summary). The existing
+   `modules/edgar_fetcher.py` has HTML scraping code that may not be wired
+   into the user flow — investigation needed.
+2. **A SEDAR+ equivalent** for Canadian filings (HTML or PDF parse).
+3. **A filesystem cache** for parsed filing text at
+   `library/filings/{ticker}_{period}.txt` to avoid re-fetching on every
+   re-analyse.
+4. **Harmonization** so TTM, EDGAR, and Upload paths all build their
+   `filing_context` from the same canonical full-filing source.
+5. **Separate bug:** fix the EDGAR filing dropdown to return recent filings
+   (currently returns 1995-2002 only, suggesting sort-order or date-filter
+   bug in `get_recent_filings()`).
+
+### Estimated effort
+
+~1-2 day Codex effort. Requires careful design (sequence, caching layer,
+backward-compat with existing TTM/Upload code paths). Unblocks Filing Diff
+Viewer, MD&A sentiment, and a meaningful upgrade in Quick Analysis quality.
+
+### Status
+
+**Open. Top priority for Sunday Step 7 strategic review** — the fresh Opus
+session should determine whether this jumps ahead of Catalyst Calendar
+(currently feature #2 in build order) and how it interacts with tier strategy.
+
+---
+
 ## Part I — The Five Curriculum-Driven Features
 
 These are the features the 20-hour curriculum surfaces as gaps. Each chapter's exercise is essentially a spec for what FinLens should do — these are the five that pay back the highest commercial value relative to scope.
