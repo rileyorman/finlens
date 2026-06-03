@@ -31,6 +31,7 @@ from modules.edgar_fetcher import (
     get_cik,
     get_filing_text,
     get_recent_filings,
+    get_ticker_for_cik,
     get_financial_data as get_edgar_financial_data,
     search_companies as search_edgar_companies,
     _fmt as _fmt_edgar_value,
@@ -607,7 +608,6 @@ def _financial_data_to_text(financial_data: dict) -> str:
 def _edgar_cache_identifier() -> str:
     identifier = (
         st.session_state.get("edgar_selected_ticker")
-        or st.session_state.get("edgar_company_name")
         or ""
     )
     identifier = str(identifier).strip().upper()
@@ -4150,6 +4150,10 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                 _symbol = (_selected_company.get("ticker") or "").upper()
                 _company_name = (_selected_company.get("name") or "company").strip()
                 _cik = _selected_company.get("cik")
+                if not _symbol and _cik:
+                    _resolved_symbol = get_ticker_for_cik(_cik)
+                    if _resolved_symbol:
+                        _symbol = _resolved_symbol
                 with st.spinner(f"Finding SEC filings for {_company_name}..."):
                     _filings = get_recent_filings(_cik) if _cik else []
                 if not _cik:

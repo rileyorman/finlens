@@ -263,6 +263,25 @@ def get_cik(ticker: str) -> str | None:
         return None
 
 
+def get_ticker_for_cik(cik: str) -> str | None:
+    """Resolve a CIK to the issuer's primary ticker symbol via SEC's company_tickers.json."""
+    try:
+        cik_int = int(str(cik).lstrip("0") or "0")
+        if cik_int <= 0:
+            return None
+        url = "https://www.sec.gov/files/company_tickers.json"
+        response = _SESSION.get(url, headers=HEADERS, timeout=15)
+        if not response.ok:
+            return None
+        data = response.json()
+        for row in data.values():
+            if int(row.get("cik_str", 0)) == cik_int:
+                return str(row.get("ticker", "")).upper() or None
+        return None
+    except Exception:
+        return None
+
+
 def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> list[dict]:
     try:
         cik = _zero_pad_cik(cik)
