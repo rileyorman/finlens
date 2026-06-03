@@ -4097,7 +4097,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
     _edgar_tab, _sedar_tab = st.tabs(["SEC EDGAR", "SEDAR+"])
 
     with _edgar_tab:
-        st.caption("Fetch structured 10-K financial statement data directly from SEC XBRL filings.")
+        st.caption("Fetch full 10-K/10-Q filings from SEC EDGAR including MD&A, Risk Factors, and financial statements.")
         _edgar_query = st.text_input("Search by company name or ticker", placeholder="e.g. AAPL, Apple", key="edgar_ticker")
         if st.button("Search", type="primary", use_container_width=True, key="edgar_fetch_btn"):
             st.session_state["edgar_filings"] = []
