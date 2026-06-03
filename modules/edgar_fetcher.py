@@ -203,6 +203,15 @@ def get_cik(ticker: str) -> str | None:
         if not ticker:
             return None
 
+        try:
+            ticker_response = _SESSION.get("https://www.sec.gov/files/company_tickers.json", headers=HEADERS, timeout=15)
+            if ticker_response.ok:
+                for company in ticker_response.json().values():
+                    if str(company.get("ticker", "")).strip().upper() == ticker:
+                        return _zero_pad_cik(company.get("cik_str"))
+        except Exception:
+            pass
+
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
             f"?q={quote(f'\"{ticker}\"')}&dateRange=custom&startdt=2020-01-01&forms=10-K"
@@ -259,25 +268,57 @@ def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> lis
         cik = _zero_pad_cik(cik)
         if not cik:
             return []
+        count = max(int(count), 0)
+        if count == 0:
+            return []
         url = f"https://data.sec.gov/submissions/CIK{cik}.json"
         response = _SESSION.get(url, headers=HEADERS, timeout=15)
         if not response.ok:
             return []
-        recent = response.json().get("filings", {}).get("recent", {})
+        filings = response.json().get("filings", {})
+        recent = filings.get("recent", {})
         rows = []
-        forms = recent.get("form", [])
-        for i, form in enumerate(forms):
-            if form != form_type:
-                continue
-            rows.append({
-                "accessionNumber": recent.get("accessionNumber", [])[i],
-                "filingDate": recent.get("filingDate", [])[i],
-                "form": form,
-                "reportDate": recent.get("reportDate", [])[i],
-            })
+        seen = set()
+
+        def _append_matching_rows(filing_page: dict) -> None:
+            forms = filing_page.get("form", [])
+            accessions = filing_page.get("accessionNumber", [])
+            filing_dates = filing_page.get("filingDate", [])
+            report_dates = filing_page.get("reportDate", [])
+            for i, form in enumerate(forms):
+                if form != form_type:
+                    continue
+                accession = accessions[i] if i < len(accessions) else ""
+                if accession in seen:
+                    continue
+                seen.add(accession)
+                rows.append({
+                    "accessionNumber": accession,
+                    "filingDate": filing_dates[i] if i < len(filing_dates) else "",
+                    "form": form,
+                    "reportDate": report_dates[i] if i < len(report_dates) else "",
+                })
+
+        _append_matching_rows(recent)
+
+        archive_files = filings.get("files", [])
+        for archive in archive_files[:5]:
             if len(rows) >= count:
                 break
-        return rows
+            name = archive.get("name") if isinstance(archive, dict) else None
+            if not name:
+                continue
+            try:
+                archive_url = f"https://data.sec.gov/submissions/{name}"
+                archive_response = _SESSION.get(archive_url, headers=HEADERS, timeout=15)
+                if not archive_response.ok:
+                    continue
+                _append_matching_rows(archive_response.json())
+            except Exception:
+                continue
+
+        rows.sort(key=lambda row: row.get("filingDate", ""), reverse=True)
+        return rows[:count]
     except Exception:
         return []
 
