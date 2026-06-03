@@ -479,6 +479,138 @@ def get_earnings_press_release(cik: str, limit: int = 5) -> dict | None:
         return None
 
 
+def get_filing_text(cik: str, form_type: str = "10-K", limit: int = 5) -> dict | None:
+    """
+    Fetch the most recent 10-K or 10-Q filing text from SEC EDGAR.
+
+    Args:
+        cik: Company CIK (10-digit padded or unpadded)
+        form_type: "10-K" or "10-Q" (default "10-K")
+        limit: Max recent filings to check before giving up (default 5)
+
+    Returns dict with:
+        text         - full extracted text of the primary filing document
+        filing_date  - e.g. "2025-09-27"
+        report_date  - period of report
+        accession    - accession number
+        url          - direct URL to filing index
+        form_type    - "10-K" or "10-Q" (echoed back)
+    Or None if not found.
+    """
+    try:
+        form_type = str(form_type).upper()
+        if form_type not in ("10-K", "10-Q"):
+            return None
+
+        cik_padded = _zero_pad_cik(cik)
+        if not cik_padded:
+            return None
+
+        sub_url = f"https://data.sec.gov/submissions/CIK{cik_padded}.json"
+        sub_resp = _SESSION.get(sub_url, headers=HEADERS, timeout=10)
+        if not sub_resp.ok:
+            return None
+
+        recent = sub_resp.json().get("filings", {}).get("recent", {})
+        forms = recent.get("form", [])
+        accession_numbers = recent.get("accessionNumber", [])
+        filing_dates = recent.get("filingDate", [])
+        report_dates = recent.get("reportDate", [])
+
+        filings = []
+        for i, form in enumerate(forms):
+            if form != form_type:
+                continue
+            filings.append({
+                "accession": accession_numbers[i] if i < len(accession_numbers) else "",
+                "filing_date": filing_dates[i] if i < len(filing_dates) else "",
+                "report_date": report_dates[i] if i < len(report_dates) else "",
+            })
+            if len(filings) >= limit:
+                break
+
+        if not filings:
+            return None
+
+        cik_int = str(int(cik_padded))
+
+        for filing in filings:
+            accession = filing["accession"]
+            if not accession:
+                continue
+
+            accession_nodash = accession.replace("-", "")
+            index_url = (
+                f"https://www.sec.gov/Archives/edgar/data/{cik_int}"
+                f"/{accession_nodash}/{accession}-index.htm"
+            )
+
+            index_resp = _SESSION.get(index_url, headers=HEADERS, timeout=10)
+            if not index_resp.ok:
+                continue
+
+            index_soup = BeautifulSoup(index_resp.text, "html.parser")
+            table = index_soup.find("table", class_="tableFile")
+            if not table:
+                continue
+
+            primary_href = None
+            first_html_href = None
+            for row in table.find_all("tr"):
+                cols = row.find_all("td")
+                if len(cols) < 4:
+                    continue
+
+                link_tag = cols[2].find("a")
+                doc_type = cols[3].get_text(strip=True).upper()
+                if not link_tag:
+                    continue
+
+                href = link_tag.get("href", "")
+                if href.startswith("/ix?doc="):
+                    href = href[len("/ix?doc="):]
+
+                ext = href.lower()
+                if not (ext.endswith(".htm") or ext.endswith(".html")):
+                    continue
+
+                if first_html_href is None:
+                    first_html_href = href
+
+                if doc_type == form_type:
+                    primary_href = href
+                    break
+
+            href = primary_href or first_html_href
+            if not href:
+                continue
+
+            filing_url = f"https://www.sec.gov{href}" if href.startswith("/") else href
+            filing_resp = _SESSION.get(filing_url, headers=HEADERS, timeout=10)
+            if not filing_resp.ok:
+                continue
+
+            filing_soup = BeautifulSoup(filing_resp.text, "html.parser")
+            text = filing_soup.get_text(separator="\n")
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+            if len(text) > 500_000:
+                text = text[:150_000] + text[-350_000:]
+
+            return {
+                "text": text,
+                "filing_date": filing["filing_date"],
+                "report_date": filing["report_date"],
+                "accession": accession,
+                "url": index_url,
+                "form_type": form_type,
+            }
+
+        return None
+    except Exception:
+        return None
+
+
 def get_financial_data(cik: str, accession_number: str) -> dict:
     try:
         cik = _zero_pad_cik(cik)
