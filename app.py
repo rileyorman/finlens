@@ -303,6 +303,14 @@ def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
     return str(LIBRARY_PDFS_DIR / f"{safe}.txt")
 
 
+def _edgar_filing_cache_path(ticker: str | None, accession: str | None) -> str | None:
+    """Disk cache path keyed by ticker+accession (unique per SEC filing)."""
+    if not ticker or not accession:
+        return None
+    safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{accession}")
+    return str(LIBRARY_PDFS_DIR / f"{safe}.txt")
+
+
 def _read_text_cache(path: str | None) -> str | None:
     if not path:
         return None
@@ -4198,10 +4206,30 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _form_type = "10-Q"
                 else:
                     _form_type = "10-K"
+                _filing_cache_path = _edgar_filing_cache_path(_tk, _selected_accession)
+                _cached_filing_text = None
+                if _filing_cache_path and Path(_filing_cache_path).exists():
+                    try:
+                        _cached_filing_text = Path(_filing_cache_path).read_text(
+                            encoding="utf-8",
+                            errors="ignore",
+                        )
+                    except Exception:
+                        _cached_filing_text = None
+
                 with st.spinner("Fetching SEC filing (financials + MD&A + Risk Factors)..."):
                     _edgar_fd = get_edgar_financial_data(_cik, _selected_accession)
-                    _filing_result = get_filing_text(_cik, form_type=_form_type)
-                    _filing_text = (_filing_result or {}).get("text")
+                    if _cached_filing_text:
+                        _filing_text = _cached_filing_text
+                        _filing_result = {"text": _cached_filing_text}
+                    else:
+                        _filing_result = get_filing_text(_cik, form_type=_form_type)
+                        _filing_text = (_filing_result or {}).get("text")
+                        if _filing_text and _filing_cache_path:
+                            try:
+                                safe_write_text(_filing_cache_path, _filing_text)
+                            except Exception:
+                                pass
 
                 if not _edgar_fd and not _filing_text:
                     st.error("Could not fetch SEC financial data or filing text for that filing.")
