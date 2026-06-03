@@ -323,6 +323,28 @@ Because the long-term Riley-as-VC arc means FinLens should grow into adjacent VC
 
 ---
 
+### G · Trading & Strategy
+
+### 35 · Trade Strategy Suite  ·  *Design: Opus 4.8*
+
+Convert FinLens analysis output into a disciplined trading practice. Four integrated sub-features that share a common data layer.
+
+**35a · Entry/Exit Rules Engine.** Per-position rules set at memo creation: entry price target, scale-in plan, trim triggers (price targets, valuation ratios, thesis-completion events), hard stop (price below X, thesis breakage event). FinLens monitors and alerts when a rule triggers. Forces Chapter VIII's kill-criteria discipline into the actual workflow instead of leaving it in the memo.
+
+**35b · Strategy Backtester.** Define a rules-based strategy ("buy when FinLens signal flips to PASS and margin of safety > 30%; sell when MoS < 0% or 12 months elapse, whichever first"). Run against historical signals + price data. Output: equity curve, Sharpe, max drawdown, win rate, average holding period, comparison to SPY/benchmark. Critical caveat: requires historical FinLens signal data to be archived (not currently retained).
+
+**35c · Trade Journal.** Every executed trade logged with: ticker, action (buy/sell/trim/add), lot reference, price, date, FinLens signal at time of trade, memo version at time of trade, free-text rationale, emotional state (optional 1-5 scale). Post-trade review prompts at 30/90/180 days: "Was this the right call? Why?" Builds the introspective data set most retail investors never accumulate.
+
+**35d · Signal-to-Action Workflow.** When a FinLens analysis completes, surface a "Build trade plan" CTA. Walks user through: position size (per Ch VII rules, using lot tracker), entry plan (immediate vs scaled vs conditional), exit rules (price targets, kill criteria, time horizon), catalysts to monitor. Output: a structured trade plan attached to the position. Connects analysis → memo → position → monitoring as one continuous artifact.
+
+**Tier placement.** All four are Professional-tier ($199) features. Backtester (35b) is the most compute-intensive and could anchor a separate "Quant" add-on if user demand emerges.
+
+**Dependencies.** Builds on: Position Tracker (✅ shipped), Memo Builder (feature #4), Catalyst Calendar (feature #2), Conditional Alerts (feature #17). Should not be built until those four are live.
+
+**Estimated effort.** 2-3 weeks total, ~1 week per sub-feature with shared data layer.
+
+---
+
 ## Part III — Tier Mapping
 
 How the features distribute across price points.
