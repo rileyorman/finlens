@@ -6181,6 +6181,10 @@ if st.session_state.financial_data:
         def _fmt_num(v):
             if v is None:
                 return "—"
+            if abs(v) >= 1_000_000_000_000:
+                return f"{v / 1_000_000_000_000:,.2f}T"
+            if abs(v) >= 1_000_000_000:
+                return f"{v / 1_000_000_000:,.2f}B"
             if abs(v) >= 1_000_000:
                 return f"{v / 1_000_000:,.1f}M"
             if abs(v) >= 1_000:
