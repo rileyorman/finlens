@@ -902,7 +902,7 @@ if not st.session_state.get("authenticated"):
         _pw = st.text_input("Password", type="password", placeholder="Enter password",
                             label_visibility="collapsed")
         remember_me = st.checkbox("Remember me for 30 days")
-        if st.button("Login", use_container_width=True, type="primary"):
+        if st.button("Login", width='stretch', type="primary"):
             if _pw == _APP_PASSWORD:
                 if remember_me:
                     cookies["finlens_auth"] = "true"
@@ -1010,7 +1010,7 @@ if not st.session_state["onboarding_complete"]:
 
     _, start_col, _ = st.columns([1, 2, 1])
     with start_col:
-        if st.button("Get Started →", type="primary", use_container_width=True):
+        if st.button("Get Started →", type="primary", width='stretch'):
             st.session_state["onboarding_complete"] = True
             st.rerun()
     st.stop()
@@ -1293,7 +1293,7 @@ with st.sidebar:
     )
     st.markdown('<div class="sidebar-nav" aria-label="Primary navigation">', unsafe_allow_html=True)
     for _label, _slug, _ in _NAV_ITEMS:
-        if st.button(_label, key=f"nav_{_slug}", use_container_width=True):
+        if st.button(_label, key=f"nav_{_slug}", width='stretch'):
             st.session_state["nav_mode"] = _label
             st.query_params["page"] = _slug
             st.rerun()
@@ -1303,7 +1303,7 @@ with st.sidebar:
             del st.query_params["education"]
         except Exception:
             pass
-    if st.button("Logout", use_container_width=True):
+    if st.button("Logout", width='stretch'):
         cookies["finlens_auth"] = ""
         cookies.save()
         st.session_state["authenticated"] = False
@@ -1326,7 +1326,7 @@ with st.sidebar:
 
         if sel_pf == "+ New Portfolio":
             new_pf_name = st.text_input("Portfolio name", key="pm_new_name")
-            if st.button("Create Portfolio", use_container_width=True, type="primary"):
+            if st.button("Create Portfolio", width='stretch', type="primary"):
                 n = new_pf_name.strip()
                 if n:
                     if create_portfolio(n):
@@ -1347,7 +1347,7 @@ with st.sidebar:
                     with tc:
                         st.markdown(f"`{t}`")
                     with rc:
-                        if st.button("✕", key=f"rm_{sel_pf}_{t}", use_container_width=True):
+                        if st.button("✕", key=f"rm_{sel_pf}_{t}", width='stretch'):
                             reg_remove_ticker(sel_pf, t)
                             st.rerun()
 
@@ -1377,7 +1377,7 @@ document.addEventListener('focusin', function(e) {
                             label_visibility="collapsed")
                     with col2:
                         add_clicked = st.form_submit_button("Add",
-                            use_container_width=True)
+                            width='stretch')
 
                 st.caption("US: AAPL, MSFT  |  TSX: RY.TO, CNQ.TO  |  LSE: SHEL.L  |  Other: Yahoo Finance suffix format")
 
@@ -1409,7 +1409,7 @@ document.addEventListener('focusin', function(e) {
                     ov1, ov2 = st.columns(2)
                     with ov1:
                         if st.button("Add anyway", key=f"pm_add_anyway_{sel_pf}",
-                                     use_container_width=True, type="primary"):
+                                     width='stretch', type="primary"):
                             if reg_add_ticker(sel_pf, _nf):
                                 st.session_state.pm_ticker_not_found = None
                                 st.rerun()
@@ -1418,7 +1418,7 @@ document.addEventListener('focusin', function(e) {
                                 st.warning(f"{_nf} already in portfolio.")
                     with ov2:
                         if st.button("Cancel", key=f"pm_cancel_anyway_{sel_pf}",
-                                     use_container_width=True):
+                                     width='stretch'):
                             st.session_state.pm_ticker_not_found = None
                             st.rerun()
 
@@ -1454,19 +1454,19 @@ document.addEventListener('focusin', function(e) {
                     dc1, dc2 = st.columns(2)
                     with dc1:
                         if st.button("Yes, delete", key=f"pm_del_yes_{sel_pf}",
-                                     type="primary", use_container_width=True):
+                                     type="primary", width='stretch'):
                             del_portfolio_reg(sel_pf)
                             st.session_state.pm_confirm_delete   = None
                             st.session_state.pm_active_portfolio = None
                             st.rerun()
                     with dc2:
                         if st.button("Cancel", key=f"pm_del_no_{sel_pf}",
-                                     use_container_width=True):
+                                     width='stretch'):
                             st.session_state.pm_confirm_delete = None
                             st.rerun()
                 else:
                     if st.button("🗑️ Delete Portfolio", key=f"pm_del_{sel_pf}",
-                                 use_container_width=True):
+                                 width='stretch'):
                         st.session_state.pm_confirm_delete = sel_pf
                         st.rerun()
 
@@ -1522,7 +1522,7 @@ document.addEventListener('focusin', function(e) {
                         unsafe_allow_html=True,
                     )
                     if st.button("♻️ Re-Analyse $", key=f"al_ra_{eid}",
-                                 use_container_width=True,
+                                 width='stretch',
                                  help="Re-analyse with fresh Claude calls"):
                         st.session_state.al_confirm_reanalyse = eid
                         st.rerun()
@@ -1535,7 +1535,7 @@ document.addEventListener('focusin', function(e) {
                         al_yes, al_no = st.columns(2)
                         with al_yes:
                             if st.button("Yes, re-analyse", key=f"al_ra_yes_{eid}",
-                                         use_container_width=True, type="primary"):
+                                         width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
                                 _entry_text = _library_text_for_entry(entry)
                                 if _entry_text:
@@ -1583,7 +1583,7 @@ document.addEventListener('focusin', function(e) {
                                 st.rerun()
                         with al_no:
                             if st.button("Cancel", key=f"al_ra_no_{eid}",
-                                         use_container_width=True):
+                                         width='stretch'):
                                 st.session_state.al_confirm_reanalyse = None
                                 st.rerun()
                     st.markdown(
@@ -1653,14 +1653,14 @@ document.addEventListener('focusin', function(e) {
                         if st.button(
                             f"**{row_ticker}**    {row_period}    {chevron}",
                             key=f"filing_row_{filing_key}",
-                            use_container_width=True,
+                            width='stretch',
                         ):
                             st.session_state["sidebar_expanded_filing"] = None if expanded else filing_key
                             st.rerun()
                         if expanded:
                             load_col, reanalyse_col = st.columns(2)
                             with load_col:
-                                if st.button("Load", key=f"lib_load_{eid}", use_container_width=True):
+                                if st.button("Load", key=f"lib_load_{eid}", width='stretch'):
                                     _entry_period = entry.get("fiscal_year") or entry.get("period", "")
                                     _entry_ticker = ticker if ticker != "—" else None
                                     _entry_text = _library_text_for_entry(entry)
@@ -1724,13 +1724,13 @@ document.addEventListener('focusin', function(e) {
                                             st.session_state.cached_pdf_bytes = None
                                     st.rerun()
                             with reanalyse_col:
-                                if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", use_container_width=True,
+                                if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", width='stretch',
                                              help="Re-analyse with fresh Claude calls"):
                                     st.session_state.confirm_reanalyse = eid
                                     st.session_state.confirm_delete    = None
                                     st.rerun()
                             st.caption("~$0.08 per analysis")
-                            if st.button("Remove", key=f"lib_del_{eid}", use_container_width=True,
+                            if st.button("Remove", key=f"lib_del_{eid}", width='stretch',
                                          help=f"Remove {entry['company_name']} from library"):
                                 st.session_state.confirm_delete    = eid
                                 st.session_state.confirm_reanalyse = None
@@ -1742,13 +1742,13 @@ document.addEventListener('focusin', function(e) {
                             yes_col, no_col = st.columns(2)
                             with yes_col:
                                 if st.button("Yes, remove", key=f"lib_del_yes_{eid}",
-                                             use_container_width=True, type="primary"):
+                                             width='stretch', type="primary"):
                                     lib_delete(eid)
                                     st.session_state.confirm_delete = None
                                     st.rerun()
                             with no_col:
                                 if st.button("Cancel", key=f"lib_del_no_{eid}",
-                                             use_container_width=True):
+                                             width='stretch'):
                                     st.session_state.confirm_delete = None
                                     st.rerun()
 
@@ -1761,7 +1761,7 @@ document.addEventListener('focusin', function(e) {
                             yes_col, no_col = st.columns(2)
                             with yes_col:
                                 if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
-                                             use_container_width=True, type="primary"):
+                                             width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
                                     _entry_text = _library_text_for_entry(entry)
                                     if _entry_text:
@@ -1790,14 +1790,14 @@ document.addEventListener('focusin', function(e) {
                                     st.rerun()
                             with no_col:
                                 if st.button("Cancel", key=f"lib_ra_no_{eid}",
-                                             use_container_width=True):
+                                             width='stretch'):
                                     st.session_state.confirm_reanalyse = None
                                     st.rerun()
         st.divider()
         n = cache_count()
         st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
         if n:
-            if st.button("Clear Cache", use_container_width=True):
+            if st.button("Clear Cache", width='stretch'):
                 cleared = clear_cache()
                 st.session_state.uploader_key += 1  # force file uploader to reset
                 st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
@@ -1947,7 +1947,7 @@ if page == "Portfolio Manager":
 
     st.dataframe(
         table_rows,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             "Quality": st.column_config.ProgressColumn(
@@ -2051,7 +2051,7 @@ if page == "Portfolio Manager":
             _pos_df = pd.DataFrame(_pos_table)
             st.dataframe(
                 _pos_df.style.apply(_pl_cell_color, subset=["Gain/Loss $", "Gain/Loss %"]),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 column_config={
                     "Shares":        st.column_config.NumberColumn("Shares",        format="%.4f"),
@@ -2084,7 +2084,7 @@ if page == "Portfolio Manager":
                         st.markdown(f"**{_r['ticker']}**")
                         st.dataframe(
                             pd.DataFrame(_lot_rows),
-                            use_container_width=True,
+                            width='stretch',
                             hide_index=True,
                             column_config={
                                 "Shares":     st.column_config.NumberColumn("Shares",     format="%.4f"),
@@ -2104,18 +2104,18 @@ if page == "Portfolio Manager":
                         _yc, _nc = st.columns(2)
                         with _yc:
                             if st.button("Yes", key=f"pos_del_yes_{_tk}",
-                                         type="primary", use_container_width=True):
+                                         type="primary", width='stretch'):
                                 delete_position(selected_portfolio, _tk)
                                 st.session_state.pos_confirm_delete = None
                                 st.rerun()
                         with _nc:
                             if st.button("No", key=f"pos_del_no_{_tk}",
-                                         use_container_width=True):
+                                         width='stretch'):
                                 st.session_state.pos_confirm_delete = None
                                 st.rerun()
                     else:
                         if st.button(f"✕ {_tk}", key=f"pos_rm_{_tk}",
-                                     use_container_width=True):
+                                     width='stretch'):
                             st.session_state.pos_confirm_delete = _tk
                             st.rerun()
         else:
@@ -2501,7 +2501,7 @@ if page == "Portfolio Manager":
                 )
                 _dark(fig1)
                 fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
-                st.plotly_chart(fig1, use_container_width=True)
+                st.plotly_chart(fig1, width='stretch')
 
     # ── Panel 2: Valuation Dashboard ───────────────────────────────────
     with row1_right:
@@ -2533,7 +2533,7 @@ if page == "Portfolio Manager":
                 _dark(fig2)
                 fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
                 fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, width='stretch')
 
     # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
     with row2_left:
@@ -2586,7 +2586,7 @@ if page == "Portfolio Manager":
                 _dark(fig3)
                 fig3.update_xaxes(title_text='Distress Score', range=[0, 100])
                 fig3.update_yaxes(title_text='Momentum Score', range=[0, 100])
-                st.plotly_chart(fig3, use_container_width=True)
+                st.plotly_chart(fig3, width='stretch')
 
     # ── Panel 4: Earnings Quality Scorecard ────────────────────────────
     with row2_right:
@@ -2624,7 +2624,7 @@ if page == "Portfolio Manager":
             if eq_rows:
                 st.dataframe(
                     eq_rows,
-                    use_container_width=True,
+                    width='stretch',
                     hide_index=True,
                     column_config={
                         "Ticker":      st.column_config.TextColumn("Ticker",      width="small"),
@@ -2651,7 +2651,7 @@ if page == "Portfolio Manager":
             }
             for r in analysed
         ],
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             "Quality Score": st.column_config.ProgressColumn(
@@ -2700,7 +2700,7 @@ if page == "Filing Comparison":
             key="fc_library_2",
         )
 
-    if st.button("Compare from Library", type="primary", use_container_width=True):
+    if st.button("Compare from Library", type="primary", width='stretch'):
         if not fc_lib_1 or not fc_lib_2:
             st.warning("Please select two filings to compare")
         else:
@@ -2776,7 +2776,7 @@ if page == "Filing Comparison":
 
     _both_uploaded = fc_file1 is not None and fc_file2 is not None
 
-    if st.button("Compare Filings $", type="primary", use_container_width=True, disabled=not _both_uploaded):
+    if st.button("Compare Filings $", type="primary", width='stretch', disabled=not _both_uploaded):
         _lbl1 = fc_label1.strip() or "Filing 1"
         _lbl2 = fc_label2.strip() or "Filing 2"
 
@@ -3007,7 +3007,7 @@ if page == "Stock Tracker":
                 label_visibility="collapsed", key="st_ticker",
             )
         with btn_c:
-            st_submitted = st.form_submit_button("Track", type="primary", use_container_width=True)
+            st_submitted = st.form_submit_button("Track", type="primary", width='stretch')
 
     if st_submitted and st_ticker.strip():
         with st.spinner(f"Fetching data for {st_ticker.strip().upper()}…"):
@@ -3024,7 +3024,7 @@ if page == "Stock Tracker":
                 already_in = cur_sidebar_ticker.upper() in [t.upper() for t in wl_now]
                 btn_label = "✓ Added to Watchlist" if already_in else "+ Add to Watchlist"
                 btn_type = "secondary" if already_in else "primary"
-                if st.button(btn_label, key="wl_add_btn", type=btn_type, disabled=already_in, use_container_width=True):
+                if st.button(btn_label, key="wl_add_btn", type=btn_type, disabled=already_in, width='stretch'):
                     wl_add(cur_sidebar_ticker)
                     st.success(f"{cur_sidebar_ticker} added to watchlist.")
                     st.rerun()
@@ -3042,7 +3042,7 @@ if page == "Stock Tracker":
                         with col:
                             sub_a, sub_b = st.columns([3, 1])
                             with sub_a:
-                                if st.button(tk, key=f"wl_load_{tk}", use_container_width=True):
+                                if st.button(tk, key=f"wl_load_{tk}", width='stretch'):
                                     with st.spinner(f"Loading {tk}…"):
                                         st.session_state.stock_data = get_stock_data(tk)
                                         st.session_state.st_current_ticker = tk
@@ -3123,7 +3123,7 @@ if page == "Stock Tracker":
                     summary_rows = _wl_summary(tuple(wl_tickers))
 
                 if summary_rows:
-                    st.dataframe(_pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+                    st.dataframe(_pd.DataFrame(summary_rows), width='stretch', hide_index=True)
 
     _render_stock_tracker_sidebar_watchlist()
 
@@ -3500,7 +3500,7 @@ if page == "Stock Tracker":
                 xaxis_rangeslider_visible=False,
                 yaxis_tickprefix="$",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             # Volume bar chart
             if "Volume" in hist_df.columns:
@@ -3514,7 +3514,7 @@ if page == "Stock Tracker":
                     showlegend=False,
                     yaxis=dict(tickformat=".2s"),
                 )
-                st.plotly_chart(vol_fig, use_container_width=True)
+                st.plotly_chart(vol_fig, width='stretch')
 
     st.divider()
 
@@ -3615,7 +3615,7 @@ if page == "Stock Tracker":
             )
             fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
             fig.update_yaxes(showgrid=False)
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
             period = segments[0].get("period")
             period_text = f" · {period}" if period else ""
             st.markdown(
@@ -4121,7 +4121,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
     with _edgar_tab:
         st.caption("Fetch full 10-K/10-Q filings from SEC EDGAR including MD&A, Risk Factors, and financial statements.")
         _edgar_query = st.text_input("Search by company name or ticker", placeholder="e.g. AAPL, Apple", key="edgar_ticker")
-        if st.button("Search", type="primary", use_container_width=True, key="edgar_fetch_btn"):
+        if st.button("Search", type="primary", width='stretch', key="edgar_fetch_btn"):
             st.session_state["edgar_filings"] = []
             st.session_state["edgar_company_matches"] = []
             st.session_state.pop("edgar_yf_matches", None)
@@ -4168,7 +4168,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
             ]
             _selected_company_label = st.selectbox("Matching companies", _match_labels, key="edgar_company_select")
             _selected_company = _edgar_matches[_match_labels.index(_selected_company_label)]
-            if st.button("Find Recent 10-K Filings", use_container_width=True, key="edgar_find_company_filings_btn"):
+            if st.button("Find Recent 10-K Filings", width='stretch', key="edgar_find_company_filings_btn"):
                 _symbol = (_selected_company.get("ticker") or "").upper()
                 _company_name = (_selected_company.get("name") or "company").strip()
                 _cik = _selected_company.get("cik")
@@ -4203,7 +4203,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
             _load_selected = st.button(
                 "Load Selected Filing $",
                 type="primary",
-                use_container_width=True,
+                width='stretch',
                 key="edgar_load_selected_btn",
             )
 
@@ -4376,7 +4376,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
     with _sedar_tab:
         st.caption("Search for a Canadian public company, open SEDAR+ in the right search context, then upload the downloaded PDF for Claude analysis.")
         _sedar_query = st.text_input("Search by company name or ticker", placeholder="e.g. Suncor, SU.TO, Shopify", key="sedar_ticker")
-        if st.button("Search", type="primary", use_container_width=True, key="sedar_find_filings_btn"):
+        if st.button("Search", type="primary", width='stretch', key="sedar_find_filings_btn"):
             st.session_state.pop("sedar_company", None)
             st.session_state.pop("sedar_yf_matches", None)
             st.session_state.pop("sedar_selected_filing_url", None)
@@ -4418,7 +4418,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
             _sedar_match_labels = [_yf_quote_label(row) for row in _sedar_matches]
             _selected_sedar_label = st.selectbox("Matching companies", _sedar_match_labels, key="sedar_company_select")
             _selected_sedar_company = _sedar_matches[_sedar_match_labels.index(_selected_sedar_label)]
-            if st.button("Use Selected Company", use_container_width=True, key="sedar_use_company_btn"):
+            if st.button("Use Selected Company", width='stretch', key="sedar_use_company_btn"):
                 if not _is_canadian_quote(_selected_sedar_company):
                     st.warning("This appears to be a US-listed company. For US filings, use the SEC EDGAR tab.")
                 else:
@@ -4446,7 +4446,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     SEDAR_FILING_TYPES,
                     key="sedar_filing_type_select",
                 )
-                if st.button("Find Recent SEDAR+ Filings", use_container_width=True, key="sedar_find_recent_by_type_btn"):
+                if st.button("Find Recent SEDAR+ Filings", width='stretch', key="sedar_find_recent_by_type_btn"):
                     st.session_state["sedar_selected_filing_url"] = _sedar_search_url(_company_name, _selected_sedar_type)
                     st.session_state["sedar_selected_filing_type"] = _selected_sedar_type
 
@@ -4477,7 +4477,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
         placeholder="e.g. Nvidia, Apple, Microsoft",
         key="quick_company_search",
     )
-    if st.button("Search", use_container_width=True, key="quick_company_search_btn"):
+    if st.button("Search", width='stretch', key="quick_company_search_btn"):
         _quick_search_query = quick_company_query.strip()
         if not _quick_search_query:
             st.warning("Enter a company name first.")
@@ -4499,7 +4499,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 _symbol = (_quote.get("symbol") or "").upper()
                 if not _symbol:
                     continue
-                if st.button(_yf_quote_label(_quote), key=f"quick_search_result_{_idx}_{_symbol}", use_container_width=True):
+                if st.button(_yf_quote_label(_quote), key=f"quick_search_result_{_idx}_{_symbol}", width='stretch'):
                     st.session_state["quick_analysis_ticker"] = _symbol
 
     quick_ticker = st.text_input(
@@ -4549,7 +4549,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
     if _quick_is_canadian:
         st.warning("⚠️ Canadian companies require a Premium FMP subscription. Use SEDAR+ or PDF upload instead.")
 
-    if st.button("Fetch Financials", use_container_width=True, key="quick_fetch_btn", disabled=_quick_is_canadian):
+    if st.button("Fetch Financials", width='stretch', key="quick_fetch_btn", disabled=_quick_is_canadian):
         _quick_ticker = quick_ticker.strip().upper()
         if not _quick_ticker:
             st.warning("Enter a ticker symbol first.")
@@ -4605,11 +4605,11 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 {"Metric": "Total Debt", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("total_debt"), _quick_preview_scale)},
                 {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"), _quick_preview_scale)},
             ]
-        st.dataframe(preview_df, hide_index=True, use_container_width=True)
+        st.dataframe(preview_df, hide_index=True, width='stretch')
         if selected_period == "Last 4 Quarters (TTM)":
             st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
-        if st.button("Analyse $", type="primary", use_container_width=True, key="quick_analysis_btn"):
+        if st.button("Analyse $", type="primary", width='stretch', key="quick_analysis_btn"):
             _quick_fd = _quick_fd_preview
             _quick_ticker = (_quick_preview_ticker or _quick_fd.get("ticker") or quick_ticker).strip().upper()
 
@@ -5006,7 +5006,7 @@ if uploaded_file:
             "extraction may take longer on cloud deployment. "
             "Only the first 150 pages will be processed."
         )
-    if st.button("Analyze Financials $", type="primary", use_container_width=True):
+    if st.button("Analyze Financials $", type="primary", width='stretch'):
 
         st.session_state.reanalyse_no_text = None  # clear prompt once user starts upload
 
@@ -5291,7 +5291,7 @@ if st.session_state.financial_data:
             manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")
         with btn_col:
             st.write("")
-            if st.button("Fetch Market Data", use_container_width=True, type="primary"):
+            if st.button("Fetch Market Data", width='stretch', type="primary"):
                 if manual_ticker.strip():
                     with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
                         fetched = get_market_data(manual_ticker.strip())
@@ -5469,7 +5469,7 @@ if st.session_state.financial_data:
                 _opex_g = st.slider("OpEx Growth (%)",           min_value=-20,   max_value=30,   value=0,   step=1,    key="ss_opex_g")
                 _ir_bps = st.slider("Interest Rate Change (bps)", min_value=-200,  max_value=200,  value=0,   step=25,   key="ss_ir")
 
-            if st.button("Run Scenario $", key="ss_run", type="primary", use_container_width=True):
+            if st.button("Run Scenario $", key="ss_run", type="primary", width='stretch'):
                 _sc_inputs = {
                     "revenue_growth_pct":       float(_rev_g),
                     "gross_margin_pct":         float(_gm_pct),
@@ -5692,7 +5692,7 @@ if st.session_state.financial_data:
                 if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -5703,7 +5703,7 @@ if st.session_state.financial_data:
                 if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -5714,7 +5714,7 @@ if st.session_state.financial_data:
                 if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
                     _display_edgar_statement(rows)
                 else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, use_container_width=True, hide_index=True)
+                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
             else:
                 st.info("Not found in document.")
 
@@ -5755,7 +5755,7 @@ if st.session_state.financial_data:
                 data=excel_bytes,
                 file_name=filename,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width='stretch',
                 type="primary",
             )
         with dl_col2:
@@ -5765,7 +5765,7 @@ if st.session_state.financial_data:
                     data=memo_bytes,
                     file_name=memo_filename,
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True,
+                    width='stretch',
                     type="secondary",
                 )
 
@@ -5785,7 +5785,7 @@ if st.session_state.financial_data:
                 {"Metric": k, "Value": v}
                 for k, v in _dbg_metrics.items()
             ]
-            st.dataframe(_resolved_rows, use_container_width=True, hide_index=True)
+            st.dataframe(_resolved_rows, width='stretch', hide_index=True)
 
             st.divider()
 
@@ -5800,7 +5800,7 @@ if st.session_state.financial_data:
                 if _rows:
                     st.dataframe(
                         [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
-                        use_container_width=True,
+                        width='stretch',
                         hide_index=True,
                     )
                 else:
@@ -5982,7 +5982,7 @@ if st.session_state.financial_data:
                               "Discounted FCF": _fmt_dcf(r["discounted_fcf"])}
                              for r in _ft],
                             hide_index=True,
-                            use_container_width=True,
+                            width='stretch',
                         )
 
         # --- Peer Comparison ---
@@ -6017,7 +6017,7 @@ if st.session_state.financial_data:
                 )
             with _pc_btn_col:
                 st.write("")
-                if st.button("Load Peer Comparison", use_container_width=True, key="peer_load_btn"):
+                if st.button("Load Peer Comparison", width='stretch', key="peer_load_btn"):
                     with st.spinner("Fetching peer data from yfinance..."):
                         st.session_state["peer_data"] = get_peer_data(_peer_ticker, _peer_sector)
 

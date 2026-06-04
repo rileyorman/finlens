@@ -77,7 +77,7 @@ def render_business_segments_card(ticker: str, exchange: str | None = None) -> b
         )
         fig.update_xaxes(showgrid=True, gridcolor="rgba(148,163,184,0.18)")
         fig.update_yaxes(showgrid=False)
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
         period = segments[0].get("period")
         period_text = f" · {period}" if period else ""
         st.markdown(
