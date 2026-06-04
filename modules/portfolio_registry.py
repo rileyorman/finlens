@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 _REGISTRY_PATH = Path(__file__).parent.parent / "portfolio_registry.json"
@@ -32,7 +32,7 @@ def create_portfolio(name: str) -> bool:
     if name in reg["portfolios"]:
         return False
     reg["portfolios"][name] = {
-        "created": datetime.utcnow().date().isoformat(),
+        "created": datetime.now(timezone.utc).date().isoformat(),
         "tickers": [],
     }
     save_registry(reg)

@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from config import CACHE_DIR as _CACHE_DIR, safe_write_text
@@ -35,7 +35,7 @@ def save_cache(cache_key: str, filename: str,
     path = _CACHE_DIR / f"{cache_key}.json"
     payload = {
         "filename":       filename,
-        "cached_at":      datetime.utcnow().isoformat(),
+        "cached_at":      datetime.now(timezone.utc).isoformat(),
         "financial_data": financial_data,
         "summary_data":   summary_data,
         "bear_bull_data": bear_bull_data,

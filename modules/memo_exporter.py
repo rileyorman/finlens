@@ -5,7 +5,7 @@ Colour palette and metric calculations mirror the Excel Summary tab.
 """
 
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
@@ -284,7 +284,7 @@ def create_memo(
     mc       = md.get("market_cap") or 0.0   # millions
 
     metrics  = _calc_summary_metrics(financial_data)
-    today    = datetime.utcnow().strftime("%B %d, %Y")
+    today    = datetime.now(timezone.utc).strftime("%B %d, %Y")
 
     sig_bg = _SIGNAL_BG.get(signal, _AMBER_RAG)
     sig_fg = _SIGNAL_FG.get(signal, _NAVY)

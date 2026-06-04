@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from config import FILING_LIBRARY_PATH, LIBRARY_PDFS_DIR, safe_write_bytes, safe_write_text
@@ -104,7 +104,7 @@ def add_entry(
         "ticker":          ticker,
         "period":          financial_data.get("period", ""),
         "fiscal_year":     financial_data.get("fiscal_year", ""),
-        "analysed_at":     datetime.utcnow().isoformat(),
+        "analysed_at":     datetime.now(timezone.utc).isoformat(),
         "file_name":       file_name,
         "file_size_bytes": file_size,
         "financial_data":  financial_data,

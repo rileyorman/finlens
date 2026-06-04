@@ -7,7 +7,7 @@ import re
 import json
 import tempfile
 from html import escape
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 import streamlit as st
@@ -478,7 +478,7 @@ def _analysis_cache_payload(
         "ticker": ticker,
         "period": period,
         "source": source,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "company_name": financial_data.get("company_name", "Unknown"),
         "financial_data": financial_data,
     }
