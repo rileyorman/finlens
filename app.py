@@ -2646,8 +2646,8 @@ if page == "Portfolio Manager":
                 "Ticker":        r["ticker"],
                 "Company":       r["company_name"],
                 "Quality Score": r["quality_score"],
-                "Dalio View":    (r["dalio_view"] or "—")[:300],
-                "Marks View":    (r["marks_view"] or "—")[:300],
+                "Dalio View":    (r["dalio_view"] or "—"),
+                "Marks View":    (r["marks_view"] or "—"),
             }
             for r in analysed
         ],
@@ -5851,7 +5851,7 @@ if st.session_state.financial_data:
                 import html as _html
                 st.markdown(
                     f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
-                    f'{_html.escape(thesis[:300])}</p>',
+                    f'{_html.escape(thesis)}</p>',
                     unsafe_allow_html=True,
                 )
 

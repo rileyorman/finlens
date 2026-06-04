@@ -158,6 +158,35 @@ the same bug.
 - If you find yourself writing the same transformation in two consumers,
   move it upstream
 
+## Engineering Principle: Don't Silently Truncate Analyst-Generated Text
+
+FinLens's value comes from Claude's analysis — investment signal reasoning,
+bull/bear cases, MD&A summaries, capital allocation narratives, framework
+perspectives. When this text is truncated on display, users lose the
+analytical depth that makes FinLens worth paying for.
+
+Hard-truncation patterns to AVOID for analyst-generated text:
+
+    text[:300]                  # BAD if text is Claude output
+    thesis[:500]                # BAD
+    reasoning[:1000]            # BAD
+
+Acceptable truncation cases:
+- File paths (OS limit ~260 chars on Windows)
+- API token chunking in analyzer input (NOT in display layer)
+- HTML attributes with strict length constraints
+
+**When in doubt, render the full text.** Layout overflow is recoverable;
+lost analytical content is not.
+
+**Reference incident (June 2026):**
+- Markel investment thesis cut off mid-word at 300 chars: "...preferred
+  stock rede" instead of full reasoning. Fixed by removing the [:300]
+  truncation entirely.
+
+When adding a new render path for Claude output: render in full. If layout
+breaks, fix the CSS, not the text.
+
 ## Core Architecture
 
 Primary workflow:
