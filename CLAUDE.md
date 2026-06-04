@@ -187,6 +187,49 @@ lost analytical content is not.
 When adding a new render path for Claude output: render in full. If layout
 breaks, fix the CSS, not the text.
 
+## Engineering Principle: Audit-Driven Fixes for Repeated Patterns
+
+When a bug is discovered in one location, ask: "Could this same bug exist
+elsewhere in the codebase with a similar pattern?" If yes, run an audit
+before declaring the fix complete.
+
+**Pattern to follow:**
+1. Fix the discovered bug in its specific location
+2. Identify the underlying pattern (formatter, truncation, deprecation,
+   normalization gap, etc.)
+3. Grep / search the entire codebase for that pattern
+4. Classify each occurrence: legitimate use vs same bug
+5. Fix all legitimate-bug occurrences in one commit
+6. Document the audit results so future devs see what was checked
+
+**When to use this pattern:**
+- Number/text formatting bugs (any _fmt_* helper)
+- String truncation bugs (any [:N] pattern)
+- Library/API deprecations (any deprecated call)
+- Data normalization gaps (any external-data entry point)
+- Display bugs from missing magnitude handling
+
+**When NOT to use this pattern:**
+- One-off logic bugs specific to a single feature
+- UI styling tweaks that genuinely affect only one element
+- Configuration changes scoped to a single file
+
+**Reference incidents (June 2026):**
+- Number formatters (commit 0f08323): audit found 10 functions needing
+  B/T handling, 4 already correct, 10 N/A. Stopped the "Palantir shows
+  3.7M instead of 3.7B" recurring bug class.
+- String truncations (commit 6dbdb61): audit found 34 [:N] patterns, 2
+  additional Category B fixes beyond the initial discovery.
+- Streamlit deprecations (commits ea2f5c6, 64ecb52): 68 use_container_width
+  + 5 datetime.utcnow() fixed in coordinated commits.
+- Financial data normalization (commit 564ee50): audit found 8 entry
+  points, 2 missing normalize_financial_data() calls.
+
+**CC review rule:** When CC reviews a fix that resembles one of the bug
+categories above, CC MUST proactively run a grep audit and report findings
+— even if Riley didn't ask. The cost of an extra audit is small; the cost
+of recurring bugs is large.
+
 ## Core Architecture
 
 Primary workflow:
