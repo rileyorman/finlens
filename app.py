@@ -4313,6 +4313,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _entry_id = f"edgar_{_cik}_{_selected_accession}"
                     _file_prefix = _tk or re.sub(r"[^A-Za-z0-9]+", "_", _company_name).strip("_") or "EDGAR"
                     _file_name = f"{_file_prefix}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
+                    _edgar_fd = normalize_financial_data(_edgar_fd)
                     st.session_state.financial_data      = _edgar_fd
                     st.session_state.summary_data        = _edgar_sd
                     st.session_state.bear_bull_data      = _edgar_bb
@@ -4658,6 +4659,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             except Exception:
                 _quick_excel = None
 
+            _quick_fd = normalize_financial_data(_quick_fd)
             st.session_state.financial_data      = _quick_fd
             st.session_state.summary_data        = _quick_sd
             st.session_state.bear_bull_data      = _quick_bb
@@ -5243,6 +5245,10 @@ if st.session_state.financial_data:
 
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
+
+    _fd_check = st.session_state.get("financial_data") or {}
+    if _fd_check.get("currency") and _fd_check["currency"] != "USD":
+        st.warning(f"⚠️ Financial data may not be normalized — currency: {_fd_check['currency']}")
 
     tab_stmts, tab_dash = st.tabs(["📊 Statements", "📈 Dashboard"])
 
