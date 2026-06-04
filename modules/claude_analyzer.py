@@ -238,6 +238,19 @@ row_type rules:
 - "total": a final total for the whole statement (e.g. Total assets, Net income, Net change in cash).
 - "data": all other line items.
 
+Statement extraction rules:
+- Extract EVERY material line item that appears in the issuer's actual income statement, balance sheet, and cash flow statement. Do not force a retail, SaaS, or manufacturing template onto companies in other industries.
+- Use the issuer's exact line_item labels from the filing. Do not rename insurance, bank, REIT, utility, or other specialized financial statement captions into generic technology/retail captions.
+- For income statements, always include the total/top-line revenue or equivalent, operating income or equivalent when reported, net income, and all material revenue, expense, gain/loss, provision, and subtotal lines shown in the statement.
+- Industry examples are guidance only, not required labels:
+    - Tech/Retail: Revenue, Cost of Revenue, Gross Profit, Operating Expenses, R&D, SG&A, Operating Income, Net Income.
+    - Insurance: Premiums earned, Net investment income, Net investment gains, Losses and loss adjustment expenses, Amortization of deferred policy acquisition costs, Underwriting and other operating expenses, Operating Income, Net Income.
+    - Banks: Net interest income, Provision for credit losses, Noninterest income, Noninterest expense, Income before taxes, Net Income.
+    - REITs: Rental revenue, Property operating expenses, Depreciation and amortization, Gains or losses on property sales, Operating Income, Net Income.
+    - Utilities: Operating revenues, Fuel or purchased power, Operations and maintenance, Depreciation and amortization, Interest expense, Net Income.
+- For balance sheets, extract the actual asset, liability, and equity captions presented by the issuer, including industry-specific captions such as investments, loans, loss reserves, policyholder liabilities, deposits, real estate investments, regulatory assets, and accumulated depreciation when present.
+- For cash flow statements, extract the actual operating, investing, and financing activity lines presented by the issuer, including industry-specific adjustments and cash movements. Do not replace them with a generic capex/depreciation/free-cash-flow template.
+
 Additional rules:
 - Most SEC filings show two years side by side. Extract BOTH columns.
   "value" is the more recent (current) year. "value_prior" is the comparative (prior) year.
