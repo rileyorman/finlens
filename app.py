@@ -4895,7 +4895,7 @@ if st.session_state.get("auto_sector") in sector_options:
     _sector_index = sector_options.index(st.session_state["auto_sector"])
 vi_col1, vi_col2 = st.columns(2)
 with vi_col1:
-    sector = st.selectbox("Sector", sector_options, index=_sector_index, key="valuation_sector")
+    sector = st.selectbox("Sector", sector_options, key="valuation_sector")
     if _auto_sector:
         st.caption("Auto-detected from company data")
 with vi_col2:
