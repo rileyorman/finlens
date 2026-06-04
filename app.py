@@ -22,6 +22,7 @@ from modules.claude_analyzer import (
     analyze_dashboard_insights,
     analyze_mda_sentiment,
     build_filing_context,
+    normalize_financial_data,
 )
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
@@ -549,6 +550,7 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     financial_data = cached.get("financial_data")
     if not isinstance(financial_data, dict):
         return False
+    financial_data = normalize_financial_data(financial_data)
 
     summary_data = cached.get("summary_data") or cached.get("summary")
     bear_bull_data = cached.get("bear_bull_data") or cached.get("bear_bull")
@@ -1677,7 +1679,7 @@ document.addEventListener('focusin', function(e) {
                                                 st.session_state.cached_pdf_bytes = None
                                         st.rerun()
 
-                                    fd = entry["financial_data"]
+                                    fd = normalize_financial_data(entry["financial_data"])
                                     sd = entry.get("summary_data")
                                     bb = entry.get("bear_bull_data")
                                     st.session_state.financial_data      = fd
@@ -5014,7 +5016,7 @@ if uploaded_file:
         raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
 
         if cached:
-            financial_data = cached["financial_data"]
+            financial_data = normalize_financial_data(cached["financial_data"])
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
@@ -6198,22 +6200,6 @@ if st.session_state.financial_data:
         ni_m     = metrics.get("ni_margin")
         fcf_c    = metrics.get("fcf_c")
 
-        def _detect_unit_scale(financial_data: dict) -> int:
-            """Return multiplier to convert stored values to raw dollars."""
-            cur = (financial_data.get("currency") or "").lower()
-            if "thousand" in cur:
-                return 1_000
-            if "million" in cur:
-                return 1_000_000
-            if "billion" in cur:
-                return 1_000_000_000
-            return 1
-
-        _scale = _detect_unit_scale(financial_data)
-        rev_c = rev_c * _scale if rev_c is not None else None
-        ni_c = ni_c * _scale if ni_c is not None else None
-        fcf_c = fcf_c * _scale if fcf_c is not None else None
-
         def _fmt_num(v):
             if v is None:
                 return "—"
@@ -6434,14 +6420,12 @@ if st.session_state.financial_data:
                 mc_val       = market_data.get("market_cap")
                 pe_val       = market_data.get("pe_ratio")
                 ebitda_c_val = metrics.get("ebitda_c")
-                _val_scale = _detect_unit_scale(financial_data)
                 rev_c_val    = metrics.get("rev_c")
-                rev_c_val    = rev_c_val * _val_scale if rev_c_val is not None else None
 
                 ev_ebitda = None
                 ev_rev    = None
                 if mc_val and ebitda_c_val and ebitda_c_val > 0:
-                    ev_ebitda = (mc_val * 1_000_000) / (ebitda_c_val * _val_scale)
+                    ev_ebitda = (mc_val * 1_000_000) / ebitda_c_val
                 if mc_val and rev_c_val and rev_c_val > 0:
                     ev_rev = (mc_val * 1_000_000) / rev_c_val
 

@@ -14,6 +14,71 @@ OPUS_48_MODEL = "claude-opus-4-8"
 MAX_CACHED_FILING_CHARS = 450_000
 
 
+def _detect_unit_scale(currency: str) -> int:
+    """Return multiplier to convert stored values to raw dollars."""
+    cur = (currency or "").lower()
+    if "thousand" in cur:
+        return 1_000
+    if "million" in cur:
+        return 1_000_000
+    if "billion" in cur:
+        return 1_000_000_000
+    return 1
+
+
+def normalize_financial_data(financial_data: dict) -> dict:
+    """Scale financial_data values to raw dollars based on the currency unit.
+
+    Returns the same dict mutated in place. Idempotent if the currency is
+    already normalized to "USD".
+    """
+    if not isinstance(financial_data, dict):
+        return financial_data
+
+    currency = financial_data.get("currency", "")
+    if (currency or "").strip().upper() == "USD":
+        return financial_data
+
+    scale = _detect_unit_scale(currency)
+
+    if scale == 1:
+        financial_data["currency"] = "USD"
+        return financial_data
+
+    for section_key in ("income_statement", "balance_sheet", "cash_flow_statement"):
+        rows = financial_data.get(section_key, [])
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for value_key in ("value", "value_prior"):
+                v = row.get(value_key)
+                if isinstance(v, (int, float)):
+                    row[value_key] = v * scale
+
+    # Exporters consume financial_data directly, so normalizing here keeps
+    # Excel/memo/scenario outputs on the same raw-dollar basis without touching
+    # their modules.
+    for key in (
+        "free_cash_flow",
+        "fcf",
+        "market_cap",
+        "shares_outstanding",
+        "total_debt",
+        "cash",
+        "revenue",
+        "net_income",
+        "gross_profit",
+    ):
+        v = financial_data.get(key)
+        if isinstance(v, (int, float)):
+            financial_data[key] = v * scale
+
+    financial_data["currency"] = "USD"
+    return financial_data
+
+
 def _cache_control() -> dict:
     return {"type": "ephemeral", "ttl": "1h"}
 
@@ -234,7 +299,8 @@ def analyze_financials(
     if match:
         raw = match.group(1)
 
-    return json.loads(raw)
+    financial_data = json.loads(raw)
+    return normalize_financial_data(financial_data)
 
 
 # ===========================================================================
