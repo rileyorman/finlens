@@ -116,6 +116,48 @@ When designing any new feature that writes files: ask "does this need to
 persist across a reboot?" If yes, NOT temp. "Will this be written frequently
 during normal use?" If yes, NOT a cloud sync folder.
 
+## Engineering Principle: Normalize at the Boundary, Not in Consumers
+
+External data sources (Claude analyses, FMP, yfinance, EDGAR) return data
+in inconsistent shapes:
+- Currency units vary by filing (thousands vs millions vs billions)
+- Field names vary across APIs (`netIncome` vs `net_income` vs `ni`)
+- Null values vs missing keys vs zero
+- Date formats vary (ISO vs unix timestamp vs human-readable)
+
+When inconsistent data leaks past the ingestion boundary, every consumer
+must handle the variance — leading to scattered patches, missed cases, and
+recurring bugs in new render paths.
+
+**Pattern to follow:** Normalize ONCE at the boundary (where data enters the
+codebase), then pass canonical-form data to every downstream consumer.
+Consumers should NEVER need to know about source-specific quirks.
+
+Examples in FinLens:
+- `normalize_financial_data()` in `modules/claude_analyzer.py` scales all
+  values to raw USD at the point Claude returns financial_data. Statements,
+  Dashboard, DCF, and Key Metrics all see raw dollars without scaling logic.
+- `_fmt_num()` in `app.py` formats raw values consistently with K/M/B/T
+  thresholds. All renders use the same formatter.
+
+**Anti-pattern to avoid:** Letting raw external data flow into session_state
+or render functions, then applying per-consumer transformations. This
+guarantees that the next new consumer (added six months from now) will have
+the same bug.
+
+**Reference incidents (June 2026):**
+- `_fmt_num()` capped at M -> Palantir $3.7B displayed as 3.7M (commit 0f08323)
+- Filing data in "USD, in thousands" -> Snowflake $4.7B displayed as $4.7M
+  across Statements, Dashboard, DCF, Key Metrics independently. Fixed once
+  in `normalize_financial_data` (commit c7de60b).
+
+**When adding a new external data source or consumer:**
+- Ask "where does this data enter the system?" — normalize there
+- Ask "what canonical form do all consumers expect?" — enforce it at the
+  boundary
+- If you find yourself writing the same transformation in two consumers,
+  move it upstream
+
 ## Core Architecture
 
 Primary workflow:
