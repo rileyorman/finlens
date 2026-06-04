@@ -5695,10 +5695,7 @@ if st.session_state.financial_data:
             st.markdown("**Income Statement**")
             rows = financial_data.get("income_statement", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
-                    _display_edgar_statement(rows)
-                else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
+                _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
@@ -5706,10 +5703,7 @@ if st.session_state.financial_data:
             st.markdown("**Balance Sheet**")
             rows = financial_data.get("balance_sheet", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
-                    _display_edgar_statement(rows)
-                else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
+                _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
@@ -5717,10 +5711,7 @@ if st.session_state.financial_data:
             st.markdown("**Cash Flow Statement**")
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
-                if st.session_state.get("loaded_from_edgar") or st.session_state.get("loaded_from_sedar"):
-                    _display_edgar_statement(rows)
-                else:
-                    st.dataframe(_display_rows(rows), column_config=col_cfg, width='stretch', hide_index=True)
+                _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
