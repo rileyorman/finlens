@@ -6198,6 +6198,22 @@ if st.session_state.financial_data:
         ni_m     = metrics.get("ni_margin")
         fcf_c    = metrics.get("fcf_c")
 
+        def _detect_unit_scale(financial_data: dict) -> int:
+            """Return multiplier to convert stored values to raw dollars."""
+            cur = (financial_data.get("currency") or "").lower()
+            if "thousand" in cur:
+                return 1_000
+            if "million" in cur:
+                return 1_000_000
+            if "billion" in cur:
+                return 1_000_000_000
+            return 1
+
+        _scale = _detect_unit_scale(financial_data)
+        rev_c = rev_c * _scale if rev_c is not None else None
+        ni_c = ni_c * _scale if ni_c is not None else None
+        fcf_c = fcf_c * _scale if fcf_c is not None else None
+
         def _fmt_num(v):
             if v is None:
                 return "—"
@@ -6418,24 +6434,16 @@ if st.session_state.financial_data:
                 mc_val       = market_data.get("market_cap")
                 pe_val       = market_data.get("pe_ratio")
                 ebitda_c_val = metrics.get("ebitda_c")
+                _val_scale = _detect_unit_scale(financial_data)
                 rev_c_val    = metrics.get("rev_c")
-
-                _cur = (financial_data.get("currency") or "").lower()
-                if "billion" in _cur:
-                    _val_scale = 1_000_000_000
-                elif "million" in _cur:
-                    _val_scale = 1_000_000
-                elif "thousand" in _cur:
-                    _val_scale = 1_000
-                else:
-                    _val_scale = 1
+                rev_c_val    = rev_c_val * _val_scale if rev_c_val is not None else None
 
                 ev_ebitda = None
                 ev_rev    = None
                 if mc_val and ebitda_c_val and ebitda_c_val > 0:
                     ev_ebitda = (mc_val * 1_000_000) / (ebitda_c_val * _val_scale)
                 if mc_val and rev_c_val and rev_c_val > 0:
-                    ev_rev = (mc_val * 1_000_000) / (rev_c_val * _val_scale)
+                    ev_rev = (mc_val * 1_000_000) / rev_c_val
 
                 _mos_snap = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 for vname, vval in [
