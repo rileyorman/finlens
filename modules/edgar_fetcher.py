@@ -359,12 +359,16 @@ def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) 
                 continue
 
             annual.sort(key=lambda item: (item.get("end", ""), item.get("filed", "")), reverse=True)
-            selected_idx = 0
+            selected_idx = None
             if accession_number:
                 for i, item in enumerate(annual):
                     if item.get("accn") == accession_number:
                         selected_idx = i
                         break
+                if selected_idx is None:
+                    continue   # accession not present in this concept — try next concept
+            else:
+                selected_idx = 0
 
             current = annual[selected_idx] if selected_idx < len(annual) else None
             prior = annual[selected_idx + 1] if selected_idx + 1 < len(annual) else None
