@@ -1,0 +1,389 @@
+"""
+FinLens Data Integrity Engine -- Validation Engine
+==================================================
+Public API
+    validate_filing(normalized_data, ticker, sector, filing_metadata)
+        -> ValidationResult
+
+Design principles
+    - Flag-and-warn only.  validate_filing() never mutates normalized_data.
+    - No external API calls.  All checks are pure arithmetic on the data dict.
+    - Adding a new check_type: write a handler, add it to _CHECKS.
+    - Adding a new rule for an existing type: edit rules.py only.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
+
+from .rules import RULES, FINANCIAL_SECTOR_TOKENS
+
+
+# ---------------------------------------------------------------------------
+# Result types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CheckResult:
+    rule_id: str
+    severity: str
+    passed: bool
+    skipped: bool
+    skip_reason: str | None    # "sector_excluded" | "field_unavailable" | "check_error" | None
+    observed_value: float | None
+    threshold: dict[str, Any]
+    message: str
+
+    def to_dict(self) -> dict:
+        return {
+            "rule_id": self.rule_id,
+            "severity": self.severity,
+            "passed": self.passed,
+            "skipped": self.skipped,
+            "skip_reason": self.skip_reason,
+            "observed_value": self.observed_value,
+            "threshold": self.threshold,
+            "message": self.message,
+        }
+
+
+@dataclass
+class ValidationResult:
+    overall_status: str           # "clean" | "warnings" | "info_only" | "unknown"
+    checks: list[CheckResult]
+    timestamp: str                # ISO 8601
+    ticker: str
+    sector: str | None
+    sector_was_unknown: bool
+    fiscal_year: str
+    filing_accession: str | None
+    filing_source: str | None
+    rules_run: int
+    rules_passed: int
+    rules_failed: int
+    rules_skipped: int
+
+    def to_dict(self) -> dict:
+        return {
+            "timestamp": self.timestamp,
+            "ticker": self.ticker,
+            "sector": self.sector,
+            "sector_was_unknown": self.sector_was_unknown,
+            "fiscal_year": self.fiscal_year,
+            "overall_status": self.overall_status,
+            "filing_accession": self.filing_accession,
+            "filing_source": self.filing_source,
+            "rules_run": self.rules_run,
+            "rules_passed": self.rules_passed,
+            "rules_failed": self.rules_failed,
+            "rules_skipped": self.rules_skipped,
+            "checks": [c.to_dict() for c in self.checks],
+        }
+
+
+# ---------------------------------------------------------------------------
+# Context extraction
+# Builds a flat dict of named financial values from normalized_data so
+# check handlers can reference fields by name without knowing the schema.
+# ---------------------------------------------------------------------------
+
+def _line_item(rows: list[dict], label: str) -> float | None:
+    for row in rows:
+        if row.get("line_item") == label:
+            v = row.get("value")
+            return float(v) if v is not None else None
+    return None
+
+
+def _line_item_prior(rows: list[dict], label: str) -> float | None:
+    for row in rows:
+        if row.get("line_item") == label:
+            v = row.get("value_prior")
+            return float(v) if v is not None else None
+    return None
+
+
+def _parse_fy_year(fy: str) -> int | None:
+    """Return the integer year from a string like 'FY2025' or '2025'."""
+    m = re.search(r"(\d{4})", str(fy or ""))
+    return int(m.group(1)) if m else None
+
+
+def _parse_iso_year(date_str: str) -> int | None:
+    """Return the year from an ISO date string like '2025-07-30'."""
+    m = re.match(r"^(\d{4})-", str(date_str or ""))
+    return int(m.group(1)) if m else None
+
+
+def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
+    income = normalized_data.get("income_statement", [])
+    return {
+        "revenue":          _line_item(income, "Revenues"),
+        "revenue_prior":    _line_item_prior(income, "Revenues"),
+        "cost_of_revenue":  _line_item(income, "Cost of Revenue"),
+        "gross_profit":     _line_item(income, "Gross Profit"),
+        "net_income":       _line_item(income, "Net Income"),
+        "fiscal_year":      normalized_data.get("fiscal_year", ""),
+        "fiscal_year_int":  _parse_fy_year(normalized_data.get("fiscal_year", "")),
+        "filing_year_int":  _parse_iso_year(filing_metadata.get("filing_date", "")),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Sector helpers
+# ---------------------------------------------------------------------------
+
+def _sector_skip_matches(sector: str | None, sector_skip: tuple | list) -> bool:
+    """Return True if any token in sector_skip appears in the lowercased sector string."""
+    if not sector or not sector_skip:
+        return False
+    s = sector.lower()
+    return any(token in s for token in sector_skip)
+
+
+# ---------------------------------------------------------------------------
+# Check handlers
+# Each receives (rule: dict, ctx: dict) and returns
+#     (observed_value: float|None, threshold: dict, passed: bool, message: str)
+# Handlers must not raise -- callers wrap in try/except for safety.
+# ---------------------------------------------------------------------------
+
+def _check_ratio_range(rule: dict, ctx: dict) -> tuple:
+    p = rule["params"]
+    num = ctx.get(p["numerator"])
+    den = ctx.get(p["denominator"])
+    min_v: float | None = p.get("min")
+    max_v: float | None = p.get("max")
+
+    if den is None or den == 0:
+        return None, {}, False, f"denominator '{p['denominator']}' is zero or unavailable"
+    if num is None:
+        return None, {}, False, f"numerator '{p['numerator']}' is unavailable"
+
+    ratio = num / den
+    passed = True
+    if min_v is not None and ratio < min_v:
+        passed = False
+    if max_v is not None and ratio > max_v:
+        passed = False
+
+    threshold = {k: v for k, v in {"min": min_v, "max": max_v}.items() if v is not None}
+    lo = f"{min_v * 100:.0f}%" if min_v is not None else "-inf"
+    hi = f"{max_v * 100:.0f}%" if max_v is not None else "+inf"
+    direction = "within" if passed else "outside"
+    msg = (
+        f"{p['numerator'].replace('_', ' ').title()} / "
+        f"{p['denominator'].replace('_', ' ').title()} = "
+        f"{ratio * 100:.1f}% -- {direction} [{lo}, {hi}]"
+    )
+    return round(ratio, 4), threshold, passed, msg
+
+
+def _check_reconciliation(rule: dict, ctx: dict) -> tuple:
+    p = rule["params"]
+    a, b, c, tol = ctx.get(p["a"]), ctx.get(p["b"]), ctx.get(p["c"]), p["tolerance"]
+
+    if any(v is None for v in (a, b, c)):
+        missing = [k for k, v in {p["a"]: a, p["b"]: b, p["c"]: c}.items() if v is None]
+        return None, {"tolerance": tol}, False, f"fields unavailable: {missing}"
+    if a == 0:
+        return None, {"tolerance": tol}, False, f"'{p['a']}' is zero -- cannot compute relative error"
+
+    diff_pct = abs((a - b - c) / a)
+    passed = diff_pct <= tol
+    verdict = "<=" if passed else ">"
+    msg = (
+        f"{p['a']} (${a / 1e9:.2f}B) - {p['b']} (${b / 1e9:.2f}B) "
+        f"= ${(a - b) / 1e9:.2f}B vs {p['c']} (${c / 1e9:.2f}B) -- "
+        f"diff {diff_pct * 100:.2f}% ({verdict} {tol * 100:.0f}% tolerance)"
+    )
+    return round(diff_pct, 6), {"tolerance": tol}, passed, msg
+
+
+def _check_year_recency(rule: dict, ctx: dict) -> tuple:
+    fy_year = ctx.get("fiscal_year_int")
+    filing_year = ctx.get("filing_year_int")
+    max_lag = rule["params"]["max_lag"]
+    threshold = {"max_lag": max_lag}
+
+    if fy_year is None or filing_year is None:
+        return None, threshold, False, "could not parse fiscal year or filing date"
+
+    lag = filing_year - fy_year
+    passed = lag <= max_lag
+    fy_label = ctx.get("fiscal_year", str(fy_year))
+    direction = "within" if passed else "exceeds"
+    msg = (
+        f"Fiscal year {fy_label} filed in {filing_year} -- "
+        f"lag {lag} year(s), {direction} max {max_lag}"
+    )
+    return lag, threshold, passed, msg
+
+
+def _check_growth_range(rule: dict, ctx: dict) -> tuple:
+    p = rule["params"]
+    current = ctx.get(p["field"])
+    prior = ctx.get(p["prior_field"])
+    threshold = {"min": p["min"], "max": p["max"]}
+
+    if current is None or prior is None:
+        return None, threshold, False, f"'{p['field']}' or '{p['prior_field']}' unavailable"
+    if prior == 0:
+        return None, threshold, False, f"'{p['prior_field']}' is zero -- cannot compute growth rate"
+
+    growth = (current - prior) / abs(prior)
+    passed = p["min"] <= growth <= p["max"]
+    direction = "within" if passed else "outside"
+    msg = (
+        f"YoY {p['field']} growth {growth * 100:.1f}% -- "
+        f"{direction} [{p['min'] * 100:.0f}%, {p['max'] * 100:.0f}%]"
+    )
+    return round(growth, 4), threshold, passed, msg
+
+
+# Registry: check_type ? handler
+_CHECKS = {
+    "ratio_range":               _check_ratio_range,
+    "arithmetic_reconciliation": _check_reconciliation,
+    "year_recency":              _check_year_recency,
+    "growth_range":              _check_growth_range,
+}
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+def validate_filing(
+    normalized_data: dict,
+    ticker: str,
+    sector: str | None,
+    filing_metadata: dict | None = None,
+) -> ValidationResult:
+    """
+    Run all applicable integrity rules against normalized_data.
+
+    Parameters
+    ----------
+    normalized_data  Output of get_financial_data() or normalize_financial_data().
+                     Not mutated -- validation result is returned, not attached.
+    ticker           Ticker symbol (used in the log record; not in check logic).
+    sector           Company sector string, e.g. "Technology" or "Financial Services".
+                     Pass None if unknown -- rules that need sector classification will
+                     run anyway, and sector_was_unknown is flagged in the result.
+    filing_metadata  Dict with optional keys:
+                       filing_date  ISO date string, e.g. "2025-07-30"
+                       accession    SEC accession number
+                       source       "edgar" | "pdf" | ...
+    """
+    if filing_metadata is None:
+        filing_metadata = {}
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    ctx = _build_context(normalized_data, filing_metadata)
+    sector_was_unknown = sector is None
+
+    checks: list[CheckResult] = []
+    rules_run = rules_passed = rules_failed = rules_skipped = 0
+
+    for rule in RULES:
+        rule_id = rule["id"]
+        severity = rule["severity"]
+        handler = _CHECKS.get(rule["check_type"])
+
+        # Unknown check_type -- config references a type with no handler
+        if handler is None:
+            checks.append(CheckResult(
+                rule_id=rule_id, severity=severity,
+                passed=False, skipped=True,
+                skip_reason=f"unknown check_type: {rule['check_type']}",
+                observed_value=None, threshold={},
+                message=f"No handler registered for check_type '{rule['check_type']}'",
+            ))
+            rules_skipped += 1
+            continue
+
+        # Sector-skip: rule is structurally inapplicable to this sector
+        if _sector_skip_matches(sector, rule.get("sector_skip", ())):
+            checks.append(CheckResult(
+                rule_id=rule_id, severity=severity,
+                passed=True, skipped=True,
+                skip_reason="sector_excluded",
+                observed_value=None, threshold={},
+                message=f"Rule not applicable to sector '{sector}'",
+            ))
+            rules_skipped += 1
+            continue
+
+        # Required-fields: silently skip rather than fail when data is absent
+        missing = [f for f in rule.get("requires_fields", []) if ctx.get(f) is None]
+        if missing:
+            checks.append(CheckResult(
+                rule_id=rule_id, severity=severity,
+                passed=True, skipped=True,
+                skip_reason="field_unavailable",
+                observed_value=None, threshold={},
+                message=f"Skipped -- required fields unavailable: {missing}",
+            ))
+            rules_skipped += 1
+            continue
+
+        # Run the check
+        try:
+            observed, threshold, passed, message = handler(rule, ctx)
+        except Exception as exc:
+            checks.append(CheckResult(
+                rule_id=rule_id, severity=severity,
+                passed=False, skipped=True,
+                skip_reason=f"check_error",
+                observed_value=None, threshold={},
+                message=f"Check raised an exception: {exc}",
+            ))
+            rules_skipped += 1
+            continue
+
+        checks.append(CheckResult(
+            rule_id=rule_id, severity=severity,
+            passed=passed, skipped=False,
+            skip_reason=None,
+            observed_value=observed,
+            threshold=threshold,
+            message=message,
+        ))
+        rules_run += 1
+        if passed:
+            rules_passed += 1
+        else:
+            rules_failed += 1
+
+    # Overall status -- severity-aware
+    failed = [c for c in checks if not c.passed and not c.skipped]
+    warn_failures = [c for c in failed if c.severity == "warn"]
+    info_failures = [c for c in failed if c.severity == "info"]
+
+    if warn_failures:
+        overall_status = "warnings"
+    elif info_failures:
+        overall_status = "info_only"
+    elif ctx.get("revenue") is None and ctx.get("net_income") is None:
+        overall_status = "unknown"
+    else:
+        overall_status = "clean"
+
+    return ValidationResult(
+        overall_status=overall_status,
+        checks=checks,
+        timestamp=timestamp,
+        ticker=ticker,
+        sector=sector,
+        sector_was_unknown=sector_was_unknown,
+        fiscal_year=normalized_data.get("fiscal_year", ""),
+        filing_accession=filing_metadata.get("accession"),
+        filing_source=filing_metadata.get("source", "edgar"),
+        rules_run=rules_run,
+        rules_passed=rules_passed,
+        rules_failed=rules_failed,
+        rules_skipped=rules_skipped,
+    )

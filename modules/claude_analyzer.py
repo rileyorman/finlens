@@ -79,6 +79,43 @@ def normalize_financial_data(financial_data: dict) -> dict:
     return financial_data
 
 
+def normalize_and_validate(
+    financial_data: dict,
+    ticker: str,
+    sector: str | None = None,
+    filing_metadata: dict | None = None,
+) -> dict:
+    """
+    Normalize financial_data to raw dollars, then run integrity checks.
+
+    Attaches the validation result as financial_data["_integrity"] — a dict
+    that callers and the UI can read.  The underlying data is never altered or
+    suppressed; _integrity is purely additive metadata.
+
+    This is the wiring point.  Replace direct calls to normalize_financial_data()
+    with this function wherever ticker/filing context is available.
+
+    Parameters
+    ----------
+    financial_data   Mutable dict returned by get_financial_data() or the
+                     Claude extraction path.
+    ticker           Ticker symbol, e.g. "MSFT".
+    sector           Company sector string.  Pass None if unknown.
+    filing_metadata  Dict with optional keys: filing_date, accession, source.
+    """
+    normalize_financial_data(financial_data)
+
+    try:
+        from modules.integrity import validate_filing, append_to_log
+        result = validate_filing(financial_data, ticker, sector, filing_metadata or {})
+        append_to_log(result)
+        financial_data["_integrity"] = result.to_dict()
+    except Exception:
+        pass   # integrity check failure must never break normalization
+
+    return financial_data
+
+
 def _cache_control() -> dict:
     return {"type": "ephemeral", "ttl": "1h"}
 
