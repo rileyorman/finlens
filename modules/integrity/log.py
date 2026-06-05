@@ -1,5 +1,5 @@
 """
-FinLens Data Integrity Engine — Structured Log
+FinLens Data Integrity Engine -- Structured Log
 ===============================================
 Every validation run is appended as a JSON-lines record to
 ~/.finlens/integrity_log.jsonl.
@@ -35,6 +35,7 @@ Querying failed rules across all filings:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -44,6 +45,66 @@ if TYPE_CHECKING:
 
 _DEFAULT_LOG = Path.home() / ".finlens" / "integrity_log.jsonl"
 
+# How many trailing lines to reverse-scan for the idempotency check.
+# Covers typical batch sizes without reading the entire log on every append.
+_SCAN_WINDOW = 50
+
+
+def _result_key(result: "ValidationResult") -> str:
+    """Compute a stable identity key for a ValidationResult."""
+    if result.filing_accession:
+        return result.filing_accession
+    # Fallback: composite of ticker + fiscal year + source + hash of observed values.
+    vals = sorted(
+        f"{c.rule_id}:{c.observed_value}"
+        for c in result.checks
+        if c.observed_value is not None
+    )
+    h = hashlib.md5("|".join(vals).encode()).hexdigest()[:8]
+    return f"{result.ticker}|{result.fiscal_year}|{result.filing_source or ''}|{h}"
+
+
+def _record_key(record: dict) -> str:
+    """Extract the same identity key from a deserialized log record dict."""
+    accn = record.get("filing_accession")
+    if accn:
+        return accn
+    vals = sorted(
+        f"{c['rule_id']}:{c.get('observed_value')}"
+        for c in record.get("checks", [])
+        if c.get("observed_value") is not None
+    )
+    h = hashlib.md5("|".join(vals).encode()).hexdigest()[:8]
+    return (
+        f"{record.get('ticker')}|{record.get('fiscal_year')}"
+        f"|{record.get('filing_source', '')}|{h}"
+    )
+
+
+def _already_logged(path: Path, key: str) -> bool:
+    """
+    Return True if a record with the given identity key already exists.
+    Scans the last _SCAN_WINDOW lines to keep the check lightweight.
+    """
+    if not path.exists():
+        return False
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+        for line in reversed(lines[-_SCAN_WINDOW:]):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                if _record_key(record) == key:
+                    return True
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        pass
+    return False
+
 
 def append_to_log(
     result: "ValidationResult",
@@ -52,10 +113,18 @@ def append_to_log(
     """
     Append a single ValidationResult record to the integrity log.
     Creates the log file and parent directories if they don't exist.
-    Returns the path the record was written to.
+
+    Idempotent: if a record with the same filing_accession (or composite
+    fallback key) already exists in the log, the write is silently skipped.
+
+    Returns the path the record was written to (or would have been written to).
     """
     path = Path(log_path) if log_path else _DEFAULT_LOG
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    key = _result_key(result)
+    if _already_logged(path, key):
+        return path
 
     line = json.dumps(result.to_dict(), ensure_ascii=False, default=str)
     with open(path, "a", encoding="utf-8") as fh:
