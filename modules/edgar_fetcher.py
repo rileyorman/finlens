@@ -227,7 +227,6 @@ def get_cik(ticker: str) -> str | None:
                         source.get("ciks")
                         or source.get("cik")
                         or source.get("cikNumber")
-                        or source.get("adsh")
                     )
                     if isinstance(cik, list):
                         cik = cik[0] if cik else None
@@ -588,6 +587,8 @@ def get_filing_text(cik: str, form_type: str = "10-K", limit: int = 5) -> dict |
             })
             if len(filings) >= limit:
                 break
+
+        filings.sort(key=lambda f: f.get("filing_date", ""), reverse=True)
 
         if not filings:
             return None
