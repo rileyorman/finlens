@@ -362,25 +362,100 @@ def _section_distributions(records: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _section_divergence_stub() -> str:
-    return (
-        "  [STUB -- cross-validation data not yet collected]\n"
-        "\n"
-        "  This section will compare FinLens EDGAR values against a second\n"
-        "  source (FMP) for the same ticker/period and flag divergences > 5%.\n"
-        "\n"
-        "  When cross-validation is wired, each log record will gain:\n"
-        "    fmp_revenue, fmp_gross_profit, fmp_net_income\n"
-        "    finlens_revenue, finlens_gross_profit, finlens_net_income\n"
-        "    revenue_divergence_pct, gross_profit_divergence_pct\n"
-        "\n"
-        "  Patterns this section will surface:\n"
-        "    - Tickers where FinLens and FMP consistently disagree\n"
-        "    - Sectors with systematic divergence\n"
-        "      (e.g. banks: interest income concept vs revenue concept)\n"
-        "    - Cases where integrity rules pass but cross-source values differ\n"
-        "      significantly (silent normalization mismatch)"
-    )
+def _fmt_bn(v: float | None) -> str:
+    """Format a raw-USD value as T/B/M/K for the report."""
+    if v is None:
+        return "n/a"
+    if abs(v) >= 1e12:
+        return f"${v / 1e12:.2f}T"
+    if abs(v) >= 1e9:
+        return f"${v / 1e9:.2f}B"
+    if abs(v) >= 1e6:
+        return f"${v / 1e6:.1f}M"
+    return f"${v:,.0f}"
+
+
+def _section_divergence(cv_records: list[dict]) -> str:
+    if not cv_records:
+        return (
+            "  No cross-validation runs recorded yet.\n"
+            "  Trigger a cross-validation check from the FinLens UI ($)\n"
+            "  to compare FinLens EDGAR values against FMP."
+        )
+
+    lines: list[str] = []
+
+    # --- Summary table ---
+    lines += [
+        f"  {'ticker':<6}  {'fiscal_year':<11}  {'overall_status':<22}  {'fmp_ok':>6}",
+        f"  {'-'*6}  {'-'*11}  {'-'*22}  {'-'*6}",
+    ]
+    for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
+        fmp_ok = "yes" if rec.get("fmp_fetch_success") else "no"
+        lines.append(
+            f"  {rec.get('ticker', '?'):<6}  "
+            f"{rec.get('fiscal_year', '?'):<11}  "
+            f"{rec.get('overall_status', '?'):<22}  "
+            f"{fmp_ok:>6}"
+        )
+
+    # --- Per-field breakdown ---
+    lines += [
+        "",
+        "  Per-field breakdown:",
+        f"  {'ticker':<5}  {'year':<6}  {'field':<22}  "
+        f"{'finlens':>14}  {'fmp':>14}  {'diff%':>7}  status",
+        f"  {'-'*5}  {'-'*6}  {'-'*22}  "
+        f"{'-'*14}  {'-'*14}  {'-'*7}  {'-'*18}",
+    ]
+    for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
+        ticker = rec.get("ticker", "?")
+        fy     = str(rec.get("fiscal_year", "?"))[-6:]
+        for fld in rec.get("cv_fields", []):
+            fl_v    = fld.get("finlens_value")
+            fm_v    = fld.get("fmp_value")
+            pct     = fld.get("pct_diff")
+            fl_str  = _fmt_bn(fl_v)
+            fm_str  = _fmt_bn(fm_v)
+            pct_str = f"{pct:.1f}%" if pct is not None else "n/a"
+            status  = fld.get("status", "?")
+            flag    = " [!]" if status in ("DISAGREE", "MINOR_DIVERGENCE") else "    "
+            lines.append(
+                f"  {ticker:<5}  {fy:<6}  {fld.get('field', '?'):<22}  "
+                f"{fl_str:>14}  {fm_str:>14}  {pct_str:>7}  {status}{flag}"
+            )
+
+    # --- Flags ---
+    disagree = [
+        f"{r.get('ticker')} {fld.get('field')}"
+        for r in cv_records
+        for fld in r.get("cv_fields", [])
+        if fld.get("status") == "DISAGREE"
+    ]
+    minor = [
+        f"{r.get('ticker')} {fld.get('field')}"
+        for r in cv_records
+        for fld in r.get("cv_fields", [])
+        if fld.get("status") == "MINOR_DIVERGENCE"
+    ]
+    unmatched = [
+        f"{r.get('ticker')} {fld.get('field')}"
+        for r in cv_records
+        for fld in r.get("cv_fields", [])
+        if fld.get("status") == "UNMATCHED"
+    ]
+
+    lines.append("")
+    if disagree:
+        lines.append(f"  [!] Disagreements (>10%)    : {_trunc(disagree)}")
+    if minor:
+        lines.append(f"  Minor divergences (2-10%)   : {_trunc(minor)}")
+    if unmatched:
+        lines.append(f"  Unmatched (no FMP period)   : {_trunc(unmatched)}")
+    if not disagree and not minor and not unmatched:
+        lines.append("  All compared fields agree (<2% divergence).")
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -395,10 +470,22 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     ----------
     log_path  Override the default log path.  None uses ~/.finlens/integrity_log.jsonl.
     """
-    records = read_log(log_path)
-    n = len(records)
+    all_records = read_log(log_path)
 
-    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    # Split by record type.  Existing integrity records have no record_type field;
+    # cross-validation records are tagged with record_type="cross_validation".
+    integrity_records = [
+        r for r in all_records
+        if r.get("record_type", "integrity") == "integrity"
+    ]
+    cv_records = [
+        r for r in all_records
+        if r.get("record_type") == "cross_validation"
+    ]
+
+    n = len(integrity_records)
+
+    now_utc    = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     path_label = str(Path(log_path) if log_path else _DEFAULT_LOG)
 
     SEP  = "=" * 70
@@ -415,7 +502,7 @@ def analyze_log(log_path: Path | str | None = None) -> str:
         SEP,
     ]
 
-    if n == 0:
+    if not all_records:
         out += [
             "",
             "  Log is empty.  Run some EDGAR analyses to populate it.",
@@ -424,10 +511,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
         ]
         return "\n".join(out)
 
-    if n < LOW_SAMPLE_THRESHOLD:
+    if n < LOW_SAMPLE_THRESHOLD and n > 0:
         out += [
             "",
-            f"  NOTE: Only {n} filing{'s' if n != 1 else ''} in log "
+            f"  NOTE: Only {n} integrity filing{'s' if n != 1 else ''} in log "
             f"(fewer than {LOW_SAMPLE_THRESHOLD}).",
             "  Patterns are not yet meaningful -- accumulate more filings",
             "  before drawing conclusions about threshold calibration.",
@@ -435,23 +522,23 @@ def analyze_log(log_path: Path | str | None = None) -> str:
 
     # 1. Summary
     out += ["", THIN, "  1. SUMMARY", THIN, ""]
-    out.append(_section_summary(records, n))
+    out.append(_section_summary(integrity_records, n) if n else "  No integrity records yet.")
 
     # 2. By sector
     out += ["", THIN, "  2. BY SECTOR", THIN, ""]
-    out.append(_section_by_sector(records))
+    out.append(_section_by_sector(integrity_records) if n else "  No integrity records yet.")
 
     # 3. By rule
     out += [THIN, "  3. BY RULE", THIN, ""]
-    out.append(_section_by_rule(records, n))
+    out.append(_section_by_rule(integrity_records, n) if n else "  No integrity records yet.")
 
     # 4. Distributions
     out += ["", THIN, "  4. OBSERVED-VALUE DISTRIBUTIONS", THIN, ""]
-    out.append(_section_distributions(records))
+    out.append(_section_distributions(integrity_records) if n else "  No integrity records yet.")
 
-    # 5. Divergence stub
+    # 5. Cross-validation divergences
     out += [THIN, "  5. CROSS-VALIDATION DIVERGENCES", THIN, ""]
-    out.append(_section_divergence_stub())
+    out.append(_section_divergence(cv_records))
 
     # Footer
     out += ["", SEP, "  END OF REPORT", SEP]

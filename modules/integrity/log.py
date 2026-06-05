@@ -37,11 +37,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .engine import ValidationResult
+    from .cross_validate import CrossValidationResult
 
 _DEFAULT_LOG = Path.home() / ".finlens" / "integrity_log.jsonl"
 
@@ -124,6 +126,62 @@ def append_to_log(
 
     key = _result_key(result)
     if _already_logged(path, key):
+        return path
+
+    line = json.dumps(result.to_dict(), ensure_ascii=False, default=str)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+    return path
+
+
+def _cv_already_logged(path: Path, key: str) -> bool:
+    """Return True if a cross-validation record with the given cv| key already exists."""
+    if not path.exists():
+        return False
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+        for line in reversed(lines[-_SCAN_WINDOW:]):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                if record.get("record_type") != "cross_validation":
+                    continue
+                yr_m = re.search(r"(\d{4})", str(record.get("fiscal_year", "")))
+                yr_s = yr_m.group(1) if yr_m else str(record.get("fiscal_year", ""))
+                rkey = f"cv|{record.get('ticker', '')}|{yr_s}"
+                if rkey == key:
+                    return True
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        pass
+    return False
+
+
+def append_cv_to_log(
+    result: "CrossValidationResult",
+    log_path: Path | str | None = None,
+) -> Path:
+    """
+    Append a CrossValidationResult record to the integrity log.
+
+    Idempotent: skips the write silently if a cross-validation record for the
+    same ticker + fiscal year already exists in the log.
+
+    Returns the path the record was written to (or would have been written to).
+    """
+    path = Path(log_path) if log_path else _DEFAULT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    yr_m = re.search(r"(\d{4})", str(result.fiscal_year or ""))
+    yr_s = yr_m.group(1) if yr_m else str(result.fiscal_year or "")
+    key  = f"cv|{result.ticker}|{yr_s}"
+
+    if _cv_already_logged(path, key):
         return path
 
     line = json.dumps(result.to_dict(), ensure_ascii=False, default=str)
