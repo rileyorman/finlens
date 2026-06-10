@@ -64,6 +64,7 @@ class ValidationResult:
     rules_passed: int
     rules_failed: int
     rules_skipped: int
+    gross_profit_derived: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -79,6 +80,7 @@ class ValidationResult:
             "rules_passed": self.rules_passed,
             "rules_failed": self.rules_failed,
             "rules_skipped": self.rules_skipped,
+            "gross_profit_derived": self.gross_profit_derived,
             "checks": [c.to_dict() for c in self.checks],
         }
 
@@ -89,19 +91,77 @@ class ValidationResult:
 # check handlers can reference fields by name without knowing the schema.
 # ---------------------------------------------------------------------------
 
+_LINE_ITEM_ALIASES = {
+    "revenue": (
+        "Revenues",
+        "Revenue",
+        "Total Revenues",
+        "Total Revenue",
+        "Net Revenues",
+        "Net Revenue",
+        "Total Net Revenues",
+        "Operating Revenues",
+        "Total Operating Revenues",
+    ),
+    "cost_of_revenue": (
+        "Cost of Revenue",
+        "Cost of Revenues",
+        "Cost of revenue",
+        "Cost of Goods Sold",
+        "Cost of Goods and Services Sold",
+        "Cost of Sales",
+        "Total Cost of Revenue",
+    ),
+    "gross_profit": (
+        "Gross Profit",
+        "Gross profit",
+        "Gross Margin",
+    ),
+    "net_income": (
+        "Net Income",
+        "Net income",
+        "Net Income to Common Shareholders",
+        "Net income attributable to common stockholders",
+        "Net Income Attributable to Common Stockholders",
+    ),
+}
+
+
+def _normalized_label(label: str) -> str:
+    """Normalize statement labels for case-insensitive alias matching."""
+    return re.sub(r"[^a-z0-9]+", " ", str(label or "").lower()).strip()
+
+
+def _aliases_for(label: str) -> tuple[str, ...]:
+    return _LINE_ITEM_ALIASES.get(label, (label,))
+
+
+def _coerce_number(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _line_item(rows: list[dict], label: str) -> float | None:
+    aliases = {_normalized_label(alias) for alias in _aliases_for(label)}
     for row in rows:
-        if row.get("line_item") == label:
-            v = row.get("value")
-            return float(v) if v is not None else None
+        if _normalized_label(row.get("line_item")) in aliases:
+            value = _coerce_number(row.get("value"))
+            if value is not None:
+                return value
     return None
 
 
 def _line_item_prior(rows: list[dict], label: str) -> float | None:
+    aliases = {_normalized_label(alias) for alias in _aliases_for(label)}
     for row in rows:
-        if row.get("line_item") == label:
-            v = row.get("value_prior")
-            return float(v) if v is not None else None
+        if _normalized_label(row.get("line_item")) in aliases:
+            value = _coerce_number(row.get("value_prior"))
+            if value is not None:
+                return value
     return None
 
 
@@ -119,12 +179,21 @@ def _parse_iso_year(date_str: str) -> int | None:
 
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
+    revenue = _line_item(income, "revenue")
+    cost_of_revenue = _line_item(income, "cost_of_revenue")
+    gross_profit = _line_item(income, "gross_profit")
+    gross_profit_derived = False
+    if gross_profit is None and revenue is not None and cost_of_revenue is not None:
+        gross_profit = revenue - cost_of_revenue
+        gross_profit_derived = True
+
     return {
-        "revenue":          _line_item(income, "Revenues"),
-        "revenue_prior":    _line_item_prior(income, "Revenues"),
-        "cost_of_revenue":  _line_item(income, "Cost of Revenue"),
-        "gross_profit":     _line_item(income, "Gross Profit"),
-        "net_income":       _line_item(income, "Net Income"),
+        "revenue":          revenue,
+        "revenue_prior":    _line_item_prior(income, "revenue"),
+        "cost_of_revenue":  cost_of_revenue,
+        "gross_profit":     gross_profit,
+        "gross_profit_derived": gross_profit_derived,
+        "net_income":       _line_item(income, "net_income"),
         "fiscal_year":      normalized_data.get("fiscal_year", ""),
         "fiscal_year_int":  _parse_fy_year(normalized_data.get("fiscal_year", "")),
         "filing_year_int":  _parse_iso_year(filing_metadata.get("filing_date", "")),
@@ -386,4 +455,5 @@ def validate_filing(
         rules_passed=rules_passed,
         rules_failed=rules_failed,
         rules_skipped=rules_skipped,
+        gross_profit_derived=bool(ctx.get("gross_profit_derived")),
     )
