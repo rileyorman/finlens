@@ -640,6 +640,8 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     st.session_state.loaded_from_sedar = False
     st.session_state.loaded_from_quick = False
     st.session_state.analysis_loaded_from_cache = True
+    st.session_state.analysis_cache_is_stale = bool(cached.get("_is_stale"))
+    st.session_state.analysis_cache_stale_reason = cached.get("_stale_reason")
 
     if st.session_state.resolved_ticker and st.session_state.resolved_ticker != "—":
         st.session_state["manual_ticker"] = st.session_state.resolved_ticker
@@ -1773,6 +1775,8 @@ document.addEventListener('focusin', function(e) {
                                         _entry_text if entry.get("source") == "edgar" else None
                                     )
                                     st.session_state.analysis_loaded_from_cache = False
+                                    st.session_state.analysis_cache_is_stale = False
+                                    st.session_state.analysis_cache_stale_reason = None
                                     if ticker and ticker != "—":
                                         st.session_state["manual_ticker"] = ticker
                                     if entry.get("source") == "edgar":
@@ -5370,6 +5374,16 @@ if st.session_state.financial_data:
 
     st.subheader(company)
     st.caption(f"{period}  ·  {currency}")
+
+    if (
+        st.session_state.get("analysis_loaded_from_cache")
+        and st.session_state.get("analysis_cache_is_stale")
+    ):
+        st.warning(
+            f"⚠️ This analysis was saved with an older version of FinLens "
+            f"and may display incorrect numbers or be missing fields. "
+            f"Click **Re-Analyse $** above to refresh it with the current pipeline."
+        )
 
     _fd_check = st.session_state.get("financial_data") or {}
     if _fd_check.get("currency") and _fd_check["currency"] != "USD":

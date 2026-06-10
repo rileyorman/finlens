@@ -214,6 +214,26 @@ before declaring the fix complete.
 - UI styling tweaks that genuinely affect only one element
 - Configuration changes scoped to a single file
 
+## Engineering Principle: Schema Versioning for Cached Data
+
+Cached data (analysis JSON, library entries, anything persisted to disk)
+must include a schema_version field. When the code evolves and the data
+shape or normalization changes, bump CURRENT_SCHEMA_VERSION in
+modules/analysis_cache.py.
+
+On load, mismatched schema versions should trigger a user-facing warning
+prompting Re-Analyse -- never silently display data from an old schema
+through a new render path. Silent mismatch produces the worst bugs
+(numbers off by 1000x without visible symptoms in the UI).
+
+Reference incident: Jun 4 2026 -- NVIDIA cached analysis showed revenue
+$215T because normalize_financial_data() saw currency="USD" and skipped
+scaling, but the saved values were stored in millions from an earlier
+code path. Fixed by clearing cache; schema versioning prevents recurrence.
+
+When changing normalize_financial_data() or any data shape: bump
+CURRENT_SCHEMA_VERSION.
+
 **Reference incidents (June 2026):**
 - Number formatters (commit 0f08323): audit found 10 functions needing
   B/T handling, 4 already correct, 10 N/A. Stopped the "Palantir shows
