@@ -5,6 +5,7 @@ import os
 import io
 import re
 import json
+import logging
 import tempfile
 from html import escape
 from datetime import datetime, timedelta, timezone
@@ -23,7 +24,9 @@ from modules.claude_analyzer import (
     analyze_mda_sentiment,
     build_filing_context,
     normalize_financial_data,
+    normalize_and_validate,
 )
+from modules.integrity import cross_validate_filing
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics
@@ -79,6 +82,8 @@ from config import (
 )
 import plotly.graph_objects as go
 
+logger = logging.getLogger(__name__)
+
 st.set_page_config(
     page_title="FinLens",
     page_icon="assets/favicon.svg",
@@ -110,6 +115,66 @@ def get_model():
 
 def get_mda_model():
     return EXTRACTION_MODEL
+
+
+def _run_integrity_checks(
+    financial_data: dict | None,
+    summary_data: dict | None,
+    ticker: str | None,
+    source: str,
+    filing_date: str | None = None,
+    accession: str | None = None,
+) -> dict | None:
+    """Attach integrity metadata without letting checks block analysis."""
+    if not isinstance(financial_data, dict):
+        return financial_data
+
+    ticker_value = (ticker or (summary_data or {}).get("ticker") or financial_data.get("ticker") or "").strip().upper()
+    sector_value = (summary_data or {}).get("sector_inferred")
+    filing_metadata = {
+        "source": source,
+        "filing_date": filing_date,
+        "accession": accession,
+    }
+
+    try:
+        normalize_and_validate(financial_data, ticker_value, sector_value, filing_metadata)
+    except Exception:
+        logger.exception("Integrity validation failed for %s", ticker_value)
+
+    try:
+        fiscal_year = financial_data.get("fiscal_year") or financial_data.get("period")
+        if ticker_value and fiscal_year:
+            cv_result = cross_validate_filing(financial_data, ticker_value, fiscal_year, filing_metadata)
+            financial_data["_cross_validation"] = cv_result.to_dict()
+    except Exception:
+        logger.exception("Integrity cross-validation failed for %s", ticker_value)
+
+    return financial_data
+
+
+def _integrity_flag_names(financial_data: dict | None) -> list[str]:
+    checks = ((financial_data or {}).get("_integrity") or {}).get("checks") or []
+    return [
+        str(check.get("rule_id"))
+        for check in checks
+        if isinstance(check, dict) and not check.get("passed") and not check.get("skipped")
+    ]
+
+
+def _upload_analysis_source(resolved_ticker: str | None) -> str:
+    ticker_value = (resolved_ticker or "").strip().upper()
+    sedar_company = st.session_state.get("sedar_company") or {}
+    sedar_ticker = (
+        sedar_company.get("ticker")
+        or sedar_company.get("symbol")
+        or ""
+    ).strip().upper()
+    if ticker_value and sedar_ticker and ticker_value == sedar_ticker:
+        return "sedar"
+    if ticker_value.endswith(".TO"):
+        return "sedar"
+    return "pdf"
 
 
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
@@ -493,6 +558,7 @@ def _analysis_cache_payload(
         "mda_sentiment": mda_sentiment,
         "market_data": market_data,
         "sector": sector_value or (summary_data or {}).get("sector_inferred") or financial_data.get("sector"),
+        "sec_filing_date": (summary_data or {}).get("sec_filing_date") or financial_data.get("sec_filing_date"),
         "hurdle_rate": hurdle_rate_value,
         "market_cap": (market_data or {}).get("market_cap"),
     }
@@ -1545,6 +1611,8 @@ document.addEventListener('focusin', function(e) {
                                         "entry_id":     eid,
                                         "file_name":    entry.get("file_name", ""),
                                         "file_size":    entry.get("file_size_bytes", 0),
+                                        "ticker":       entry.get("ticker"),
+                                        "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                         "source":       entry.get("source", "pdf"),
                                         "file_path":    entry.get("file_path"),
                                     }
@@ -1574,6 +1642,10 @@ document.addEventListener('focusin', function(e) {
                                                 "entry_id":     eid,
                                                 "file_name":    entry.get("file_name", ""),
                                                 "file_size":    entry.get("file_size_bytes", 0),
+                                                "ticker":       entry.get("ticker"),
+                                                "period":       entry.get("fiscal_year") or entry.get("period", ""),
+                                                "source":       entry.get("source", "pdf"),
+                                                "file_path":    entry.get("file_path"),
                                                 "pdf_bytes":    _pdf_bytes,
                                             }
                                         except Exception:
@@ -1771,6 +1843,8 @@ document.addEventListener('focusin', function(e) {
                                             "entry_id":     eid,
                                             "file_name":    entry.get("file_name", ""),
                                             "file_size":    entry.get("file_size_bytes", 0),
+                                            "ticker":       entry.get("ticker"),
+                                            "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                             "source":       entry.get("source", "pdf"),
                                             "file_path":    entry.get("file_path"),
                                         }
@@ -1828,6 +1902,14 @@ if page == "Portfolio Manager":
             _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
             _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
+        _ra_fd = _run_integrity_checks(
+            _ra_fd,
+            _ra_sd,
+            (ra.get("ticker") or (_ra_sd or {}).get("ticker")),
+            ra.get("source", "pdf"),
+            filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date")),
+            accession=ra.get("accession"),
+        )
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
                 safe_write_text(ra["file_path"], _ra_text)
@@ -4265,7 +4347,8 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             safe_write_text(_edgar_text_path, _edgar_text)
                         except Exception:
                             _edgar_text_path = None
-                    _edgar_sd = {"ticker": _tk, "filing_date": _selected_filing.get("filingDate")}
+                    _sec_filing_date = _selected_filing.get("filingDate")
+                    _edgar_sd = {"ticker": _tk, "sec_filing_date": _sec_filing_date}
                     _edgar_bb = None
                     _edgar_dd = None
                     with st.spinner("Generating investment signal from SEC data..."):
@@ -4275,7 +4358,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                             )
                             if isinstance(_edgar_sd, dict):
                                 _edgar_sd.setdefault("ticker", _tk)
-                                _edgar_sd.setdefault("filing_date", _selected_filing.get("filingDate"))
+                                _edgar_sd["sec_filing_date"] = _sec_filing_date
                         except Exception as e:
                             st.warning(f"Investment signal could not be generated: {e}.")
                     with st.spinner("Generating bull/bear case from SEC data..."):
@@ -4313,7 +4396,14 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _entry_id = f"edgar_{_cik}_{_selected_accession}"
                     _file_prefix = _tk or re.sub(r"[^A-Za-z0-9]+", "_", _company_name).strip("_") or "EDGAR"
                     _file_name = f"{_file_prefix}_{_selected_filing.get('form')}_{_selected_filing.get('reportDate')}.edgar"
-                    _edgar_fd = normalize_financial_data(_edgar_fd)
+                    _edgar_fd = _run_integrity_checks(
+                        _edgar_fd,
+                        _edgar_sd,
+                        _tk,
+                        "edgar",
+                        filing_date=_sec_filing_date,
+                        accession=_selected_accession,
+                    )
                     st.session_state.financial_data      = _edgar_fd
                     st.session_state.summary_data        = _edgar_sd
                     st.session_state.bear_bull_data      = _edgar_bb
@@ -4729,6 +4819,8 @@ if st.session_state.get("reanalyse_no_text"):
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
                 "file_size":    _pdf_info.get("file_size", 0),
+                "ticker":       _pdf_info.get("ticker"),
+                "period":       _pdf_info.get("period"),
                 "source":       "edgar",
                 "file_path":    _pdf_info.get("file_path"),
             }
@@ -4761,6 +4853,10 @@ if st.session_state.get("reanalyse_no_text"):
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
                 "file_size":    _pdf_info.get("file_size", 0),
+                "ticker":       _pdf_info.get("ticker"),
+                "period":       _pdf_info.get("period"),
+                "source":       _pdf_info.get("source", "pdf"),
+                "file_path":    _pdf_info.get("file_path"),
                 "pdf_bytes":    _cached_bytes,
             }
             st.session_state.reanalyse_no_text  = None
@@ -4940,6 +5036,15 @@ if st.session_state.get("pending_reanalyse"):
     _ra_mda = None
     with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
         _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
+
+    _ra_fd = _run_integrity_checks(
+        _ra_fd,
+        _ra_sd,
+        (ra.get("ticker") or (_ra_sd or {}).get("ticker")),
+        ra.get("source", "pdf"),
+        filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date")),
+        accession=ra.get("accession"),
+    )
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
@@ -5134,6 +5239,14 @@ if uploaded_file:
                     st.warning(f"Could not fetch market data for '{resolved_ticker}'.")
 
         market_cap = market_data.get("market_cap") or 0.0
+        _upload_source = _upload_analysis_source(resolved_ticker)
+        financial_data = _run_integrity_checks(
+            financial_data,
+            summary_data,
+            resolved_ticker,
+            _upload_source,
+            filing_date=(summary_data or {}).get("sec_filing_date"),
+        )
 
         # Step 5 — Build Excel
         try:
@@ -5153,7 +5266,7 @@ if uploaded_file:
         st.session_state.resolved_ticker     = resolved_ticker
         st.session_state.loaded_from_library = False
         st.session_state.loaded_from_edgar   = False
-        st.session_state.loaded_from_sedar   = False
+        st.session_state.loaded_from_sedar   = _upload_source == "sedar"
         st.session_state.loaded_from_quick   = False
         st.session_state.analysis_loaded_from_cache = False
         if resolved_ticker:
@@ -5162,7 +5275,7 @@ if uploaded_file:
         _save_analysis_cache(
             resolved_ticker,
             _period_label,
-            "pdf",
+            _upload_source,
             mda_sentiment=mda_sentiment,
             sector_value=sector,
             hurdle_rate_value=hurdle_rate,
@@ -5170,10 +5283,18 @@ if uploaded_file:
 
         # Persist to Filing Library (permanent — survives cache clears).
         try:
-            lib_add(cache_key, uploaded_file.name, len(pdf_bytes),
-                    financial_data, summary_data, bear_bull_data, dashboard_data,
-                    raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None,
-                    mda_sentiment=mda_sentiment)
+            lib_add(
+                cache_key,
+                uploaded_file.name,
+                len(pdf_bytes),
+                financial_data,
+                summary_data,
+                bear_bull_data,
+                dashboard_data,
+                raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None,
+                mda_sentiment=mda_sentiment,
+                source=_upload_source,
+            )
         except Exception:
             pass  # Library write failure must never block analysis
         _save_analysis_to_supabase(
@@ -5187,6 +5308,7 @@ if uploaded_file:
             file_name=uploaded_file.name,
             file_size=len(pdf_bytes),
             pdf_bytes=pdf_bytes,
+            source=_upload_source,
         )
 
         # Save PDF bytes to disk so Re-Analyse can run without re-uploading.
@@ -5210,6 +5332,9 @@ if st.session_state.financial_data:
     bear_bull_data  = st.session_state.bear_bull_data or {}
     dashboard_data  = st.session_state.dashboard_data
     mda_sentiment   = st.session_state.get("mda_sentiment")
+    _integrity_flags = _integrity_flag_names(financial_data)
+    if _integrity_flags:
+        st.warning("Data integrity flags: " + ", ".join(_integrity_flags))
 
     # If dashboard insights are missing (old library entry or failed Call 4 in the
     # upload pipeline), generate them now from the structured data we do have.

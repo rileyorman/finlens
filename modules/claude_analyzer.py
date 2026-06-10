@@ -3,6 +3,7 @@ import ssl
 import anthropic
 import httpx
 import json
+import logging
 import re
 
 from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
@@ -12,6 +13,7 @@ DASHBOARD_MODEL = ANALYSIS_MODEL
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 OPUS_48_MODEL = "claude-opus-4-8"
 MAX_CACHED_FILING_CHARS = 450_000
+_LOGGER = logging.getLogger(__name__)
 
 
 def _detect_unit_scale(currency: str) -> int:
@@ -111,7 +113,7 @@ def normalize_and_validate(
         append_to_log(result)
         financial_data["_integrity"] = result.to_dict()
     except Exception:
-        pass   # integrity check failure must never break normalization
+        _LOGGER.exception("Data Integrity Engine failed for %s", ticker)
 
     return financial_data
 
