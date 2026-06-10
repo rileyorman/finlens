@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from modules.integrity.engine import validate_filing
 
 
-BASELINE_PATH = Path.home() / ".finlens" / "analysis" / "NVDA_FY2026.json"
+BASELINE_PATH = Path(__file__).resolve().parent / "fixtures" / "NVDA_FY2026.json"
 FILING_METADATA = {
     "source": "fixture",
     "filing_date": "2026-03-12",

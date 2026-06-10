@@ -1,0 +1,1 @@
+Run the FinLens Data Integrity Engine audit per docs/audits/INTEGRITY_AUDIT_PROMPT.md. Execute all five parts, write the dated report to docs/audits/integrity_audit_YYYYMMDD.md with a PASS/FAIL header, and end with a prioritized, evidence-tied tuning list. Show me the report.

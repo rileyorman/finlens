@@ -1,0 +1,385 @@
+{
+  "ticker": "NVDA",
+  "period": "FY2026",
+  "source": "edgar",
+  "timestamp": "2026-06-05T03:54:17.616634+00:00",
+  "company_name": "NVIDIA CORP",
+  "financial_data": {
+    "company_name": "NVIDIA CORP",
+    "period": "Year ended 2026-01-25",
+    "fiscal_year": "FY2026",
+    "fiscal_year_prior": "FY2025",
+    "currency": "USD",
+    "income_statement": [
+      {
+        "line_item": "Revenues",
+        "value": 215938000000,
+        "value_prior": 130497000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "Cost of Revenue",
+        "value": 62475000000,
+        "value_prior": 32639000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Gross Profit",
+        "value": 153463000000,
+        "value_prior": 97858000000,
+        "row_type": "subtotal"
+      },
+      {
+        "line_item": "Operating Expenses",
+        "value": 23076000000,
+        "value_prior": 16405000000,
+        "row_type": "subtotal"
+      },
+      {
+        "line_item": "Research and Development Expense",
+        "value": 18497000000,
+        "value_prior": 12914000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Selling, General and Administrative Expense",
+        "value": 4579000000,
+        "value_prior": 3491000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Operating Income",
+        "value": 130387000000,
+        "value_prior": 81453000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "Net Income",
+        "value": 120067000000,
+        "value_prior": 72880000000,
+        "row_type": "total"
+      }
+    ],
+    "balance_sheet": [
+      {
+        "line_item": "ASSETS",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Cash and Cash Equivalents",
+        "value": 10605000000,
+        "value_prior": 8589000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Accounts Receivable, Net",
+        "value": 38466000000,
+        "value_prior": 23065000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Assets",
+        "value": 206803000000,
+        "value_prior": 111601000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "LIABILITIES",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Liabilities",
+        "value": 49510000000,
+        "value_prior": 32274000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "Long-Term Debt",
+        "value": 8468000000,
+        "value_prior": 8463000000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "SHAREHOLDERS' EQUITY",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Stockholders' Equity",
+        "value": 157293000000,
+        "value_prior": 79327000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "Retained Earnings",
+        "value": 146973000000,
+        "value_prior": 68038000000,
+        "row_type": "data"
+      }
+    ],
+    "cash_flow_statement": [
+      {
+        "line_item": "OPERATING ACTIVITIES",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Net Cash Provided by Operating Activities",
+        "value": 102718000000,
+        "value_prior": 64089000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "INVESTING ACTIVITIES",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Capital Expenditures",
+        "value": 138735000,
+        "value_prior": 97890000,
+        "row_type": "data"
+      },
+      {
+        "line_item": "Net Cash Provided by Investing Activities",
+        "value": -52228000000,
+        "value_prior": -20421000000,
+        "row_type": "total"
+      },
+      {
+        "line_item": "FINANCING ACTIVITIES",
+        "value": null,
+        "value_prior": null,
+        "row_type": "section_header"
+      },
+      {
+        "line_item": "Net Cash Provided by Financing Activities",
+        "value": -48474000000,
+        "value_prior": -42359000000,
+        "row_type": "total"
+      }
+    ]
+  },
+  "summary": {
+    "signal": "INVESTIGATE",
+    "thesis": "NVIDIA is generating $103B in operating cash flow annually on 65% revenue growth, with Blackwell architecture now representing the majority of Data Center revenue and a clear one-year product cadence extending through Rubin in FY2027 ? this is a structural platform shift, not a cyclical spike. The primary risk is that export controls have permanently foreclosed China's data center market while simultaneously subsidizing domestic competitors, but demand concentration among US-based hyperscalers and the $95B forward purchase commitment backlog indicate the non-China TAM alone sustains the growth trajectory.",
+    "catalysts": [
+      {
+        "type": "opportunity",
+        "text": "Blackwell architecture ramp is still early: Data Center networking grew 142% YoY driven by NVLink fabric for GB200/GB300 systems, and GB300/Blackwell Ultra only commenced shipping in Q2 FY2026, meaning the full-system revenue contribution is front-loaded into FY2027 with $95.2B in manufacturing commitments already placed by customers."
+      },
+      {
+        "type": "opportunity",
+        "text": "Inference workload scaling is creating a second demand wave independent of training: management explicitly called out agentic and reasoning AI as driving token throughput demand, and the Groq LPU license ($13B paid, $2.5B intangible recorded) signals NVIDIA is acquiring inference-optimized IP to defend against custom silicon threats before they materialize at scale."
+      }
+    ],
+    "risks": [
+      {
+        "type": "risk",
+        "text": "Gross margin compressed 390bps to 71.1% in FY2026 as the business transitioned from Hopper HGX modules to full-stack Blackwell datacenter solutions, and if the Rubin transition in H2 FY2027 triggers a similar system-level margin reset ? compounded by the $4B Groq deferred consideration, $27B cloud service commitments, and $95.2B supply obligations ? the market's current multiple implicitly assumes margin recovery that may not materialize for 6-8 quarters."
+      }
+    ],
+    "sector_inferred": "AI Accelerated Computing Infrastructure",
+    "filing_date": "2026-01-25",
+    "ticker": "NVDA"
+  },
+  "summary_data": {
+    "signal": "INVESTIGATE",
+    "thesis": "NVIDIA is generating $103B in operating cash flow annually on 65% revenue growth, with Blackwell architecture now representing the majority of Data Center revenue and a clear one-year product cadence extending through Rubin in FY2027 ? this is a structural platform shift, not a cyclical spike. The primary risk is that export controls have permanently foreclosed China's data center market while simultaneously subsidizing domestic competitors, but demand concentration among US-based hyperscalers and the $95B forward purchase commitment backlog indicate the non-China TAM alone sustains the growth trajectory.",
+    "catalysts": [
+      {
+        "type": "opportunity",
+        "text": "Blackwell architecture ramp is still early: Data Center networking grew 142% YoY driven by NVLink fabric for GB200/GB300 systems, and GB300/Blackwell Ultra only commenced shipping in Q2 FY2026, meaning the full-system revenue contribution is front-loaded into FY2027 with $95.2B in manufacturing commitments already placed by customers."
+      },
+      {
+        "type": "opportunity",
+        "text": "Inference workload scaling is creating a second demand wave independent of training: management explicitly called out agentic and reasoning AI as driving token throughput demand, and the Groq LPU license ($13B paid, $2.5B intangible recorded) signals NVIDIA is acquiring inference-optimized IP to defend against custom silicon threats before they materialize at scale."
+      }
+    ],
+    "risks": [
+      {
+        "type": "risk",
+        "text": "Gross margin compressed 390bps to 71.1% in FY2026 as the business transitioned from Hopper HGX modules to full-stack Blackwell datacenter solutions, and if the Rubin transition in H2 FY2027 triggers a similar system-level margin reset ? compounded by the $4B Groq deferred consideration, $27B cloud service commitments, and $95.2B supply obligations ? the market's current multiple implicitly assumes margin recovery that may not materialize for 6-8 quarters."
+      }
+    ],
+    "sector_inferred": "AI Accelerated Computing Infrastructure",
+    "filing_date": "2026-01-25",
+    "ticker": "NVDA"
+  },
+  "bear_bull": {
+    "bull_case": [
+      {
+        "title": "Blackwell-Driven Margin Recovery Ahead",
+        "detail": "Gross margin compressed to 71.1% in FY2026 from 75.0% partly due to the one-time $4.5B H20 charge; excluding this charge gross margin dynamics improve materially, and management's shift to Blackwell full-rack datacenter solutions with a one-year product cadence (Rubin in 2H FY2027 promising 10x cost-per-token reduction) positions NVIDIA for margin re-expansion as the product mix stabilizes."
+      },
+      {
+        "title": "Operating Cash Flow Machine Accelerating",
+        "detail": "Operating cash flow surged to $102.7B in FY2026 from $64.1B in FY2025, with net income of $120.1B on $215.9B revenue, while the company holds $62.6B in cash and marketable securities and has already repurchased $40.4B of stock in FY2026 with $58.5B remaining authorized ? underscoring both earnings quality and capital return capacity."
+      },
+      {
+        "title": "Networking Revenue Inflecting Sharply",
+        "detail": "Data Center networking revenue grew 142% year-over-year to $31.4B in FY2026, driven by NVLink compute fabric for GB200/GB300 and growth in Ethernet and InfiniBand platforms, representing an increasingly high-margin, proprietary layer that competitors cannot easily replicate and that scales with every incremental GPU cluster deployment."
+      }
+    ],
+    "bear_case": [
+      {
+        "title": "China Market Permanently Foreclosed",
+        "detail": "NVIDIA explicitly states it is 'effectively foreclosed from competing in China's data center computing/compute market' as of FY2026 year-end, and China revenue fell to $19.7B from $25.0B the prior year; the company incurred a $4.5B charge on H20 inventory and the only licensed H20 revenue recovered was approximately $60M, with the H200 program generating zero revenue to date."
+      },
+      {
+        "title": "Purchase Commitments Dwarf Annual Revenue",
+        "detail": "As of January 25, 2026, inventory purchase and long-term supply/capacity obligations totaled $95.2B (substantially all due through FY2027) against FY2026 revenue of $215.9B, plus $27B in multi-year cloud service commitments and $11.4B in investment commitments ? creating a massive fixed-cost exposure if demand softens, customer orders slip, or export controls expand further."
+      },
+      {
+        "title": "Customer Concentration Risk Intensifying",
+        "detail": "Two direct customers accounted for 22% and 14% of total FY2026 revenue respectively (all Compute & Networking), while three customers represented 25%, 18%, and 13% of accounts receivable; this hyper-concentration means any single customer pause, capex cut, or shift to internally designed ASICs (a risk the filing explicitly names for Alphabet, Amazon, and Microsoft) could cause a disproportionate revenue shock."
+      }
+    ]
+  },
+  "bear_bull_data": {
+    "bull_case": [
+      {
+        "title": "Blackwell-Driven Margin Recovery Ahead",
+        "detail": "Gross margin compressed to 71.1% in FY2026 from 75.0% partly due to the one-time $4.5B H20 charge; excluding this charge gross margin dynamics improve materially, and management's shift to Blackwell full-rack datacenter solutions with a one-year product cadence (Rubin in 2H FY2027 promising 10x cost-per-token reduction) positions NVIDIA for margin re-expansion as the product mix stabilizes."
+      },
+      {
+        "title": "Operating Cash Flow Machine Accelerating",
+        "detail": "Operating cash flow surged to $102.7B in FY2026 from $64.1B in FY2025, with net income of $120.1B on $215.9B revenue, while the company holds $62.6B in cash and marketable securities and has already repurchased $40.4B of stock in FY2026 with $58.5B remaining authorized ? underscoring both earnings quality and capital return capacity."
+      },
+      {
+        "title": "Networking Revenue Inflecting Sharply",
+        "detail": "Data Center networking revenue grew 142% year-over-year to $31.4B in FY2026, driven by NVLink compute fabric for GB200/GB300 and growth in Ethernet and InfiniBand platforms, representing an increasingly high-margin, proprietary layer that competitors cannot easily replicate and that scales with every incremental GPU cluster deployment."
+      }
+    ],
+    "bear_case": [
+      {
+        "title": "China Market Permanently Foreclosed",
+        "detail": "NVIDIA explicitly states it is 'effectively foreclosed from competing in China's data center computing/compute market' as of FY2026 year-end, and China revenue fell to $19.7B from $25.0B the prior year; the company incurred a $4.5B charge on H20 inventory and the only licensed H20 revenue recovered was approximately $60M, with the H200 program generating zero revenue to date."
+      },
+      {
+        "title": "Purchase Commitments Dwarf Annual Revenue",
+        "detail": "As of January 25, 2026, inventory purchase and long-term supply/capacity obligations totaled $95.2B (substantially all due through FY2027) against FY2026 revenue of $215.9B, plus $27B in multi-year cloud service commitments and $11.4B in investment commitments ? creating a massive fixed-cost exposure if demand softens, customer orders slip, or export controls expand further."
+      },
+      {
+        "title": "Customer Concentration Risk Intensifying",
+        "detail": "Two direct customers accounted for 22% and 14% of total FY2026 revenue respectively (all Compute & Networking), while three customers represented 25%, 18%, and 13% of accounts receivable; this hyper-concentration means any single customer pause, capex cut, or shift to internally designed ASICs (a risk the filing explicitly names for Alphabet, Amazon, and Microsoft) could cause a disproportionate revenue shock."
+      }
+    ]
+  },
+  "dashboard_insights": {
+    "dalio_view": "NVIDIA is in the early-to-middle productivity surge phase of a new technology cycle, not a debt-fueled speculative boom -- the balance sheet carries only $8.5B in long-term debt against $62.6B in cash and marketable securities and $102.7B in operating cash flow, meaning the growth is self-financing and not reliant on credit expansion. The $95.2B in customer manufacturing commitments and $27B in multi-year cloud service agreements represent the kind of durable productivity-driven demand Dalio associates with sustainable cycle expansion rather than the debt-dependent demand that precedes reversals.",
+    "lynch_category": "Fast Grower",
+    "lynch_story": "NVIDIA makes the specialized chips that power artificial intelligence -- the same way Intel's processors powered the PC era, NVIDIA's GPUs are the essential engine for training and running AI systems at every major cloud company and AI startup. Revenue grew 65% in a single year to $216 billion, and the new Blackwell chip family only started shipping at scale partway through the year, meaning the biggest revenue wave is still ahead. The risk is that competitors or customers build their own chips to cut NVIDIA out, but with 7.5 million developers already writing software for NVIDIA's platform and $95 billion in purchase commitments already placed, switching would cost years and billions.",
+    "marks_view": "The crowd believes NVIDIA's valuation risk is primarily about whether AI spending slows -- but the genuine second-level risk is that even sustained AI spending might not recover gross margins back to the 75% Hopper-era level, because the transition to full-stack Blackwell datacenter solutions structurally shifts the revenue mix toward lower-margin system integration, and the $4.5B H20 charge plus the pending Rubin transition in H2 FY2027 suggest margin compression could persist for 6-8 quarters while the market prices in a recovery that requires architectural conditions not yet established. The crowd also misses that 76% of Taiwan-headquartered revenue flows to US and European end customers, meaning the reported 31% non-US revenue share dramatically overstates geographic diversification risk while understating the degree to which NVIDIA is effectively a US hyperscaler infrastructure monopoly.",
+    "capital_allocation": [
+      {
+        "label": "Buybacks",
+        "value": "Aggressive but well-covered -- $40.4B spent repurchasing 282M shares in FY2026 with $58.5B still authorized, funded entirely by $102.7B in operating cash flow, representing a disciplined return of capital without leveraging the balance sheet."
+      },
+      {
+        "label": "Dividends",
+        "value": "Token in size -- $974M paid in FY2026 at $0.04 per share, less than 1% of operating cash flow, signaling management prioritizes growth reinvestment and buybacks over income distribution."
+      },
+      {
+        "label": "M&A",
+        "value": "Strategically targeted but expensive -- the $13B Groq license (plus $4B deferred) recorded as $14.4B goodwill and a $2.5B intangible reflects a defensive acquisition of inference IP rather than revenue-generating consolidation, with no customer contracts or products acquired."
+      },
+      {
+        "label": "Cash Position",
+        "value": "Fortress liquidity -- $62.6B in cash and marketable securities against only $8.5B in total debt, a net cash position of approximately $54B that provides substantial buffer against the $95.2B supply commitment overhang."
+      },
+      {
+        "label": "Capex Intensity",
+        "value": "Capital-light core but rapidly scaling -- property and equipment capex was $6.1B in FY2026 versus $3.4B in FY2025, but the filing confirms management expects further increases in FY2027, and $22.7B in future data center lease obligations commencing FY2027-2030 represents a significant off-balance-sheet capital commitment not yet reflected in reported capex."
+      }
+    ],
+    "crowd_thinks": "NVIDIA is the undisputed picks-and-shovels AI infrastructure monopoly and the only question is how long the growth supercycle lasts.",
+    "marks_question": "If Blackwell-to-Rubin system transitions compress gross margins every 12-18 months the way Hopper-to-Blackwell did in FY2026, at what point does the market's implicit assumption of margin normalization in the high-70s become permanently wrong rather than temporarily deferred?"
+  },
+  "dashboard_data": {
+    "dalio_view": "NVIDIA is in the early-to-middle productivity surge phase of a new technology cycle, not a debt-fueled speculative boom -- the balance sheet carries only $8.5B in long-term debt against $62.6B in cash and marketable securities and $102.7B in operating cash flow, meaning the growth is self-financing and not reliant on credit expansion. The $95.2B in customer manufacturing commitments and $27B in multi-year cloud service agreements represent the kind of durable productivity-driven demand Dalio associates with sustainable cycle expansion rather than the debt-dependent demand that precedes reversals.",
+    "lynch_category": "Fast Grower",
+    "lynch_story": "NVIDIA makes the specialized chips that power artificial intelligence -- the same way Intel's processors powered the PC era, NVIDIA's GPUs are the essential engine for training and running AI systems at every major cloud company and AI startup. Revenue grew 65% in a single year to $216 billion, and the new Blackwell chip family only started shipping at scale partway through the year, meaning the biggest revenue wave is still ahead. The risk is that competitors or customers build their own chips to cut NVIDIA out, but with 7.5 million developers already writing software for NVIDIA's platform and $95 billion in purchase commitments already placed, switching would cost years and billions.",
+    "marks_view": "The crowd believes NVIDIA's valuation risk is primarily about whether AI spending slows -- but the genuine second-level risk is that even sustained AI spending might not recover gross margins back to the 75% Hopper-era level, because the transition to full-stack Blackwell datacenter solutions structurally shifts the revenue mix toward lower-margin system integration, and the $4.5B H20 charge plus the pending Rubin transition in H2 FY2027 suggest margin compression could persist for 6-8 quarters while the market prices in a recovery that requires architectural conditions not yet established. The crowd also misses that 76% of Taiwan-headquartered revenue flows to US and European end customers, meaning the reported 31% non-US revenue share dramatically overstates geographic diversification risk while understating the degree to which NVIDIA is effectively a US hyperscaler infrastructure monopoly.",
+    "capital_allocation": [
+      {
+        "label": "Buybacks",
+        "value": "Aggressive but well-covered -- $40.4B spent repurchasing 282M shares in FY2026 with $58.5B still authorized, funded entirely by $102.7B in operating cash flow, representing a disciplined return of capital without leveraging the balance sheet."
+      },
+      {
+        "label": "Dividends",
+        "value": "Token in size -- $974M paid in FY2026 at $0.04 per share, less than 1% of operating cash flow, signaling management prioritizes growth reinvestment and buybacks over income distribution."
+      },
+      {
+        "label": "M&A",
+        "value": "Strategically targeted but expensive -- the $13B Groq license (plus $4B deferred) recorded as $14.4B goodwill and a $2.5B intangible reflects a defensive acquisition of inference IP rather than revenue-generating consolidation, with no customer contracts or products acquired."
+      },
+      {
+        "label": "Cash Position",
+        "value": "Fortress liquidity -- $62.6B in cash and marketable securities against only $8.5B in total debt, a net cash position of approximately $54B that provides substantial buffer against the $95.2B supply commitment overhang."
+      },
+      {
+        "label": "Capex Intensity",
+        "value": "Capital-light core but rapidly scaling -- property and equipment capex was $6.1B in FY2026 versus $3.4B in FY2025, but the filing confirms management expects further increases in FY2027, and $22.7B in future data center lease obligations commencing FY2027-2030 represents a significant off-balance-sheet capital commitment not yet reflected in reported capex."
+      }
+    ],
+    "crowd_thinks": "NVIDIA is the undisputed picks-and-shovels AI infrastructure monopoly and the only question is how long the growth supercycle lasts.",
+    "marks_question": "If Blackwell-to-Rubin system transitions compress gross margins every 12-18 months the way Hopper-to-Blackwell did in FY2026, at what point does the market's implicit assumption of margin normalization in the high-70s become permanently wrong rather than temporarily deferred?"
+  },
+  "mda_sentiment": {
+    "overall_tone": "Cautious",
+    "scores": {
+      "forward_outlook": 3,
+      "risk_language_density": 2,
+      "management_confidence": 3
+    },
+    "key_phrases": [
+      "The availability of data centers, energy, and capital to support the buildout of NVIDIA AI infrastructure by our customers and partners is crucial, and any shortage of these or other necessary resources could impact our future revenue and financial performance.",
+      "As of the end of fiscal year 2026, we were effectively foreclosed from competing in China's data center computing/compute market, and our effective foreclosure from the China market helped our competitors build larger developer and customer ecosystems to challenge us worldwide.",
+      "Revenue growth in fiscal year 2026 was driven by data center compute and networking platforms for accelerated computing and AI solutions."
+    ],
+    "error": null
+  },
+  "market_data": {
+    "market_cap": 5296163.95,
+    "current_price": 218.66000366210938,
+    "shares_outstanding": 24221000000,
+    "pe_ratio": 33.48545,
+    "beta": 2.244,
+    "ev_ebitda": 31.727,
+    "pb": 33.785538,
+    "ps": 20.892906,
+    "rev_growth": 0.852,
+    "gross_margin": 0.74144995,
+    "fifty_two_week_high": null,
+    "fifty_two_week_low": null
+  },
+  "sector": "AI Accelerated Computing Infrastructure",
+  "market_cap": 5296163.95,
+  "red_flags": [],
+  "ratio_data": {
+    "rev_c": 215938000000,
+    "yoy_rev": 65.4735,
+    "gp_c": 153463000000,
+    "gp_margin": 71.0681,
+    "ebitda_c": 130387000000,
+    "ebitda_margin": 60.3817,
+    "ni_c": 120067000000,
+    "ni_margin": 55.6025,
+    "fcf_c": 102579265000,
+    "fcf_yield": 47.504,
+    "current_ratio": null,
+    "nd_ebitda": -0.016389670749384525,
+    "rev_growth": 65.4735,
+    "fcf_conv": 85.435,
+    "int_cover": null
+  },
+  "schema_version": 2
+}
