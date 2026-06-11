@@ -202,7 +202,7 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
         matches = []
         seen = set()
 
-        if re.fullmatch(r"[A-Za-z]{1,5}", query):
+        if re.fullmatch(r"[A-Za-z]{1,4}", query):
             atom_url = (
                 "https://www.sec.gov/cgi-bin/browse-edgar"
                 f"?action=getcompany&company=&CIK={quote(query)}&type=10-K"
