@@ -86,7 +86,7 @@ logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="FinLens",
-    page_icon="assets/favicon.svg",
+    page_icon="assets/finlens_favicon.svg",
     layout="wide",
 )
 
@@ -1019,13 +1019,11 @@ if not st.session_state["onboarding_complete"]:
         </style>
         <div class="onboarding-wrap">
             <div class="onboarding-logo">
-                <svg width="64" height="64" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                    <defs><clipPath id="onboard-logo"><circle cx="20" cy="20" r="17"/></clipPath></defs>
-                    <circle cx="20" cy="20" r="18" fill="rgba(24,95,165,0.1)" stroke="#185FA5" stroke-width="1.5"/>
-                    <polyline points="6,30 11,22 16,26 22,13 34,8" fill="none" stroke="#378ADD"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        clip-path="url(#onboard-logo)"/>
-                    <circle cx="34" cy="8" r="3.5" fill="#4ADE80" clip-path="url(#onboard-logo)"/>
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinLens logo">
+                  <circle cx="28" cy="32" r="20" fill="none" stroke="#4D9FFF" stroke-width="3.5"/>
+                  <path d="M5 25 L28 25 L56 32" fill="none" stroke="#9FD0FF" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M5 39 L28 39 L56 32" fill="none" stroke="#9FD0FF" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="56" cy="32" r="3.25" fill="#FFB454"/>
                 </svg>
             </div>
             <div class="onboarding-title">Fin<span style="color:#378ADD;font-weight:300">Lens</span></div>
