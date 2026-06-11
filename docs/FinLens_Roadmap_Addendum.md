@@ -455,3 +455,29 @@ Use the per-feature tags above for the design phase only. Implementation tools (
 **Sundays:** Step 7 (strategic review) is always Opus 4.8. Steps 1-6 (mechanical audits) can be Sonnet 4.6.
 
 **Debugging:** Novel bugs / unexpected behavior → Opus 4.8. Reproducible bugs with clear repro steps → Sonnet 4.6.
+
+---
+
+## Expanded Specs — Backlog Items (June 2026)
+
+### Earnings Revision Tracking (roadmap #4)
+**What:** Track analyst estimate changes over time for holdings/tracked tickers. Rising revisions = robust positive signal; falling revisions = early thesis-deterioration warning ("is my margin of safety eroding before the price shows it?").
+**Data:** FMP analyst estimates endpoint — MUST verify free-tier access to estimate HISTORY (not just current estimates) before design; this is the make-or-break. Fallback: trend FMP earnings surprises across consecutive quarters (already pulled for Beat/Miss badges).
+**Display:** Sparkline + direction badge on Stock Tracker; revision history in Earnings tab alongside Earnings History.
+**First step:** 10-minute API probe of FMP free tier.
+
+### Price Alerts (roadmap #6)
+**What:** Alerts tied to margin-of-safety buy prices ("MKL hit your buy price"). The patience-enforcement feature — set the intrinsic-value target once, stop watching the ticker.
+**Constraint:** Streamlit has NO background scheduler — app only executes on page load.
+**Phase 1 (no infra):** check-on-load — opening Portfolio shows a banner for any holding past its target price (yfinance, free).
+**Phase 2:** GitHub Actions cron (free) runs a price-check script against saved targets, sends email on trigger.
+
+### Reddit + Polymarket Sentiment Tab (roadmap #11)
+**What:** Polymarket already integrated — this item is "add Reddit." Framing is CONTRARIAN, per Marks second-level thinking: extreme retail euphoria on a holding is a red flag, not a buy signal. Crowd-temperature gauge, not momentum signal.
+**Data gotcha:** Reddit API free tier is restrictive — verify current limits first; FMP social-sentiment endpoint may be the cheaper path.
+**Display:** mention volume + tone on Stock Tracker News & Sentiment tab, explicitly labeled as crowd sentiment.
+
+### Deep Link "Learn More" Buttons (roadmap #12)
+**What:** Buttons exist but land at Education page top, not the relevant section.
+**Implementation:** st.query_params (e.g. ?page=education&section=dcf); Education page reads param, expands/scrolls to section. Streamlit has no native anchor scrolling.
+**Sizing:** ~1 hour. Bundle into next Education pass (with Munger mental-models chapter), not a standalone commit.
