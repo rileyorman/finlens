@@ -6,6 +6,9 @@ import urllib3
 
 
 FMP_API_KEY = os.environ.get("FMP_API_KEY", "").strip()
+FMP_FETCH_SUCCESS = "success"
+FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
+FMP_TRANSIENT_FAILURE = "transient_failure"
 
 
 def _make_session():
@@ -69,7 +72,7 @@ def _sum_field(rows, field):
     return sum(values) if values else None
 
 
-def _get_statement_list(endpoint, ticker, period="annual", limit=1, label="Statement"):
+def _get_statement_list_with_reason(endpoint, ticker, period="annual", limit=1, label="Statement"):
     session = _make_session()
     try:
         url = (
@@ -77,13 +80,22 @@ def _get_statement_list(endpoint, ticker, period="annual", limit=1, label="State
             f"?symbol={ticker}&period={period}&limit={limit}&apikey={FMP_API_KEY}"
         )
         response = session.get(url, timeout=10)
+        if response.status_code == 402:
+            return None, FMP_PREMIUM_BLOCKED
         if response.status_code != 200:
-            return None
+            return None, FMP_TRANSIENT_FAILURE
         data = response.json()
-        return data if isinstance(data, list) else None
+        if isinstance(data, list) and data:
+            return data, FMP_FETCH_SUCCESS
+        return None, FMP_TRANSIENT_FAILURE
     except Exception as e:
         print(f"Exception: {e}")
-        return None
+        return None, FMP_TRANSIENT_FAILURE
+
+
+def _get_statement_list(endpoint, ticker, period="annual", limit=1, label="Statement"):
+    data, _reason = _get_statement_list_with_reason(endpoint, ticker, period, limit, label)
+    return data
 
 
 def get_company_profile(ticker):

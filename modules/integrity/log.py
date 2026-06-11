@@ -154,7 +154,7 @@ def _cv_already_logged(path: Path, key: str) -> bool:
                 yr_s = yr_m.group(1) if yr_m else str(record.get("fiscal_year", ""))
                 rkey = f"cv|{record.get('ticker', '')}|{yr_s}"
                 if rkey == key:
-                    return True
+                    return bool(record.get("fmp_fetch_reason"))
             except json.JSONDecodeError:
                 continue
     except OSError:

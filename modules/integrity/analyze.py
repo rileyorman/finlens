@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .log import read_log, _DEFAULT_LOG
+from .cross_validate import FMP_PREMIUM_BLOCKED
 
 
 LOW_SAMPLE_THRESHOLD = 10
@@ -375,6 +376,14 @@ def _fmt_bn(v: float | None) -> str:
     return f"${v:,.0f}"
 
 
+def _fmt_cv_fmp_status(rec: dict) -> str:
+    if rec.get("fmp_fetch_success"):
+        return "available"
+    if rec.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED:
+        return "unavailable at current FMP tier"
+    return "transient failure"
+
+
 def _section_divergence(cv_records: list[dict]) -> str:
     if not cv_records:
         return (
@@ -387,16 +396,16 @@ def _section_divergence(cv_records: list[dict]) -> str:
 
     # --- Summary table ---
     lines += [
-        f"  {'ticker':<6}  {'fiscal_year':<11}  {'overall_status':<22}  {'fmp_ok':>6}",
-        f"  {'-'*6}  {'-'*11}  {'-'*22}  {'-'*6}",
+        f"  {'ticker':<6}  {'fiscal_year':<11}  {'overall_status':<22}  {'fmp_status':<32}",
+        f"  {'-'*6}  {'-'*11}  {'-'*22}  {'-'*32}",
     ]
     for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
-        fmp_ok = "yes" if rec.get("fmp_fetch_success") else "no"
+        fmp_status = _fmt_cv_fmp_status(rec)
         lines.append(
             f"  {rec.get('ticker', '?'):<6}  "
             f"{rec.get('fiscal_year', '?'):<11}  "
             f"{rec.get('overall_status', '?'):<22}  "
-            f"{fmp_ok:>6}"
+            f"{fmp_status:<32}"
         )
 
     # --- Per-field breakdown ---
@@ -438,6 +447,11 @@ def _section_divergence(cv_records: list[dict]) -> str:
         for fld in r.get("cv_fields", [])
         if fld.get("status") == "MINOR_DIVERGENCE"
     ]
+    premium_blocked = [
+        f"{r.get('ticker')} {r.get('fiscal_year')}"
+        for r in cv_records
+        if r.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED
+    ]
     unmatched = [
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
@@ -450,6 +464,10 @@ def _section_divergence(cv_records: list[dict]) -> str:
         lines.append(f"  [!] Disagreements (>10%)    : {_trunc(disagree)}")
     if minor:
         lines.append(f"  Minor divergences (2-10%)   : {_trunc(minor)}")
+    if premium_blocked:
+        lines.append(
+            f"  Corroboration unavailable at current FMP tier: {_trunc(premium_blocked)}"
+        )
     if unmatched:
         lines.append(f"  Unmatched (no FMP period)   : {_trunc(unmatched)}")
     if not disagree and not minor and not unmatched:

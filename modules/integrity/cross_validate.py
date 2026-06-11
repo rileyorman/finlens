@@ -38,6 +38,9 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 _CV_CACHE_FILE = Path.home() / ".finlens" / "cv_cache.json"
+FMP_FETCH_SUCCESS = "success"
+FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
+FMP_TRANSIENT_FAILURE = "transient_failure"
 
 # Divergence thresholds (absolute percentage of FMP value)
 _AGREE_THRESHOLD  = 0.02   # < 2%  -> AGREE
@@ -135,6 +138,7 @@ class CrossValidationResult:
     fiscal_year: str
     filing_accession: str | None
     fmp_fetch_success: bool
+    fmp_fetch_reason: str
 
     def to_dict(self) -> dict:
         """Serialize to a log-ready dict (Supabase-friendly schema)."""
@@ -146,6 +150,7 @@ class CrossValidationResult:
             "filing_accession":  self.filing_accession,
             "overall_status":    self.overall_status,
             "fmp_fetch_success": self.fmp_fetch_success,
+            "fmp_fetch_reason":  self.fmp_fetch_reason,
             "cv_fields":         [f.to_dict() for f in self.fields],
         }
 
@@ -195,30 +200,43 @@ def _find_year_entry(data: list[dict], target_year: int) -> dict | None:
     return None
 
 
-def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, float | None] | None, bool]:
+def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, float | None] | None, bool, str]:
     """
     Call FMP for the 4 headline values for ticker + target_year.
 
     Returns
     -------
-    (values_dict, success_bool)
+    (values_dict, success_bool, reason)
         values_dict   keys: revenue, net_income, total_assets, operating_cash_flow
                       All values in raw USD (FMP stable API returns USD by default).
                       None for a field if FMP has no matching entry.
         success_bool  False only if FMP is unreachable or returns a non-200 response.
                       True even if the period is not found -- that is "not in FMP",
                       not an API failure.
+        reason        success | fmp_premium_blocked | transient_failure
     """
     try:
-        from modules.fmp import _get_statement_list  # reuse session + SSL setup
+        from modules.fmp import (
+            FMP_FETCH_SUCCESS as FMP_FETCH_SUCCESS_REASON,
+            FMP_PREMIUM_BLOCKED as FMP_PREMIUM_BLOCKED_REASON,
+            _get_statement_list_with_reason,
+        )  # reuse session + SSL setup
 
-        income_list   = _get_statement_list("income-statement",        ticker, "annual", 3)
-        balance_list  = _get_statement_list("balance-sheet-statement", ticker, "annual", 3)
-        cashflow_list = _get_statement_list("cash-flow-statement",     ticker, "annual", 3)
+        income_list, income_reason = _get_statement_list_with_reason(
+            "income-statement", ticker, "annual", 3
+        )
+        balance_list, balance_reason = _get_statement_list_with_reason(
+            "balance-sheet-statement", ticker, "annual", 3
+        )
+        cashflow_list, cashflow_reason = _get_statement_list_with_reason(
+            "cash-flow-statement", ticker, "annual", 3
+        )
 
-        # API failure (non-200 or exception) -- income is the canary
-        if income_list is None:
-            return None, False
+        reasons = (income_reason, balance_reason, cashflow_reason)
+        if FMP_PREMIUM_BLOCKED_REASON in reasons:
+            return None, False, FMP_PREMIUM_BLOCKED
+        if any(reason != FMP_FETCH_SUCCESS_REASON for reason in reasons):
+            return None, False, FMP_TRANSIENT_FAILURE
 
         income_entry   = _find_year_entry(income_list,         target_year)
         balance_entry  = _find_year_entry(balance_list  or [], target_year) or {}
@@ -226,17 +244,17 @@ def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, float | Non
 
         # Period not in FMP -- successful fetch but matching year absent
         if income_entry is None:
-            return None, True
+            return None, True, FMP_FETCH_SUCCESS
 
         return {
             "revenue":             income_entry.get("revenue"),
             "net_income":          income_entry.get("netIncome"),
             "total_assets":        balance_entry.get("totalAssets"),
             "operating_cash_flow": cashflow_entry.get("operatingCashFlow"),
-        }, True
+        }, True, FMP_FETCH_SUCCESS
 
     except Exception:
-        return None, False
+        return None, False, FMP_TRANSIENT_FAILURE
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +305,11 @@ def _cache_key(ticker: str, fiscal_year: str) -> str:
 def _load_cv_cache() -> dict:
     try:
         if _CV_CACHE_FILE.exists():
-            return json.loads(_CV_CACHE_FILE.read_text(encoding="utf-8"))
+            cache = json.loads(_CV_CACHE_FILE.read_text(encoding="utf-8"))
+            repaired = _repair_cv_cache(cache)
+            if repaired != cache:
+                _save_cv_cache(repaired)
+            return repaired
     except Exception:
         pass
     return {}
@@ -301,6 +323,31 @@ def _save_cv_cache(cache: dict) -> None:
         )
     except Exception:
         pass
+
+
+def _repair_cv_cache(cache: dict) -> dict:
+    """Drop legacy or transient failed FMP fetches so cross-validation retries."""
+    if not isinstance(cache, dict):
+        return {}
+
+    repaired: dict = {}
+    for key, entry in cache.items():
+        if not isinstance(entry, dict):
+            continue
+        reason = entry.get("fmp_fetch_reason")
+        success = bool(entry.get("fmp_fetch_success"))
+        if success:
+            entry.setdefault("fmp_fetch_reason", FMP_FETCH_SUCCESS)
+            repaired[key] = entry
+        elif reason == FMP_PREMIUM_BLOCKED:
+            repaired[key] = entry
+        elif reason == FMP_TRANSIENT_FAILURE or reason is None:
+            continue
+    return repaired
+
+
+def _cacheable_fmp_reason(reason: str) -> bool:
+    return reason in {FMP_FETCH_SUCCESS, FMP_PREMIUM_BLOCKED}
 
 
 # ---------------------------------------------------------------------------
@@ -353,13 +400,21 @@ def cross_validate_filing(
         cached       = cache[ck]
         fmp_vals     = cached.get("fmp_vals")
         fmp_success  = cached.get("fmp_fetch_success", False)
+        fmp_reason   = cached.get("fmp_fetch_reason") or (
+            FMP_FETCH_SUCCESS if fmp_success else FMP_TRANSIENT_FAILURE
+        )
     else:
         if target_year is None:
-            fmp_vals, fmp_success = None, False
+            fmp_vals, fmp_success, fmp_reason = None, False, FMP_TRANSIENT_FAILURE
         else:
-            fmp_vals, fmp_success = _fetch_fmp_raw(ticker, target_year)
-        cache[ck] = {"fmp_vals": fmp_vals, "fmp_fetch_success": fmp_success}
-        _save_cv_cache(cache)
+            fmp_vals, fmp_success, fmp_reason = _fetch_fmp_raw(ticker, target_year)
+        if _cacheable_fmp_reason(fmp_reason):
+            cache[ck] = {
+                "fmp_vals": fmp_vals,
+                "fmp_fetch_success": fmp_success,
+                "fmp_fetch_reason": fmp_reason,
+            }
+            _save_cv_cache(cache)
 
     # --- Build per-field results ---
     field_results: list[FieldResult] = []
@@ -384,6 +439,7 @@ def cross_validate_filing(
         fiscal_year      =fiscal_year,
         filing_accession =filing_accession,
         fmp_fetch_success=fmp_success,
+        fmp_fetch_reason =fmp_reason,
     )
 
     # --- Append to integrity log (idempotent) ---
