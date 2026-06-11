@@ -32,7 +32,7 @@ One section per ticker, updated after each audit run.
 | total_assets | $4,424.9B | $4,424.9B | 0.0% | AGREE |
 | operating_cash_flow | -$147.78B | $100.87B | 246.51% | DISAGREE |
 
-Overall: **disagreement**. FMP fetch succeeded.
+Overall: **disagreement**. `fmp_fetch_success: true`, `fmp_fetch_reason: "success"`.
 
 ### Lessons
 
@@ -62,22 +62,23 @@ Overall: **disagreement**. FMP fetch succeeded.
 
 ### Cross-Validation
 
-All fields UNMATCHED. `fmp_fetch_success: false`. FMP stable API returned a failure at audit time.
+All fields UNMATCHED. `fmp_fetch_success: false`, `fmp_fetch_reason: "transient_failure"` (post-abce563 classification). FMP stable API returned a failure at audit time.
 
 ### Findings (post-audit investigation)
 
-**COST's cv_cache failure is stale.** Current FMP response for COST:
+**COST's cv_cache failure was stale.** Investigation showed:
 
-- HTTP 200, list len=3
-- FY2025 entry present: `fiscalYear=2025`, `date=2025-08-31`, revenue=$275.235B (exact match to FinLens value)
-- `_find_year_entry(data, 2025)` would match correctly
+- HTTP 200, list len=3 on re-test; FY2025 entry present: `fiscalYear=2025`, `date=2025-08-31`, revenue=$275.235B (exact match to FinLens value)
+- `_find_year_entry(data, 2025)` matches correctly
 
-**Root cause of audit-time failure:** Transient issue (API outage or rate limit) at 2026-06-10T21:02:32 UTC. The cache persisted the failure as `{fmp_vals: null, fmp_fetch_success: false}` and will not retry.
+**Root cause of audit-time failure:** Transient issue (API outage or rate limit) at 2026-06-10T21:02:32 UTC. The old cache persisted the failure as `{fmp_vals: null, fmp_fetch_success: false}` and would not retry.
+
+**Fix (abce563):** Transient failures are no longer cached. On next CV run for COST, the entry is absent from cache → fresh fetch → should succeed → cached as `fmp_fetch_reason: "success"`. The repair logic in `_load_cv_cache` also dropped the stale entry on first load after the commit.
 
 ### Lessons
 
 - **August year-end was a red herring:** FMP labels Costco FY2025 as `fiscalYear=2025` (fiscal year ending 2025-08-31). The `_parse_year` helper matches correctly.
-- **Stale failure caching:** `cv_cache.json` caches failures permanently. A transient 402/outage at audit time poisons the cache entry. The fix (when ready) is either a cache TTL for failure entries or a manual cache-clear for `COST|2025`.
+- **Stale failure caching (fixed in abce563):** The old code cached all failures permanently. Commit `abce563` separates `fmp_premium_blocked` (cached forever — correct, the 402 won't change) from `transient_failure` (never cached — re-fetched on next run). Repair logic in `_load_cv_cache` drops legacy no-reason failure entries on first load.
 - **Gross profit derivation:** The `field_unavailable` skips for `gross_margin_range` and `revenue_reconciliation` triggered a backfill feature — gross profit can now be derived from `revenue − cost_of_revenue` when the `gross_profit` field is absent from extraction.
 
 ---
@@ -104,14 +105,16 @@ All 5 rules SKIPPED.
 
 ### Cross-Validation
 
-All fields UNMATCHED. `fmp_fetch_success: false`. FMP stable API returned HTTP 402 for MKL.
+All fields UNMATCHED. `fmp_fetch_success: false`, `fmp_fetch_reason: "fmp_premium_blocked"` (post-abce563). FMP stable API returned HTTP 402 for MKL.
 
 **Confirmed by reproduction:** `https://financialmodelingprep.com/stable/income-statement?symbol=MKL...` → HTTP 402 Payment Required. MKL is a premium-tier symbol not available under the current FMP subscription.
+
+Audit report displays: `"Corroboration unavailable at current FMP tier"` — not "failed".
 
 ### Lessons
 
 - **Revenue alias gap (fixed):** Markel reports revenue under a non-standard label in EDGAR filings. Fixed in commit `26b56a2` — revenue alias mapping added so future MKL analyses extract the revenue field correctly.
-- **MKL is FMP premium:** HTTP 402 means the stable API requires an upgraded subscription for this ticker. Not a code bug. Affects both `income-statement` and other endpoints.
+- **MKL is FMP premium (handled in abce563):** HTTP 402 means the stable API requires an upgraded subscription for this ticker. Not a code bug. `abce563` now classifies 402 as `fmp_premium_blocked`, caches it (so we don't retry a known-blocked ticker on every run), and surfaces it in the audit report as "corroboration unavailable at current FMP tier" rather than "failed".
 - **Zero rules executed:** When `rules_run: 0`, the audit passes trivially (no evidence of integrity, no failures). This is a signal to investigate data extraction quality, not a clean bill of health.
 - **Filing accession was null:** Suggests the filing was analyzed from an uploaded PDF rather than fetched from EDGAR, which is why `filing_accession` is absent.
 
@@ -137,7 +140,7 @@ All fields UNMATCHED. `fmp_fetch_success: false`. FMP stable API returned HTTP 4
 
 ### Cross-Validation
 
-All fields UNMATCHED. `fmp_fetch_success: false`. FMP stable API returned HTTP 402 for all three endpoints.
+All fields UNMATCHED. `fmp_fetch_success: false`, `fmp_fetch_reason: "fmp_premium_blocked"` (post-abce563). FMP stable API returned HTTP 402 for all three endpoints.
 
 **Reproduction evidence:**
 
@@ -147,10 +150,15 @@ O  balance-sheet-statement   HTTP 402  type=parse_error
 O  cash-flow-statement       HTTP 402  type=parse_error
 ```
 
-Response body: plain text "Premium Query Parameter: 'Special Endpoint: This value set for 'symbol' is not available under your current subscription..." — body is not valid JSON, so `resp.json()` raises a parse error in addition to the 402.
+Response body: plain text "Premium Query Parameter: 'Special Endpoint: This value set for 'symbol' is not available under your current subscription..." — body is not valid JSON, so `resp.json()` also raises a parse error, but the 402 status check fires first.
 
-**Failure trace:**
-`HTTP 402` → `status_code != 200` → `_get_statement_list` returns `None` → `income_list is None` → `_fetch_fmp_raw` returns `(None, False)` → `fmp_fetch_success: False` → cached as permanent failure.
+**Failure trace (pre-abce563):**
+`HTTP 402` → `status_code != 200` → `_get_statement_list` returns `None` → `income_list is None` → `_fetch_fmp_raw` returns `(None, False)` → `fmp_fetch_success: False` → cached as permanent failure with no reason code.
+
+**Failure trace (post-abce563):**
+`HTTP 402` → `_get_statement_list_with_reason` returns `(None, "fmp_premium_blocked")` → `_fetch_fmp_raw` returns `(None, False, "fmp_premium_blocked")` → cached as `{fmp_fetch_success: false, fmp_fetch_reason: "fmp_premium_blocked"}` → audit report shows "Corroboration unavailable at current FMP tier".
+
+Audit report displays: `"Corroboration unavailable at current FMP tier"` — not "failed".
 
 ### What it is NOT
 
@@ -163,4 +171,4 @@ Response body: plain text "Premium Query Parameter: 'Special Endpoint: This valu
 
 - **REIT field skips are data-driven, not sector-ruled.** REITs don't report `gross_profit` or `cost_of_revenue` in the traditional sense. The `field_unavailable` guard fires correctly. This is distinct from Financial Services, where skips are explicit `sector_excluded` rules. Consider adding a REIT sector exclusion rule to make intent explicit rather than relying on field absence.
 - **FMP subscription gap:** "O" and MKL are premium-tier tickers on the current FMP plan. The stable API returns HTTP 402 for them consistently. MSFT, NVDA, AAPL, JPM all return 200. Before running future audit campaigns, check whether the target ticker is accessible under the current FMP key.
-- **Cache poisons on failure:** The `cv_cache.json` entry `O|2025` is now permanently `{fmp_vals: null, fmp_fetch_success: false}`. Any future re-analysis of Realty Income FY2025 will read from cache and skip FMP. Failure entries need a TTL or a manual invalidation path.
+- **FMP premium block is now handled (abce563):** "O" and MKL are premium-tier tickers. `abce563` classifies 402s as `fmp_premium_blocked` and caches them permanently (correct — the subscription tier won't change between runs). The old undifferentiated "false" cache entries for O and MKL were dropped by the `_repair_cv_cache` migration on first load. Future analyses of O will cache `fmp_premium_blocked` and display "Corroboration unavailable at current FMP tier".
