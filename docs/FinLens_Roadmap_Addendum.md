@@ -1,5 +1,18 @@
 # FinLens Roadmap Addendum — Curriculum-Driven & Commercial Expansion
 
+## Moat Thesis (June 2026)
+
+The Data Integrity Engine is not a feature — it is the foundation of a compounding data asset. SEDAR+ is PDF-only with no XBRL, meaning no machine-readable validated fundamentals dataset exists for Canadian filings. Phase 2 (SEDAR+ PDF extraction + Integrity Engine validation on IFRS data) therefore builds the only validated Canadian fundamentals dataset in existence.
+
+Three compounding layers:
+1. Error-correction flywheel — engine findings feed extraction improvements (aliases, derivations, sector rules); every filing processed makes the next more accurate. The JSONL log is the embryo of this asset.
+2. Data-as-product — once Canadian coverage matures, the validated fundamentals API is sellable to Canadian fund managers, fintechs, and academics independently of the app.
+3. Trust layer as brand — "every number validated, every correction logged, audit trail shown." No retail competitor holds this positioning; it is the value-investor sensibility applied to the product itself.
+
+Strategic implication: the fetch campaign, rule tuning, and SEDAR+ extraction layer ARE the moat construction. No sequence change — only framing.
+
+---
+
 > A working document. Two parts: (1) the five features the 20-hour curriculum directly demands, written as buildable specs; (2) commercial-value features organized by category and pricing tier, designed to drive conversion, retention, and the $49–$999/month tier ladder.
 
 ---
