@@ -172,3 +172,34 @@ Audit report displays: `"Corroboration unavailable at current FMP tier"` — not
 - **REIT field skips are data-driven, not sector-ruled.** REITs don't report `gross_profit` or `cost_of_revenue` in the traditional sense. The `field_unavailable` guard fires correctly. This is distinct from Financial Services, where skips are explicit `sector_excluded` rules. Consider adding a REIT sector exclusion rule to make intent explicit rather than relying on field absence.
 - **FMP subscription gap:** "O" and MKL are premium-tier tickers on the current FMP plan. The stable API returns HTTP 402 for them consistently. MSFT, NVDA, AAPL, JPM all return 200. Before running future audit campaigns, check whether the target ticker is accessible under the current FMP key.
 - **FMP premium block is now handled (abce563):** "O" and MKL are premium-tier tickers. `abce563` classifies 402s as `fmp_premium_blocked` and caches them permanently (correct — the subscription tier won't change between runs). The old undifferentiated "false" cache entries for O and MKL were dropped by the `_repair_cv_cache` migration on first load. Future analyses of O will cache `fmp_premium_blocked` and display "Corroboration unavailable at current FMP tier".
+
+---
+
+## Finding: Foreign Filer Form Gap (June 2026)
+
+### Observation
+
+ASML ticker search resolves the company correctly in FinLens, but "Find Recent 10-K Filings" returns empty results. The EDGAR fetcher filters to form type `10-K` only. ASML files on Form 20-F (foreign private issuer), which the current filter silently excludes.
+
+### Scope
+
+This is not ASML-specific. The gap affects two entire filer classes:
+
+- **20-F filers** — foreign private issuers reporting under IFRS or home-country GAAP (ASML, Toyota, SAP, LVMH ADRs, and most large non-US multinationals listed on US exchanges).
+- **40-F filers** — Canadian companies cross-listed on a US exchange under the Multijurisdictional Disclosure System (Shopify prior to 2023, most TSX-listed names with US ADRs).
+
+Both form types are invisible to EDGAR Load Filing until the form filter is extended.
+
+### SHOP context
+
+Shopify (SHOP) was loadable in the campaign only because it lost foreign-private-issuer status and switched from Form 40-F to domestic Form 10-K filing. It is not representative of the typical Canadian cross-list; it is the exception.
+
+### Strategic relevance
+
+20-F XBRL data uses the IFRS taxonomy rather than US GAAP. Extending form support to 20-F is therefore the closest EDGAR-side preview of SEDAR+ Phase 2 IFRS extraction work. Concept-name gaps are expected and intentional — the foreign-filer campaign entry exists specifically to surface them.
+
+### Queued next build
+
+1. Extend the EDGAR form filter to include `20-F` (and `40-F`).
+2. Fetch ASML as the campaign's foreign-filer entry.
+3. Run the integrity engine and document IFRS concept-name gaps in extraction — which line items map cleanly, which require alias additions, and whether `gross_profit_derived` fires due to missing IFRS gross profit concept.
