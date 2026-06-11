@@ -1,6 +1,7 @@
 import platform
 import re
 import ssl
+from datetime import date, timedelta
 from urllib.parse import quote
 from xml.etree import ElementTree
 
@@ -31,6 +32,7 @@ def _make_session():
 
 _SESSION = _make_session()
 HEADERS = {"User-Agent": "FinLens riley@finlens.ai"}
+_SUBMISSIONS_CACHE: dict[str, dict] = {}
 
 
 def _fmt(value):
@@ -60,13 +62,110 @@ def _zero_pad_cik(cik) -> str | None:
         return None
 
 
+def _company_match_key(cik: str | None, name: str | None) -> tuple[str, str]:
+    return (_zero_pad_cik(cik) or "", re.sub(r"\s+", " ", str(name or "")).strip().upper())
+
+
+def _add_company_match(matches: list[dict], seen: set, cik, name: str, ticker: str = "") -> None:
+    padded = _zero_pad_cik(cik)
+    if not padded:
+        return
+    company = re.sub(r"\s+", " ", str(name or "")).strip() or padded
+    key = _company_match_key(padded, company)
+    if key in seen:
+        return
+    matches.append({"cik": padded, "name": company, "ticker": ticker.upper()})
+    seen.add(key)
+
+
+def _get_submissions(cik: str) -> dict:
+    padded = _zero_pad_cik(cik)
+    if not padded:
+        return {}
+    if padded in _SUBMISSIONS_CACHE:
+        return _SUBMISSIONS_CACHE[padded]
+    url = f"https://data.sec.gov/submissions/CIK{padded}.json"
+    response = _SESSION.get(url, headers=HEADERS, timeout=15)
+    if not response.ok:
+        _SUBMISSIONS_CACHE[padded] = {}
+        return {}
+    payload = response.json()
+    _SUBMISSIONS_CACHE[padded] = payload if isinstance(payload, dict) else {}
+    return _SUBMISSIONS_CACHE[padded]
+
+
+def _latest_filing_date(submissions: dict) -> str:
+    recent = (submissions or {}).get("filings", {}).get("recent", {})
+    filing_dates = recent.get("filingDate", []) if isinstance(recent, dict) else []
+    if not isinstance(filing_dates, list):
+        return ""
+    return max((str(value) for value in filing_dates if value), default="")
+
+
+def _is_possibly_defunct(last_filed: str) -> bool:
+    try:
+        filed = date.fromisoformat(last_filed)
+    except Exception:
+        return False
+    return filed < (date.today() - timedelta(days=3 * 365))
+
+
+def _enrich_company_matches(matches: list[dict]) -> list[dict]:
+    enriched = []
+    seen_ciks = set()
+    for match in matches:
+        cik = _zero_pad_cik(match.get("cik"))
+        if not cik or cik in seen_ciks:
+            continue
+        seen_ciks.add(cik)
+        row = dict(match)
+        row["cik"] = cik
+        submissions = _get_submissions(cik)
+        submission_name = re.sub(r"\s+", " ", str(submissions.get("name") or "")).strip()
+        current_name = re.sub(r"\s+", " ", str(row.get("name") or "")).strip()
+        if submission_name and (not current_name or len(current_name) < len(submission_name)):
+            row["name"] = submission_name
+        row["last_filed"] = _latest_filing_date(submissions)
+        label = f"{row.get('name') or 'Unknown company'} (CIK {cik}) — last filed {row['last_filed'] or 'unknown'}"
+        if _is_possibly_defunct(row["last_filed"]):
+            row["possibly_defunct"] = True
+            label += " [possibly defunct]"
+        else:
+            row["possibly_defunct"] = False
+        row["label"] = label
+        enriched.append(row)
+    enriched.sort(key=lambda row: row.get("last_filed") or "", reverse=True)
+    return enriched
+
+
+def _filter_company_name_matches(query: str, matches: list[dict]) -> list[dict]:
+    normalized_query = re.sub(r"[^a-z0-9]+", " ", str(query or "").lower()).strip()
+    if not normalized_query:
+        return matches
+    filtered = []
+    for match in matches:
+        normalized_name = re.sub(r"[^a-z0-9]+", " ", str(match.get("name") or "").lower()).strip()
+        if normalized_query in normalized_name:
+            filtered.append(match)
+    return filtered or matches
+
+
+def _candidate_from_entity_text(entity: str) -> tuple[str | None, str | None]:
+    text = re.sub(r"\s+", " ", str(entity or "")).strip()
+    match = re.search(r"\bCIK[:\s]+(\d+)\b|\((\d{10})\)", text, re.I)
+    cik = next((group for group in (match.groups() if match else []) if group), None)
+    name = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", text, flags=re.I).strip()
+    name = re.sub(r"\s+CIK[:\s]+\d+\b.*$", "", name, flags=re.I).strip()
+    return cik, name or None
+
+
 def _company_name_from_atom_title(title: str, fallback: str) -> str:
     name = re.sub(r"^\s*10-K(?:/A)?\s*-\s*", "", title or "", flags=re.I)
     name = re.sub(r"\s+\(.*?(?:CIK|Filer|\d{10}).*?\)\s*", " ", name, flags=re.I)
     return re.sub(r"\s+", " ", name).strip(" -") or fallback
 
 
-def _append_atom_company_matches(content: bytes, query: str, matches: list[dict], seen: set, count: int, ticker: str = "") -> None:
+def _append_atom_company_matches(content: bytes, query: str, matches: list[dict], seen: set, ticker: str = "") -> None:
     try:
         root = ElementTree.fromstring(content)
     except Exception:
@@ -85,17 +184,13 @@ def _append_atom_company_matches(content: bytes, query: str, matches: list[dict]
             match = re.search(r"CIK=(\d+)|/CIK(\d+)|\((\d{10})\)", f"{text} {attr_text}", re.I)
             if match:
                 cik = next((group for group in match.groups() if group), None)
-        padded = _zero_pad_cik(cik)
-        if not padded:
-            continue
+        if not cik:
+            for descendant in entry.iter():
+                if descendant.tag.lower().endswith("cik"):
+                    cik = descendant.text
+                    break
         name = _company_name_from_atom_title(title, query)
-        name_key = name.upper()
-        if name_key in seen:
-            continue
-        matches.append({"cik": padded, "name": name, "ticker": ticker.upper()})
-        seen.add(name_key)
-        if len(matches) >= count:
-            break
+        _add_company_match(matches, seen, cik, name, ticker)
 
 
 def search_companies(company_name: str, count: int = 10) -> list[dict]:
@@ -115,9 +210,9 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
             )
             response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
             if response.ok:
-                _append_atom_company_matches(response.content, query, matches, seen, count, ticker=query)
+                _append_atom_company_matches(response.content, query, matches, seen, ticker=query)
                 if matches:
-                    return matches
+                    return _filter_company_name_matches(query, _enrich_company_matches(matches))[:count]
 
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
@@ -144,11 +239,16 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 )
                 if isinstance(cik, list):
                     cik = cik[0] if cik else None
+                if isinstance(entities, list):
+                    for entity in entities:
+                        entity_cik, entity_name = _candidate_from_entity_text(entity)
+                        if entity_cik:
+                            _add_company_match(matches, seen, entity_cik, entity_name or query)
                 if not cik and isinstance(entities, list):
                     for entity in entities:
-                        match = re.search(r"\bCIK[:\s]+(\d+)\b", str(entity), re.I)
-                        if match:
-                            cik = match.group(1)
+                        entity_cik, _ = _candidate_from_entity_text(entity)
+                        if entity_cik:
+                            cik = entity_cik
                             break
                 padded = _zero_pad_cik(cik)
                 if not padded:
@@ -166,33 +266,19 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 if isinstance(company, list):
                     company = company[0] if company else query
                 company = re.sub(r"\s+\(.*?CIK.*?\)\s*$", "", str(company)).strip()
-                company_key = company.upper()
-                if company_key in seen:
-                    continue
                 ticker = source.get("tickers") or source.get("ticker") or source.get("tickerSymbol")
                 if isinstance(ticker, list):
                     ticker = ticker[0] if ticker else ""
-                matches.append({
-                    "cik": padded,
-                    "name": company,
-                    "ticker": str(ticker or "").strip().upper(),
-                })
-                seen.add(company_key)
-                if len(matches) >= count:
-                    return matches
-        if matches:
-            return matches
-
+                _add_company_match(matches, seen, padded, company, str(ticker or "").strip().upper())
         atom_url = (
             "https://www.sec.gov/cgi-bin/browse-edgar"
             f"?company={quote(query)}&CIK=&type=10-K&dateb=&owner=include"
             "&count=10&search_text=&action=getcompany&output=atom"
         )
         response = _SESSION.get(atom_url, headers=HEADERS, timeout=15)
-        if not response.ok:
-            return matches
-        _append_atom_company_matches(response.content, query, matches, seen, count)
-        return matches
+        if response.ok:
+            _append_atom_company_matches(response.content, query, matches, seen)
+        return _filter_company_name_matches(query, _enrich_company_matches(matches))[:count]
     except Exception:
         return []
 
@@ -289,11 +375,10 @@ def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> lis
         count = max(int(count), 0)
         if count == 0:
             return []
-        url = f"https://data.sec.gov/submissions/CIK{cik}.json"
-        response = _SESSION.get(url, headers=HEADERS, timeout=15)
-        if not response.ok:
+        submissions = _get_submissions(cik)
+        if not submissions:
             return []
-        filings = response.json().get("filings", {})
+        filings = submissions.get("filings", {})
         recent = filings.get("recent", {})
         rows = []
         seen = set()

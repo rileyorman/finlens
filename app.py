@@ -4249,7 +4249,7 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
         _edgar_matches = st.session_state.get("edgar_company_matches") or []
         if _edgar_matches:
             _match_labels = [
-                f"{row.get('name') or 'Unknown company'} — CIK: {row.get('cik') or 'N/A'}"
+                row.get("label") or f"{row.get('name') or 'Unknown company'} (CIK {row.get('cik') or 'N/A'})"
                 for row in _edgar_matches
             ]
             _selected_company_label = st.selectbox("Matching companies", _match_labels, key="edgar_company_select")
