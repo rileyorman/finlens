@@ -2057,6 +2057,8 @@ if page == "Portfolio Manager":
             filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date")),
             accession=ra.get("accession"),
         )
+        if _ra_fd and _ra_fd.get("_integrity") is None:
+            st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
                 safe_write_text(ra["file_path"], _ra_text)
@@ -5250,6 +5252,8 @@ if st.session_state.get("pending_reanalyse"):
         filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date")),
         accession=ra.get("accession"),
     )
+    if _ra_fd and _ra_fd.get("_integrity") is None:
+        st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
@@ -5534,6 +5538,8 @@ if uploaded_file:
             _upload_source,
             filing_date=(summary_data or {}).get("sec_filing_date"),
         )
+        if financial_data and financial_data.get("_integrity") is None:
+            st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")
 
         # Step 5 — Build Excel
         excel_bytes = None

@@ -673,3 +673,9 @@ Whenever a feature is added or modified, identify ALL code paths that touch the 
 3. When a data schema changes (new field in library entries, `financial_data`, `positions.json`, etc.), how existing stored records without the new field are handled (default value, migration, or schema version bump).
 
 **Reference incident (June 2026):** docx support was added to the fresh upload flow (`_is_docx` branch, `convert_to_markdown`) but the Filing Library Re-Analyse path still called `extract_text_from_pdf` on docx bytes and library entries had no `file_type` field. The fix required touching 6 locations across `app.py` and `filing_library.py`. This rule exists to catch that class of miss before it ships.
+
+## CC Review Checklist
+
+Gates that must be satisfied before any analysis-path change is approved.
+
+**Integrity log evidence gate:** Any new or modified analysis path MUST demonstrate an integrity log entry — show the new JSONL line from `~/.finlens/integrity_log.jsonl` on disk as review evidence. "Reaches the engine" is not "appends to the log."
