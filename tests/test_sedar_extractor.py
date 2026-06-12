@@ -457,3 +457,191 @@ def test_reiun_fy2025_reit_watch_items():
     assert "Distributions paid to Unitholders" in cf_labels
     dividend_labels = [lbl for lbl in cf_labels if "dividend" in lbl.lower()]
     assert dividend_labels == []
+
+
+# ---------------------------------------------------------------------------
+# SHOP FY2025 fixture test — EDGAR-verified assertions (campaign filer #5)
+# ---------------------------------------------------------------------------
+# Note: Shopify cross-lists on TSX and NYSE and files identical annual filings
+# on SEDAR+. The SEDAR+ PDF was not available at campaign time; values are
+# verified against the EDGAR XBRL annual filing. Source field is "edgar_xbrl".
+# ---------------------------------------------------------------------------
+
+_SHOP_FIXTURE = _Path(__file__).parent / "fixtures" / "SHOP_FY2025_sedar.json"
+_SHOP_FY2025_PERIOD = "2025"
+_SHOP_BS_PERIOD = "December 31, 2025"
+
+
+def _shop_is_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_SHOP_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in SHOP income statement: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+def _shop_bs_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_SHOP_BS_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in SHOP balance sheet: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+def _shop_cf_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_SHOP_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in SHOP cash flow: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+@pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
+def test_shop_fy2025_fixture_contract_invariants():
+    data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
+
+    assert data["schema_version"] == 4
+    # EDGAR-verified (SEDAR+ PDF not available at campaign time).
+    assert data["source"] == "edgar_xbrl"
+    assert data["currency"] == "USD"
+    # Shopify is a TSX/NYSE cross-lister but reports under US GAAP.
+    # Do not change to IFRS — this locks in the foreign-filer finding.
+    assert data["accounting_standard"] == "US GAAP"
+    assert data["scale"] == "millions"
+    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["extraction_confidence"] >= 0.9
+    assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
+
+
+@pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
+def test_shop_fy2025_fixture_income_statement_edgar_verified():
+    """
+    Values verified against SHOP FY2025 US GAAP filing via EDGAR XBRL
+    (June 2026). SEDAR+ PDF not available; cross-list filing is identical
+    in content.
+
+    Key SHOP structural note: income statement uses "Income (loss) from
+    operations" (not "Operating income") and splits revenues into two
+    segments with no separate "Total revenues" label row.
+
+    Do NOT adjust assertions to make the test pass — a failure means the
+    extraction has a real bug.
+    """
+    data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
+    items = data["statements"]["income_statement"]
+
+    assert _shop_is_value(items, "Revenues") == 11556
+    assert _shop_is_value(items, "Gross profit") == 5555
+    # Operating income label is NOT "Operating income" in SHOP — it is
+    # "Income (loss) from operations". Alias table gap documented below.
+    assert _shop_is_value(items, "Income (loss) from operations") == 1468
+    # Unrealized equity investment loss must be negative in FY2025.
+    # In FY2024 this was +988 (gain); FY2025 is -186 (loss). Sign flip.
+    # A positive 186 here is a sign-handling bug.
+    assert _shop_is_value(items, "Net unrealized (loss) gain on equity and other investments") == -186
+    assert _shop_is_value(items, "Net income") == 1231
+    assert _shop_is_value(items, "Comprehensive income") == 1242
+
+    # Gross profit check: revenues - cost of revenues == gross profit.
+    revenues = _shop_is_value(items, "Revenues")
+    cogs = _shop_is_value(items, "Cost of revenues")
+    gross_profit = _shop_is_value(items, "Gross profit")
+    assert revenues - cogs == gross_profit
+
+
+@pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
+def test_shop_fy2025_fixture_balance_sheet_edgar_verified():
+    """
+    Values verified against SHOP FY2025 balance sheet via EDGAR XBRL.
+    Balance identity: total assets == total liabilities + total equity.
+    """
+    data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
+    bs = data["statements"]["balance_sheet"]
+
+    total_assets = _shop_bs_value(bs, "Total assets")
+    total_liabilities = _shop_bs_value(bs, "Total liabilities")
+    total_equity = _shop_bs_value(bs, "Total shareholders' equity")
+
+    assert total_assets == 15189
+    assert total_liabilities == 1716
+    assert total_equity == 13473
+    # Accounting identity — any discrepancy is an extraction error.
+    assert total_liabilities + total_equity == total_assets
+
+    # Large equity investment portfolio — SHOP-specific non-operating characteristic.
+    assert _shop_bs_value(bs, "Equity and other investments") == 4582
+
+
+@pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
+def test_shop_fy2025_fixture_cash_flow_edgar_verified():
+    """
+    Values verified against SHOP FY2025 cash flow statement via EDGAR XBRL.
+    Cash reconciliation: beginning + net change == ending.
+    """
+    data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
+    cf = data["statements"]["cash_flow"]
+
+    assert _shop_cf_value(cf, "Net cash provided by operating activities") == 2033
+    assert _shop_cf_value(cf, "Net cash used in investing activities") == -1190
+    assert _shop_cf_value(cf, "Net cash used in financing activities") == -811
+    assert _shop_cf_value(cf, "Cash and cash equivalents, beginning of year") == 1498
+    assert _shop_cf_value(cf, "Cash and cash equivalents, end of year") == 1545
+
+    # FY2025 capital event: full maturity of convertible senior notes.
+    assert _shop_cf_value(cf, "Maturities of convertible senior notes") == -1043
+
+    # Cash reconciliation identity — any discrepancy is an extraction error.
+    net_change = _shop_cf_value(cf, "Net increase in cash and cash equivalents")
+    beginning = _shop_cf_value(cf, "Cash and cash equivalents, beginning of year")
+    ending = _shop_cf_value(cf, "Cash and cash equivalents, end of year")
+    assert beginning + net_change == ending
+
+
+@pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
+def test_shop_fy2025_shop_watch_items():
+    """
+    SHOP-specific structural checks:
+    1. "Income (loss) from operations" is the operating income label — NOT "Operating income".
+       This means the US GAAP alias "operating income" will NOT map for SHOP filings.
+    2. Unrealized equity investment item is in Other income, net (below operating income),
+       not in the operating section — GAAP correct but pollutes net income YoY comparisons.
+    3. Shopify does not pay dividends — no dividend label in cash flow.
+    4. Large non-operating investment portfolio: equity investments > 30% of total equity.
+    """
+    data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
+    is_items = data["statements"]["income_statement"]
+    cf_items = data["statements"]["cash_flow"]
+    bs_items = data["statements"]["balance_sheet"]
+
+    is_labels = [item["label"] for item in is_items]
+    cf_labels = [item["label"] for item in cf_items]
+
+    # Operating income uses non-standard label for SHOP.
+    assert "Income (loss) from operations" in is_labels
+    assert "Operating income" not in is_labels  # alias table gap
+
+    # Unrealized equity gains/losses are below operating income.
+    unrealized_label = "Net unrealized (loss) gain on equity and other investments"
+    assert unrealized_label in is_labels
+    unrealized_idx = is_labels.index(unrealized_label)
+    ops_idx = is_labels.index("Income (loss) from operations")
+    assert unrealized_idx > ops_idx  # unrealized item is BELOW operating income line
+
+    # FY2025: unrealized loss must be negative (sign flip from FY2024's +988 gain).
+    unrealized_val = _shop_is_value(is_items, unrealized_label)
+    assert unrealized_val < 0, f"Expected negative unrealized loss, got {unrealized_val}"
+
+    # No dividends — Shopify does not pay dividends.
+    dividend_labels = [lbl for lbl in cf_labels if "dividend" in lbl.lower()]
+    assert dividend_labels == [], f"Unexpected dividend label(s) in CF: {dividend_labels}"
+
+    # Equity investment portfolio is material relative to equity.
+    eq_investments = _shop_bs_value(bs_items, "Equity and other investments")
+    total_equity = _shop_bs_value(bs_items, "Total shareholders' equity")
+    assert eq_investments / total_equity > 0.30  # > 30% of equity in non-operating investments

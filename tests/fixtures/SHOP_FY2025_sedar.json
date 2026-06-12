@@ -1,0 +1,455 @@
+{
+  "source": "edgar_xbrl",
+  "schema_version": 4,
+  "accounting_standard": "US GAAP",
+  "currency": "USD",
+  "scale": "millions",
+  "fiscal_year_end": "December 31, 2025",
+  "verification_note": "EDGAR XBRL-verified against SEC EDGAR annual filing (SHOP FY2025). No SEDAR+ PDF available — Shopify cross-lists on TSX and NYSE and submits identical annual filing to SEDAR+, but the PDF was not present in the local sedar/filings directory at campaign time. Page-locator run deferred pending SEDAR PDF retrieval.",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "December 31, 2025": 1545,
+          "December 31, 2024": 1498
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Marketable securities",
+        "values": {
+          "December 31, 2025": 4233,
+          "December 31, 2024": 3590
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Merchant cash advances, loans and related receivables, net",
+        "values": {
+          "December 31, 2025": 1784,
+          "December 31, 2024": 1482
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "December 31, 2025": 8296,
+          "December 31, 2024": 7261
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equity and other investments",
+        "values": {
+          "December 31, 2025": 4582,
+          "December 31, 2024": 4679
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equity method investments",
+        "values": {
+          "December 31, 2025": 602,
+          "December 31, 2024": 641
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "December 31, 2025": 15189,
+          "December 31, 2024": 13927
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "December 31, 2025": 1392,
+          "December 31, 2024": 1428
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total long-term liabilities",
+        "values": {
+          "December 31, 2025": 324,
+          "December 31, 2024": 1330
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2025": 1716,
+          "December 31, 2024": 2758
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common stock",
+        "values": {
+          "December 31, 2025": 10376,
+          "December 31, 2024": 9847
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Additional paid-in capital",
+        "values": {
+          "December 31, 2025": 236,
+          "December 31, 2024": 184
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "values": {
+          "December 31, 2025": 1,
+          "December 31, 2024": -10
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated surplus",
+        "values": {
+          "December 31, 2025": 2860,
+          "December 31, 2024": 1148
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total shareholders' equity",
+        "values": {
+          "December 31, 2025": 13473,
+          "December 31, 2024": 11169
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "values": {
+          "December 31, 2025": 15189,
+          "December 31, 2024": 13927
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Subscription solutions",
+        "values": {
+          "2025": 2752,
+          "2024": 2340
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Merchant solutions",
+        "values": {
+          "2025": 8804,
+          "2024": 7067
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Revenues",
+        "values": {
+          "2025": 11556,
+          "2024": 9407
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Subscription solutions",
+        "values": {
+          "2025": 520,
+          "2024": 451
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Merchant solutions",
+        "values": {
+          "2025": 5481,
+          "2024": 4262
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cost of revenues",
+        "values": {
+          "2025": 6001,
+          "2024": 4713
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gross profit",
+        "values": {
+          "2025": 5555,
+          "2024": 4694
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Sales and marketing",
+        "values": {
+          "2025": 1663,
+          "2024": 1386
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Research and development",
+        "values": {
+          "2025": 1536,
+          "2024": 1321
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "General and administrative",
+        "values": {
+          "2025": 471,
+          "2024": 430
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Transaction and loan losses",
+        "values": {
+          "2025": 417,
+          "2024": 329
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total operating expenses",
+        "values": {
+          "2025": 4087,
+          "2024": 3466
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income (loss) from operations",
+        "values": {
+          "2025": 1468,
+          "2024": 1228
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest income",
+        "values": {
+          "2025": 331,
+          "2024": 264
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net realized gain on equity and other investments",
+        "values": {
+          "2025": 33,
+          "2024": 31
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net unrealized (loss) gain on equity and other investments",
+        "values": {
+          "2025": -186,
+          "2024": 988
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net loss on equity method investments",
+        "values": {
+          "2025": -40,
+          "2024": -25
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Realized loss on embedded derivative",
+        "values": {
+          "2025": -123,
+          "2024": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange gain",
+        "values": {
+          "2025": 26,
+          "2024": 13
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other income, net",
+        "values": {
+          "2025": 41,
+          "2024": 1271
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "2025": 1509,
+          "2024": 2499
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for income taxes",
+        "values": {
+          "2025": -278,
+          "2024": -245
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 1231,
+          "2024": 2254
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other comprehensive income (loss)",
+        "values": {
+          "2025": 11,
+          "2024": -25
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Comprehensive income",
+        "values": {
+          "2025": 1242,
+          "2024": 2229
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 1231,
+          "2024": 2254
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Stock-based compensation",
+        "values": {
+          "2025": 722,
+          "2024": 633
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net unrealized loss (gain) on equity and other investments",
+        "values": {
+          "2025": 186,
+          "2024": -988
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Realized loss on embedded derivative",
+        "values": {
+          "2025": 123,
+          "2024": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash provided by operating activities",
+        "values": {
+          "2025": 2033,
+          "2024": 1519
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of property and equipment",
+        "values": {
+          "2025": -97,
+          "2024": -84
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in investing activities",
+        "values": {
+          "2025": -1190,
+          "2024": -951
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Maturities of convertible senior notes",
+        "values": {
+          "2025": -1043,
+          "2024": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in financing activities",
+        "values": {
+          "2025": -811,
+          "2024": -325
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Effect of exchange rate changes on cash and cash equivalents",
+        "values": {
+          "2025": 15,
+          "2024": -6
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net increase in cash and cash equivalents",
+        "values": {
+          "2025": 47,
+          "2024": 237
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of year",
+        "values": {
+          "2025": 1498,
+          "2024": 1261
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "values": {
+          "2025": 1545,
+          "2024": 1498
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.97,
+  "pages_used": {
+    "balance_sheet": [],
+    "income_statement": [],
+    "cash_flow": []
+  }
+}

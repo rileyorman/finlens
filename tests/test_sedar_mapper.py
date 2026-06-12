@@ -157,6 +157,56 @@ def test_normalization_maps_note_references_case_and_trailing_punctuation():
     _assert_conservation(result)
 
 
+def test_shop_fixture_maps_revenue_and_net_income_us_gaap():
+    """
+    SHOP (Shopify, US GAAP, USD, December year-end) maps two fields under
+    the current US GAAP alias table:
+    - "Revenues" → revenue  (US GAAP alias "revenues")
+    - "Net income" → net_income  (US GAAP alias "net income")
+
+    Notable alias gaps for SHOP:
+    - "Income (loss) from operations" does NOT match "operating income" alias
+      (normalization strips note refs but NOT "(loss)" qualifiers in label names)
+    - "Interest income" does NOT match "interest expense" alias (income != expense)
+    - "Gross profit" has no alias in the current table
+
+    These are findings, not failures — the alias table flywheel property means
+    new filer unmapped labels → JSON edit + fixture update, not engine changes.
+
+    Do NOT weaken assertions to make the test pass. If mapped_count changes,
+    update the expected value and document the new alias.
+    """
+    data = _load_fixture("SHOP_FY2025_sedar.json")
+    assert data["accounting_standard"] == "US GAAP"
+    result = map_line_items(_line_items(data), "US GAAP")
+    mapped = result["mapped"]
+
+    assert mapped["revenue"]["value"] == 11556
+    assert mapped["revenue"]["match_type"] == "exact"
+    assert mapped["revenue"]["source_label"] == "Revenues"
+
+    assert mapped["net_income"]["value"] == 1231
+    assert mapped["net_income"]["match_type"] == "exact"
+    assert mapped["net_income"]["source_label"] == "Net income"
+
+    # Alias gap: SHOP uses "Income (loss) from operations", not "Operating income".
+    assert "operating_income" not in mapped
+
+    # Alias gap: SHOP has no "Interest expense" line — only "Interest income".
+    assert "interest_expense" not in mapped
+
+    assert result["meta"]["mapped_count"] == 2
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+    # Key unmapped labels document the alias gap for future alias additions.
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Income (loss) from operations" in unmapped_labels
+    assert "Interest income" in unmapped_labels
+    assert "Gross profit" in unmapped_labels
+    assert "Net unrealized (loss) gain on equity and other investments" in unmapped_labels
+
+
 def test_reiun_fixture_zero_mapped_under_current_alias_table():
     """
     REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end) has no income
