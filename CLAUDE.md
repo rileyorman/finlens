@@ -617,3 +617,21 @@ Use beginner-friendly language.
 Be specific about what changed and why.
 
 Prefer practical next steps over long theoretical explanations.
+
+## Change Propagation Rule
+
+Whenever a feature is added or modified, identify ALL code paths that touch the same data or functionality — not just the path addressed in the current task.
+
+**Known path pairs that must be checked together:**
+
+- Fresh upload flow AND Filing Library Load/Re-Analyse — both consume stored filing entries and stored bytes. Changes to upload extraction (e.g. adding docx support) must be mirrored in the Re-Analyse fallback path.
+- Single Analysis AND Filing Comparison AND Portfolio Manager — all consume `financial_data` / `summary_data` from session state or the library. Schema changes to those dicts affect all three.
+- Anything that writes library entries AND the sidebar rendering that reads them — new fields written by `lib_add` must have safe read-side defaults, and any display logic (labels, buttons) must handle the new field.
+
+**Before finishing any task, explicitly state:**
+
+1. Which sibling paths were checked.
+2. Whether each needed the same change or was unaffected. "Checked, not affected" is an acceptable answer — silence is not.
+3. When a data schema changes (new field in library entries, `financial_data`, `positions.json`, etc.), how existing stored records without the new field are handled (default value, migration, or schema version bump).
+
+**Reference incident (June 2026):** docx support was added to the fresh upload flow (`_is_docx` branch, `convert_to_markdown`) but the Filing Library Re-Analyse path still called `extract_text_from_pdf` on docx bytes and library entries had no `file_type` field. The fix required touching 6 locations across `app.py` and `filing_library.py`. This rule exists to catch that class of miss before it ships.

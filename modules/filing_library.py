@@ -92,6 +92,7 @@ def add_entry(
     mda_sentiment: dict | None = None,
     source: str = "pdf",
     file_path: str | None = None,
+    file_type: str = "pdf",
 ) -> None:
     """Add or update a filing entry. Keyed on file_hash so the same filing never duplicates."""
     lib = _load()
@@ -115,6 +116,7 @@ def add_entry(
         "raw_text":        raw_text,
         "source":          source,
         "file_path":       file_path,
+        "file_type":       file_type,
     }
 
     entries = lib["entries"]
@@ -128,6 +130,10 @@ def add_entry(
                 entry["file_path"] = existing["file_path"]
             if source == "pdf" and existing.get("source"):
                 entry["source"] = existing["source"]
+            # Preserve file_type from the original entry — the default "pdf" arg
+            # on re-analysis lib_add calls must not overwrite an existing "docx".
+            if file_type == "pdf" and existing.get("file_type"):
+                entry["file_type"] = existing["file_type"]
             entries[i] = entry   # refresh in place (re-analysis updates the record)
             _save(lib)
             return

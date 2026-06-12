@@ -1615,6 +1615,7 @@ document.addEventListener('focusin', function(e) {
                                         "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                         "source":       entry.get("source", "pdf"),
                                         "file_path":    entry.get("file_path"),
+                                        "file_type":    entry.get("file_type", "pdf"),
                                     }
                                 else:
                                     _period = entry.get("fiscal_year") or entry.get("period", "")
@@ -1649,9 +1650,9 @@ document.addEventListener('focusin', function(e) {
                                                 "pdf_bytes":    _pdf_bytes,
                                             }
                                         except Exception:
-                                            st.session_state.al_no_text_warning = entry["company_name"]
+                                            st.session_state.al_no_text_warning = entry.get("company_name") or entry.get("file_name") or "Unknown"
                                     else:
-                                        st.session_state.al_no_text_warning = entry["company_name"]
+                                        st.session_state.al_no_text_warning = entry.get("company_name") or entry.get("file_name") or "Unknown"
                                 st.rerun()
                         with al_no:
                             if st.button("Cancel", key=f"al_ra_no_{eid}",
@@ -1719,6 +1720,8 @@ document.addEventListener('focusin', function(e) {
                         row_period  = fy or "Unknown period"
                         if entry.get("source") == "edgar":
                             row_period = f"{row_period} · EDGAR"
+                        elif entry.get("file_type") == "docx":
+                            row_period = f"{row_period} · DOCX"
                         else:
                             row_period = f"{row_period} · PDF"
                         chevron     = "⌃" if expanded else "⌄"
@@ -1760,7 +1763,10 @@ document.addEventListener('focusin', function(e) {
                                     st.session_state.dashboard_data      = entry.get("dashboard_data")
                                     st.session_state.mda_sentiment       = entry.get("mda_sentiment")
                                     st.session_state.market_data         = {}
-                                    st.session_state.excel_bytes         = create_excel_file(fd, sd, 0.0, bb)
+                                    try:
+                                        st.session_state.excel_bytes = create_excel_file(fd, sd, 0.0, bb)
+                                    except Exception:
+                                        st.session_state.excel_bytes = None
                                     st.session_state.last_filename       = entry.get("file_name", "")
                                     st.session_state.resolved_ticker     = ticker if ticker != "—" else None
                                     st.session_state.cache_hit           = False
@@ -1849,9 +1855,10 @@ document.addEventListener('focusin', function(e) {
                                             "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                             "source":       entry.get("source", "pdf"),
                                             "file_path":    entry.get("file_path"),
+                                            "file_type":    entry.get("file_type", "pdf"),
                                         }
                                     else:
-                                        st.session_state.reanalyse_no_text = entry["company_name"]
+                                        st.session_state.reanalyse_no_text = entry.get("company_name") or entry.get("file_name") or "Unknown"
                                         st.session_state.reanalyse_pdf_info = {
                                             "ticker":       entry.get("ticker"),
                                             "period":       entry.get("fiscal_year") or entry.get("period", ""),
@@ -1861,6 +1868,7 @@ document.addEventListener('focusin', function(e) {
                                             "file_size":    entry.get("file_size_bytes", 0),
                                             "source":       entry.get("source", "pdf"),
                                             "file_path":    entry.get("file_path"),
+                                            "file_type":    entry.get("file_type", "pdf"),
                                         }
                                         st.session_state.uploader_key += 1
                                     st.rerun()
@@ -4846,9 +4854,22 @@ if st.session_state.get("reanalyse_no_text"):
             _cached_bytes = None
     if _cached_bytes is None:
         _cached_bytes = supabase_storage.load_pdf(_pdf_info.get("ticker"), _pdf_info.get("period"))
+    _reanalyse_file_type = _pdf_info.get("file_type", "pdf")
     if _cached_bytes:
         try:
-            _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
+            if _reanalyse_file_type == "docx":
+                with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+                    _tmp.write(_cached_bytes)
+                    _tmp_path = _tmp.name
+                _restored_text = convert_to_markdown(_tmp_path) or ""
+                try:
+                    os.unlink(_tmp_path)
+                except Exception:
+                    pass
+                if not _restored_text:
+                    raise ValueError("No text extracted from Word document")
+            else:
+                _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
             st.session_state.pending_reanalyse = {
                 "raw_text":     _restored_text[:MAX_FILING_CHARS],
                 "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
@@ -4860,15 +4881,18 @@ if st.session_state.get("reanalyse_no_text"):
                 "source":       _pdf_info.get("source", "pdf"),
                 "file_path":    _pdf_info.get("file_path"),
                 "pdf_bytes":    _cached_bytes,
+                "file_type":    _reanalyse_file_type,
             }
             st.session_state.reanalyse_no_text  = None
             st.session_state.reanalyse_pdf_info = None
             st.session_state.cached_pdf_bytes   = None
             st.rerun()
         except Exception:
-            st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
+            _doc_label = "Word document" if _reanalyse_file_type == "docx" else "PDF"
+            st.info(f"Re-upload the {_doc_label} to re-analyse **{st.session_state.reanalyse_no_text}**.")
     else:
-        st.info(f"Re-upload the PDF to re-analyse **{st.session_state.reanalyse_no_text}**.")
+        _doc_label = "Word document" if _reanalyse_file_type == "docx" else "PDF"
+        st.info(f"Re-upload the {_doc_label} to re-analyse **{st.session_state.reanalyse_no_text}**.")
 
 if uploaded_file is None:
     if (
@@ -5059,7 +5083,8 @@ if st.session_state.get("pending_reanalyse"):
                 _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
                 mda_sentiment=_ra_mda,
                 source=ra.get("source", "pdf"),
-                file_path=ra.get("file_path"))
+                file_path=ra.get("file_path"),
+                file_type=ra.get("file_type", "pdf"))
     except Exception:
         pass
     _save_analysis_to_supabase(
@@ -5083,7 +5108,22 @@ if st.session_state.get("pending_reanalyse"):
     st.session_state.dashboard_data      = _ra_dd
     st.session_state.mda_sentiment       = _ra_mda
     st.session_state.market_data         = {}
-    st.session_state.excel_bytes         = create_excel_file(_ra_fd, _ra_sd, 0.0, _ra_bb)
+    _ra_has_statements = (
+        _ra_fd
+        and "error" not in _ra_fd
+        and (
+            _ra_fd.get("income_statement")
+            or _ra_fd.get("balance_sheet")
+            or _ra_fd.get("cash_flow_statement")
+        )
+    )
+    if _ra_has_statements:
+        try:
+            st.session_state.excel_bytes = create_excel_file(_ra_fd, _ra_sd, 0.0, _ra_bb)
+        except Exception:
+            st.session_state.excel_bytes = None
+    else:
+        st.session_state.excel_bytes = None
     st.session_state.last_filename       = ra["file_name"]
     st.session_state.resolved_ticker     = None
     st.session_state.dcf_result          = None
@@ -5123,6 +5163,7 @@ if uploaded_file:
         cache_key = get_cache_key(pdf_bytes)
         cached    = load_cache(cache_key)
         raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
+        _is_docx  = uploaded_file.name.lower().endswith(".docx")
 
         if cached:
             financial_data = normalize_financial_data(cached["financial_data"])
@@ -5130,11 +5171,24 @@ if uploaded_file:
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
             mda_sentiment  = cached.get("mda_sentiment")
-            if mda_sentiment is None:
-                with st.spinner("Backfilling MD&A sentiment for cached PDF..."):
+            if _is_docx:
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+                        _tmp.write(pdf_bytes)
+                        _tmp_path = _tmp.name
+                    raw_text = convert_to_markdown(_tmp_path) or ""
                     try:
-                        raw_text = extract_text_from_pdf(io.BytesIO(pdf_bytes))
-                        if len(raw_text) >= 200:
+                        os.unlink(_tmp_path)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+            if mda_sentiment is None:
+                with st.spinner("Backfilling MD&A sentiment for cached document..."):
+                    try:
+                        if not raw_text:
+                            raw_text = extract_text_from_pdf(io.BytesIO(pdf_bytes))
+                        if len(raw_text or "") >= 200:
                             _cached_context = _get_filing_context(
                                 raw_text,
                                 (financial_data or {}).get("company_name") or uploaded_file.name,
@@ -5162,7 +5216,6 @@ if uploaded_file:
             st.session_state.cache_hit = False
 
             # Step 1 — Extract text from the uploaded file
-            _is_docx = uploaded_file.name.lower().endswith(".docx")
             if _is_docx:
                 with st.spinner("Converting Word document to text..."):
                     try:
@@ -5325,6 +5378,7 @@ if uploaded_file:
                 raw_text=raw_text[:MAX_FILING_CHARS] if raw_text else None,
                 mda_sentiment=mda_sentiment,
                 source=_upload_source,
+                file_type="docx" if _is_docx else "pdf",
             )
         except Exception:
             pass  # Library write failure must never block analysis
@@ -5392,15 +5446,16 @@ if st.session_state.financial_data:
             )
             st.session_state.dashboard_data = dashboard_data
 
-    company  = financial_data.get("company_name", "Results")
-    period   = financial_data.get("period", "")
-    currency = financial_data.get("currency", "")
-    fy       = financial_data.get("fiscal_year", "Current Year")
-    fy_prior = financial_data.get("fiscal_year_prior", "Prior Year")
+    company  = financial_data.get("company_name") or "Untitled Document"
+    period   = financial_data.get("period") or ""
+    currency = financial_data.get("currency") or ""
+    fy       = financial_data.get("fiscal_year") or "Current Year"
+    fy_prior = financial_data.get("fiscal_year_prior") or "Prior Year"
     ticker   = st.session_state.get("resolved_ticker") or summary_data.get("ticker")
 
     st.subheader(company)
-    st.caption(f"{period}  ·  {currency}")
+    _period_str = period or "Unknown period"
+    st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
 
     if (
         st.session_state.get("analysis_loaded_from_cache")
@@ -5913,14 +5968,15 @@ if st.session_state.financial_data:
 
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
-            st.download_button(
-                label="Download FinLens Report",
-                data=excel_bytes,
-                file_name=filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width='stretch',
-                type="primary",
-            )
+            if excel_bytes:
+                st.download_button(
+                    label="Download FinLens Report",
+                    data=excel_bytes,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    width='stretch',
+                    type="primary",
+                )
         with dl_col2:
             if memo_bytes:
                 st.download_button(
