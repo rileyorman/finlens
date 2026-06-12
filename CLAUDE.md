@@ -446,11 +446,13 @@ Development happens on the `dev` branch.
 
 Stable, tested, demo-ready changes are merged from `dev` into `main` for deployment.
 
-Before every commit, run:
-
-```powershell
-python -m py_compile app.py
-```
+Pre-commit gate — two tiers:
+- **Every commit (machine-enforced):** `py_compile` runs automatically on all
+  staged `.py` files via `.githooks/pre-commit`. Configured with
+  `git config core.hooksPath .githooks`. If syntax fails, the commit is blocked.
+- **Feature commits via `/codex-review` (machine-prompted):** full headless
+  Streamlit startup and health-check sequence. This lives as the live-run
+  requirement in `/codex-review` Step 5.
 
 Keep detailed git command sequences outside this file. This file should capture project rules and expectations, not serve as a full git operations manual.
 

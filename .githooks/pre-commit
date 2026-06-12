@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Machine-enforced pre-commit gate: py_compile on all staged .py files.
+# Part of the Minimize Human Error principle — do not remove or bypass.
+
+set -e
+
+staged_py=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -z "$staged_py" ]; then
+    exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PYTHON="$REPO_ROOT/venv/Scripts/python.exe"
+if [ ! -f "$PYTHON" ]; then
+    PYTHON=python
+fi
+
+failed=0
+for f in $staged_py; do
+    if ! "$PYTHON" -m py_compile "$f" 2>&1; then
+        echo "  py_compile FAILED: $f"
+        failed=1
+    fi
+done
+
+if [ "$failed" -eq 1 ]; then
+    echo ""
+    echo "Pre-commit blocked: fix syntax errors above before committing."
+    exit 1
+fi
