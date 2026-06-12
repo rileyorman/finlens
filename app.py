@@ -17,6 +17,7 @@ from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
+from sedar_extractor import SedarExtractionError, extract_sedar_filing
 from modules.claude_analyzer import (
     analyze_financials,
     analyze_summary,
@@ -362,6 +363,14 @@ def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
     return str(LIBRARY_PDFS_DIR / f"{safe}.pdf")
 
 
+def _library_pdf_cache_path(entry: dict) -> str | None:
+    ticker = entry.get("ticker")
+    if ticker == "—":
+        ticker = None
+    period = entry.get("fiscal_year") or entry.get("period", "")
+    return _pdf_cache_path(ticker, period)
+
+
 def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
     """Return disk cache path for extracted filing text, or None if identifiers are unavailable."""
     if not ticker or not period:
@@ -682,6 +691,91 @@ def _financial_data_to_text(financial_data: dict) -> str:
             )
         lines.append("")
     return "\n".join(lines)
+
+
+def _sedar_period_keys(extraction_result: dict) -> tuple[str, str | None]:
+    statements = extraction_result.get("statements") or {}
+    for section_key in ("income_statement", "balance_sheet", "cash_flow"):
+        for item in statements.get(section_key, []) or []:
+            values = item.get("values") or {}
+            if isinstance(values, dict) and values:
+                keys = list(values.keys())
+                current = keys[0]
+                prior = keys[1] if len(keys) > 1 else None
+                return current, prior
+    return "Current", None
+
+
+def _sedar_statement_rows(items: list[dict], current_period: str, prior_period: str | None) -> list[dict]:
+    rows = []
+    for item in items or []:
+        values = item.get("values") or {}
+        if not isinstance(values, dict):
+            values = {}
+        rows.append({
+            "line_item": item.get("label", ""),
+            "value": values.get(current_period),
+            "value_prior": values.get(prior_period) if prior_period else None,
+            "row_type": "data",
+        })
+    return rows
+
+
+def _sedar_currency_label(extraction_result: dict) -> str:
+    currency = str(extraction_result.get("currency") or "").strip()
+    scale = str(extraction_result.get("scale") or "").strip()
+    if currency and scale and scale.lower() not in currency.lower():
+        return f"{currency}, in {scale}"
+    return currency
+
+
+def _sedar_extraction_to_financial_data(
+    extraction_result: dict,
+    file_name: str,
+    company_name: str | None = None,
+    ticker: str | None = None,
+) -> dict:
+    current_period, prior_period = _sedar_period_keys(extraction_result)
+    statements = extraction_result.get("statements") or {}
+    mapping = extraction_result.get("mapping") or {}
+
+    financial_data = {
+        "source": "sedar_pdf",
+        "ticker": ticker,
+        "company_name": company_name or extraction_result.get("company_name") or file_name,
+        "company": company_name or extraction_result.get("company_name") or file_name,
+        "period": extraction_result.get("fiscal_year_end") or current_period,
+        "currency": _sedar_currency_label(extraction_result),
+        "scale": extraction_result.get("scale"),
+        "fiscal_year": current_period,
+        "fiscal_year_prior": prior_period or "Prior",
+        "accounting_standard": extraction_result.get("accounting_standard"),
+        "extraction_confidence": extraction_result.get("extraction_confidence"),
+        "pages_used": extraction_result.get("pages_used"),
+        "mapping": mapping,
+        "sedar_extraction": extraction_result,
+        "income_statement": _sedar_statement_rows(
+            statements.get("income_statement", []),
+            current_period,
+            prior_period,
+        ),
+        "balance_sheet": _sedar_statement_rows(
+            statements.get("balance_sheet", []),
+            current_period,
+            prior_period,
+        ),
+        "cash_flow_statement": _sedar_statement_rows(
+            statements.get("cash_flow", []),
+            current_period,
+            prior_period,
+        ),
+    }
+
+    for field, mapped in (mapping.get("mapped") or {}).items():
+        if isinstance(mapped, dict):
+            financial_data[field] = mapped.get("value")
+
+    return financial_data
 
 
 def _edgar_cache_identifier() -> str:
@@ -1604,6 +1698,7 @@ document.addEventListener('focusin', function(e) {
                                          width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
                                 _entry_text = _library_text_for_entry(entry)
+                                _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
                                         "raw_text":     _entry_text[:MAX_FILING_CHARS],
@@ -1615,6 +1710,7 @@ document.addEventListener('focusin', function(e) {
                                         "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                         "source":       entry.get("source", "pdf"),
                                         "file_path":    entry.get("file_path"),
+                                        "pdf_path":     _entry_pdf_path,
                                         "file_type":    entry.get("file_type", "pdf"),
                                     }
                                 else:
@@ -1661,6 +1757,7 @@ document.addEventListener('focusin', function(e) {
                                                 "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                                 "source":       entry.get("source", "pdf"),
                                                 "file_path":    entry.get("file_path"),
+                                                "pdf_path":     _entry_pdf_path,
                                                 "pdf_bytes":    _pdf_bytes,
                                                 "file_type":    _file_type,
                                             }
@@ -1863,6 +1960,7 @@ document.addEventListener('focusin', function(e) {
                                              width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
                                     _entry_text = _library_text_for_entry(entry)
+                                    _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
                                             "raw_text":     _entry_text[:MAX_FILING_CHARS],
@@ -1874,6 +1972,7 @@ document.addEventListener('focusin', function(e) {
                                             "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                             "source":       entry.get("source", "pdf"),
                                             "file_path":    entry.get("file_path"),
+                                            "pdf_path":     _entry_pdf_path,
                                             "file_type":    entry.get("file_type", "pdf"),
                                         }
                                     else:
@@ -1887,6 +1986,7 @@ document.addEventListener('focusin', function(e) {
                                             "file_size":    entry.get("file_size_bytes", 0),
                                             "source":       entry.get("source", "pdf"),
                                             "file_path":    entry.get("file_path"),
+                                            "pdf_path":     _entry_pdf_path,
                                             "file_type":    entry.get("file_type", "pdf"),
                                         }
                                         st.session_state.uploader_key += 1
@@ -1921,8 +2021,26 @@ if page == "Portfolio Manager":
             ra.get("ticker") or ra.get("company_name"),
             ra.get("period") or ra.get("file_name"),
         )
-        with st.spinner("Call 1: Extracting financials (Haiku)..."):
-            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+        if ra.get("source") == "sedar":
+            _sedar_pdf_path = ra.get("pdf_path")
+            if not _sedar_pdf_path or not Path(_sedar_pdf_path).exists():
+                st.error(
+                    "The original SEDAR+ PDF is no longer cached. Re-upload the filing "
+                    "with the Canadian filing (SEDAR+ / IFRS) toggle enabled to re-analyse it."
+                )
+                st.session_state.pending_reanalyse = None
+                st.stop()
+            with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
+                _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+                _ra_fd = _sedar_extraction_to_financial_data(
+                    _sedar_result,
+                    ra.get("file_name", ""),
+                    company_name=ra.get("company_name"),
+                    ticker=ra.get("ticker"),
+                )
+        else:
+            with st.spinner("Call 1: Extracting financials (Haiku)..."):
+                _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 2: Generating investment signal..."):
             _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 3: Generating bull/bear case..."):
@@ -4849,6 +4967,12 @@ uploaded_file = st.file_uploader(
     help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
     key=f"pdf_uploader_{st.session_state.uploader_key}",
 )
+canadian_filing = st.checkbox(
+    "Canadian filing (SEDAR+ / IFRS)",
+    value=False,
+    help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
+    key="canadian_sedar_upload",
+)
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
@@ -4868,6 +4992,7 @@ if st.session_state.get("reanalyse_no_text"):
                 "period":       _pdf_info.get("period"),
                 "source":       "edgar",
                 "file_path":    _pdf_info.get("file_path"),
+                "pdf_path":     _pdf_info.get("pdf_path"),
             }
             st.session_state.reanalyse_no_text  = None
             st.session_state.reanalyse_pdf_info = None
@@ -4915,6 +5040,7 @@ if st.session_state.get("reanalyse_no_text"):
                 "period":       _pdf_info.get("period"),
                 "source":       _pdf_info.get("source", "pdf"),
                 "file_path":    _pdf_info.get("file_path"),
+                "pdf_path":     _pdf_info.get("pdf_path"),
                 "pdf_bytes":    _cached_bytes,
                 "file_type":    _reanalyse_file_type,
             }
@@ -5079,8 +5205,26 @@ if st.session_state.get("pending_reanalyse"):
         ra.get("period") or ra.get("file_name"),
     )
 
-    with st.spinner("Call 1: Extracting financials (Haiku)..."):
-        _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+    if ra.get("source") == "sedar":
+        _sedar_pdf_path = ra.get("pdf_path")
+        if not _sedar_pdf_path or not Path(_sedar_pdf_path).exists():
+            st.error(
+                "The original SEDAR+ PDF is no longer cached. Re-upload the filing "
+                "with the Canadian filing (SEDAR+ / IFRS) toggle enabled to re-analyse it."
+            )
+            st.session_state.pending_reanalyse = None
+            st.stop()
+        with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
+            _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+            _ra_fd = _sedar_extraction_to_financial_data(
+                _sedar_result,
+                ra.get("file_name", ""),
+                company_name=ra.get("company_name"),
+                ticker=ra.get("ticker"),
+            )
+    else:
+        with st.spinner("Call 1: Extracting financials (Haiku)..."):
+            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):
@@ -5195,10 +5339,16 @@ if uploaded_file:
         st.session_state.reanalyse_no_text = None  # clear prompt once user starts upload
 
         pdf_bytes = uploaded_file.getvalue()
-        cache_key = get_cache_key(pdf_bytes)
+        _is_docx  = uploaded_file.name.lower().endswith(".docx")
+        _use_sedar_pipeline = bool(canadian_filing)
+        if _use_sedar_pipeline and _is_docx:
+            st.error("Canadian filing (SEDAR+ / IFRS) extraction is PDF-only. Upload a SEDAR+ PDF or turn the Canadian filing toggle off for Word documents.")
+            st.stop()
+
+        cache_key_base = get_cache_key(pdf_bytes)
+        cache_key = f"{cache_key_base}_sedar" if _use_sedar_pipeline else cache_key_base
         cached    = load_cache(cache_key)
         raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
-        _is_docx  = uploaded_file.name.lower().endswith(".docx")
 
         if cached:
             financial_data = normalize_financial_data(cached["financial_data"])
@@ -5281,13 +5431,44 @@ if uploaded_file:
             st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
             _upload_context = _get_filing_context(raw_text, uploaded_file.name, cache_key)
 
-            # Step 2 — Call 1: extract structured financials (claude-haiku)
-            with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
-                try:
-                    financial_data = analyze_financials(raw_text, API_KEY, model=get_model(), filing_context=_upload_context)
-                except Exception as e:
-                    st.error(f"Claude analysis failed: {e}")
-                    st.stop()
+            # Step 2 — Call 1: extract structured financials
+            if _use_sedar_pipeline:
+                with st.spinner("Extracting SEDAR+ financial statements with Claude..."):
+                    _tmp_path = None
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as _tmp:
+                            _tmp.write(pdf_bytes)
+                            _tmp_path = _tmp.name
+                        _sedar_result = extract_sedar_filing(_tmp_path)
+                        if not any((_sedar_result.get("pages_used") or {}).values()):
+                            st.error("SEDAR+ extraction failed: no financial statement pages were found in this PDF.")
+                            st.stop()
+                        _sedar_company = st.session_state.get("sedar_company") or {}
+                        financial_data = _sedar_extraction_to_financial_data(
+                            _sedar_result,
+                            uploaded_file.name,
+                            company_name=_sedar_company.get("company_name"),
+                            ticker=_sedar_company.get("ticker"),
+                        )
+                    except SedarExtractionError as e:
+                        st.error(f"SEDAR+ extraction failed: {e}")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"SEDAR+ extraction failed: {e}")
+                        st.stop()
+                    finally:
+                        if _tmp_path:
+                            try:
+                                os.unlink(_tmp_path)
+                            except Exception:
+                                pass
+            else:
+                with st.spinner("Analyzing with Claude (this can take 30–60 seconds for large documents)..."):
+                    try:
+                        financial_data = analyze_financials(raw_text, API_KEY, model=get_model(), filing_context=_upload_context)
+                    except Exception as e:
+                        st.error(f"Claude analysis failed: {e}")
+                        st.stop()
 
             # Step 3 — Call 2: generate investment signal
             summary_data = None
@@ -5345,7 +5526,7 @@ if uploaded_file:
                     st.warning(f"Could not fetch market data for '{resolved_ticker}'.")
 
         market_cap = market_data.get("market_cap") or 0.0
-        _upload_source = _upload_analysis_source(resolved_ticker)
+        _upload_source = "sedar" if _use_sedar_pipeline else _upload_analysis_source(resolved_ticker)
         financial_data = _run_integrity_checks(
             financial_data,
             summary_data,
@@ -5441,7 +5622,7 @@ if uploaded_file:
 
         # Rerun so sidebar counts (cache + library) reflect the new entry.
         st.rerun()
-    st.caption("~$0.08 per analysis")
+    st.caption("~$0.10–0.15 per analysis" if canadian_filing else "~$0.08 per analysis")
 
 # --- Display results (runs on every rerun as long as data is in state) -
 if st.session_state.financial_data:
@@ -5538,6 +5719,26 @@ if st.session_state.financial_data:
 
         if st.session_state.get("loaded_from_quick"):
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
+
+        _mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
+        if isinstance(_mapping, dict):
+            _mapping_meta = _mapping.get("meta") or {}
+            st.info(
+                "SEDAR+ mapping: "
+                f"{_mapping_meta.get('mapped_count', 0)} mapped, "
+                f"{_mapping_meta.get('unmapped_count', 0)} unmapped, "
+                f"{_mapping_meta.get('total', 0)} total."
+            )
+            with st.expander("SEDAR+ unmapped line items", expanded=False):
+                _unmapped = _mapping.get("unmapped") or []
+                if _unmapped:
+                    st.dataframe(
+                        [{"label": item.get("label"), "value": item.get("value")} for item in _unmapped],
+                        width='stretch',
+                        hide_index=True,
+                    )
+                else:
+                    st.caption("No unmapped line items.")
 
         # --- Market data fetch (always visible) and display ---
         # Pre-populate the ticker input the first time results appear, or after a
