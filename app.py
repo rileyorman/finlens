@@ -1575,7 +1575,7 @@ document.addEventListener('focusin', function(e) {
                 for entry in al_entries:
                     eid    = entry["id"]
                     ticker = entry.get("ticker", "—")
-                    fy     = entry.get("fiscal_year") or entry.get("period", "")[:20]
+                    fy     = entry.get("fiscal_year") or (entry.get("period") or "")[:20]
                     in_pf  = bool(ticker and ticker != "—" and ticker.upper() in _pf_tickers_upper)
                     dot    = "🟢" if in_pf else "⚫"
                     st.markdown(
@@ -1712,7 +1712,7 @@ document.addEventListener('focusin', function(e) {
                     for entry in company_entries:
                         eid        = entry["id"]
                         ticker     = entry.get("ticker", "—")
-                        fy         = entry.get("fiscal_year") or entry.get("period", "")[:20]
+                        fy         = entry.get("fiscal_year") or (entry.get("period") or "")[:20]
                         filing_key = _filing_key(entry)
                         expanded   = st.session_state.get("sidebar_expanded_filing") == filing_key
                         row_ticker  = ticker if ticker and ticker != "—" else "N/A"
@@ -5267,11 +5267,24 @@ if uploaded_file:
         )
 
         # Step 5 — Build Excel
-        try:
-            excel_bytes = create_excel_file(financial_data, summary_data, market_cap, bear_bull_data)
-        except Exception as e:
-            st.error(f"Could not generate Excel file: {e}")
-            st.stop()
+        excel_bytes = None
+        _has_statements = (
+            financial_data
+            and "error" not in financial_data
+            and (
+                financial_data.get("income_statement")
+                or financial_data.get("balance_sheet")
+                or financial_data.get("cash_flow_statement")
+            )
+        )
+        if not _has_statements:
+            st.info("Excel export unavailable — no structured financial data detected in this document.")
+        else:
+            try:
+                excel_bytes = create_excel_file(financial_data, summary_data, market_cap, bear_bull_data)
+            except Exception as e:
+                st.error(f"Could not generate Excel file: {e}")
+                st.stop()
 
         st.session_state.financial_data      = financial_data
         st.session_state.summary_data        = summary_data
