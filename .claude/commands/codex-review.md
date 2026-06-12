@@ -18,6 +18,7 @@ Check each of the following and report findings:
   - Number formatters cover K / M / B / T magnitude range (test mentally: 500 → "500", 3_700_000_000 → "3.70B", 4_600_000_000_000 → "4.60T").
   - Claude analyst text is never hard-truncated with `[:N]` slicing in display paths.
   - Any docs or inline commands use PowerShell semicolons (`;`) not `&&` for chained commands.
+  - **Before issuing FAIL on any mandatory-pattern check:** verify the pattern against the current `CLAUDE.md` — `CODEX_MEMORY.md` may be stale. If the two files conflict, `CLAUDE.md` wins; flag the drift so the Sunday audit Step 2 can sync it.
 
 **Step 4 — Run tests live.**
 Run the relevant test suite using the actual Python binary:
