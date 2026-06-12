@@ -693,16 +693,24 @@ def _financial_data_to_text(financial_data: dict) -> str:
     return "\n".join(lines)
 
 
-def _sedar_period_keys(extraction_result: dict) -> tuple[str, str | None]:
-    statements = extraction_result.get("statements") or {}
-    for section_key in ("income_statement", "balance_sheet", "cash_flow"):
-        for item in statements.get(section_key, []) or []:
-            values = item.get("values") or {}
-            if isinstance(values, dict) and values:
-                keys = list(values.keys())
-                current = keys[0]
-                prior = keys[1] if len(keys) > 1 else None
+def _sedar_period_keys(items: list[dict]) -> tuple[str, str | None]:
+    for item in items or []:
+        values = item.get("values") or {}
+        if isinstance(values, dict) and values:
+            keys = list(values.keys())
+            years = []
+            for idx, key in enumerate(keys):
+                match = re.search(r"(\d{4})", str(key))
+                years.append((int(match.group(1)) if match else None, idx, key))
+            parseable = [row for row in years if row[0] is not None]
+            if parseable:
+                ordered = sorted(parseable, key=lambda row: (row[0], -row[1]), reverse=True)
+                current = ordered[0][2]
+                prior = ordered[1][2] if len(ordered) > 1 else None
                 return current, prior
+            current = keys[0]
+            prior = keys[1] if len(keys) > 1 else None
+            return current, prior
     return "Current", None
 
 
@@ -735,20 +743,22 @@ def _sedar_extraction_to_financial_data(
     company_name: str | None = None,
     ticker: str | None = None,
 ) -> dict:
-    current_period, prior_period = _sedar_period_keys(extraction_result)
     statements = extraction_result.get("statements") or {}
     mapping = extraction_result.get("mapping") or {}
+    income_current, income_prior = _sedar_period_keys(statements.get("income_statement", []))
+    balance_current, balance_prior = _sedar_period_keys(statements.get("balance_sheet", []))
+    cash_flow_current, cash_flow_prior = _sedar_period_keys(statements.get("cash_flow", []))
 
     financial_data = {
         "source": "sedar_pdf",
         "ticker": ticker,
         "company_name": company_name or extraction_result.get("company_name") or file_name,
         "company": company_name or extraction_result.get("company_name") or file_name,
-        "period": extraction_result.get("fiscal_year_end") or current_period,
+        "period": extraction_result.get("fiscal_year_end") or income_current,
         "currency": _sedar_currency_label(extraction_result),
         "scale": extraction_result.get("scale"),
-        "fiscal_year": current_period,
-        "fiscal_year_prior": prior_period or "Prior",
+        "fiscal_year": income_current,
+        "fiscal_year_prior": income_prior or "Prior",
         "accounting_standard": extraction_result.get("accounting_standard"),
         "extraction_confidence": extraction_result.get("extraction_confidence"),
         "pages_used": extraction_result.get("pages_used"),
@@ -756,18 +766,18 @@ def _sedar_extraction_to_financial_data(
         "sedar_extraction": extraction_result,
         "income_statement": _sedar_statement_rows(
             statements.get("income_statement", []),
-            current_period,
-            prior_period,
+            income_current,
+            income_prior,
         ),
         "balance_sheet": _sedar_statement_rows(
             statements.get("balance_sheet", []),
-            current_period,
-            prior_period,
+            balance_current,
+            balance_prior,
         ),
         "cash_flow_statement": _sedar_statement_rows(
             statements.get("cash_flow", []),
-            current_period,
-            prior_period,
+            cash_flow_current,
+            cash_flow_prior,
         ),
     }
 
