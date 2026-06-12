@@ -1946,8 +1946,8 @@ if page == "Portfolio Manager":
                     mda_sentiment=_ra_mda,
                     source=ra.get("source", "pdf"),
                     file_path=ra.get("file_path"))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"lib_add failed in PM re-analyse: {e}")
         _save_analysis_to_supabase(
             (_ra_sd or {}).get("ticker"),
             _ra_fd,
@@ -5116,8 +5116,8 @@ if st.session_state.get("pending_reanalyse"):
                 source=ra.get("source", "pdf"),
                 file_path=ra.get("file_path"),
                 file_type=ra.get("file_type", "pdf"))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"lib_add failed in SA re-analyse: {e}")
     _save_analysis_to_supabase(
         (_ra_sd or {}).get("ticker"),
         _ra_fd,
@@ -5411,8 +5411,8 @@ if uploaded_file:
                 source=_upload_source,
                 file_type="docx" if _is_docx else "pdf",
             )
-        except Exception:
-            pass  # Library write failure must never block analysis
+        except Exception as e:
+            logger.warning(f"lib_add failed on fresh upload: {e}")
         _save_analysis_to_supabase(
             resolved_ticker,
             financial_data,
