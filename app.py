@@ -1580,7 +1580,7 @@ document.addEventListener('focusin', function(e) {
                     dot    = "🟢" if in_pf else "⚫"
                     st.markdown(
                         f"<span style='font-size:13px;font-weight:500;color:#F1F5F9'>"
-                        f"{dot} {entry['company_name']}</span>",
+                        f"{dot} {entry.get('company_name') or entry.get('file_name') or 'Unknown'}</span>",
                         unsafe_allow_html=True,
                     )
                     st.markdown(
@@ -1595,7 +1595,7 @@ document.addEventListener('focusin', function(e) {
                     st.caption("~$0.08 per analysis")
                     if st.session_state.get("al_confirm_reanalyse") == eid:
                         st.caption(
-                            f"Re-analyse **{entry['company_name']}**? This will run 4 Claude "
+                            f"Re-analyse **{entry.get('company_name') or entry.get('file_name') or 'Unknown'}**? This will run 4 Claude "
                             f"API calls (~$0.10–0.15 cost) and overwrite the existing result."
                         )
                         al_yes, al_no = st.columns(2)
@@ -1607,7 +1607,7 @@ document.addEventListener('focusin', function(e) {
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
                                         "raw_text":     _entry_text[:MAX_FILING_CHARS],
-                                        "company_name": entry["company_name"],
+                                        "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                         "entry_id":     eid,
                                         "file_name":    entry.get("file_name", ""),
                                         "file_size":    entry.get("file_size_bytes", 0),
@@ -1653,7 +1653,7 @@ document.addEventListener('focusin', function(e) {
                                                 _extracted_text = extract_text_from_pdf(io.BytesIO(_pdf_bytes))
                                             st.session_state.pending_reanalyse = {
                                                 "raw_text":     _extracted_text[:MAX_FILING_CHARS],
-                                                "company_name": entry["company_name"],
+                                                "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                                 "entry_id":     eid,
                                                 "file_name":    entry.get("file_name", ""),
                                                 "file_size":    entry.get("file_size_bytes", 0),
@@ -1767,6 +1767,8 @@ document.addEventListener('focusin', function(e) {
                                                 )
                                             except Exception:
                                                 st.session_state.cached_pdf_bytes = None
+                                        st.session_state.confirm_reanalyse    = None
+                                        st.session_state.al_confirm_reanalyse = None
                                         st.rerun()
 
                                     fd = normalize_financial_data(entry["financial_data"])
@@ -1817,6 +1819,8 @@ document.addEventListener('focusin', function(e) {
                                                 )
                                         except Exception:
                                             st.session_state.cached_pdf_bytes = None
+                                    st.session_state.confirm_reanalyse    = None
+                                    st.session_state.al_confirm_reanalyse = None
                                     st.rerun()
                             with reanalyse_col:
                                 if st.button("Re-Analyse $", key=f"lib_reanalyse_{eid}", width='stretch',
@@ -1826,14 +1830,14 @@ document.addEventListener('focusin', function(e) {
                                     st.rerun()
                             st.caption("~$0.08 per analysis")
                             if st.button("Remove", key=f"lib_del_{eid}", width='stretch',
-                                         help=f"Remove {entry['company_name']} from library"):
+                                         help=f"Remove {entry.get('company_name') or entry.get('file_name') or 'Unknown'} from library"):
                                 st.session_state.confirm_delete    = eid
                                 st.session_state.confirm_reanalyse = None
                                 st.rerun()
 
                         # --- Remove confirmation ---
                         if expanded and st.session_state.get("confirm_delete") == eid:
-                            st.caption(f"Remove **{entry['company_name']}**? This cannot be undone.")
+                            st.caption(f"Remove **{entry.get('company_name') or entry.get('file_name') or 'Unknown'}**? This cannot be undone.")
                             yes_col, no_col = st.columns(2)
                             with yes_col:
                                 if st.button("Yes, remove", key=f"lib_del_yes_{eid}",
@@ -1850,7 +1854,7 @@ document.addEventListener('focusin', function(e) {
                         # --- Re-analyse confirmation ---
                         if expanded and st.session_state.get("confirm_reanalyse") == eid:
                             st.caption(
-                                f"Re-analyse **{entry['company_name']}**? This will run 4 Claude API calls "
+                                f"Re-analyse **{entry.get('company_name') or entry.get('file_name') or 'Unknown'}**? This will run 4 Claude API calls "
                                 f"(~$0.10–0.15 cost) and overwrite the existing result."
                             )
                             yes_col, no_col = st.columns(2)
@@ -1862,7 +1866,7 @@ document.addEventListener('focusin', function(e) {
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
                                             "raw_text":     _entry_text[:MAX_FILING_CHARS],
-                                            "company_name": entry["company_name"],
+                                            "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                             "entry_id":     eid,
                                             "file_name":    entry.get("file_name", ""),
                                             "file_size":    entry.get("file_size_bytes", 0),
@@ -1878,7 +1882,7 @@ document.addEventListener('focusin', function(e) {
                                             "ticker":       entry.get("ticker"),
                                             "period":       entry.get("fiscal_year") or entry.get("period", ""),
                                             "entry_id":     eid,
-                                            "company_name": entry["company_name"],
+                                            "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                             "file_name":    entry.get("file_name", ""),
                                             "file_size":    entry.get("file_size_bytes", 0),
                                             "source":       entry.get("source", "pdf"),
