@@ -24,6 +24,9 @@ sector_skip       Tuple of lowercase tokens.  Rule is skipped (status
 requires_fields   Context keys that must be non-None for the rule to run.
                   If any are absent the rule is skipped (status
                   "field_unavailable") -- missing field is not a failure.
+sedar_only        Boolean. If true, the rule only applies when normalized_data
+                  carries a SEDAR mapping payload. Non-SEDAR filings do not
+                  record a skipped check for these rules.
 """
 
 # Tokens used to identify financial-sector filers.
@@ -133,5 +136,53 @@ RULES = [
         },
         "sector_skip": (),
         "requires_fields": ["revenue", "revenue_prior"],
+    },
+
+    # ------------------------------------------------------------------
+    # SEDAR extraction confidence: mapped fields below this confidence are
+    # uncertain reads from the filing. Provisional threshold -- open tuning
+    # item, calibrate during validation campaign.
+    # ------------------------------------------------------------------
+    {
+        "id": "sedar_extraction_confidence",
+        "description": "SEDAR mapped fields should meet the minimum extraction confidence",
+        "severity": "warn",
+        "check_type": "extraction_confidence",
+        "params": {
+            "min": 0.85,
+        },
+        "sector_skip": (),
+        "requires_fields": ["mapping"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
+    # SEDAR mapping confidence: pattern matches are informational uncertain
+    # mappings, distinct from extraction-confidence uncertain reads.
+    # ------------------------------------------------------------------
+    {
+        "id": "sedar_mapping_pattern_match",
+        "description": "SEDAR pattern-matched fields are informational mapping-confidence notes",
+        "severity": "info",
+        "check_type": "mapping_pattern_info",
+        "params": {},
+        "sector_skip": (),
+        "requires_fields": ["mapping"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
+    # Accounting standard is informational only. The engine records it so
+    # future cross-validation thresholds can become standard-aware.
+    # ------------------------------------------------------------------
+    {
+        "id": "accounting_standard_recorded",
+        "description": "Filing accounting standard is recorded for future standard-aware checks",
+        "severity": "info",
+        "check_type": "accounting_standard_info",
+        "params": {},
+        "sector_skip": (),
+        "requires_fields": ["accounting_standard"],
+        "sedar_only": True,
     },
 ]

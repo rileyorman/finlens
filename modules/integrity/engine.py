@@ -60,6 +60,7 @@ class ValidationResult:
     fiscal_year: str
     filing_accession: str | None
     filing_source: str | None
+    accounting_standard: str | None
     rules_run: int
     rules_passed: int
     rules_failed: int
@@ -76,6 +77,7 @@ class ValidationResult:
             "overall_status": self.overall_status,
             "filing_accession": self.filing_accession,
             "filing_source": self.filing_source,
+            "accounting_standard": self.accounting_standard,
             "rules_run": self.rules_run,
             "rules_passed": self.rules_passed,
             "rules_failed": self.rules_failed,
@@ -194,6 +196,9 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         "gross_profit":     gross_profit,
         "gross_profit_derived": gross_profit_derived,
         "net_income":       _line_item(income, "net_income"),
+        "mapping":          normalized_data.get("mapping"),
+        "has_mapping":      "mapping" in normalized_data,
+        "accounting_standard": normalized_data.get("accounting_standard"),
         "fiscal_year":      normalized_data.get("fiscal_year", ""),
         "fiscal_year_int":  _parse_fy_year(normalized_data.get("fiscal_year", "")),
         "filing_year_int":  _parse_iso_year(filing_metadata.get("filing_date", "")),
@@ -312,12 +317,70 @@ def _check_growth_range(rule: dict, ctx: dict) -> tuple:
     return round(growth, 4), threshold, passed, msg
 
 
+def _mapped_fields(mapping: dict | None) -> dict:
+    if not isinstance(mapping, dict):
+        return {}
+    mapped = mapping.get("mapped")
+    return mapped if isinstance(mapped, dict) else {}
+
+
+def _check_extraction_confidence(rule: dict, ctx: dict) -> tuple:
+    min_confidence = rule["params"]["min"]
+    threshold = {"min": min_confidence}
+    low_confidence = []
+
+    for field, item in _mapped_fields(ctx.get("mapping")).items():
+        if not isinstance(item, dict):
+            continue
+        confidence = _coerce_number(item.get("confidence"))
+        if confidence is not None and confidence < min_confidence:
+            low_confidence.append((field, item.get("source_label"), confidence))
+
+    if not low_confidence:
+        return None, threshold, True, (
+            f"All mapped SEDAR fields meet extraction confidence >= {min_confidence:.2f}"
+        )
+
+    observed = min(confidence for _, _, confidence in low_confidence)
+    details = ", ".join(
+        f"{field} from '{label}' ({confidence:.2f})"
+        for field, label, confidence in low_confidence
+    )
+    return round(observed, 4), threshold, False, (
+        "Uncertain read: mapped SEDAR field extraction confidence below "
+        f"{min_confidence:.2f}: {details}"
+    )
+
+
+def _check_mapping_pattern_info(rule: dict, ctx: dict) -> tuple:
+    pattern_matches = []
+    for field, item in _mapped_fields(ctx.get("mapping")).items():
+        if isinstance(item, dict) and item.get("match_type") == "pattern":
+            pattern_matches.append((field, item.get("source_label")))
+
+    if not pattern_matches:
+        return None, {}, True, "No SEDAR pattern-matched fields"
+
+    details = ", ".join(f"{field} from '{label}'" for field, label in pattern_matches)
+    return float(len(pattern_matches)), {}, False, (
+        f"Uncertain mapping: SEDAR pattern match used for {details}"
+    )
+
+
+def _check_accounting_standard_info(rule: dict, ctx: dict) -> tuple:
+    standard = ctx.get("accounting_standard")
+    return None, {}, True, f"Accounting standard recorded: {standard or 'unknown'}"
+
+
 # Registry: check_type ? handler
 _CHECKS = {
     "ratio_range":               _check_ratio_range,
     "arithmetic_reconciliation": _check_reconciliation,
     "year_recency":              _check_year_recency,
     "growth_range":              _check_growth_range,
+    "extraction_confidence":     _check_extraction_confidence,
+    "mapping_pattern_info":      _check_mapping_pattern_info,
+    "accounting_standard_info":  _check_accounting_standard_info,
 }
 
 
@@ -361,6 +424,9 @@ def validate_filing(
         rule_id = rule["id"]
         severity = rule["severity"]
         handler = _CHECKS.get(rule["check_type"])
+
+        if rule.get("sedar_only") and not ctx.get("has_mapping"):
+            continue
 
         # Unknown check_type -- config references a type with no handler
         if handler is None:
@@ -451,6 +517,7 @@ def validate_filing(
         fiscal_year=normalized_data.get("fiscal_year", ""),
         filing_accession=filing_metadata.get("accession"),
         filing_source=filing_metadata.get("source", "edgar"),
+        accounting_standard=normalized_data.get("accounting_standard"),
         rules_run=rules_run,
         rules_passed=rules_passed,
         rules_failed=rules_failed,
