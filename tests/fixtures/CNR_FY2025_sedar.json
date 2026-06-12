@@ -1,0 +1,841 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 4,
+  "accounting_standard": "US GAAP",
+  "currency": "CAD",
+  "scale": "millions",
+  "fiscal_year_end": "December 31, 2025",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "2025": 350,
+          "2024": 389
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Restricted cash and cash equivalents",
+        "values": {
+          "2025": 13,
+          "2024": 12
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts receivable (Note 9)",
+        "values": {
+          "2025": 1117,
+          "2024": 1164
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Material and supplies",
+        "values": {
+          "2025": 734,
+          "2024": 720
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other current assets (Note 10)",
+        "values": {
+          "2025": 257,
+          "2024": 334
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "2025": 2471,
+          "2024": 2619
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Properties (Note 11)",
+        "values": {
+          "2025": 49148,
+          "2024": 47960
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating lease right-of-use assets (Note 12)",
+        "values": {
+          "2025": 440,
+          "2024": 485
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Pension asset (Note 17)",
+        "values": {
+          "2025": 5362,
+          "2024": 4541
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax assets (Note 7)",
+        "values": {
+          "2025": 611,
+          "2024": 689
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Intangible assets, goodwill and other (Note 13)",
+        "values": {
+          "2025": 523,
+          "2024": 773
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "2025": 58555,
+          "2024": 57067
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and other (Note 14)",
+        "values": {
+          "2025": 2790,
+          "2024": 2810
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current portion of long-term debt (Note 15)",
+        "values": {
+          "2025": 906,
+          "2024": 1166
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "2025": 3696,
+          "2024": 3976
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax liabilities (Note 7)",
+        "values": {
+          "2025": 11223,
+          "2024": 10874
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities and deferred credits (Note 16)",
+        "values": {
+          "2025": 999,
+          "2024": 612
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Pension and other postretirement benefits (Note 17)",
+        "values": {
+          "2025": 453,
+          "2024": 483
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Long-term debt (Note 15)",
+        "values": {
+          "2025": 20300,
+          "2024": 19728
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating lease liabilities (Note 12)",
+        "values": {
+          "2025": 316,
+          "2024": 343
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "2025": 36987,
+          "2024": 36016
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares (Note 18)",
+        "values": {
+          "2025": 3454,
+          "2024": 3474
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares in Share Trusts (Note 18)",
+        "values": {
+          "2025": -152,
+          "2024": -129
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Additional paid-in capital",
+        "values": {
+          "2025": 415,
+          "2024": 372
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated other comprehensive loss (Note 20)",
+        "values": {
+          "2025": -1067,
+          "2024": -1020
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "2025": 18918,
+          "2024": 18354
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total shareholders' equity",
+        "values": {
+          "2025": 21568,
+          "2024": 21051
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "values": {
+          "2025": 58555,
+          "2024": 57067
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Revenues (Note 4)",
+        "values": {
+          "2025": 17304,
+          "2024": 17046,
+          "2023": 16828
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Labor and fringe benefits",
+        "values": {
+          "2025": 3510,
+          "2024": 3422,
+          "2023": 3150
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchased services and material",
+        "values": {
+          "2025": 2306,
+          "2024": 2313,
+          "2023": 2254
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fuel",
+        "values": {
+          "2025": 1786,
+          "2024": 2060,
+          "2023": 2097
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation and amortization",
+        "values": {
+          "2025": 1938,
+          "2024": 1892,
+          "2023": 1817
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equipment rents",
+        "values": {
+          "2025": 432,
+          "2024": 392,
+          "2023": 359
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other",
+        "values": {
+          "2025": 745,
+          "2024": 642,
+          "2023": 554
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on assets held for sale (Note 5)",
+        "values": {
+          "2025": 0,
+          "2024": 78,
+          "2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total operating expenses",
+        "values": {
+          "2025": 10717,
+          "2024": 10799,
+          "2023": 10231
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating income",
+        "values": {
+          "2025": 6587,
+          "2024": 6247,
+          "2023": 6597
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense",
+        "values": {
+          "2025": -913,
+          "2024": -891,
+          "2023": -722
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other components of net periodic benefit income (Note 17)",
+        "values": {
+          "2025": 502,
+          "2024": 454,
+          "2023": 479
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other income (Note 6)",
+        "values": {
+          "2025": 88,
+          "2024": 42,
+          "2023": 134
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "2025": 6264,
+          "2024": 5852,
+          "2023": 6488
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income tax expense (Note 7)",
+        "values": {
+          "2025": -1544,
+          "2024": -1404,
+          "2023": -863
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 4720,
+          "2024": 4448,
+          "2023": 5625
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Basic",
+        "values": {
+          "2025": 7.58,
+          "2024": 7.02,
+          "2023": 8.55
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Diluted",
+        "values": {
+          "2025": 7.57,
+          "2024": 7.01,
+          "2023": 8.53
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Basic",
+        "values": {
+          "2025": 623.1,
+          "2024": 633.5,
+          "2023": 657.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Diluted",
+        "values": {
+          "2025": 623.7,
+          "2024": 634.5,
+          "2023": 659.1
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Net gain (loss) on foreign currency translation",
+        "values": {
+          "2025": -286,
+          "2024": 388,
+          "2023": -101
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net change in pension and other postretirement benefit plans",
+        "values": {
+          "2025": 424,
+          "2024": 1025,
+          "2023": -334
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative instruments",
+        "values": {
+          "2025": -2,
+          "2024": -20,
+          "2023": 96
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other comprehensive income (loss) before income taxes",
+        "values": {
+          "2025": 136,
+          "2024": 1393,
+          "2023": -339
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income tax recovery (expense)",
+        "values": {
+          "2025": -183,
+          "2024": -134,
+          "2023": 29
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other comprehensive income (loss)",
+        "values": {
+          "2025": -47,
+          "2024": 1259,
+          "2023": -310
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Comprehensive income",
+        "values": {
+          "2025": 4673,
+          "2024": 5707,
+          "2023": 5315
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 4720,
+          "2024": 4448,
+          "2023": 5625
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation and amortization",
+        "values": {
+          "2025": 1938,
+          "2024": 1892,
+          "2023": 1817
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Pension income and funding",
+        "values": {
+          "2025": -410,
+          "2024": -385,
+          "2023": -418
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on assets held for sale (Note 5)",
+        "values": {
+          "2025": 0,
+          "2024": 78,
+          "2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on disposal of property (Note 6)",
+        "values": {
+          "2025": 0,
+          "2024": 0,
+          "2023": -129
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income taxes (Note 7)",
+        "values": {
+          "2025": 334,
+          "2024": 325,
+          "2023": -288
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts receivable",
+        "values": {
+          "2025": 92,
+          "2024": 205,
+          "2023": 71
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Material and supplies",
+        "values": {
+          "2025": -24,
+          "2024": -6,
+          "2023": -18
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and other",
+        "values": {
+          "2025": 220,
+          "2024": -107,
+          "2023": -191
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other current assets",
+        "values": {
+          "2025": -123,
+          "2024": 0,
+          "2023": 85
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other operating activities, net",
+        "values": {
+          "2025": 302,
+          "2024": 249,
+          "2023": 411
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash provided by operating activities",
+        "values": {
+          "2025": 7049,
+          "2024": 6699,
+          "2023": 6965
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Property additions",
+        "values": {
+          "2025": -3658,
+          "2024": -3549,
+          "2023": -3187
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Business acquisitions and combinations (Note 3)",
+        "values": {
+          "2025": 0,
+          "2024": 0,
+          "2023": -390
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from disposal of property (Note 6)",
+        "values": {
+          "2025": 0,
+          "2024": 0,
+          "2023": 129
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other investing activities, net",
+        "values": {
+          "2025": -55,
+          "2024": -58,
+          "2023": -20
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in investing activities",
+        "values": {
+          "2025": -3713,
+          "2024": -3607,
+          "2023": -3468
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issuance of debt (Note 15)",
+        "values": {
+          "2025": 1965,
+          "2024": 3483,
+          "2023": 2554
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayment of debt (Note 15)",
+        "values": {
+          "2025": -446,
+          "2024": -1038,
+          "2023": -250
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in commercial paper, net (Note 15)",
+        "values": {
+          "2025": -612,
+          "2024": -1381,
+          "2023": 908
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of foreign exchange forward contracts on debt",
+        "values": {
+          "2025": 3,
+          "2024": 120,
+          "2023": 38
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issuance of common shares for stock options exercised (Note 19)",
+        "values": {
+          "2025": 56,
+          "2024": 41,
+          "2023": 49
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Withholding taxes remitted on the net settlement of equity settled awards (Note 19)",
+        "values": {
+          "2025": -9,
+          "2024": -52,
+          "2023": -51
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repurchase of common shares (Note 18)",
+        "values": {
+          "2025": -2059,
+          "2024": -2600,
+          "2023": -4551
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of common shares for settlement of equity settled awards",
+        "values": {
+          "2025": -5,
+          "2024": -5,
+          "2023": -4
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of common shares by Share Trusts (Note 18)",
+        "values": {
+          "2025": -56,
+          "2024": -50,
+          "2023": -28
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends paid",
+        "values": {
+          "2025": -2208,
+          "2024": -2138,
+          "2023": -2071
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in financing activities",
+        "values": {
+          "2025": -3371,
+          "2024": -3620,
+          "2023": -3406
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Effect of foreign exchange fluctuations on cash, cash equivalents, restricted cash, and restricted cash equivalents",
+        "values": {
+          "2025": -3,
+          "2024": 5,
+          "2023": -1
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net increase (decrease) in cash, cash equivalents, restricted cash, and restricted cash equivalents",
+        "values": {
+          "2025": -38,
+          "2024": -523,
+          "2023": 90
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash, cash equivalents, restricted cash, and restricted cash equivalents, beginning of year",
+        "values": {
+          "2025": 401,
+          "2024": 924,
+          "2023": 834
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash, cash equivalents, restricted cash, and restricted cash equivalents, end of year",
+        "values": {
+          "2025": 363,
+          "2024": 401,
+          "2023": 924
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "values": {
+          "2025": 350,
+          "2024": 389,
+          "2023": 475
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Restricted cash and cash equivalents, end of year",
+        "values": {
+          "2025": 13,
+          "2024": 12,
+          "2023": 449
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest paid",
+        "values": {
+          "2025": -979,
+          "2024": -926,
+          "2023": -776
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income taxes paid (Note 7)",
+        "values": {
+          "2025": -935,
+          "2024": -1221,
+          "2023": -1197
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.95,
+  "pages_used": {
+    "balance_sheet": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      18,
+      19
+    ],
+    "income_statement": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      18,
+      19,
+      51,
+      52
+    ],
+    "cash_flow": [
+      4,
+      5,
+      8,
+      9,
+      51,
+      52
+    ]
+  }
+}

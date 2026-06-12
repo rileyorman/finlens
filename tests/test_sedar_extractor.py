@@ -170,3 +170,107 @@ def test_csu_fy2025_fixture_income_statement_pdf_verified():
     # A positive 228 here is a sign-handling bug.
     assert _is_value(items, "Finance and other expense (income) (note 18)") == -228
     assert _is_value(items, "Income tax expense (recovery)") == 353
+
+
+# ---------------------------------------------------------------------------
+# CNR FY2025 fixture test — PDF-verified assertions (campaign filer #2)
+# ---------------------------------------------------------------------------
+
+_CNR_FIXTURE = _Path(__file__).parent / "fixtures" / "CNR_FY2025_sedar.json"
+_CNR_FY2025_PERIOD = "2025"
+
+
+def _cnr_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_CNR_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in CNR income statement: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+@pytest.mark.skipif(not _CNR_FIXTURE.exists(), reason="CNR fixture not present")
+def test_cnr_fy2025_fixture_contract_invariants():
+    data = _json.loads(_CNR_FIXTURE.read_text(encoding="utf-8"))
+
+    assert data["schema_version"] == 4
+    assert data["source"] == "sedar_pdf"
+    assert data["currency"] == "CAD"
+    # CN Rail files on SEDAR but reports under US GAAP (NYSE cross-listing).
+    # This locks in the non-IFRS finding — do not change to IFRS.
+    assert data["accounting_standard"] == "US GAAP"
+    assert data["scale"] == "millions"
+    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["extraction_confidence"] >= 0.9
+    assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
+
+
+@pytest.mark.skipif(not _CNR_FIXTURE.exists(), reason="CNR fixture not present")
+def test_cnr_fy2025_fixture_income_statement_pdf_verified():
+    """
+    Values verified against the actual CNR FY2025 US GAAP filing via pdfplumber
+    direct text search (June 2026). Do NOT adjust assertions to make the test
+    pass — a failure means the extraction has a real bug.
+    """
+    data = _json.loads(_CNR_FIXTURE.read_text(encoding="utf-8"))
+    items = data["statements"]["income_statement"]
+
+    assert _cnr_value(items, "Revenues (Note 4)") == 17304
+    assert _cnr_value(items, "Fuel") == 1786
+    # Interest expense is parenthesized in the filing — must be negative.
+    # A positive 913 here is a sign-handling bug.
+    assert _cnr_value(items, "Interest expense") == -913
+    assert _cnr_value(items, "Net income") == 4720
+
+
+# ---------------------------------------------------------------------------
+# RY FY2025 fixture test — PDF-verified assertions (campaign filer #3)
+# ---------------------------------------------------------------------------
+
+_RY_FIXTURE = _Path(__file__).parent / "fixtures" / "RY_FY2025_sedar.json"
+_RY_FY2025_PERIOD = "October 31, 2025"
+
+
+def _ry_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_RY_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in RY income statement: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+@pytest.mark.skipif(not _RY_FIXTURE.exists(), reason="RY fixture not present")
+def test_ry_fy2025_fixture_contract_invariants():
+    data = _json.loads(_RY_FIXTURE.read_text(encoding="utf-8"))
+
+    assert data["schema_version"] == 4
+    assert data["source"] == "sedar_pdf"
+    assert data["currency"] == "CAD"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["scale"] == "millions"
+    # Bank fiscal year ends October 31 — not December. This locks in the
+    # non-calendar fiscal year. Do not change to December.
+    assert "October 31, 2025" in data["fiscal_year_end"]
+    assert data["extraction_confidence"] >= 0.9
+    assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
+
+
+@pytest.mark.skipif(not _RY_FIXTURE.exists(), reason="RY fixture not present")
+def test_ry_fy2025_fixture_income_statement_pdf_verified():
+    """
+    Values verified against the actual RY FY2025 IFRS filing via pdfplumber
+    direct text search on consolidated income statement pages 146-147 (0-indexed)
+    (June 2026). Bank-shaped P&L is correct — not an extraction failure.
+    Do NOT adjust assertions to make the test pass — a failure means the
+    extraction has a real bug.
+    """
+    data = _json.loads(_RY_FIXTURE.read_text(encoding="utf-8"))
+    items = data["statements"]["income_statement"]
+
+    assert _ry_value(items, "Net interest income") == 33000
+    assert _ry_value(items, "Provision for credit losses") == 4362
+    assert _ry_value(items, "Income taxes") == 5282
+    assert _ry_value(items, "Net income") == 20369

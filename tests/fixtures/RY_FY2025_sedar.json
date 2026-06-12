@@ -1,0 +1,1120 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 4,
+  "accounting_standard": "IFRS",
+  "currency": "CAD",
+  "scale": "millions",
+  "fiscal_year_end": "October 31, 2025",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and due from banks",
+        "values": {
+          "October 31, 2025": 37024,
+          "October 31, 2024": 56723
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest-bearing deposits with banks",
+        "values": {
+          "October 31, 2025": 50364,
+          "October 31, 2024": 66020
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Securities – Trading",
+        "values": {
+          "October 31, 2025": 219067,
+          "October 31, 2024": 183300
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Securities – Investment, net of applicable allowance",
+        "values": {
+          "October 31, 2025": 342721,
+          "October 31, 2024": 256618
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Securities – Total",
+        "values": {
+          "October 31, 2025": 561788,
+          "October 31, 2024": 439918
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Assets purchased under reverse repurchase agreements and securities borrowed",
+        "values": {
+          "October 31, 2025": 309683,
+          "October 31, 2024": 350803
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans – Retail",
+        "values": {
+          "October 31, 2025": 652344,
+          "October 31, 2024": 626978
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans – Wholesale",
+        "values": {
+          "October 31, 2025": 397171,
+          "October 31, 2024": 360439
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans – Total",
+        "values": {
+          "October 31, 2025": 1049515,
+          "October 31, 2024": 987417
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Allowance for loan losses",
+        "values": {
+          "October 31, 2025": -7093,
+          "October 31, 2024": -6037
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans net of allowance",
+        "values": {
+          "October 31, 2025": 1042422,
+          "October 31, 2024": 981380
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivatives",
+        "values": {
+          "October 31, 2025": 177206,
+          "October 31, 2024": 150612
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Premises and equipment",
+        "values": {
+          "October 31, 2025": 6819,
+          "October 31, 2024": 6852
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Goodwill",
+        "values": {
+          "October 31, 2025": 19405,
+          "October 31, 2024": 19286
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other intangibles",
+        "values": {
+          "October 31, 2025": 7402,
+          "October 31, 2024": 7798
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets",
+        "values": {
+          "October 31, 2025": 112893,
+          "October 31, 2024": 92190
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other – Total",
+        "values": {
+          "October 31, 2025": 323725,
+          "October 31, 2024": 276738
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "October 31, 2025": 2325006,
+          "October 31, 2024": 2171582
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deposits – Personal",
+        "values": {
+          "October 31, 2025": 529740,
+          "October 31, 2024": 522139
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deposits – Business and government",
+        "values": {
+          "October 31, 2025": 946314,
+          "October 31, 2024": 839670
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deposits – Bank",
+        "values": {
+          "October 31, 2025": 39562,
+          "October 31, 2024": 47722
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deposits – Total",
+        "values": {
+          "October 31, 2025": 1515616,
+          "October 31, 2024": 1409531
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Obligations related to securities sold short",
+        "values": {
+          "October 31, 2025": 49891,
+          "October 31, 2024": 35286
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Obligations related to assets sold under repurchase agreements and securities loaned",
+        "values": {
+          "October 31, 2025": 289516,
+          "October 31, 2024": 305321
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivatives",
+        "values": {
+          "October 31, 2025": 183953,
+          "October 31, 2024": 163763
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance contract liabilities",
+        "values": {
+          "October 31, 2025": 24327,
+          "October 31, 2024": 22231
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities",
+        "values": {
+          "October 31, 2025": 108591,
+          "October 31, 2024": 94712
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities – Total",
+        "values": {
+          "October 31, 2025": 656278,
+          "October 31, 2024": 621313
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Subordinated debentures",
+        "values": {
+          "October 31, 2025": 13961,
+          "October 31, 2024": 13546
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "October 31, 2025": 2185855,
+          "October 31, 2024": 2044390
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Preferred shares and other equity instruments",
+        "values": {
+          "October 31, 2025": 11675,
+          "October 31, 2024": 9031
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares",
+        "values": {
+          "October 31, 2025": 20753,
+          "October 31, 2024": 20952
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "October 31, 2025": 96938,
+          "October 31, 2024": 88608
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other components of equity",
+        "values": {
+          "October 31, 2025": 9726,
+          "October 31, 2024": 8498
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equity attributable to shareholders – Total",
+        "values": {
+          "October 31, 2025": 139092,
+          "October 31, 2024": 127089
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-controlling interests",
+        "values": {
+          "October 31, 2025": 59,
+          "October 31, 2024": 103
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "October 31, 2025": 139151,
+          "October 31, 2024": 127192
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and equity",
+        "values": {
+          "October 31, 2025": 2325006,
+          "October 31, 2024": 2171582
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Interest and dividend income – Loans",
+        "values": {
+          "October 31, 2025": 56042,
+          "October 31, 2024": 54040
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and dividend income – Securities",
+        "values": {
+          "October 31, 2025": 20055,
+          "October 31, 2024": 17668
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and dividend income – Assets purchased under reverse repurchase agreements and securities borrowed",
+        "values": {
+          "October 31, 2025": 22367,
+          "October 31, 2024": 27121
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and dividend income – Deposits and other",
+        "values": {
+          "October 31, 2025": 5361,
+          "October 31, 2024": 6122
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and dividend income – Total",
+        "values": {
+          "October 31, 2025": 103825,
+          "October 31, 2024": 104951
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense – Deposits and other",
+        "values": {
+          "October 31, 2025": 44817,
+          "October 31, 2024": 47256
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense – Other liabilities",
+        "values": {
+          "October 31, 2025": 25371,
+          "October 31, 2024": 28967
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense – Subordinated debentures",
+        "values": {
+          "October 31, 2025": 637,
+          "October 31, 2024": 775
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense – Total",
+        "values": {
+          "October 31, 2025": 70825,
+          "October 31, 2024": 76998
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net interest income",
+        "values": {
+          "October 31, 2025": 33000,
+          "October 31, 2024": 27953
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance service result",
+        "values": {
+          "October 31, 2025": 867,
+          "October 31, 2024": 777
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance investment result",
+        "values": {
+          "October 31, 2025": 284,
+          "October 31, 2024": 294
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trading revenue",
+        "values": {
+          "October 31, 2025": 3125,
+          "October 31, 2024": 2327
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment management and custodial fees",
+        "values": {
+          "October 31, 2025": 10647,
+          "October 31, 2024": 9325
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Mutual fund revenue",
+        "values": {
+          "October 31, 2025": 5084,
+          "October 31, 2024": 4437
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Securities brokerage commissions",
+        "values": {
+          "October 31, 2025": 1905,
+          "October 31, 2024": 1660
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Service charges",
+        "values": {
+          "October 31, 2025": 2425,
+          "October 31, 2024": 2294
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Underwriting and other advisory fees",
+        "values": {
+          "October 31, 2025": 2899,
+          "October 31, 2024": 2672
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange revenue, other than trading",
+        "values": {
+          "October 31, 2025": 1301,
+          "October 31, 2024": 1142
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Card service revenue",
+        "values": {
+          "October 31, 2025": 1333,
+          "October 31, 2024": 1273
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Credit fees",
+        "values": {
+          "October 31, 2025": 1670,
+          "October 31, 2024": 1592
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net gains on investment securities",
+        "values": {
+          "October 31, 2025": 120,
+          "October 31, 2024": 170
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income (loss) from joint ventures and associates",
+        "values": {
+          "October 31, 2025": 73,
+          "October 31, 2024": -16
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other",
+        "values": {
+          "October 31, 2025": 1872,
+          "October 31, 2024": 1444
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest income – Total",
+        "values": {
+          "October 31, 2025": 33605,
+          "October 31, 2024": 29391
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total revenue",
+        "values": {
+          "October 31, 2025": 66605,
+          "October 31, 2024": 57344
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for credit losses",
+        "values": {
+          "October 31, 2025": 4362,
+          "October 31, 2024": 3232
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Human resources",
+        "values": {
+          "October 31, 2025": 23122,
+          "October 31, 2024": 21083
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Equipment",
+        "values": {
+          "October 31, 2025": 2790,
+          "October 31, 2024": 2537
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Occupancy",
+        "values": {
+          "October 31, 2025": 1679,
+          "October 31, 2024": 1805
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Communications",
+        "values": {
+          "October 31, 2025": 1497,
+          "October 31, 2024": 1369
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Professional fees",
+        "values": {
+          "October 31, 2025": 2177,
+          "October 31, 2024": 2525
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Amortization of other intangibles",
+        "values": {
+          "October 31, 2025": 1759,
+          "October 31, 2024": 1549
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Other",
+        "values": {
+          "October 31, 2025": 3568,
+          "October 31, 2024": 3382
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-interest expense – Total",
+        "values": {
+          "October 31, 2025": 36592,
+          "October 31, 2024": 34250
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "October 31, 2025": 25651,
+          "October 31, 2024": 19862
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income taxes",
+        "values": {
+          "October 31, 2025": 5282,
+          "October 31, 2024": 3622
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "October 31, 2025": 20369,
+          "October 31, 2024": 16240
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income attributable to: Shareholders",
+        "values": {
+          "October 31, 2025": 20362,
+          "October 31, 2024": 16230
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income attributable to: Non-controlling interests",
+        "values": {
+          "October 31, 2025": 7,
+          "October 31, 2024": 10
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Basic earnings per share (in dollars)",
+        "values": {
+          "October 31, 2025": 14.1,
+          "October 31, 2024": 11.27
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Diluted earnings per share (in dollars)",
+        "values": {
+          "October 31, 2025": 14.07,
+          "October 31, 2024": 11.25
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends per common share (in dollars)",
+        "values": {
+          "October 31, 2025": 6.04,
+          "October 31, 2024": 5.6
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "October 31, 2025": 20369,
+          "October 31, 2024": 16240
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for credit losses",
+        "values": {
+          "October 31, 2025": 4362,
+          "October 31, 2024": 3232
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation",
+        "values": {
+          "October 31, 2025": 1286,
+          "October 31, 2024": 1364
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income taxes",
+        "values": {
+          "October 31, 2025": -216,
+          "October 31, 2024": -1529
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amortization and impairment of other intangibles",
+        "values": {
+          "October 31, 2025": 1793,
+          "October 31, 2024": 1617
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "(Income) loss from joint ventures and associates",
+        "values": {
+          "October 31, 2025": -73,
+          "October 31, 2024": 16
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Losses (gains) on investment securities",
+        "values": {
+          "October 31, 2025": -132,
+          "October 31, 2024": -170
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Losses (gains) on disposition of business",
+        "values": {
+          "October 31, 2025": 0,
+          "October 31, 2024": 29
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance contract liabilities",
+        "values": {
+          "October 31, 2025": 2096,
+          "October 31, 2024": 3205
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net change in accrued interest receivable and payable",
+        "values": {
+          "October 31, 2025": -1880,
+          "October 31, 2024": 1674
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current income taxes",
+        "values": {
+          "October 31, 2025": -936,
+          "October 31, 2024": 945
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative assets",
+        "values": {
+          "October 31, 2025": -26594,
+          "October 31, 2024": -4797
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative liabilities",
+        "values": {
+          "October 31, 2025": 20190,
+          "October 31, 2024": 17593
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trading securities",
+        "values": {
+          "October 31, 2025": -35767,
+          "October 31, 2024": 8886
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans",
+        "values": {
+          "October 31, 2025": -62098,
+          "October 31, 2024": -55007
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Assets purchased under reverse repurchase agreements and securities borrowed",
+        "values": {
+          "October 31, 2025": 41120,
+          "October 31, 2024": -10168
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Obligations related to assets sold under repurchase agreements and securities loaned",
+        "values": {
+          "October 31, 2025": -15805,
+          "October 31, 2024": -35581
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Obligations related to securities sold short",
+        "values": {
+          "October 31, 2025": 14605,
+          "October 31, 2024": 727
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deposits",
+        "values": {
+          "October 31, 2025": 106085,
+          "October 31, 2024": 91596
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Brokers and dealers receivable and payable",
+        "values": {
+          "October 31, 2025": -107,
+          "October 31, 2024": -304
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other",
+        "values": {
+          "October 31, 2025": -13078,
+          "October 31, 2024": -16429
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash from (used in) operating activities",
+        "values": {
+          "October 31, 2025": 55220,
+          "October 31, 2024": 23139
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in interest-bearing deposits with banks",
+        "values": {
+          "October 31, 2025": 15656,
+          "October 31, 2024": 5066
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from sales and maturities of investment securities",
+        "values": {
+          "October 31, 2025": 232439,
+          "October 31, 2024": 182335
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of investment securities",
+        "values": {
+          "October 31, 2025": -314421,
+          "October 31, 2024": -193307
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net acquisitions of premises and equipment and other intangibles",
+        "values": {
+          "October 31, 2025": -2243,
+          "October 31, 2024": -2280
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net proceeds from (cash transferred for) dispositions",
+        "values": {
+          "October 31, 2025": 0,
+          "October 31, 2024": 15
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash used in acquisitions, net of cash acquired",
+        "values": {
+          "October 31, 2025": 0,
+          "October 31, 2024": -12716
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash from (used in) investing activities",
+        "values": {
+          "October 31, 2025": -68569,
+          "October 31, 2024": -20887
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issuance of subordinated debentures",
+        "values": {
+          "October 31, 2025": 2991,
+          "October 31, 2024": 3250
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayment of subordinated debentures",
+        "values": {
+          "October 31, 2025": -2750,
+          "October 31, 2024": -1500
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issue of common shares, net of issuance costs",
+        "values": {
+          "October 31, 2025": 72,
+          "October 31, 2024": 159
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares purchased for cancellation",
+        "values": {
+          "October 31, 2025": -2768,
+          "October 31, 2024": -140
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issue of preferred shares and other equity instruments, net of issuance costs",
+        "values": {
+          "October 31, 2025": 4945,
+          "October 31, 2024": 2702
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Redemption of preferred shares and other equity instruments",
+        "values": {
+          "October 31, 2025": -2350,
+          "October 31, 2024": -1021
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Sales of treasury shares and other equity instruments",
+        "values": {
+          "October 31, 2025": 10699,
+          "October 31, 2024": 6717
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of treasury shares and other equity instruments",
+        "values": {
+          "October 31, 2025": -10727,
+          "October 31, 2024": -6527
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends paid on shares and distributions paid on other equity instruments",
+        "values": {
+          "October 31, 2025": -8800,
+          "October 31, 2024": -6637
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends/distributions paid to non-controlling interests",
+        "values": {
+          "October 31, 2025": -39,
+          "October 31, 2024": -6
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in short-term borrowings of subsidiaries",
+        "values": {
+          "October 31, 2025": 2804,
+          "October 31, 2024": -4507
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayment of lease liabilities",
+        "values": {
+          "October 31, 2025": -788,
+          "October 31, 2024": -636
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash from (used in) financing activities",
+        "values": {
+          "October 31, 2025": -6711,
+          "October 31, 2024": -8146
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Effect of exchange rate changes on cash and due from banks",
+        "values": {
+          "October 31, 2025": 361,
+          "October 31, 2024": 628
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net change in cash and due from banks",
+        "values": {
+          "October 31, 2025": -19699,
+          "October 31, 2024": -5266
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and due from banks at beginning of period",
+        "values": {
+          "October 31, 2025": 56723,
+          "October 31, 2024": 61989
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and due from banks at end of period",
+        "values": {
+          "October 31, 2025": 37024,
+          "October 31, 2024": 56723
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amount of interest paid",
+        "values": {
+          "October 31, 2025": 70976,
+          "October 31, 2024": 73639
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amount of interest received",
+        "values": {
+          "October 31, 2025": 100508,
+          "October 31, 2024": 102127
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amount of dividends received",
+        "values": {
+          "October 31, 2025": 3982,
+          "October 31, 2024": 3502
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amount of income taxes paid",
+        "values": {
+          "October 31, 2025": 6087,
+          "October 31, 2024": 3410
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.99,
+  "pages_used": {
+    "balance_sheet": [
+      63,
+      64,
+      102,
+      103,
+      138,
+      139,
+      140,
+      141,
+      143,
+      144,
+      145,
+      146,
+      151,
+      152,
+      164,
+      165,
+      191,
+      192,
+      193,
+      203,
+      204,
+      211,
+      212,
+      229,
+      230,
+      238,
+      239,
+      240
+    ],
+    "income_statement": [
+      110,
+      111,
+      140,
+      141,
+      143,
+      144,
+      146,
+      147,
+      148,
+      151,
+      152,
+      164,
+      165,
+      227,
+      228
+    ],
+    "cash_flow": [
+      140,
+      141,
+      149,
+      150
+    ]
+  }
+}
