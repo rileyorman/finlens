@@ -4,6 +4,8 @@ Run the full FinLens Sunday audit in order. Complete every step before moving to
 
 **Step 1 — Data Integrity Engine audit (CC report card)**
 
+**Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Do not block the rest of the audit, but include this in the Step 6 summary.
+
 If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` first. Then run `/audit-run`. The audit writes a dated report to `docs/audits/integrity_audit_YYYYMMDD.md` with a PASS/FAIL header and a prioritized findings list. That report is the CC report card — save the file path; Step 6 and Step 7 reference it.
 
 ---

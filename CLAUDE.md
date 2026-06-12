@@ -454,6 +454,15 @@ Pre-commit gate — two tiers:
   Streamlit startup and health-check sequence. This lives as the live-run
   requirement in `/codex-review` Step 5.
 
+**New clone setup (one-time, required):** after cloning, run:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+Without this, the pre-commit hook is silently inactive. The Sunday audit
+Step 1 checks for this and flags if it is missing.
+
 Keep detailed git command sequences outside this file. This file should capture project rules and expectations, not serve as a full git operations manual.
 
 Do not commit secrets, `.env`, `.streamlit/secrets.toml`, cache files, generated PDFs, generated Excel files, or generated Word documents.

@@ -11,7 +11,7 @@ Do not present step 7 until Riley has explicitly confirmed steps 1–6 are compl
 [ADDITION: run `.\venv\Scripts\python.exe -m py_compile app.py` and report pass or fail. If it fails, stop — do not continue to step 3.]
 
 **Step 3 — Start Streamlit locally and confirm the app loads.**
-[ADDITION: this requires a running app. Ask Riley: "Please start the app (`.\run.bat` or the standard PowerShell launch) and confirm it loads at http://localhost:8501. Reply 'loaded' to continue."]
+[ADDITION: this requires a running app. Ask Riley: "Please start the app (`.\run.bat` or the standard PowerShell launch) and confirm it loads — check the terminal output for the Local URL, as the port may be 8501, 8502, or 8503 if multiple Streamlit instances are running. Reply 'loaded' to continue."]
 
 **Step 4 — Test the affected user flow.**
 [This step belongs to Riley — CC cannot perform visual testing. Ask: "Please test the affected user flow and confirm it works as expected. Reply 'flow confirmed' to continue."]
