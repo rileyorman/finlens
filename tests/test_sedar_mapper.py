@@ -155,3 +155,37 @@ def test_normalization_maps_note_references_case_and_trailing_punctuation():
     assert result["mapped"]["interest_expense"]["source_label"] == "  Finance Costs (Note 18).  "
     assert result["mapped"]["interest_expense"]["match_type"] == "exact"
     _assert_conservation(result)
+
+
+def test_reiun_fixture_zero_mapped_under_current_alias_table():
+    """
+    REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end) has no income
+    statement labels that match any current IFRS alias exactly:
+    - Revenue total is an unlabeled subtotal row — no "Total Revenue" label.
+    - Interest line is "Interest costs, net" — not the IFRS alias "Finance costs".
+    - "Operating income" exists but is currently tagged ["US GAAP"] only.
+
+    This test locks in the CURRENT alias-table behavior. When "operating income"
+    is retagged to ["IFRS", "US GAAP"] (open queue item 1), this assertion will
+    need to be updated to mapped_count == 1.
+
+    Do NOT weaken this to make it pass — a surprise mapping is a finding.
+    """
+    data = _load_fixture("REIUN_FY2025_sedar.json")
+    assert data["accounting_standard"] == "IFRS"
+    result = map_line_items(_line_items(data), "IFRS")
+
+    # Under current alias table, no REIT income statement labels map.
+    assert result["meta"]["mapped_count"] == 0
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+
+    # Key REIT-specific labels that must remain unmapped (no generic alias exists).
+    assert "Rental revenue" in unmapped_labels
+    assert "Operating income" in unmapped_labels
+    assert "Fair value loss on investment properties, net" in unmapped_labels
+    assert "Interest costs, net" in unmapped_labels
+    assert "Net income" in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)

@@ -274,3 +274,186 @@ def test_ry_fy2025_fixture_income_statement_pdf_verified():
     assert _ry_value(items, "Provision for credit losses") == 4362
     assert _ry_value(items, "Income taxes") == 5282
     assert _ry_value(items, "Net income") == 20369
+
+
+# ---------------------------------------------------------------------------
+# REI.UN FY2025 fixture test — PDF-verified assertions (campaign filer #4)
+# ---------------------------------------------------------------------------
+
+_REIUN_FIXTURE = _Path(__file__).parent / "fixtures" / "REIUN_FY2025_sedar.json"
+_REIUN_FY2025_PERIOD = "2025"
+_REIUN_BS_PERIOD = "December 31, 2025"
+
+
+def _reiun_value(items: list, label: str) -> int | float | None:
+    """Return the FY2025 value for the first matching label (income statement period key '2025')."""
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_REIUN_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in REI.UN income statement: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+def _reiun_bs_value(items: list, label: str) -> int | float | None:
+    """Return the December 31 2025 balance sheet value for the given label."""
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_REIUN_BS_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in REI.UN balance sheet: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+def _reiun_cf_value(items: list, label: str) -> int | float | None:
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_REIUN_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in REI.UN cash flow: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+@pytest.mark.skipif(not _REIUN_FIXTURE.exists(), reason="REI.UN fixture not present")
+def test_reiun_fy2025_fixture_contract_invariants():
+    data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
+
+    assert data["schema_version"] == 4
+    assert data["source"] == "sedar_pdf"
+    assert data["currency"] == "CAD"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["scale"] == "thousands"
+    # REI.UN is a December year-end REIT — not calendar-year bank, not USD reporter.
+    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["extraction_confidence"] >= 0.9
+    assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
+
+
+@pytest.mark.skipif(not _REIUN_FIXTURE.exists(), reason="REI.UN fixture not present")
+def test_reiun_fy2025_fixture_income_statement_pdf_verified():
+    """
+    Values verified against the actual REI.UN FY2025 IFRS filing (SEDAR+ PDF,
+    56 pages) via pdfplumber direct text search on consolidated income statement
+    page 6 (0-indexed) and comprehensive income page 7 (June 2026).
+
+    External anchor: integrity engine live run (2026-06-12T20:03:11) computed
+    net_margin=4.82% and revenue_growth=15.9%, both matching independent
+    PDF read of Net income 69,295 / Revenue 1,436,571 and YoY growth exactly.
+
+    REIT-specific: fair value losses and equity-accounted losses are NOT in the
+    revenue section — they appear in Other income (loss) below Operating income.
+    Net income DOES include these items under IFRS. This is correct, not a bug.
+
+    Do NOT adjust assertions to make the test pass — a failure means the
+    extraction has a real bug.
+    """
+    data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
+    items = data["statements"]["income_statement"]
+
+    # Core revenue lines — rental revenue is the primary line, not a "Total Revenue" label.
+    assert _reiun_value(items, "Rental revenue") == 1176428
+    assert _reiun_value(items, "Residential inventory sales") == 244189
+    assert _reiun_value(items, "Property management and other service fees") == 15954
+
+    # Operating income is the IFRS REIT equivalent of gross profit after operating costs.
+    assert _reiun_value(items, "Operating income") == 798716
+
+    # Fair value losses must be negative — parenthesized in the filing.
+    # A positive 137359 here is a sign-handling bug.
+    assert _reiun_value(items, "Fair value loss on investment properties, net") == -137359
+
+    # Equity-accounted loss must be negative in FY2025.
+    assert _reiun_value(items, "Income (loss) from equity-accounted investments") == -236934
+
+    # Net income includes fair value and equity-accounted items under IFRS.
+    # This is structurally different from FFO — net income is the GAAP figure.
+    assert _reiun_value(items, "Net income") == 69295
+
+    # Comprehensive income is lower than net income due to OCI items.
+    assert _reiun_value(items, "Comprehensive income, net of tax") == 61413
+
+
+@pytest.mark.skipif(not _REIUN_FIXTURE.exists(), reason="REI.UN fixture not present")
+def test_reiun_fy2025_fixture_balance_sheet_pdf_verified():
+    """
+    Values verified against REI.UN FY2025 consolidated balance sheet page 5 (0-indexed).
+    Balance check: total assets == total liabilities + unitholders' equity.
+    """
+    data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
+    bs = data["statements"]["balance_sheet"]
+
+    total_assets = _reiun_bs_value(bs, "Total assets")
+    total_liabilities = _reiun_bs_value(bs, "Total liabilities")
+    unitholders_equity = _reiun_bs_value(bs, "Unitholders' equity")
+
+    assert total_assets == 14894392
+    assert total_liabilities == 7737129
+    assert unitholders_equity == 7157263
+    # Accounting identity check — any discrepancy is an extraction error.
+    assert total_liabilities + unitholders_equity == total_assets
+
+    # Investment properties dominate the balance sheet (REIT characteristic).
+    assert _reiun_bs_value(bs, "Investment properties") == 13628959
+
+
+@pytest.mark.skipif(not _REIUN_FIXTURE.exists(), reason="REI.UN fixture not present")
+def test_reiun_fy2025_fixture_cash_flow_pdf_verified():
+    """
+    Values verified against REI.UN FY2025 consolidated cash flow statement page 9 (0-indexed).
+    Cash reconciliation check: beginning + net change == ending.
+    """
+    data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
+    cf = data["statements"]["cash_flow"]
+
+    assert _reiun_cf_value(cf, "Cash provided by operating activities") == 434068
+    assert _reiun_cf_value(cf, "Cash and cash equivalents, end of year") == 145040
+    assert _reiun_cf_value(cf, "Cash and cash equivalents, beginning of year") == 190243
+
+    # REIT-specific: distributions to unitholders (NOT "dividends paid").
+    # Any rename of this label to "dividends" is a REIT-specific mapping error.
+    assert _reiun_cf_value(cf, "Distributions paid to Unitholders") == -340586
+
+    # Cash reconciliation identity — any discrepancy is an extraction error.
+    net_change = _reiun_cf_value(cf, "Net change in cash and cash equivalents")
+    beginning = _reiun_cf_value(cf, "Cash and cash equivalents, beginning of year")
+    ending = _reiun_cf_value(cf, "Cash and cash equivalents, end of year")
+    assert beginning + net_change == ending
+
+
+@pytest.mark.skipif(not _REIUN_FIXTURE.exists(), reason="REI.UN fixture not present")
+def test_reiun_fy2025_reit_watch_items():
+    """
+    REIT-sector-specific checks:
+    1. Fair value not in revenue section — revenue is only rental/inventory/fees lines.
+    2. No FFO label in income statement (FFO is supplemental, not a primary statement line).
+    3. Unitholders' equity label used (not shareholders' equity — REIT trust structure).
+    4. Distributions label used in cash flow (not dividends).
+    """
+    data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
+    is_labels = [item["label"] for item in data["statements"]["income_statement"]]
+    bs_labels = [item["label"] for item in data["statements"]["balance_sheet"]]
+    cf_labels = [item["label"] for item in data["statements"]["cash_flow"]]
+
+    # Revenue lines do NOT include fair value — it lives in Other income (loss).
+    revenue_labels = {"Rental revenue", "Residential inventory sales",
+                      "Property management and other service fees"}
+    fair_value_label = "Fair value loss on investment properties, net"
+    assert fair_value_label in is_labels
+    assert fair_value_label not in revenue_labels
+
+    # FFO does not appear in primary financial statements.
+    ffo_labels = [lbl for lbl in is_labels if "ffo" in lbl.lower() or "funds from operations" in lbl.lower()]
+    assert ffo_labels == [], f"Unexpected FFO label(s) in income statement: {ffo_labels}"
+
+    # REIT trust structure uses unitholders not shareholders.
+    assert "Unitholders' equity" in bs_labels
+    shareholders_labels = [lbl for lbl in bs_labels if "shareholders" in lbl.lower()]
+    assert shareholders_labels == []
+
+    # Distributions, not dividends, in cash flow.
+    assert "Distributions paid to Unitholders" in cf_labels
+    dividend_labels = [lbl for lbl in cf_labels if "dividend" in lbl.lower()]
+    assert dividend_labels == []
