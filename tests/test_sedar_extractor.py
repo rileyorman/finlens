@@ -114,3 +114,59 @@ def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
     assert set(result["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
     assert result["statements"]["income_statement"][0]["values"]["2025"] == -250
     assert result["extraction_confidence"] == pytest.approx(0.88)
+
+
+# ---------------------------------------------------------------------------
+# CSU FY2025 fixture test — PDF-verified assertions (campaign filer #1)
+# ---------------------------------------------------------------------------
+
+import json as _json
+from pathlib import Path as _Path
+
+_FIXTURE = _Path(__file__).parent / "fixtures" / "CSU_FY2025_sedar.json"
+_FY2025_PERIOD = "Year ended December 31, 2025"
+
+
+def _is_value(items: list, label: str) -> int | float | None:
+    """Return the FY2025 income-statement value for an exact label match."""
+    for item in items:
+        if item["label"] == label:
+            return item["values"].get(_FY2025_PERIOD)
+    labels_found = [item["label"] for item in items]
+    raise AssertionError(
+        f"Label not found in income statement: {label!r}\nLabels present: {labels_found}"
+    )
+
+
+@pytest.mark.skipif(not _FIXTURE.exists(), reason="CSU fixture not present")
+def test_csu_fy2025_fixture_contract_invariants():
+    data = _json.loads(_FIXTURE.read_text(encoding="utf-8"))
+
+    assert data["schema_version"] == 4
+    assert data["source"] == "sedar_pdf"
+    assert data["currency"] == "USD"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["scale"] == "millions"
+    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["extraction_confidence"] >= 0.9
+    assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
+
+
+@pytest.mark.skipif(not _FIXTURE.exists(), reason="CSU fixture not present")
+def test_csu_fy2025_fixture_income_statement_pdf_verified():
+    """
+    Values verified against the actual CSU FY2025 IFRS filing (PDF page-by-eye,
+    June 2026). Do NOT adjust assertions to make the test pass — a failure means
+    the extraction has a real bug.
+    """
+    data = _json.loads(_FIXTURE.read_text(encoding="utf-8"))
+    items = data["statements"]["income_statement"]
+
+    assert _is_value(items, "Total Revenue") == 11623
+    assert _is_value(items, "Net income (loss)") == 586
+    assert _is_value(items, "Staff") == 5924
+    assert _is_value(items, "Amortization of intangible assets (note 10)") == 1182
+    # Finance and other expense (income) is parenthesized in the filing — must be negative.
+    # A positive 228 here is a sign-handling bug.
+    assert _is_value(items, "Finance and other expense (income) (note 18)") == -228
+    assert _is_value(items, "Income tax expense (recovery)") == 353
