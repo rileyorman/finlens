@@ -2821,9 +2821,25 @@ if page == "Filing Comparison":
                         _library_period_label(entry),
                     )
                     if _pdf_path and Path(_pdf_path).exists():
-                        _pdf = io.BytesIO(Path(_pdf_path).read_bytes())
-                        with st.spinner(f"Extracting text from {Path(_pdf_path).name}..."):
-                            return extract_text_from_pdf(_pdf)
+                        try:
+                            _disk_bytes = Path(_pdf_path).read_bytes()
+                            _file_label = entry.get("file_name") or Path(_pdf_path).name
+                            with st.spinner(f"Extracting text from {_file_label}..."):
+                                if entry.get("file_type") == "docx":
+                                    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+                                        _tmp.write(_disk_bytes)
+                                        _tmp_path = _tmp.name
+                                    _disk_text = convert_to_markdown(_tmp_path) or ""
+                                    try:
+                                        os.unlink(_tmp_path)
+                                    except Exception:
+                                        pass
+                                else:
+                                    _disk_text = extract_text_from_pdf(io.BytesIO(_disk_bytes))
+                            if _disk_text:
+                                return _disk_text
+                        except Exception:
+                            pass
                     _cached_text = _library_text_for_entry(entry)
                     if _cached_text:
                         return _cached_text
