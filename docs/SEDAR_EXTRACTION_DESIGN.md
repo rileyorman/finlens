@@ -45,7 +45,7 @@ New module: `sedar_extractor.py`. Everything downstream of the mapping layer reu
 - Auto-detect IFRS: revisit after validation campaign passes.
 - French-language filings: not addressed in Phase 1 — flag if encountered.
 - [ADDITION] Locator page-sweep tuning: all three campaign filers show trailing/supplemental page sweep; RY (246pp bank filing) hit 42.5K input tokens with 47 swept pages. CAUTION from RY: the earliest matching cluster can be false positives (body-text references at pp110-111; real consolidated statement at pp146-147) — naive first-cluster or page-cap pruning would have selected wrong pages. Sweep is currently load-bearing for accuracy. Tune only with verification step in place, after more filers.
-- [ADDITION] Campaign status: CSU ✅ (IFRS/USD/Dec) · CNR ✅ (US GAAP/CAD/Dec) · RY ✅ (IFRS/CAD/Oct, 246pp). All PDF-verified, CI-locked (f93868b, 49f14d0). Next: Canadian REIT (RioCan or CAP REIT).
+- [ADDITION] Campaign status: CSU ✅ (IFRS/USD/Dec) · CNR ✅ (US GAAP/CAD/Dec) · RY ✅ (IFRS/CAD/Oct, 246pp) · REI.UN ✅ (IFRS/CAD/Dec, filer #4, FY2025, 56pp). All PDF-verified, CI-locked (f93868b, 49f14d0, d8dd41c). Next: foreign filer (SHOP/ASML/Toyota).
 - [ADDITION] Industry-native analysis display views (bank/REIT/insurer-shaped Analysis pages) — roadmap item, post-campaign; data-layer sector profiles land first.
 
 ## Phase 2 Design: Standard-Aware Alias Table (designed Jun 2026, Fable 5 session — settled, do not relitigate without Riley)
@@ -74,6 +74,12 @@ Run mapper over CSU/CNR/RY fixtures; assert known mappings (CNR "Revenues (Note 
 
 **Build order:** 1) sedar_aliases.json schema + initial aliases from the three fixtures' actual labels. 2) Mapper module (Codex, from this spec). 3) Mapping tests over existing fixtures. 4) Wire mapper into extract_sedar_filing() output path. 5) Integrity Engine: extraction-confidence rule + accounting_standard informational handling (per Settled Decision 4 update) — engine commits: /detection-test then /integrity-log.
 
+[ADDITION — VALIDATED Jun 2026, REI.UN] Sector-specific revenue labels (e.g. "Rental revenue" for REITs) must NOT be added as generic revenue aliases — they belong in a per-sector profile layered on top of the standard-aware alias table. RioCan has no "Total Revenue" label; revenue is implicit from components ("Rental revenue" + "Residential inventory sales" + "Property management and other service fees"). Adding "Rental revenue" → generic `revenue` would silently mis-map non-REIT filers that have a rental sub-line. The REIT sector profile must define `reit_revenue` (or equivalent sector-canonical field), populated from sector-specific aliases. No generic revenue field mapped for REI.UN — 0 fields mapped under current alias table; locked in test_sedar_mapper.py::test_reiun_fixture_zero_mapped_under_current_alias_table.
+
+[ADDITION — VALIDATED Jun 2026, REI.UN] IFRS REIT net income includes unrealized fair-value gains/losses on investment properties. REI.UN FY2025: Net income = $69,295K, of which Fair value loss on investment properties, net = −$137,359K and Income (loss) from equity-accounted investments = −$236,934K. Without these items, operating income was $798,716K — a 10× difference. GAAP-distorting but IFRS-correct under IAS 40 investment property fair-value model. Candidate Integrity Engine rule (post-campaign): flag net_income-based valuation metrics (P/E, EV/EBIT) for IFRS real-estate filers as containing fair-value adjustments — flag-and-warn severity, not block.
+
+[ADDITION — VALIDATED Jun 2026, REI.UN] REIT trust structure uses terminology distinct from corporate GAAP: cash flow statement uses "Distributions paid to Unitholders" (not "dividends paid"), balance sheet uses "Unitholders' equity" (not "shareholders' equity"). Both are verbatim labels locked into REI.UN fixture assertions (test_reiun_fy2025_reit_watch_items). Any future alias that maps these labels to corporate-equivalent canonical fields must be REIT-sector-profile-scoped, not generic. "Distributions" ≠ "dividends" in yield calculations.
+
 ## Session Log — June 12, 2026 (continued)
 
 ### Shipped
@@ -99,10 +105,15 @@ End-to-end run confirmed: extraction → mapping (1 mapped / 33 unmapped / 34 to
 
 ### Open Queue (in priority order)
 
-1. **Alias retag:** Add `"operating income"` alias to `["IFRS", "US GAAP"]` per RioCan evidence. REIT sector profile deferred until a second REIT filer is validated.
-2. **Cosmetics:** `$`-escaping in analyst text; `REI.UN` → `REI-UN.TO` yfinance format mapping; `.PDF.PDF` double-extension display bug.
+1. **Alias additions (VALIDATED, REI.UN evidence):** Three additions confirmed by campaign filer #4 — add to sedar_aliases.json before next campaign run:
+   - `"operating income"` → `operating_income`, standards `["IFRS", "US GAAP"]` (previously US GAAP only — REI.UN proves this label appears in IFRS filings)
+   - `"net income"` → `net_income`, standards `["IFRS"]`, source `REI.UN_FY2025` (currently US GAAP only; REI.UN income statement uses this label verbatim)
+   - `"interest costs, net"` → `interest_expense`, standards `["IFRS"]`, source `REI.UN_FY2025` (IFRS REITs use this; generic "Finance costs" alias does not match)
+   - When these are added, update test_sedar_mapper.py::test_reiun_fixture_zero_mapped_under_current_alias_table to assert mapped_count == 3 (or whatever resolves). Do NOT weaken — update assertions to reflect new expected behavior.
+   - REIT sector profile: deferred until a second REIT filer is validated.
+2. **Cosmetics:** `$`-escaping in analyst text; `REI.UN` → `REI-UN.TO` yfinance format mapping; `.PDF.PDF` double-extension display bug (reproduced on `RioCan_FY2025_annual_financials.pdf.pdf` — confirmed live).
 3. **Dev-mode model selector:** Haiku / Sonnet / Opus 3-way selector for development testing.
 4. **Investigate:** Null FinLens values in cross-validation record for REI.UN despite successful extraction — values extracted but not propagating to the CV record.
 5. **Investigate:** Degenerate log entries (ticker `""` / `"—"`, all rules skipped) from generic PDF upload path — ticker-resolution gating appears to be missing before the integrity check fires.
-6. **Next campaign filer:** CAP REIT or Fairfax Financial.
+6. **Next campaign filer:** Foreign filer (SHOP/ASML/Toyota) — tests cross-border SEDAR filing behavior outside the Canadian domestic bucket.
 7. **Gemini second-extractor cross-check:** Independent extraction of SEDAR PDFs via Gemini API, diffed against Claude extraction as an integrity signal; mitigates FMP premium-wall cross-val gaps. Design session needed before build.
