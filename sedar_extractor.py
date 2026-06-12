@@ -7,6 +7,7 @@ from typing import NotRequired, TypedDict
 import pdfplumber
 from dotenv import load_dotenv
 
+from config import LIBRARY_DIR
 from modules.claude_analyzer import _make_client
 from modules.integrity.sedar_mapper import map_line_items
 
@@ -140,7 +141,7 @@ def _cache_control() -> dict:
 
 
 def _sedar_temp_dir() -> Path:
-    path = Path.home() / ".finlens" / "sedar"
+    path = LIBRARY_DIR / "sedar"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

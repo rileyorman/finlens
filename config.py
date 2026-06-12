@@ -3,6 +3,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load .env before resolving paths so FINLENS_DATA_DIR is available.
+# override=False means already-set env vars (e.g. from NSSM service env) win.
+load_dotenv(Path(__file__).parent / ".env", override=False)
+
 EXTRACTION_MODEL    = "claude-haiku-4-5-20251001"   # Fast, cheap, accurate for numbers
 ANALYSIS_MODEL      = "claude-sonnet-4-6"              # Good reasoning, low cost
 BEAR_BULL_MODEL     = "claude-sonnet-4-6"              # Same
@@ -13,18 +19,17 @@ MAX_FILING_CHARS     = 80_000   # Sonnet cap for analysis/summary calls (Calls 2
 PROJECT_ROOT = Path(__file__).parent
 _PROJECT_LIBRARY_PATH = PROJECT_ROOT / "filing_library.json"
 
-# Persistent local storage outside both OneDrive (sync churn) and temp
-# (gets cleared by Windows). Lives in user home so it survives reboots
-# and disk cleanup, and stays out of any cloud sync folder.
-if sys.platform == "win32":
-    # %USERPROFILE%\.finlens — hidden-style dotfile in user home,
-    # avoids OneDrive Documents folder and avoids AppData permission quirks.
-    _APP_BASE = Path.home() / ".finlens"
-    LIBRARY_DIR = _APP_BASE
-    CACHE_DIR = _APP_BASE / "cache"
-else:
-    LIBRARY_DIR = Path.home() / ".finlens"
-    CACHE_DIR = Path("/tmp/finlens_cache")
+# Canonical app-data root. FINLENS_DATA_DIR env var must be set when the
+# app runs as a Windows service: LocalSystem's Path.home() resolves to
+# C:\Windows\System32\config\systemprofile, diverging from the user's
+# C:\Users\{user}\.finlens. Set FINLENS_DATA_DIR=C:\Users\{user}\.finlens
+# in .env (or the NSSM service environment) to pin the canonical path.
+# Interactive sessions can omit the var; Path.home() is used as fallback.
+_finlens_data_dir = os.environ.get("FINLENS_DATA_DIR", "").strip()
+_APP_BASE = Path(_finlens_data_dir) if _finlens_data_dir else Path.home() / ".finlens"
+
+LIBRARY_DIR = _APP_BASE
+CACHE_DIR = _APP_BASE / "cache" if sys.platform == "win32" else Path("/tmp/finlens_cache")
 
 LIBRARY_PDFS_DIR = LIBRARY_DIR / "pdfs"
 FILING_LIBRARY_PATH = LIBRARY_DIR / "filing_library.json"

@@ -33,11 +33,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from config import LIBRARY_DIR
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-_CV_CACHE_FILE = Path.home() / ".finlens" / "cv_cache.json"
+_CV_CACHE_FILE = LIBRARY_DIR / "cv_cache.json"
 FMP_FETCH_SUCCESS = "success"
 FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
 FMP_TRANSIENT_FAILURE = "transient_failure"

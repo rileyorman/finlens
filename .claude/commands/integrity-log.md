@@ -1,6 +1,6 @@
 Read-only integrity log review. Do not commit. Do not modify files. Do not call external APIs.
 
-Read `~/.finlens/integrity_log.jsonl` and find the newest filing validation entry. Then print:
+Read `C:\Users\riley\.finlens\integrity_log.jsonl` and find the newest filing validation entry. Then print:
 
 - Ticker, fiscal year, filing source, filing accession, sector, overall status, and `gross_profit_derived`.
 - Every rule in the newest validation entry with:

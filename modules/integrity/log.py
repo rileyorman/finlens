@@ -41,11 +41,13 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from config import LIBRARY_DIR
+
 if TYPE_CHECKING:
     from .engine import ValidationResult
     from .cross_validate import CrossValidationResult
 
-_DEFAULT_LOG = Path.home() / ".finlens" / "integrity_log.jsonl"
+_DEFAULT_LOG = LIBRARY_DIR / "integrity_log.jsonl"
 
 # How many trailing lines to reverse-scan for the idempotency check.
 # Covers typical batch sizes without reading the entire log on every append.
