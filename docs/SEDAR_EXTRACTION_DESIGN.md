@@ -73,3 +73,35 @@ Run mapper over CSU/CNR/RY fixtures; assert known mappings (CNR "Revenues (Note 
 **v1 scope cut:** income statement fields only. Balance sheet + cash flow follow the same machinery in a later step.
 
 **Build order:** 1) sedar_aliases.json schema + initial aliases from the three fixtures' actual labels. 2) Mapper module (Codex, from this spec). 3) Mapping tests over existing fixtures. 4) Wire mapper into extract_sedar_filing() output path. 5) Integrity Engine: extraction-confidence rule + accounting_standard informational handling (per Settled Decision 4 update) — engine commits: /detection-test then /integrity-log.
+
+## Session Log — June 12, 2026 (continued)
+
+### Shipped
+
+Phase 2 build order steps 1–5 complete.
+
+| Commit | Description |
+|---|---|
+| `5be8a6f` | IFRS/US GAAP alias table initial population |
+| `b67ac6c` + `205a144` | Mapper module + mapping tests |
+| `f513fd5` | Wire mapper into extract_sedar_filing() output path (step 4) |
+| `39213de` | Integrity Engine: extraction-confidence rule, pattern-match info, accounting-standard recording (step 5) |
+| `ddf2424` | SEDAR+ upload toggle and Re-Analyse path for Canadian filings |
+| `504afad` | Integrity-warning surfacing in UI; log-evidence review gate added to CLAUDE.md and CODEX_MEMORY.md |
+| `e335216` | Defect 2: derive period keys per-statement — balance sheet values now resolve |
+| `18d89ad` | Log path fix: pin all .finlens paths via FINLENS_DATA_DIR; eliminate Path.home() divergence |
+
+### Live Verification — RioCan (REI.UN) FY2025
+
+End-to-end run confirmed: extraction → mapping (1 mapped / 33 unmapped / 34 total, conservation invariant holds) → balance sheet populated → Integrity Engine entry status `clean` with all three SEDAR rules passing (`sedar_extraction_confidence`, `sedar_mapping_pattern_match`, `accounting_standard_recorded`) → IFRS recorded.
+
+**Defect 1 root cause resolved:** `Path.home()` returned different paths under NSSM LocalSystem vs. interactive session, splitting log writes across two `.finlens` directories. Fixed by pinning all paths via `FINLENS_DATA_DIR` env var (commit `18d89ad`). Canonical location: `C:\Users\riley\.finlens`.
+
+### Open Queue (in priority order)
+
+1. **Alias retag:** Add `"operating income"` alias to `["IFRS", "US GAAP"]` per RioCan evidence. REIT sector profile deferred until a second REIT filer is validated.
+2. **Cosmetics:** `$`-escaping in analyst text; `REI.UN` → `REI-UN.TO` yfinance format mapping; `.PDF.PDF` double-extension display bug.
+3. **Dev-mode model selector:** Haiku / Sonnet / Opus 3-way selector for development testing.
+4. **Investigate:** Null FinLens values in cross-validation record for REI.UN despite successful extraction — values extracted but not propagating to the CV record.
+5. **Investigate:** Degenerate log entries (ticker `""` / `"—"`, all rules skipped) from generic PDF upload path — ticker-resolution gating appears to be missing before the integrity check fires.
+6. **Next campaign filer:** CAP REIT or Fairfax Financial.
