@@ -520,8 +520,8 @@ def _save_analysis_to_supabase(
         supabase_storage.save_filing(ticker, company, period, payload)
         if pdf_bytes:
             supabase_storage.save_pdf(ticker, period, pdf_bytes)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Supabase save failed: {e}")
 
 
 def _analysis_cache_payload(
@@ -571,13 +571,13 @@ def _analysis_cache_payload(
     try:
         flags = detect_flags(financial_data)
         payload["red_flags"] = flags.get("flags", [])
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"detect_flags failed: {e}")
 
     try:
         payload["ratio_data"] = _calc_summary_metrics(financial_data)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"_calc_summary_metrics failed: {e}")
 
     return payload
 
