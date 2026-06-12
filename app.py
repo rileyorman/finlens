@@ -1637,8 +1637,22 @@ document.addEventListener('focusin', function(e) {
                                         )
                                     if _pdf_bytes:
                                         try:
+                                            _file_type = entry.get("file_type", "pdf")
+                                            if _file_type == "docx":
+                                                with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+                                                    _tmp.write(_pdf_bytes)
+                                                    _tmp_path = _tmp.name
+                                                _extracted_text = convert_to_markdown(_tmp_path) or ""
+                                                try:
+                                                    os.unlink(_tmp_path)
+                                                except Exception:
+                                                    pass
+                                                if not _extracted_text:
+                                                    raise ValueError("No text extracted from Word document")
+                                            else:
+                                                _extracted_text = extract_text_from_pdf(io.BytesIO(_pdf_bytes))
                                             st.session_state.pending_reanalyse = {
-                                                "raw_text":     extract_text_from_pdf(io.BytesIO(_pdf_bytes))[:MAX_FILING_CHARS],
+                                                "raw_text":     _extracted_text[:MAX_FILING_CHARS],
                                                 "company_name": entry["company_name"],
                                                 "entry_id":     eid,
                                                 "file_name":    entry.get("file_name", ""),
@@ -1648,6 +1662,7 @@ document.addEventListener('focusin', function(e) {
                                                 "source":       entry.get("source", "pdf"),
                                                 "file_path":    entry.get("file_path"),
                                                 "pdf_bytes":    _pdf_bytes,
+                                                "file_type":    _file_type,
                                             }
                                         except Exception:
                                             st.session_state.al_no_text_warning = entry.get("company_name") or entry.get("file_name") or "Unknown"
