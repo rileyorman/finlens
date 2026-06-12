@@ -16,6 +16,7 @@ import yfinance as yf
 from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
+from modules.document_converter import convert_to_markdown
 from modules.claude_analyzer import (
     analyze_financials,
     analyze_summary,
@@ -4800,9 +4801,9 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.rerun()
 
 uploaded_file = st.file_uploader(
-    "Upload Financial Statements PDF",
-    type=["pdf"],
-    help="Annual reports, 10-K filings, or standalone financial statement PDFs work best.",
+    "Upload Financial Statements (PDF or Word)",
+    type=["pdf", "docx"],
+    help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
     key=f"pdf_uploader_{st.session_state.uploader_key}",
 )
 # Clear stored results when the uploaded file changes.
@@ -5160,17 +5161,33 @@ if uploaded_file:
         else:
             st.session_state.cache_hit = False
 
-            # Step 1 — Extract PDF text
-            with st.spinner("Extracting text from PDF..."):
-                try:
-                    raw_text = extract_text_from_pdf(uploaded_file)
-                except Exception as e:
-                    st.error(f"Could not read the PDF: {e}")
-                    st.stop()
+            # Step 1 — Extract text from the uploaded file
+            _is_docx = uploaded_file.name.lower().endswith(".docx")
+            if _is_docx:
+                with st.spinner("Converting Word document to text..."):
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+                            _tmp.write(pdf_bytes)
+                            _tmp_path = _tmp.name
+                        raw_text = convert_to_markdown(_tmp_path) or ""
+                        try:
+                            os.unlink(_tmp_path)
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        st.error(f"Could not convert the Word document: {e}")
+                        st.stop()
+            else:
+                with st.spinner("Extracting text from PDF..."):
+                    try:
+                        raw_text = extract_text_from_pdf(uploaded_file)
+                    except Exception as e:
+                        st.error(f"Could not read the PDF: {e}")
+                        st.stop()
 
             char_count = len(raw_text)
             if char_count < 200:
-                st.error("Very little text was extracted — the PDF may be scanned/image-based. Try a text-based PDF.")
+                st.error("Very little text was extracted — the file may be scanned/image-based or empty. Try a text-based PDF or a Word document with readable text content.")
                 st.stop()
 
             st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
