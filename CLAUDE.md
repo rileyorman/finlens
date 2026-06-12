@@ -250,6 +250,21 @@ categories above, CC MUST proactively run a grep audit and report findings
 — even if Riley didn't ask. The cost of an extra audit is small; the cost
 of recurring bugs is large.
 
+## Engineering Principle: Minimize Human Error
+
+No procedure may depend on a human remembering it. In order of preference:
+1. Machine-enforced — CI checks, pytest gates, pre-commit hooks, schema versioning
+2. Machine-prompted — slash commands in .claude/commands/ that walk the procedure
+3. Documented with a sync check — if a rule must live in two places, one is the
+   source of truth and an automated/audited step diffs the downstream copy
+4. Human memory — not acceptable; if a convention exists only in someone's head
+   or chat history, encoding it is the next task
+
+Applies to dev workflow and product alike: the Integrity Engine exists because
+manual verification fails silently — the same logic governs how FinLens is built.
+When reviewing or writing code, flag any step that relies on remembered convention
+and recommend its encoded replacement (rule of three: third manual repetition).
+
 ## Core Architecture
 
 Primary workflow:
