@@ -105,3 +105,4 @@ End-to-end run confirmed: extraction → mapping (1 mapped / 33 unmapped / 34 to
 4. **Investigate:** Null FinLens values in cross-validation record for REI.UN despite successful extraction — values extracted but not propagating to the CV record.
 5. **Investigate:** Degenerate log entries (ticker `""` / `"—"`, all rules skipped) from generic PDF upload path — ticker-resolution gating appears to be missing before the integrity check fires.
 6. **Next campaign filer:** CAP REIT or Fairfax Financial.
+7. **Gemini second-extractor cross-check:** Independent extraction of SEDAR PDFs via Gemini API, diffed against Claude extraction as an integrity signal; mitigates FMP premium-wall cross-val gaps. Design session needed before build.
