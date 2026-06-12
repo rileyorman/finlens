@@ -265,6 +265,18 @@ manual verification fails silently — the same logic governs how FinLens is bui
 When reviewing or writing code, flag any step that relies on remembered convention
 and recommend its encoded replacement (rule of three: third manual repetition).
 
+**Faithful Transcription**
+When encoding an existing procedure, convention, or spec into a file
+(slash command, doc, config), the source content is authoritative:
+- Never drop, reword, or replace items from the source. If the source
+  seems wrong or incomplete, STOP and flag it — do not fix it silently.
+- Additions are allowed only if explicitly labeled as additions in both
+  the file and the completion report.
+- Every completion report for doc/command changes must include the final
+  content verbatim (or a full diff), never a paraphrased summary.
+- If the source content is not provided in the task and cannot be found
+  verbatim in the repo, ask for it — do not reconstruct from inference.
+
 ## Core Architecture
 
 Primary workflow:
