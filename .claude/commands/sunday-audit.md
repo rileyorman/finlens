@@ -4,9 +4,19 @@ Run the full FinLens Sunday audit in order. Complete every step before moving to
 
 **Step 1 — Data Integrity Engine audit (CC report card)**
 
-**Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Do not block the rest of the audit, but include this in the Step 6 summary.
+**Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Do not block the rest of the audit, but include the finding in the Step 6 summary.
 
 If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` first. Then run `/audit-run`. The audit writes a dated report to `docs/audits/integrity_audit_YYYYMMDD.md` with a PASS/FAIL header and a prioritized findings list. That report is the CC report card — save the file path; Step 6 and Step 7 reference it.
+
+**Schema and cache health (sub-check):** Read `modules/analysis_cache.py` and find `CURRENT_SCHEMA_VERSION`. Check `git log --since="7 days ago" --oneline` for any commits that touch `normalize_financial_data`, library schema, or data shapes. If any such commits exist and `CURRENT_SCHEMA_VERSION` was not bumped, flag it as a required follow-up (do not auto-bump without Riley's sign-off). Include: current version + whether it is consistent with the week's changes.
+
+**Test suite (sub-check):** Run the full test suite:
+
+```
+.\venv\Scripts\python.exe -m pytest tests/ -v
+```
+
+Report: number of tests collected, pass/fail counts, and any failing test names with their error message. Never accept a cached or previously pasted result — live run only.
 
 ---
 
@@ -22,39 +32,57 @@ Report: list of synced items, or "No drift found."
 
 ---
 
-**Step 3 — Schema and cache health**
+**Step 3 — Release radar**
 
-Read `modules/analysis_cache.py` and find `CURRENT_SCHEMA_VERSION`. Check `git log --since="7 days ago" --oneline` for any commits that touch `normalize_financial_data`, library schema, or data shapes. If any such commits exist and `CURRENT_SCHEMA_VERSION` was not bumped, flag it as a required follow-up (do not auto-bump without Riley's sign-off). Report: current version + whether it is consistent with the week's changes.
+Search for updates across the full FinLens stack released in the past week:
 
----
+- Anthropic / Claude: new models, API changes, prompt-caching TTL or pricing changes, deprecations
+- Streamlit: new releases, breaking changes, deprecation notices
+- FMP (Financial Modeling Prep): API changes, endpoint deprecations, pricing tier changes
+- EDGAR / SEDAR+: schema changes, rate-limit policy updates, new filing types
+- Any other dependency in `requirements.txt` with a security advisory or breaking release
 
-**Step 4 — Test suite run**
-
-Run the full test suite:
-
-```
-.\venv\Scripts\python.exe -m pytest tests/ -v
-```
-
-Report: number of tests collected, pass/fail counts, and any failing test names with their error message. Never accept a cached or previously pasted result — live run only.
+For each item found: state the change, the affected FinLens component, and whether action is required before next deploy. If nothing found for a category, state "No changes."
 
 ---
 
-**Step 5 — Build-order alignment**
+**Step 4 — Cost audit**
+
+Review API spend patterns for the past week:
+
+- Anthropic API: estimated token usage by model tier (Haiku vs Sonnet vs Opus), cache hit rate (cache_read_input_tokens vs cache_creation_input_tokens), any unexpectedly large calls
+- Identify any extraction or analysis path that is not using prompt caching when it could be
+- Flag any model-tier mismatches (e.g., Sonnet used where Haiku would suffice, or vice versa per the architecture in CLAUDE.md)
+
+Source: check `logs/` or any cost tracking artifacts available. If no cost data is accessible, state that explicitly and recommend the tracking mechanism to add.
+
+---
+
+**Step 5 — Live app health check**
+
+Verify that the deployed app at https://finlens-ai.streamlit.app is healthy and matches dev expectations:
+
+- Confirm the app loads without error
+- Check that the deployed version matches the current `main` branch (check the about/version indicator if present, or note the last merge-to-main commit hash)
+- Note any visible regressions vs the local dev state
+- If the app is down or shows an error, flag as a blocker
+
+Report: app status (UP / DOWN / DEGRADED), version alignment (aligned / behind by N commits), any regressions noted.
+
+---
+
+**Step 6 — Roadmap priority review**
 
 Read `docs/FinLens_Roadmap_Addendum.md`. State the item currently at the top of the build queue. Check `git log --since="7 days ago" --oneline` and report whether this week's commits were aligned with that item. If work drifted to lower-priority items without an explicit rationale, flag it. This step is observational — do not block the audit for drift, just document it.
 
----
+**Weekly summary (sub-check):** Compile a weekly summary section and append it to the Step 1 report file (`docs/audits/integrity_audit_YYYYMMDD.md`). The section should include:
 
-**Step 6 — Weekly summary**
-
-Compile a weekly summary section and append it to the Step 1 report file (`docs/audits/integrity_audit_YYYYMMDD.md`). The section should include:
-
-- Step 1 verdict (PASS / FAIL)
+- Step 1 verdict (PASS / FAIL), schema version status, test pass rate (e.g., "12/12 passed"), hook portability status
 - Step 2: list of CODEX_MEMORY.md items synced (or "No drift found")
-- Step 3: schema version status
-- Step 4: test pass rate (e.g., "12/12 passed")
-- Step 5: build-order alignment (aligned / drifted)
+- Step 3: release radar findings (or "No actionable changes")
+- Step 4: cost audit summary
+- Step 5: live app status
+- Step 6: build-order alignment (aligned / drifted)
 - Overall week status: **PASS** / **PASS WITH NOTES** / **FAIL**
 
 Commit the updated report file and any CODEX_MEMORY.md changes to `dev` with message `chore: Sunday audit YYYY-MM-DD`. Report the commit hash.
