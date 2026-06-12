@@ -8,6 +8,7 @@ import pdfplumber
 from dotenv import load_dotenv
 
 from modules.claude_analyzer import _make_client
+from modules.integrity.sedar_mapper import map_line_items
 
 
 SEDAR_MODEL = "claude-sonnet-4-6"
@@ -45,6 +46,8 @@ class SedarExtraction(TypedDict):
     pages_used: dict[str, list[int]]
     company_name: NotRequired[str]
     period: NotRequired[str]
+    sector_inferred: NotRequired[str]
+    mapping: NotRequired[dict]
 
 
 HEADING_PATTERNS = {
@@ -353,12 +356,44 @@ def _extraction_confidence(statements: SedarStatements) -> float:
     return min(confidences) if confidences else 0.0
 
 
+def _first_statement_value(item: dict) -> int | float | None:
+    values = item.get("values") or {}
+    if not isinstance(values, dict):
+        return None
+    return next(iter(values.values()), None)
+
+
+def attach_mapping(extraction_result: dict) -> dict:
+    statements = extraction_result.get("statements") or {}
+    income_statement = statements.get("income_statement") if isinstance(statements, dict) else []
+    if not isinstance(income_statement, list):
+        income_statement = []
+
+    line_items = []
+    for item in income_statement:
+        if not isinstance(item, dict):
+            continue
+        line_items.append({
+            "label": item.get("label"),
+            "value": _first_statement_value(item),
+            "confidence": item.get("confidence"),
+        })
+
+    enriched = dict(extraction_result)
+    enriched["mapping"] = map_line_items(
+        line_items,
+        str(extraction_result.get("accounting_standard") or ""),
+        sector=extraction_result.get("sector_inferred"),
+    )
+    return enriched
+
+
 def extract_sedar_filing(pdf_path) -> SedarExtraction:
     pages = locate_statement_pages(pdf_path)
     extracted = extract_statements(pdf_path, pages)
     statements = extracted["statements"]
 
-    return {
+    result = {
         "source": "sedar_pdf",
         "schema_version": SCHEMA_VERSION,
         "accounting_standard": extracted.get("accounting_standard", ""),
@@ -369,3 +404,4 @@ def extract_sedar_filing(pdf_path) -> SedarExtraction:
         "extraction_confidence": _extraction_confidence(statements),
         "pages_used": pages,
     }
+    return attach_mapping(result)
