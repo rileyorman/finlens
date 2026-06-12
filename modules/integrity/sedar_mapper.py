@@ -58,7 +58,7 @@ def _iter_target_fields(alias_table: dict[str, Any], sector_profile: str | None)
         profile = (alias_table.get("sector_profiles") or {}).get(sector_profile, {})
         fields = (profile.get("canonical_fields") or {}).items()
         for field_name, config in fields:
-            yield f"{sector_profile}.{field_name}", config
+            yield field_name, config
         return
 
     for field_name, config in (alias_table.get("canonical_fields") or {}).items():
