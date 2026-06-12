@@ -1,0 +1,371 @@
+import json
+import os
+import re
+from pathlib import Path
+from typing import NotRequired, TypedDict
+
+import pdfplumber
+from dotenv import load_dotenv
+
+from modules.claude_analyzer import _make_client
+
+
+SEDAR_MODEL = "claude-sonnet-4-6"
+SCHEMA_VERSION = 4
+STATEMENT_KEYS = ("balance_sheet", "income_statement", "cash_flow")
+
+
+class SedarExtractionError(Exception):
+    def __init__(self, message: str, raw_response: str | None = None):
+        super().__init__(message)
+        self.raw_response = raw_response
+
+
+class SedarLineItem(TypedDict):
+    label: str
+    values: dict[str, int | float | None]
+    confidence: float
+
+
+class SedarStatements(TypedDict):
+    balance_sheet: list[SedarLineItem]
+    income_statement: list[SedarLineItem]
+    cash_flow: list[SedarLineItem]
+
+
+class SedarExtraction(TypedDict):
+    source: str
+    schema_version: int
+    accounting_standard: str
+    currency: str
+    scale: str
+    fiscal_year_end: str
+    statements: SedarStatements
+    extraction_confidence: float
+    pages_used: dict[str, list[int]]
+    company_name: NotRequired[str]
+    period: NotRequired[str]
+
+
+HEADING_PATTERNS = {
+    "balance_sheet": re.compile(
+        r"\b(?:condensed\s+)?consolidated\s+statements?\s+of\s+financial\s+position\b"
+        r"|\b(?:condensed\s+)?consolidated\s+balance\s+sheets?\b",
+        re.IGNORECASE,
+    ),
+    "income_statement": re.compile(
+        r"\b(?:condensed\s+)?consolidated\s+statements?\s+of\s+"
+        r"(?:income|operations|earnings|profit\s+or\s+loss|comprehensive\s+income)\b",
+        re.IGNORECASE,
+    ),
+    "cash_flow": re.compile(
+        r"\b(?:condensed\s+)?consolidated\s+statements?\s+of\s+cash\s+flows?\b",
+        re.IGNORECASE,
+    ),
+}
+
+
+SYSTEM_PROMPT = """You are extracting financial statements from Canadian SEDAR+ PDF filings for FinLens.
+
+Respond ONLY with valid JSON. Do not include markdown fences, a preamble, comments, or trailing prose.
+
+Extract only the primary financial statements supplied in the user message: balance sheet/statement of financial position, income statement/statement of operations/earnings/profit or loss/comprehensive income, and statement of cash flows. Do not extract MD&A or notes.
+
+Extract line-item labels exactly as labeled in the filing. Use verbatim labels. Do NOT translate labels into GAAP or FinLens canonical terms; a mapping layer handles that later.
+
+For each line item, return:
+{"label": str, "values": {fiscal period: number}, "confidence": float}
+
+Top-level fields required:
+{
+  "accounting_standard": str,
+  "currency": str,
+  "scale": str,
+  "fiscal_year_end": str,
+  "statements": {
+    "balance_sheet": [],
+    "income_statement": [],
+    "cash_flow": []
+  }
+}
+
+Rules for numbers:
+- Parse parentheses as negatives.
+- Strip thousands separators.
+- Use plain JSON numbers, not strings, for numeric values.
+- Preserve the filing's stated scale in the top-level "scale" field, such as "thousands" or "millions".
+- Do NOT pre-multiply values by the scale. Downstream ingestion normalizes scale.
+- Use null only when a value is absent or illegible.
+
+Rules for confidence:
+- confidence must be a number from 0 to 1.
+- Use lower confidence for unclear labels, ambiguous columns, or damaged extraction.
+"""
+
+
+USER_PROMPT_TEMPLATE = """Extract the financial statements from these located SEDAR+ filing pages.
+
+Return exactly this JSON shape:
+{
+  "accounting_standard": "IFRS or other standard stated in the filing",
+  "currency": "currency stated in the filing, e.g. CAD or USD",
+  "scale": "scale stated in the filing, e.g. thousands or millions",
+  "fiscal_year_end": "period end date or fiscal year end stated in the statements",
+  "statements": {
+    "balance_sheet": [
+      {"label": "verbatim label", "values": {"period label": 123}, "confidence": 0.95}
+    ],
+    "income_statement": [
+      {"label": "verbatim label", "values": {"period label": 123}, "confidence": 0.95}
+    ],
+    "cash_flow": [
+      {"label": "verbatim label", "values": {"period label": 123}, "confidence": 0.95}
+    ]
+  }
+}
+
+Pages used:
+__PAGES_JSON__
+
+Page text:
+__PAGE_TEXT__
+"""
+
+
+def _cache_control() -> dict:
+    return {"type": "ephemeral", "ttl": "1h"}
+
+
+def _sedar_temp_dir() -> Path:
+    path = Path.home() / ".finlens" / "sedar"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _top_quarter_text(page_text: str) -> str:
+    lines = [line.strip() for line in (page_text or "").splitlines() if line.strip()]
+    if not lines:
+        return ""
+    cutoff = max(1, (len(lines) + 3) // 4)
+    return "\n".join(lines[:cutoff])
+
+
+def _numeric_token_count(page_text: str) -> int:
+    return len(re.findall(r"(?<![A-Za-z])\(?-?\$?\d[\d,]*(?:\.\d+)?\)?%?", page_text or ""))
+
+
+def _locate_statement_pages_from_texts(page_texts: list[str]) -> dict[str, list[int]]:
+    found: dict[str, set[int]] = {key: set() for key in STATEMENT_KEYS}
+
+    for page_num, page_text in enumerate(page_texts):
+        if _numeric_token_count(page_text) < 10:
+            continue
+
+        top_text = _top_quarter_text(page_text)
+        for statement_key, pattern in HEADING_PATTERNS.items():
+            if pattern.search(top_text):
+                found[statement_key].add(page_num)
+                if page_num + 1 < len(page_texts):
+                    found[statement_key].add(page_num + 1)
+
+    return {key: sorted(found[key]) for key in STATEMENT_KEYS}
+
+
+def locate_statement_pages(pdf_path) -> dict[str, list[int]]:
+    page_texts: list[str] = []
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_texts.append(page.extract_text() or "")
+
+    return _locate_statement_pages_from_texts(page_texts)
+
+
+def _ordered_unique_pages(pages: dict[str, list[int]]) -> list[int]:
+    ordered = []
+    seen = set()
+    for key in STATEMENT_KEYS:
+        for page_num in pages.get(key, []):
+            if isinstance(page_num, int) and page_num >= 0 and page_num not in seen:
+                ordered.append(page_num)
+                seen.add(page_num)
+    return ordered
+
+
+def _extract_located_page_text(pdf_path, pages: dict[str, list[int]]) -> str:
+    selected_pages = _ordered_unique_pages(pages)
+    if not selected_pages:
+        return ""
+
+    sections = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num in selected_pages:
+            if page_num >= len(pdf.pages):
+                continue
+            text = pdf.pages[page_num].extract_text() or ""
+            sections.append(f"\n\n--- PAGE {page_num} ---\n{text}")
+
+    return "".join(sections).strip()
+
+
+def _response_text(response) -> str:
+    return next((block.text for block in response.content if getattr(block, "type", "") == "text"), "")
+
+
+def _strip_json_fences(raw: str) -> str:
+    text = (raw or "").strip()
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def _parse_number(value):
+    if value is None or isinstance(value, (int, float)):
+        return value
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    if not text or text in {"-", "--"}:
+        return None
+
+    negative = text.startswith("(") and text.endswith(")")
+    text = text.strip("()")
+    text = text.replace(",", "").replace("$", "").replace("%", "").strip()
+
+    try:
+        number = float(text)
+    except ValueError:
+        return value
+
+    if negative:
+        number = -number
+    if number.is_integer():
+        return int(number)
+    return number
+
+
+def _confidence(value) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, parsed))
+
+
+def _normalize_statement_items(items) -> list[SedarLineItem]:
+    normalized = []
+    if not isinstance(items, list):
+        return normalized
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        values = item.get("values") or {}
+        if not isinstance(values, dict):
+            values = {}
+        normalized.append(
+            {
+                "label": str(item.get("label") or ""),
+                "values": {str(period): _parse_number(value) for period, value in values.items()},
+                "confidence": _confidence(item.get("confidence", 0.0)),
+            }
+        )
+
+    return normalized
+
+
+def _normalize_extraction_payload(data: dict) -> dict:
+    statements = data.get("statements") or {}
+    if not isinstance(statements, dict):
+        statements = {}
+
+    normalized_statements = {
+        "balance_sheet": _normalize_statement_items(statements.get("balance_sheet")),
+        "income_statement": _normalize_statement_items(statements.get("income_statement")),
+        "cash_flow": _normalize_statement_items(statements.get("cash_flow")),
+    }
+
+    return {
+        "accounting_standard": str(data.get("accounting_standard") or ""),
+        "currency": str(data.get("currency") or ""),
+        "scale": str(data.get("scale") or ""),
+        "fiscal_year_end": str(data.get("fiscal_year_end") or ""),
+        "statements": normalized_statements,
+    }
+
+
+def _parse_extraction_json(raw: str) -> dict:
+    return _normalize_extraction_payload(json.loads(_strip_json_fences(raw)))
+
+
+def _api_key() -> str:
+    load_dotenv()
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        raise SedarExtractionError("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+    return api_key
+
+
+def _call_claude(client, user_prompt: str):
+    return client.messages.create(
+        model=SEDAR_MODEL,
+        max_tokens=8000,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+
+def extract_statements(pdf_path, pages: dict) -> dict:
+    page_text = _extract_located_page_text(pdf_path, pages)
+    client = _make_client(_api_key())
+
+    user_prompt = (
+        USER_PROMPT_TEMPLATE
+        .replace("__PAGES_JSON__", json.dumps(pages, indent=2))
+        .replace("__PAGE_TEXT__", page_text)
+    )
+
+    response = _call_claude(client, user_prompt)
+    raw = _response_text(response)
+
+    try:
+        return _parse_extraction_json(raw)
+    except json.JSONDecodeError:
+        fix_prompt = (
+            f"{user_prompt}\n\nYour previous response was not valid JSON. "
+            "Return the same extraction again as valid JSON only, with no markdown fences or prose."
+        )
+        retry_response = _call_claude(client, fix_prompt)
+        retry_raw = _response_text(retry_response)
+        try:
+            return _parse_extraction_json(retry_raw)
+        except json.JSONDecodeError as exc:
+            raise SedarExtractionError(f"Claude response could not be parsed as JSON: {exc}", retry_raw) from exc
+
+
+def _extraction_confidence(statements: SedarStatements) -> float:
+    confidences = []
+    for items in statements.values():
+        for item in items:
+            confidences.append(_confidence(item.get("confidence")))
+    return min(confidences) if confidences else 0.0
+
+
+def extract_sedar_filing(pdf_path) -> SedarExtraction:
+    pages = locate_statement_pages(pdf_path)
+    extracted = extract_statements(pdf_path, pages)
+    statements = extracted["statements"]
+
+    return {
+        "source": "sedar_pdf",
+        "schema_version": SCHEMA_VERSION,
+        "accounting_standard": extracted.get("accounting_standard", ""),
+        "currency": extracted.get("currency", ""),
+        "scale": extracted.get("scale", ""),
+        "fiscal_year_end": extracted.get("fiscal_year_end", ""),
+        "statements": statements,
+        "extraction_confidence": _extraction_confidence(statements),
+        "pages_used": pages,
+    }
