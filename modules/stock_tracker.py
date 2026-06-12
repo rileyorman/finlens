@@ -1,5 +1,9 @@
+import os
+
 import yfinance as yf
 import pandas as pd
+
+from config import YFINANCE_CACHE_DIR
 
 
 NYSE_TICKERS = {
@@ -217,10 +221,8 @@ def get_stock_data(ticker: str) -> dict:
     }
 
     try:
-        import tempfile, os
-        cache_dir = os.path.join(tempfile.gettempdir(), "finlens_yfinance_cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        os.environ["YFINANCE_CACHE_DIR"] = cache_dir
+        YFINANCE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        os.environ["YFINANCE_CACHE_DIR"] = str(YFINANCE_CACHE_DIR)
 
         t    = yf.Ticker(ticker.strip().upper())
         info = t.info

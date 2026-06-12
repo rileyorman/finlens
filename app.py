@@ -78,6 +78,7 @@ from config import (
     LIBRARY_DIR,
     LIBRARY_PDFS_DIR,
     FILING_LIBRARY_PATH,
+    YFINANCE_CACHE_DIR,
     safe_write_bytes,
     safe_write_text,
 )
@@ -218,9 +219,8 @@ US_EXCHANGES = {"NMS", "NYQ", "NGM", "NCM", "ASE", "AMEX", "PCX", "NASDAQ", "NYS
 
 def _ensure_yfinance_cache_location():
     try:
-        cache_dir = os.path.join(tempfile.gettempdir(), "finlens_yfinance_cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        yf.set_tz_cache_location(cache_dir)
+        YFINANCE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        yf.set_tz_cache_location(str(YFINANCE_CACHE_DIR))
     except Exception:
         pass
 

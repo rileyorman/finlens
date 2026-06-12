@@ -24,6 +24,7 @@ def _patch_windows_ssl():
                     pem_parts.append(ssl.DER_cert_to_PEM_cert(cert))
         if not pem_parts:
             return
+        # Deliberate temp usage: per-session generated cert, rebuilt on every launch — not persistent app data. Audited Jun 2026.
         cert_path = os.path.join(tempfile.gettempdir(), "finlens_win_certs.pem")
         with open(cert_path, "w") as f:
             f.write("\n".join(pem_parts))
