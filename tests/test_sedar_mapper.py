@@ -36,10 +36,9 @@ def _source_value(data: dict, label: str) -> int | float | None:
     raise AssertionError(f"Label not found: {label}")
 
 
-def _mapped_fixture(name: str, accounting_standard: str, sector: str | None = None) -> tuple[dict, dict]:
+def _mapped_fixture(name: str, sector: str | None = None) -> tuple[dict, dict]:
     data = _load_fixture(name)
-    assert data["accounting_standard"] == accounting_standard
-    return data, map_line_items(_line_items(data), accounting_standard, sector=sector)
+    return data, map_line_items(_line_items(data), data["accounting_standard"], sector=sector)
 
 
 def _assert_conservation(result: dict) -> None:
@@ -57,7 +56,7 @@ def _assert_unmapped_labels_are_verbatim(data: dict, result: dict) -> None:
 
 
 def test_cnr_fixture_maps_required_income_statement_fields():
-    data, result = _mapped_fixture("CNR_FY2025_sedar.json", "US GAAP")
+    data, result = _mapped_fixture("CNR_FY2025_sedar.json")
     mapped = result["mapped"]
 
     assert mapped["revenue"]["value"] == 17304
@@ -73,7 +72,7 @@ def test_cnr_fixture_maps_required_income_statement_fields():
 
 
 def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmapped():
-    data, result = _mapped_fixture("CSU_FY2025_sedar.json", "IFRS")
+    data, result = _mapped_fixture("CSU_FY2025_sedar.json")
     mapped = result["mapped"]
 
     assert mapped["interest_expense"]["source_label"] == "Finance costs (note 18)"
@@ -95,7 +94,7 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
 
 
 def test_ry_fixture_uses_financial_sector_profile_only():
-    data, result = _mapped_fixture("RY_FY2025_sedar.json", "IFRS", sector="Financial Services")
+    data, result = _mapped_fixture("RY_FY2025_sedar.json", sector="Financial Services")
     mapped = result["mapped"]
 
     assert set(k for k, v in mapped.items() if not v.get("derived")) == {
@@ -175,6 +174,15 @@ def test_standard_normalization_us_gaap_with_periods_maps_us_gaap_alias():
     _assert_conservation(result)
 
 
+def test_standard_normalization_maps_accounting_family_variants():
+    assert sedar_mapper._normalize_standard("IFRS") == "ifrs"
+    assert sedar_mapper._normalize_standard("IFRS Accounting Standards") == "ifrs"
+    assert sedar_mapper._normalize_standard("IFRS 16") == "ifrs"
+    assert sedar_mapper._normalize_standard("US GAAP") == "usgaap"
+    assert sedar_mapper._normalize_standard("U.S. GAAP") == "usgaap"
+    assert sedar_mapper._normalize_standard("United States GAAP") == "usgaap"
+
+
 def test_operating_income_maps_under_ifrs():
     result = map_line_items(
         [{"label": "Operating income", "value": 798716, "confidence": 0.99}],
@@ -236,7 +244,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     """
     data = _load_fixture("SHOP_FY2025_sedar.json")
     assert data["accounting_standard"] == "U.S. GAAP"
-    result = map_line_items(_line_items(data), "US GAAP")
+    result = map_line_items(_line_items(data), data["accounting_standard"])
     mapped = result["mapped"]
 
     assert mapped["gross_profit"]["value"] == 5555
@@ -285,7 +293,7 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     """
     data = _load_fixture("ATD_FY2025_sedar.json")
     assert data["accounting_standard"] == "IFRS Accounting Standards"
-    result = map_line_items(_line_items(data), "IFRS")
+    result = map_line_items(_line_items(data), data["accounting_standard"])
     mapped = result["mapped"]
 
     assert mapped["revenue"]["source_label"] == "Revenues"
@@ -346,7 +354,7 @@ def test_reiun_fixture_maps_three_fields_after_alias_additions():
     """
     data = _load_fixture("REIUN_FY2025_sedar.json")
     assert data["accounting_standard"] == "IFRS"
-    result = map_line_items(_line_items(data), "IFRS")
+    result = map_line_items(_line_items(data), data["accounting_standard"])
     mapped = result["mapped"]
 
     assert mapped["operating_income"]["source_label"] == "Operating income"

@@ -33,7 +33,12 @@ def _normalize_label(label: str) -> str:
 
 
 def _normalize_standard(s: str) -> str:
-    return s.replace(".", "").replace(" ", "").casefold()
+    compact = re.sub(r"[^a-z0-9]", "", str(s or "").casefold())
+    if compact.startswith("ifrs"):
+        return "ifrs"
+    if compact.startswith("usgaap") or compact.startswith("unitedstatesgaap"):
+        return "usgaap"
+    return compact
 
 
 def _coerce_number(value: Any) -> float | None:
