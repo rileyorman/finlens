@@ -100,6 +100,17 @@ if not cookies.ready():
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+MODEL_OPTIONS = {
+    "Haiku 4.5": "claude-haiku-4-5-20251001",
+    "Sonnet 4.6": "claude-sonnet-4-6",
+    "Opus 4.8": "claude-opus-4-8",
+    "Fable 5": "claude-fable-5",
+}
+DEFAULT_MODEL_LABEL = next(
+    (label for label, model in MODEL_OPTIONS.items() if model == ANALYSIS_MODEL),
+    "Sonnet 4.6",
+)
+
 
 def _get_filing_context(filing_text: str, ticker: str | None, period: str | None) -> list:
     ticker_key = (ticker or "unknown").strip().upper() or "unknown"
@@ -111,9 +122,19 @@ def _get_filing_context(filing_text: str, ticker: str | None, period: str | None
 
 
 def get_model():
-    if st.session_state.get("demo_mode", False):
-        return "claude-opus-4-8"
-    return ANALYSIS_MODEL
+    selected_label = st.session_state.get("analysis_model_label", DEFAULT_MODEL_LABEL)
+    return MODEL_OPTIONS.get(selected_label, ANALYSIS_MODEL)
+
+
+def get_model_label():
+    selected_label = st.session_state.get("analysis_model_label", DEFAULT_MODEL_LABEL)
+    if selected_label in MODEL_OPTIONS:
+        return selected_label
+    return DEFAULT_MODEL_LABEL
+
+
+def _selected_model_cache_part() -> str:
+    return re.sub(r"[^\w\-]", "_", get_model())
 
 
 def get_mda_model():
@@ -646,7 +667,9 @@ def _save_analysis_cache(
     )
     if not payload:
         return False
-    return save_analysis(ticker, period, payload)
+    if not ticker or not period:
+        return False
+    return save_analysis(ticker, f"{period}_{_selected_model_cache_part()}", payload)
 
 
 def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
@@ -1816,11 +1839,14 @@ document.addEventListener('focusin', function(e) {
 
         st.divider()
 
-    demo_mode = st.sidebar.toggle(" Demo Mode", value=False, key="demo_mode")
-    if demo_mode:
-        st.sidebar.caption("⚡ Opus 4.8 — Premium Analysis")
-    else:
-        st.sidebar.caption(" Haiku — Dev Mode")
+    _default_model_index = list(MODEL_OPTIONS).index(DEFAULT_MODEL_LABEL)
+    st.sidebar.selectbox(
+        "Dev mode model",
+        list(MODEL_OPTIONS),
+        index=_default_model_index,
+        key="analysis_model_label",
+    )
+    st.sidebar.caption(f"{get_model_label()} — {get_model()}")
 
     # --- Filing Library (Single Analysis mode only) --------------------
     if page == "Single Analysis":
@@ -1890,7 +1916,11 @@ document.addEventListener('focusin', function(e) {
                                     _entry_ticker = ticker if ticker != "—" else None
                                     _entry_text = _library_text_for_entry(entry)
                                     st.session_state.cached_filing_text = _entry_text
-                                    _cached_analysis = load_analysis(_entry_ticker, _entry_period)
+                                    _cached_analysis = (
+                                        load_analysis(_entry_ticker, f"{_entry_period}_{_selected_model_cache_part()}")
+                                        if _entry_ticker and _entry_period
+                                        else None
+                                    )
                                     if _cached_analysis and _restore_analysis_cache(_cached_analysis, entry):
                                         st.session_state.cached_pdf_bytes = None
                                         if entry.get("source") != "edgar":
@@ -2077,7 +2107,7 @@ if page == "Portfolio Manager":
                     ticker=ra.get("ticker"),
                 )
         else:
-            with st.spinner("Call 1: Extracting financials (Haiku)..."):
+            with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
                 _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 2: Generating investment signal..."):
             _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
@@ -2085,7 +2115,7 @@ if page == "Portfolio Manager":
             _ra_bb = analyze_bear_bull(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 4: Generating dashboard insights..."):
             _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
-        with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
+        with st.spinner(f"Call 5: Scoring MD&A sentiment ({get_mda_model()})..."):
             _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
         _ra_fd = _run_integrity_checks(
             _ra_fd,
@@ -2978,7 +3008,7 @@ if page == "Filing Comparison":
             _label1 = _fc_library_labels.get(fc_lib_1, "Filing 1")
             _label2 = _fc_library_labels.get(fc_lib_2, "Filing 2")
             _sorted_id_1, _sorted_id_2 = sorted([fc_lib_1, fc_lib_2])
-            _comparison_cache_key = f"comparison_{_sorted_id_1}_{_sorted_id_2}"
+            _comparison_cache_key = f"comparison_{_sorted_id_1}_{_sorted_id_2}_{_selected_model_cache_part()}"
             _cached_comparison = None
             try:
                 _cached_comparison = load_cache(_comparison_cache_key)
@@ -5263,7 +5293,7 @@ if st.session_state.get("pending_reanalyse"):
                 ticker=ra.get("ticker"),
             )
     else:
-        with st.spinner("Call 1: Extracting financials (Haiku)..."):
+        with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
             _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_sd = None
@@ -5279,7 +5309,7 @@ if st.session_state.get("pending_reanalyse"):
         _ra_dd = analyze_dashboard_insights(_ra_text, _ra_sd, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
 
     _ra_mda = None
-    with st.spinner("Call 5: Scoring MD&A sentiment (Haiku)..."):
+    with st.spinner(f"Call 5: Scoring MD&A sentiment ({get_mda_model()})..."):
         _ra_mda = analyze_mda_sentiment(_ra_text, API_KEY, model=get_mda_model(), filing_context=_ra_context)
 
     _ra_fd = _run_integrity_checks(
@@ -5388,7 +5418,11 @@ if uploaded_file:
             st.stop()
 
         cache_key_base = get_cache_key(pdf_bytes)
-        cache_key = f"{cache_key_base}_sedar" if _use_sedar_pipeline else cache_key_base
+        cache_key = (
+            f"{cache_key_base}_sedar_{_selected_model_cache_part()}"
+            if _use_sedar_pipeline
+            else f"{cache_key_base}_{_selected_model_cache_part()}"
+        )
         cached    = load_cache(cache_key)
         raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
 
@@ -5540,7 +5574,7 @@ if uploaded_file:
 
             # Step 6 — Call 5: score MD&A sentiment
             mda_sentiment = None
-            with st.spinner("Scoring MD&A sentiment (Haiku)..."):
+            with st.spinner(f"Scoring MD&A sentiment ({get_mda_model()})..."):
                 try:
                     mda_sentiment = analyze_mda_sentiment(raw_text, API_KEY, model=get_mda_model(), filing_context=_upload_context)
                 except Exception as e:
