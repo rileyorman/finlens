@@ -36,6 +36,19 @@ def _patch_windows_ssl():
 
 _patch_windows_ssl()
 
+
+def _to_yfinance_ticker(ticker: str) -> str:
+    """Translate TSX dot-format tickers to yfinance format (e.g. REI.UN -> REI-UN.TO)."""
+    t = (ticker or "").strip().upper()
+    if not t:
+        return t
+    if any(t.endswith(sfx) for sfx in (".TO", ".V", ".CN", ".NE")):
+        return t
+    if "." in t:
+        return t.replace(".", "-") + ".TO"
+    return t
+
+
 # Tier 0 = major US exchanges (NYSE + NASDAQ peers). Foreign/unknown = 99.
 # Within the same tier, name similarity breaks ties.
 _EXCHANGE_RANK = {
@@ -112,7 +125,7 @@ def get_market_data(ticker: str) -> dict:
         return dict(_EMPTY)
 
     try:
-        t = yf.Ticker(ticker.strip())
+        t = yf.Ticker(_to_yfinance_ticker(ticker))
         fi = t.fast_info  # lightweight endpoint — reliable for small-caps
 
         current_price = getattr(fi, "last_price", None)

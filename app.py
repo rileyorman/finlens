@@ -265,6 +265,11 @@ def _external_link(label: str, url: str):
     )
 
 
+def _escape_md_dollars(text: str) -> str:
+    """Escape bare $ in model-generated text so Streamlit doesn't render it as LaTeX math."""
+    return (text or "").replace("$", r"\$")
+
+
 def _yf_quote_name(quote: dict) -> str:
     return (
         quote.get("shortName")
@@ -5948,7 +5953,7 @@ if st.session_state.financial_data:
                             f'<blockquote style="border-left:3px solid #374B6B;'
                             f'margin:4px 0;padding:6px 12px;'
                             f'color:#94A3B8;font-size:13px;font-style:italic">'
-                            f'{phrase}</blockquote>',
+                            f'{_escape_md_dollars(phrase)}</blockquote>',
                             unsafe_allow_html=True,
                         )
         elif mda_sentiment and mda_sentiment.get("error"):
@@ -6061,7 +6066,7 @@ if st.session_state.financial_data:
 
                     # Part 3 — Claude Narrative
                     if _sr.get("narrative"):
-                        st.info(_sr["narrative"])
+                        st.info(_escape_md_dollars(_sr["narrative"]))
 
         # --- Financial statement tables ---
         _is_fmp_source = financial_data.get("source") == "fmp"
@@ -6222,13 +6227,13 @@ if st.session_state.financial_data:
                 with bull_col:
                     st.markdown("**Bull Case**")
                     for pt in (bear_bull_data.get("bull_case") or [])[:3]:
-                        st.markdown(f"**{pt.get('title', '')}**")
-                        st.caption(pt.get("detail", ""))
+                        st.markdown(f"**{_escape_md_dollars(pt.get('title', ''))}**")
+                        st.caption(_escape_md_dollars(pt.get("detail", "")))
                 with bear_col:
                     st.markdown("**Bear Case**")
                     for pt in (bear_bull_data.get("bear_case") or [])[:3]:
-                        st.markdown(f"**{pt.get('title', '')}**")
-                        st.caption(pt.get("detail", ""))
+                        st.markdown(f"**{_escape_md_dollars(pt.get('title', ''))}**")
+                        st.caption(_escape_md_dollars(pt.get("detail", "")))
 
         # --- Download buttons ---
         st.divider()
@@ -6345,7 +6350,7 @@ if st.session_state.financial_data:
                 import html as _html
                 st.markdown(
                     f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
-                    f'{_html.escape(thesis)}</p>',
+                    f'{_html.escape(_escape_md_dollars(thesis))}</p>',
                     unsafe_allow_html=True,
                 )
 
@@ -6646,7 +6651,7 @@ if st.session_state.financial_data:
         fw_dalio, fw_lynch, fw_marks = st.columns(3)
 
         with fw_dalio:
-            dalio_text = dd.get("dalio_view") or "Re-analyse to generate Dalio view."
+            dalio_text = _escape_md_dollars(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
             st.markdown(
                 f'<div style="background:#EEEDFE;border-radius:8px;padding:16px 18px">'
                 f'<div style="font-size:12px;font-weight:700;color:#5B4FCF;margin-bottom:8px;'
@@ -6658,7 +6663,7 @@ if st.session_state.financial_data:
 
         with fw_lynch:
             lynch_cat  = dd.get("lynch_category") or ""
-            lynch_text = dd.get("lynch_story") or "Re-analyse to generate Lynch view."
+            lynch_text = _escape_md_dollars(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
             cat_suffix = f" ({lynch_cat})" if lynch_cat else ""
             st.markdown(
                 f'<div style="background:#E1F5EE;border-radius:8px;padding:16px 18px">'
@@ -6670,7 +6675,7 @@ if st.session_state.financial_data:
             )
 
         with fw_marks:
-            marks_text = dd.get("marks_view") or "Re-analyse to generate Marks view."
+            marks_text = _escape_md_dollars(dd.get("marks_view") or "Re-analyse to generate Marks view.")
             st.markdown(
                 f'<div style="background:#FAEEDA;border-radius:8px;padding:16px 18px">'
                 f'<div style="font-size:12px;font-weight:700;color:#B06000;margin-bottom:8px;'
@@ -6813,13 +6818,13 @@ if st.session_state.financial_data:
             with st.container(border=True):
                 st.markdown("##### Market Sentiment (Marks)")
                 crowd = dd.get("crowd_thinks") or "Re-analyse to generate sentiment view."
-                st.write(crowd)
+                st.write(_escape_md_dollars(crowd))
 
         with marks_col:
             with st.container(border=True):
                 st.markdown("##### Second-Level Question")
                 mq = dd.get("marks_question") or "Re-analyse to generate Marks question."
-                st.write(mq)
+                st.write(_escape_md_dollars(mq))
                 _mos_marks = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 if _mos_marks is not None:
                     _mos_mc = "#70AD47" if _mos_marks > 20 else ("#FFC000" if _mos_marks >= 0 else "#C00000")
@@ -6902,9 +6907,9 @@ if st.session_state.financial_data:
                 crowd_txt = dd.get("crowd_thinks") or ""
                 marks_q   = dd.get("marks_question") or ""
                 if crowd_txt:
-                    st.markdown(f"**Consensus view:** {crowd_txt}")
+                    st.markdown(f"**Consensus view:** {_escape_md_dollars(crowd_txt)}")
                 if marks_q:
-                    st.markdown(f"**What the market isn't asking:** {marks_q}")
+                    st.markdown(f"**What the market isn't asking:** {_escape_md_dollars(marks_q)}")
                 if not crowd_txt and not marks_q:
                     st.caption("Re-analyse to generate variant perception insights.")
 
@@ -6954,8 +6959,8 @@ if st.session_state.financial_data:
             st.markdown("**Bull Case**")
             for i, pt in enumerate(bull_cases[:3]):
                 fw     = _BULL_FW[i] if i < len(_BULL_FW) else ""
-                title  = pt.get("title", "")
-                detail = pt.get("detail", "")
+                title  = _escape_md_dollars(pt.get("title", ""))
+                detail = _escape_md_dollars(pt.get("detail", ""))
                 st.markdown(
                     f'<div style="background:#F0F7EC;border-left:4px solid #70AD47;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
@@ -6973,8 +6978,8 @@ if st.session_state.financial_data:
             st.markdown("**Bear Case**")
             for i, pt in enumerate(bear_cases[:3]):
                 fw     = _BEAR_FW[i] if i < len(_BEAR_FW) else ""
-                title  = pt.get("title", "")
-                detail = pt.get("detail", "")
+                title  = _escape_md_dollars(pt.get("title", ""))
+                detail = _escape_md_dollars(pt.get("detail", ""))
                 st.markdown(
                     f'<div style="background:#FDF2F2;border-left:4px solid #C00000;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'

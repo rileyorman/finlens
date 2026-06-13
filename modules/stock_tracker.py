@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 
 from config import YFINANCE_CACHE_DIR
+from modules.market_data import _to_yfinance_ticker
 
 
 NYSE_TICKERS = {
@@ -224,7 +225,7 @@ def get_stock_data(ticker: str) -> dict:
         YFINANCE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         os.environ["YFINANCE_CACHE_DIR"] = str(YFINANCE_CACHE_DIR)
 
-        t    = yf.Ticker(ticker.strip().upper())
+        t    = yf.Ticker(_to_yfinance_ticker(ticker))
         info = t.info
         hist = t.history(period="1y")
 
