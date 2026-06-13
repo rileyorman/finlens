@@ -526,6 +526,50 @@ def test_carun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_dirun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
+    """
+    DIR.UN (Dream Industrial REIT, industrial REIT, IFRS, CAD, December year-end).
+
+    Filer #9 intentionally maps through defaults only. REIT-specific labels
+    remain unmapped until the item 9 taxonomy design has evidence from REI.UN,
+    CAR.UN, and DIR.UN.
+    """
+    data = _load_fixture("DIRUN_FY2024_sedar.json")
+    assert data["source"] == "sedar_pdf"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["sector_inferred"] == "Real Estate (REIT)"
+    assert data["filing_date"] == "2025-02-18"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == (
+        "https://investors.dream.ca/wp-content/uploads/2025/02/"
+        "2024-DIR-Annual-Report-FINAL.pdf"
+    )
+    assert "Radware CAPTCHA" in provenance["sedar_access_note"]
+    assert "annual report" in provenance["document_note"].lower()
+    assert provenance["future_pattern"] == (
+        "issuer-hosted PDF is the established campaign protocol per "
+        "docs/FETCH_CAMPAIGN_LOG.md"
+    )
+
+    result = map_line_items(_line_items(data), data["accounting_standard"])
+    mapped = result["mapped"]
+
+    assert mapped["net_income"]["source_label"] == "Net income"
+    assert mapped["net_income"]["value"] == 259611
+
+    assert result["meta"]["mapped_count"] == 1
+    assert result["meta"]["sector_profile"] is None
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Investment properties revenue" in unmapped_labels
+    assert "Investment properties operating expenses" in unmapped_labels
+    assert "Net rental income" in unmapped_labels
+    assert "Fair value adjustments to investment properties" in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_benign_duplicate_same_value_maps_first_occurrence(monkeypatch):
     """Same normalized label + same value = benign duplicate: first occurrence maps."""
     alias_table = {

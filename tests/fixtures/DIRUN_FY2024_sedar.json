@@ -1,0 +1,808 @@
+{
+  "source": "sedar_pdf",
+  "source_provenance": {
+    "pdf_origin_url": "https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf",
+    "sedar_access_note": "SEDAR+ document search was attempted first; Radware CAPTCHA blocked programmatic access to the canonical SEDAR+ path.",
+    "document_note": "Issuer-hosted FY2024 annual report PDF, retrieved 2026-06-13. This is the preferred annual-report artifact tier and was confirmed readable by pdfplumber.",
+    "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md"
+  },
+  "schema_version": 5,
+  "accounting_standard": "IFRS",
+  "currency": "CAD",
+  "scale": "thousands",
+  "fiscal_year_end": "2024-12-31",
+  "filing_date": "2025-02-18",
+  "sector_inferred": "Real Estate (REIT)",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Investment properties",
+        "values": {
+          "December 31, 2024": 7031713,
+          "December 31, 2023": 6924274,
+          "January 1, 2023": 6759425
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equity accounted investments",
+        "values": {
+          "December 31, 2024": 879061,
+          "December 31, 2023": 809006,
+          "January 1, 2023": 313527
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivatives and other non-current assets",
+        "values": {
+          "December 31, 2024": 42449,
+          "December 31, 2023": 37577,
+          "January 1, 2023": 92016
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current assets",
+        "values": {
+          "December 31, 2024": 7953223,
+          "December 31, 2023": 7770857,
+          "January 1, 2023": 7164968
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "December 31, 2024": 80277,
+          "December 31, 2023": 49916,
+          "January 1, 2023": 83802
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amounts receivable",
+        "values": {
+          "December 31, 2024": 28816,
+          "December 31, 2023": 31694,
+          "January 1, 2023": 27673
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Prepaid expenses and other assets",
+        "values": {
+          "December 31, 2024": 46482,
+          "December 31, 2023": 5873,
+          "January 1, 2023": 4050
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "December 31, 2024": 155575,
+          "December 31, 2023": 87483,
+          "January 1, 2023": 115525
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Asset held for sale",
+        "values": {
+          "December 31, 2024": 13756,
+          "December 31, 2023": 0,
+          "January 1, 2023": null
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "December 31, 2024": 8122554,
+          "December 31, 2023": 7858340,
+          "January 1, 2023": 7280493
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-current debt",
+        "values": {
+          "December 31, 2024": 2098543,
+          "December 31, 2023": 2537090,
+          "January 1, 2023": 2137412
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax liabilities, net",
+        "values": {
+          "December 31, 2024": 53727,
+          "December 31, 2023": 43606,
+          "January 1, 2023": 47869
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivatives and other non-current liabilities",
+        "values": {
+          "December 31, 2024": 71202,
+          "December 31, 2023": 76090,
+          "January 1, 2023": 46265
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current liabilities",
+        "values": {
+          "December 31, 2024": 2223472,
+          "December 31, 2023": 2656786,
+          "January 1, 2023": 2231546
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Current debt",
+        "values": {
+          "December 31, 2024": 870407,
+          "December 31, 2023": 310277,
+          "January 1, 2023": 275536
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Subsidiary redeemable units",
+        "values": {
+          "December 31, 2024": 157623,
+          "December 31, 2023": 186318,
+          "January 1, 2023": 216871
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2024": 128295,
+          "December 31, 2023": 110260,
+          "January 1, 2023": 88784
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred Unit Incentive Plan (\"DUIP\")",
+        "values": {
+          "December 31, 2024": 9786,
+          "December 31, 2023": 14894,
+          "January 1, 2023": 10512
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current income tax liabilities",
+        "values": {
+          "December 31, 2024": 1898,
+          "December 31, 2023": 4908,
+          "January 1, 2023": 4503
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "December 31, 2024": 1168009,
+          "December 31, 2023": 626657,
+          "January 1, 2023": 596206
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2024": 3391481,
+          "December 31, 2023": 3283443,
+          "January 1, 2023": 2827752
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unitholders' equity",
+        "values": {
+          "December 31, 2024": 3399261,
+          "December 31, 2023": 3339660,
+          "January 1, 2023": 3106904
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "December 31, 2024": 1256934,
+          "December 31, 2023": 1191907,
+          "January 1, 2023": 1274974
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated other comprehensive income",
+        "values": {
+          "December 31, 2024": 74878,
+          "December 31, 2023": 43330,
+          "January 1, 2023": 70863
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "December 31, 2024": 4731073,
+          "December 31, 2023": 4574897,
+          "January 1, 2023": 4452741
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and equity",
+        "values": {
+          "December 31, 2024": 8122554,
+          "December 31, 2023": 7858340,
+          "January 1, 2023": 7280493
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Investment properties revenue",
+        "values": {
+          "Year ended December 31, 2024": 466218,
+          "Year ended December 31, 2023": 437601
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment properties operating expenses",
+        "values": {
+          "Year ended December 31, 2024": -110786,
+          "Year ended December 31, 2023": -103421
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net rental income",
+        "values": {
+          "Year ended December 31, 2024": 355432,
+          "Year ended December 31, 2023": 334180
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of net income from equity accounted investments",
+        "values": {
+          "Year ended December 31, 2024": 42982,
+          "Year ended December 31, 2023": 4941
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest income and other",
+        "values": {
+          "Year ended December 31, 2024": 5360,
+          "Year ended December 31, 2023": 572
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total other income",
+        "values": {
+          "Year ended December 31, 2024": 48342,
+          "Year ended December 31, 2023": 5513
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "General and administrative",
+        "values": {
+          "Year ended December 31, 2024": -31830,
+          "Year ended December 31, 2023": -32148
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt and other financing costs",
+        "values": {
+          "Year ended December 31, 2024": -70130,
+          "Year ended December 31, 2023": -54379
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Subsidiary redeemable units",
+        "values": {
+          "Year ended December 31, 2024": -9344,
+          "Year ended December 31, 2023": -10557
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total other expenses",
+        "values": {
+          "Year ended December 31, 2024": -111304,
+          "Year ended December 31, 2023": -97084
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Fair value adjustments to investment properties",
+        "values": {
+          "Year ended December 31, 2024": -24765,
+          "Year ended December 31, 2023": -66689
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments to financial instruments",
+        "values": {
+          "Year ended December 31, 2024": 13338,
+          "Year ended December 31, 2023": -68059
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net loss on transactions and other activities",
+        "values": {
+          "Year ended December 31, 2024": -11668,
+          "Year ended December 31, 2023": -4762
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total fair value adjustments and net loss on transactions and other activities",
+        "values": {
+          "Year ended December 31, 2024": -23095,
+          "Year ended December 31, 2023": -139510
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "Year ended December 31, 2024": 269375,
+          "Year ended December 31, 2023": 103099
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current and deferred income tax (expense) recovery, net",
+        "values": {
+          "Year ended December 31, 2024": -9764,
+          "Year ended December 31, 2023": 1200
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "Year ended December 31, 2024": 259611,
+          "Year ended December 31, 2023": 104299
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized gain on foreign currency translation of foreign operations",
+        "values": {
+          "Year ended December 31, 2024": 39360,
+          "Year ended December 31, 2023": 21837
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized loss on hedging instruments",
+        "values": {
+          "Year ended December 31, 2024": -33236,
+          "Year ended December 31, 2023": -42816
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of other comprehensive gain (loss) from equity accounted investments",
+        "values": {
+          "Year ended December 31, 2024": 25424,
+          "Year ended December 31, 2023": -6554
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total other comprehensive income (loss)",
+        "values": {
+          "Year ended December 31, 2024": 31548,
+          "Year ended December 31, 2023": -27533
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Comprehensive income",
+        "values": {
+          "Year ended December 31, 2024": 291159,
+          "Year ended December 31, 2023": 76766
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "Year ended December 31, 2024": 259611,
+          "Year ended December 31, 2023": 104299
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of net income from equity accounted investments",
+        "values": {
+          "Year ended December 31, 2024": -42982,
+          "Year ended December 31, 2023": -4941
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments to investment properties",
+        "values": {
+          "Year ended December 31, 2024": 24765,
+          "Year ended December 31, 2023": 66689
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments to financial instruments",
+        "values": {
+          "Year ended December 31, 2024": -13338,
+          "Year ended December 31, 2023": 68059
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation and amortization",
+        "values": {
+          "Year ended December 31, 2024": 3505,
+          "Year ended December 31, 2023": 3254
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other adjustments",
+        "values": {
+          "Year ended December 31, 2024": 14540,
+          "Year ended December 31, 2023": 5109
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "values": {
+          "Year ended December 31, 2024": -5862,
+          "Year ended December 31, 2023": 15333
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment in lease incentives and initial direct leasing costs",
+        "values": {
+          "Year ended December 31, 2024": -14635,
+          "Year ended December 31, 2023": -9789
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense on debt and other financing costs",
+        "values": {
+          "Year ended December 31, 2024": 70130,
+          "Year ended December 31, 2023": 54379
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Generated from (utilized in) operating activities",
+        "values": {
+          "Year ended December 31, 2024": 295734,
+          "Year ended December 31, 2023": 302392
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Investment in building improvements and other development and pre-development costs",
+        "values": {
+          "Year ended December 31, 2024": -144423,
+          "Year ended December 31, 2023": -186549
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Acquisitions, deposits and transaction costs of investment properties (net of cash acquired)",
+        "values": {
+          "Year ended December 31, 2024": -878,
+          "Year ended December 31, 2023": -3631
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dispositions of investment properties (net of assumed mortgages and transaction costs)",
+        "values": {
+          "Year ended December 31, 2024": 42944,
+          "Year ended December 31, 2023": 6921
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Distributions from equity accounted investments",
+        "values": {
+          "Year ended December 31, 2024": 32000,
+          "Year ended December 31, 2023": 15000
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Contributions to equity accounted investments",
+        "values": {
+          "Year ended December 31, 2024": -43380,
+          "Year ended December 31, 2023": -521184
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Generated from (utilized in) investing activities",
+        "values": {
+          "Year ended December 31, 2024": -113737,
+          "Year ended December 31, 2023": -689443
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Borrowings",
+        "values": {
+          "Year ended December 31, 2024": 427220,
+          "Year ended December 31, 2023": 1191665
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lump sum repayments",
+        "values": {
+          "Year ended December 31, 2024": -358892,
+          "Year ended December 31, 2023": -731161
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Principal repayments",
+        "values": {
+          "Year ended December 31, 2024": -3302,
+          "Year ended December 31, 2023": -6418
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Financing costs additions",
+        "values": {
+          "Year ended December 31, 2024": -3876,
+          "Year ended December 31, 2023": -6508
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and other financing costs paid on debt",
+        "values": {
+          "Year ended December 31, 2024": -63235,
+          "Year ended December 31, 2023": -50596
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest paid on subsidiary redeemable units",
+        "values": {
+          "Year ended December 31, 2024": -9344,
+          "Year ended December 31, 2023": -10860
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Distributions paid on REIT Units",
+        "values": {
+          "Year ended December 31, 2024": -140252,
+          "Year ended December 31, 2023": -134389
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash proceeds on issuance of REIT Units",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 107172
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issue costs paid on REIT Units",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -2143
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other adjustments to financing activities",
+        "values": {
+          "Year ended December 31, 2024": -276,
+          "Year ended December 31, 2023": -243
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Generated from (utilized in) financing activities",
+        "values": {
+          "Year ended December 31, 2024": -151957,
+          "Year ended December 31, 2023": 356519
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Increase (decrease) in cash and cash equivalents",
+        "values": {
+          "Year ended December 31, 2024": 30040,
+          "Year ended December 31, 2023": -30532
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange gain (loss) on cash held in foreign currency",
+        "values": {
+          "Year ended December 31, 2024": 321,
+          "Year ended December 31, 2023": -3354
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of year",
+        "values": {
+          "Year ended December 31, 2024": 49916,
+          "Year ended December 31, 2023": 83802
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "values": {
+          "Year ended December 31, 2024": 80277,
+          "Year ended December 31, 2023": 49916
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.97,
+  "pages_used": {
+    "balance_sheet": [
+      75,
+      76,
+      82,
+      83
+    ],
+    "income_statement": [
+      83,
+      84,
+      113,
+      114
+    ],
+    "cash_flow": [
+      85,
+      86
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "net_income": {
+        "value": 259611,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Investment properties revenue",
+        "value": 466218
+      },
+      {
+        "label": "Investment properties operating expenses",
+        "value": -110786
+      },
+      {
+        "label": "Net rental income",
+        "value": 355432
+      },
+      {
+        "label": "Share of net income from equity accounted investments",
+        "value": 42982
+      },
+      {
+        "label": "Interest income and other",
+        "value": 5360
+      },
+      {
+        "label": "Total other income",
+        "value": 48342
+      },
+      {
+        "label": "General and administrative",
+        "value": -31830
+      },
+      {
+        "label": "Debt and other financing costs",
+        "value": -70130
+      },
+      {
+        "label": "Subsidiary redeemable units",
+        "value": -9344
+      },
+      {
+        "label": "Total other expenses",
+        "value": -111304
+      },
+      {
+        "label": "Fair value adjustments to investment properties",
+        "value": -24765
+      },
+      {
+        "label": "Fair value adjustments to financial instruments",
+        "value": 13338
+      },
+      {
+        "label": "Net loss on transactions and other activities",
+        "value": -11668
+      },
+      {
+        "label": "Total fair value adjustments and net loss on transactions and other activities",
+        "value": -23095
+      },
+      {
+        "label": "Income before income taxes",
+        "value": 269375
+      },
+      {
+        "label": "Current and deferred income tax (expense) recovery, net",
+        "value": -9764
+      },
+      {
+        "label": "Unrealized gain on foreign currency translation of foreign operations",
+        "value": 39360
+      },
+      {
+        "label": "Unrealized loss on hedging instruments",
+        "value": -33236
+      },
+      {
+        "label": "Share of other comprehensive gain (loss) from equity accounted investments",
+        "value": 25424
+      },
+      {
+        "label": "Total other comprehensive income (loss)",
+        "value": 31548
+      },
+      {
+        "label": "Comprehensive income",
+        "value": 291159
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS",
+      "sector_profile": null,
+      "total": 22,
+      "mapped_count": 1,
+      "unmapped_count": 21,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
+  }
+}
