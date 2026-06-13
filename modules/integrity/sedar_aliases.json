@@ -155,6 +155,54 @@
           "patterns": []
         }
       }
+    },
+    "resource_sector": {
+      "canonical_fields": {
+        "total_revenue": {
+          "aliases": [
+            {
+              "label": "product sales",
+              "standards": ["IFRS"],
+              "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "royalties": {
+          "aliases": [
+            {
+              "label": "less: royalties",
+              "standards": ["IFRS"],
+              "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "depletion_depreciation_amortization": {
+          "aliases": [
+            {
+              "label": "depletion, depreciation and amortization",
+              "standards": ["IFRS"],
+              "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "exploration_expense": {
+          "aliases": [],
+          "patterns": []
+        },
+        "operating_expense": {
+          "aliases": [
+            {
+              "label": "production",
+              "standards": ["IFRS"],
+              "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        }
+      }
     }
   }
 }

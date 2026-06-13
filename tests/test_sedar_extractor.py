@@ -66,6 +66,27 @@ def test_number_parsing_parentheses_commas_and_scale_preserved():
     assert result["scale"] == "thousands"
 
 
+def test_sector_normalization_preserves_human_readable_sector_text():
+    assert sedar_extractor._normalize_sector_inferred("Upstream Oil & Gas") == "Upstream Oil & Gas"
+    assert sedar_extractor._normalize_sector_inferred("Crude oil and natural gas production") == (
+        "Crude oil and natural gas production"
+    )
+    assert sedar_extractor._normalize_sector_inferred("Banking") == "Banking"
+
+
+def test_mapping_value_picker_prefers_latest_year_ended_column():
+    item = {
+        "values": {
+            "Three Months Ended Dec 31 2024": 11064,
+            "Three Months Ended Dec 31 2023": 10679,
+            "Year Ended Dec 31 2024": 41509,
+            "Year Ended Dec 31 2023": 40835,
+        }
+    }
+
+    assert sedar_extractor._first_statement_value(item) == 41509
+
+
 def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
     raw_response = json.dumps(
         {

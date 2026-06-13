@@ -17,6 +17,16 @@ from .rules import FINANCIAL_SECTOR_TOKENS
 
 
 _ALIAS_FILE = Path(__file__).with_name("sedar_aliases.json")
+RESOURCE_SECTOR_TOKENS = (
+    "resource_sector",
+    "resource",
+    "upstream oil",
+    "oil & gas",
+    "oil and gas",
+    "crude oil",
+    "natural gas",
+    "exploration and production",
+)
 
 
 @lru_cache(maxsize=1)
@@ -69,6 +79,10 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
         token in sector_text for token in FINANCIAL_SECTOR_TOKENS
     ):
         return "financial_sector"
+    if "resource_sector" in sector_profiles and any(
+        token in sector_text for token in RESOURCE_SECTOR_TOKENS
+    ):
+        return "resource_sector"
     return None
 
 

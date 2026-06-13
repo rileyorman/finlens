@@ -23,10 +23,30 @@ def _line_items(data: dict) -> list[dict]:
         values = item.get("values") or {}
         rows.append({
             "label": item["label"],
-            "value": next(iter(values.values()), None),
+            "value": _mapper_source_value(values),
             "confidence": item.get("confidence"),
         })
     return rows
+
+
+def _mapper_source_value(values: dict) -> int | float | None:
+    annual_candidates = []
+    for idx, (period, value) in enumerate((values or {}).items()):
+        period_text = str(period)
+        period_lower = period_text.lower()
+        if (
+            "year ended" not in period_lower
+            and "years ended" not in period_lower
+            and not period_lower.startswith("year ")
+        ):
+            continue
+        import re
+        match = re.search(r"(\d{4})", period_text)
+        year = int(match.group(1)) if match else -1
+        annual_candidates.append((year, idx, value))
+    if annual_candidates:
+        return sorted(annual_candidates, key=lambda row: (row[0], -row[1]), reverse=True)[0][2]
+    return next(iter((values or {}).values()), None)
 
 
 def _source_value(data: dict, label: str) -> int | float | None:
@@ -398,6 +418,67 @@ def test_reiun_fixture_maps_three_fields_after_alias_additions():
     # REIT-specific labels that must remain unmapped (no generic alias exists).
     assert "Rental revenue" in unmapped_labels
     assert "Fair value loss on investment properties, net" in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
+    """
+    CNQ (Canadian Natural Resources, IFRS, CAD, December year-end).
+
+    Resource-sector profile uses OVERRIDE semantics: it augments the default
+    canonical fields. CNQ maps sector-native fields from its primary income
+    statement while preserving default net_income via "Net earnings".
+
+    Important CNQ semantics: `total_revenue` is gross Product sales before
+    royalties. The statement also contains a net "Revenue" line after royalties;
+    that line deliberately remains unmapped so the gross and royalty components
+    do not collapse into one generic revenue value.
+    """
+    data = _load_fixture("cnq_fy2024_sedar.json")
+    assert data["accounting_standard"] == "IFRS"
+    assert data["sector_inferred"] == "Upstream Oil & Gas"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == (
+        "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf"
+    )
+    assert "Radware CAPTCHA" in provenance["sedar_access_note"]
+    assert "Q4 financial statements" in provenance["document_note"]
+
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+
+    assert mapped["total_revenue"]["source_label"] == "Product sales"
+    assert mapped["total_revenue"]["value"] == 41509
+
+    assert mapped["royalties"]["source_label"] == "Less: royalties"
+    assert mapped["royalties"]["value"] == -5853
+
+    assert mapped["operating_expense"]["source_label"] == "Production"
+    assert mapped["operating_expense"]["value"] == 8093
+
+    assert mapped["depletion_depreciation_amortization"]["source_label"] == (
+        "Depletion, depreciation and amortization"
+    )
+    assert mapped["depletion_depreciation_amortization"]["value"] == 6681
+
+    assert mapped["net_income"]["source_label"] == "Net earnings"
+    assert mapped["net_income"]["value"] == 6106
+    assert "exploration_expense" not in mapped
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
+    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenue" in unmapped_labels
+    assert "Product sales" not in unmapped_labels
+    assert "Less: royalties" not in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)

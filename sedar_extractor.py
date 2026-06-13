@@ -421,6 +421,23 @@ def _first_statement_value(item: dict) -> int | float | None:
     values = item.get("values") or {}
     if not isinstance(values, dict):
         return None
+
+    annual_candidates = []
+    for idx, (period, value) in enumerate(values.items()):
+        period_text = str(period)
+        period_lower = period_text.lower()
+        if (
+            "year ended" not in period_lower
+            and "years ended" not in period_lower
+            and not period_lower.startswith("year ")
+        ):
+            continue
+        match = re.search(r"(\d{4})", period_text)
+        year = int(match.group(1)) if match else -1
+        annual_candidates.append((year, idx, value))
+    if annual_candidates:
+        return sorted(annual_candidates, key=lambda row: (row[0], -row[1]), reverse=True)[0][2]
+
     return next(iter(values.values()), None)
 
 
