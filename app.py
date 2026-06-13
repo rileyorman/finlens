@@ -134,16 +134,38 @@ def _run_integrity_checks(
 
     ticker_value = (ticker or (summary_data or {}).get("ticker") or financial_data.get("ticker") or "").strip().upper()
     sector_value = (summary_data or {}).get("sector_inferred")
+
+    # When ticker resolution fails, log under the company name so the entry
+    # is identifiable. The engine still runs every rule whose required fields
+    # are present — field_unavailable skips remain honest for missing data.
+    ticker_unresolved = not bool(ticker_value)
+    log_identity = ticker_value
+    if ticker_unresolved:
+        log_identity = (
+            (summary_data or {}).get("company_name")
+            or (summary_data or {}).get("company")
+            or financial_data.get("company_name")
+            or financial_data.get("company")
+            or "Unknown"
+        )
+
     filing_metadata = {
         "source": source,
         "filing_date": filing_date,
         "accession": accession,
+        "ticker_unresolved": ticker_unresolved,
     }
 
     try:
-        normalize_and_validate(financial_data, ticker_value, sector_value, filing_metadata)
+        normalize_and_validate(financial_data, log_identity, sector_value, filing_metadata)
     except Exception:
-        logger.exception("Integrity validation failed for %s", ticker_value)
+        logger.exception("Integrity validation failed for %s", log_identity)
+
+    if ticker_unresolved and isinstance(financial_data.get("_integrity"), dict):
+        st.info(
+            "Integrity check validated under company name — ticker could not be "
+            "resolved, so external cross-validation was skipped."
+        )
 
     try:
         fiscal_year = financial_data.get("fiscal_year") or financial_data.get("period")

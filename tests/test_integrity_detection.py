@@ -162,6 +162,50 @@ def test_sedar_accounting_standard_recorded_as_info_only():
     assert result.to_dict()["accounting_standard"] == "IFRS"
 
 
+def test_unresolved_ticker_uses_company_name_and_runs_available_rules(tmp_path):
+    """Filings without a resolvable ticker log under company name with ticker_unresolved=True,
+    rules fire on available fields, and two different company entries don't collide on dedup."""
+    from modules.integrity.log import append_to_log, read_log
+
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    def _filing(company: str, revenue: float, net_income: float) -> dict:
+        return {
+            "company_name": company,
+            "fiscal_year": "FY2024",
+            "income_statement": [
+                {"line_item": "Revenue", "value": revenue},
+                {"line_item": "Net Income", "value": net_income},
+            ],
+            "balance_sheet": [],
+            "cash_flow_statement": [],
+        }
+
+    meta = {"source": "pdf", "ticker_unresolved": True}
+
+    result_a = validate_filing(_filing("Acme Corp", 5_000_000_000.0, 500_000_000.0), "Acme Corp", None, meta)
+    append_to_log(result_a, log_path=log_path)
+
+    result_b = validate_filing(_filing("Beta Ltd", 2_000_000_000.0, 200_000_000.0), "Beta Ltd", None, meta)
+    append_to_log(result_b, log_path=log_path)
+
+    records = read_log(log_path)
+
+    # Both entries written — no dedup collision between different company names
+    assert len(records) == 2
+
+    rec_a = next(r for r in records if r["ticker"] == "Acme Corp")
+    rec_b = next(r for r in records if r["ticker"] == "Beta Ltd")
+
+    # Flag present and set
+    assert rec_a["ticker_unresolved"] is True
+    assert rec_b["ticker_unresolved"] is True
+
+    # At least some rules ran (not an all-skipped shell)
+    assert rec_a["rules_run"] > 0
+    assert rec_b["rules_run"] > 0
+
+
 if __name__ == "__main__":
     rows = run_detection()
     print("corruption | caught? | rule(s) fired")

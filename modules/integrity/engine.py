@@ -66,6 +66,7 @@ class ValidationResult:
     rules_failed: int
     rules_skipped: int
     gross_profit_derived: bool = False
+    ticker_unresolved: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -83,6 +84,7 @@ class ValidationResult:
             "rules_failed": self.rules_failed,
             "rules_skipped": self.rules_skipped,
             "gross_profit_derived": self.gross_profit_derived,
+            "ticker_unresolved": self.ticker_unresolved,
             "checks": [c.to_dict() for c in self.checks],
         }
 
@@ -553,4 +555,5 @@ def validate_filing(
         rules_failed=rules_failed,
         rules_skipped=rules_skipped,
         gross_profit_derived=bool(ctx.get("gross_profit_derived")),
+        ticker_unresolved=bool(filing_metadata.get("ticker_unresolved", False)),
     )
