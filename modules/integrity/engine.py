@@ -185,23 +185,39 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
     cost_of_revenue = _line_item(income, "cost_of_revenue")
     gross_profit = _line_item(income, "gross_profit")
     gross_profit_derived = False
+    cost_of_revenue_excludes_da = False
+
+    # Use mapper-derived gross_profit when raw label lookup fails (e.g. IFRS retail filers
+    # whose cost label is non-standard like "Cost of sales, excluding D&A").
+    mapping = normalized_data.get("mapping")
+    if mapping and isinstance(mapping, dict) and gross_profit is None:
+        mapper_gp = (mapping.get("mapped") or {}).get("gross_profit")
+        if isinstance(mapper_gp, dict) and mapper_gp.get("derived"):
+            gp_val = _coerce_number(mapper_gp.get("value"))
+            if gp_val is not None:
+                gross_profit = gp_val
+                gross_profit_derived = True
+                cost_of_revenue_excludes_da = bool(mapper_gp.get("excludes_da"))
+
+    # Fallback: derive from raw income statement rows when both values are available.
     if gross_profit is None and revenue is not None and cost_of_revenue is not None:
         gross_profit = revenue - cost_of_revenue
         gross_profit_derived = True
 
     return {
-        "revenue":          revenue,
-        "revenue_prior":    _line_item_prior(income, "revenue"),
-        "cost_of_revenue":  cost_of_revenue,
-        "gross_profit":     gross_profit,
-        "gross_profit_derived": gross_profit_derived,
-        "net_income":       _line_item(income, "net_income"),
-        "mapping":          normalized_data.get("mapping"),
-        "has_mapping":      "mapping" in normalized_data,
-        "accounting_standard": normalized_data.get("accounting_standard"),
-        "fiscal_year":      normalized_data.get("fiscal_year", ""),
-        "fiscal_year_int":  _parse_fy_year(normalized_data.get("fiscal_year", "")),
-        "filing_year_int":  _parse_iso_year(filing_metadata.get("filing_date", "")),
+        "revenue":                    revenue,
+        "revenue_prior":              _line_item_prior(income, "revenue"),
+        "cost_of_revenue":            cost_of_revenue,
+        "gross_profit":               gross_profit,
+        "gross_profit_derived":       gross_profit_derived,
+        "cost_of_revenue_excludes_da": cost_of_revenue_excludes_da,
+        "net_income":                 _line_item(income, "net_income"),
+        "mapping":                    normalized_data.get("mapping"),
+        "has_mapping":                "mapping" in normalized_data,
+        "accounting_standard":        normalized_data.get("accounting_standard"),
+        "fiscal_year":                normalized_data.get("fiscal_year", ""),
+        "fiscal_year_int":            _parse_fy_year(normalized_data.get("fiscal_year", "")),
+        "filing_year_int":            _parse_iso_year(filing_metadata.get("filing_date", "")),
     }
 
 
@@ -252,6 +268,13 @@ def _check_ratio_range(rule: dict, ctx: dict) -> tuple:
         f"{p['denominator'].replace('_', ' ').title()} = "
         f"{ratio * 100:.1f}% -- {direction} [{lo}, {hi}]"
     )
+    if ctx.get("cost_of_revenue_excludes_da") and "gross_profit" in {
+        p.get("numerator"), p.get("denominator")
+    }:
+        msg += (
+            " [NOTE: cost_of_revenue excludes D&A"
+            " -- derived margin not comparable to COGS-inclusive benchmarks]"
+        )
     return round(ratio, 4), threshold, passed, msg
 
 
@@ -273,6 +296,13 @@ def _check_reconciliation(rule: dict, ctx: dict) -> tuple:
         f"= ${(a - b) / 1e9:.2f}B vs {p['c']} (${c / 1e9:.2f}B) -- "
         f"diff {diff_pct * 100:.2f}% ({verdict} {tol * 100:.0f}% tolerance)"
     )
+    if ctx.get("cost_of_revenue_excludes_da") and "gross_profit" in {
+        p.get("a"), p.get("b"), p.get("c")
+    }:
+        msg += (
+            " [NOTE: cost_of_revenue excludes D&A"
+            " -- gross profit derived from non-COGS cost base]"
+        )
     return round(diff_pct, 6), {"tolerance": tol}, passed, msg
 
 

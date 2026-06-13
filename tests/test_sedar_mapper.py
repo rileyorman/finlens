@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -45,10 +44,13 @@ def _mapped_fixture(name: str, accounting_standard: str, sector: str | None = No
 
 def _assert_conservation(result: dict) -> None:
     meta = result["meta"]
-    assert meta["mapped_count"] + meta["unmapped_count"] == meta["total"]
+    total = meta["total"]
+    benign_skipped = meta.get("benign_skipped_count", 0)
+    assert meta["mapped_count"] + meta["unmapped_count"] + benign_skipped == total
 
 
 def _assert_unmapped_labels_are_verbatim(data: dict, result: dict) -> None:
+    from collections import Counter
     fixture_labels = Counter(item["label"] for item in data["statements"]["income_statement"])
     unmapped_labels = Counter(item["label"] for item in result["unmapped"])
     assert unmapped_labels <= fixture_labels
@@ -80,8 +82,12 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     assert mapped["revenue"]["value"] == _source_value(data, "Total Revenue")
     assert result["meta"]["mapped_count"] == 2
 
+    # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
+    # After Part C: first occurrence goes to unmapped (no alias for "net income (loss)"),
+    # second is benign-skipped. net_income must remain unmapped.
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert unmapped_labels.count("Net income (loss)") == 2
+    assert unmapped_labels.count("Net income (loss)") == 1
+    assert result["meta"]["benign_skipped_count"] == 1
     assert "net_income" not in mapped
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -91,7 +97,7 @@ def test_ry_fixture_uses_financial_sector_profile_only():
     data, result = _mapped_fixture("RY_FY2025_sedar.json", "IFRS", sector="Financial Services")
     mapped = result["mapped"]
 
-    assert set(mapped) == {
+    assert set(k for k, v in mapped.items() if not v.get("derived")) == {
         "net_interest_income",
         "provision_for_credit_losses",
         "total_revenue_bank",
@@ -204,24 +210,18 @@ def test_normalization_maps_note_references_case_and_trailing_punctuation():
     _assert_conservation(result)
 
 
-def test_shop_fixture_maps_revenue_and_net_income_us_gaap():
+def test_shop_fixture_maps_four_fields_us_gaap():
     """
-    SHOP (Shopify, US GAAP, USD, December year-end) maps two fields under
-    the current US GAAP alias table:
-    - "Revenues" → revenue  (US GAAP alias "revenues")
-    - "Net income" → net_income  (US GAAP alias "net income")
+    SHOP (Shopify, US GAAP, USD, December year-end) maps four fields after
+    alias additions (item 1, Jun 2026):
+    - "Revenues" → revenue
+    - "Gross profit" → gross_profit
+    - "Income (loss) from operations" → operating_income
+    - "Net income" → net_income
 
-    Notable alias gaps for SHOP:
-    - "Income (loss) from operations" does NOT match "operating income" alias
-      (normalization strips note refs but NOT "(loss)" qualifiers in label names)
-    - "Interest income" does NOT match "interest expense" alias (income != expense)
-    - "Gross profit" has no alias in the current table
-
-    These are findings, not failures — the alias table flywheel property means
-    new filer unmapped labels → JSON edit + fixture update, not engine changes.
-
-    Do NOT weaken assertions to make the test pass. If mapped_count changes,
-    update the expected value and document the new alias.
+    Persistent alias gap: "Interest income" does NOT match "interest expense".
+    When mapped_count changes, update the expected value and document the new alias.
+    Do NOT weaken assertions to make the test pass.
     """
     data = _load_fixture("SHOP_FY2025_sedar.json")
     assert data["accounting_standard"] == "US GAAP"
@@ -232,98 +232,195 @@ def test_shop_fixture_maps_revenue_and_net_income_us_gaap():
     assert mapped["revenue"]["match_type"] == "exact"
     assert mapped["revenue"]["source_label"] == "Revenues"
 
+    assert mapped["gross_profit"]["value"] == 5555
+    assert mapped["gross_profit"]["match_type"] == "exact"
+    assert mapped["gross_profit"]["source_label"] == "Gross profit"
+
+    assert mapped["operating_income"]["value"] == 1468
+    assert mapped["operating_income"]["match_type"] == "exact"
+    assert mapped["operating_income"]["source_label"] == "Income (loss) from operations"
+
     assert mapped["net_income"]["value"] == 1231
     assert mapped["net_income"]["match_type"] == "exact"
     assert mapped["net_income"]["source_label"] == "Net income"
 
-    # Alias gap: SHOP uses "Income (loss) from operations", not "Operating income".
-    assert "operating_income" not in mapped
-
-    # Alias gap: SHOP has no "Interest expense" line — only "Interest income".
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 2
+    assert result["meta"]["mapped_count"] == 4
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
-    # Key unmapped labels document the alias gap for future alias additions.
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert "Income (loss) from operations" in unmapped_labels
     assert "Interest income" in unmapped_labels
-    assert "Gross profit" in unmapped_labels
     assert "Net unrealized (loss) gain on equity and other investments" in unmapped_labels
 
 
-def test_atd_fixture_zero_mapped_under_current_alias_table():
+def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     """
-    ATD (Alimentation Couche-Tard, IFRS, USD, April year-end) has no income
-    statement labels that match any current IFRS alias:
-    - "Revenues" is tagged ["US GAAP"] only — ATD proves IFRS filers use this label too.
-    - "Operating income" is tagged ["US GAAP"] only (same gap as REI.UN, open queue item 1).
-    - "Net earnings" is an ATD/IFRS term; current table has no "net earnings" alias.
-    - "Financial expenses" is ATD's interest label; table has "Finance costs" (IFRS) only.
-    - No "Gross profit" subtotal exists in the ATD IS at all.
+    ATD (Alimentation Couche-Tard, IFRS, USD, April year-end).
 
-    Also: "Net earnings" appears TWICE in the IS (IS + Comprehensive Income preamble).
-    The collision guard drops both to unmapped — no net_income mapping is possible
-    even if a "net earnings" alias were added without resolving the collision first.
+    After alias additions (item 1) and benign-duplicate relaxation (item 13),
+    five IS line items map:
+    - "Revenues" → revenue
+    - "Cost of sales, excluding depreciation, amortization and impairment" → cost_of_revenue
+      (semantics.excludes_da: True — D&A not included in this cost line)
+    - "Operating income" → operating_income
+    - "Financial expenses" → interest_expense
+    - "Net earnings" → net_income (first of two identical occurrences; second benign-skipped)
 
-    This test locks in CURRENT behavior. When queue item 1 aliases are added
-    ("operating income" → IFRS, "revenues" → IFRS), update mapped_count accordingly.
+    Gross profit is DERIVED (revenue - cost_of_revenue = 13021.3).
+    Derived entries are NOT counted in mapped_count.
 
-    Do NOT weaken this to make it pass — a surprise mapping is a finding.
+    Do NOT weaken assertions. If mapped_count changes, update and document the new alias.
     """
     data = _load_fixture("ATD_FY2025_sedar.json")
     assert data["accounting_standard"] == "IFRS"
     result = map_line_items(_line_items(data), "IFRS")
+    mapped = result["mapped"]
 
-    assert result["meta"]["mapped_count"] == 0
+    assert mapped["revenue"]["source_label"] == "Revenues"
+    assert mapped["revenue"]["value"] == _source_value(data, "Revenues")
 
-    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert mapped["cost_of_revenue"]["source_label"] == (
+        "Cost of sales, excluding depreciation, amortization and impairment"
+    )
+    assert mapped["cost_of_revenue"]["value"] == _source_value(
+        data, "Cost of sales, excluding depreciation, amortization and impairment"
+    )
+    assert mapped["cost_of_revenue"].get("semantics", {}).get("excludes_da") is True
 
-    # Key alias gaps confirmed by ATD FY2025:
-    assert "Revenues" in unmapped_labels
-    assert "Operating income" in unmapped_labels
-    assert "Net earnings" in unmapped_labels         # appears twice — collision guard fires
-    assert "Financial expenses" in unmapped_labels   # ATD's interest label (≠ "Finance costs")
+    assert mapped["operating_income"]["source_label"] == "Operating income"
+    assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
 
-    # No gross profit label exists in ATD IS at all.
-    gross_profit_present = any("gross profit" in lbl.lower() for lbl in unmapped_labels)
-    assert not gross_profit_present, "ATD IS should have no Gross profit subtotal"
+    assert mapped["interest_expense"]["source_label"] == "Financial expenses"
+    assert mapped["interest_expense"]["value"] == _source_value(data, "Financial expenses")
+
+    assert mapped["net_income"]["source_label"] == "Net earnings"
+    assert mapped["net_income"]["value"] == _source_value(data, "Net earnings")
+
+    # Derived gross profit — not a line-item mapping.
+    assert "gross_profit" in mapped
+    assert mapped["gross_profit"]["derived"] is True
+    assert mapped["gross_profit"]["excludes_da"] is True
+    assert abs(mapped["gross_profit"]["value"] - 13021.3) < 0.01
+
+    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["gross_profit_derived"] is True
+    assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenues" not in unmapped_labels
+    assert "Operating income" not in unmapped_labels
+    assert "Financial expenses" not in unmapped_labels
+    # "Net financial expenses" is a separate label and remains unmapped.
+    assert "Net financial expenses" in unmapped_labels
 
-def test_reiun_fixture_zero_mapped_under_current_alias_table():
+
+def test_reiun_fixture_maps_three_fields_after_alias_additions():
     """
-    REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end) has no income
-    statement labels that match any current IFRS alias exactly:
-    - Revenue total is an unlabeled subtotal row — no "Total Revenue" label.
-    - Interest line is "Interest costs, net" — not the IFRS alias "Finance costs".
-    - "Operating income" exists but is currently tagged ["US GAAP"] only.
+    REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end).
 
-    This test locks in the CURRENT alias-table behavior. When "operating income"
-    is retagged to ["IFRS", "US GAAP"] (open queue item 1), this assertion will
-    need to be updated to mapped_count == 1.
+    After alias additions (item 1) and benign-duplicate relaxation (item 13),
+    three IS line items map:
+    - "Operating income" → operating_income  (alias promoted to IFRS)
+    - "Interest costs, net" → interest_expense  (new IFRS alias from REI.UN evidence)
+    - "Net income" → net_income  (alias promoted to IFRS; first of two identical occurrences)
 
-    Do NOT weaken this to make it pass — a surprise mapping is a finding.
+    "Rental revenue" is deliberately NOT mapped to generic revenue — it belongs in a
+    future REIT sector profile (Phase 2 Design, validated Jun 2026).
+
+    Do NOT weaken assertions. If mapped_count changes, update and document the new alias.
     """
     data = _load_fixture("REIUN_FY2025_sedar.json")
     assert data["accounting_standard"] == "IFRS"
     result = map_line_items(_line_items(data), "IFRS")
+    mapped = result["mapped"]
 
-    # Under current alias table, no REIT income statement labels map.
-    assert result["meta"]["mapped_count"] == 0
+    assert mapped["operating_income"]["source_label"] == "Operating income"
+    assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
+
+    assert mapped["interest_expense"]["source_label"] == "Interest costs, net"
+    assert mapped["interest_expense"]["value"] == _source_value(data, "Interest costs, net")
+
+    assert mapped["net_income"]["source_label"] == "Net income"
+    assert mapped["net_income"]["value"] == _source_value(data, "Net income")
+
+    assert result["meta"]["mapped_count"] == 3
+    assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
 
-    # Key REIT-specific labels that must remain unmapped (no generic alias exists).
+    # REIT-specific labels that must remain unmapped (no generic alias exists).
     assert "Rental revenue" in unmapped_labels
-    assert "Operating income" in unmapped_labels
     assert "Fair value loss on investment properties, net" in unmapped_labels
-    assert "Interest costs, net" in unmapped_labels
-    assert "Net income" in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_benign_duplicate_same_value_maps_first_occurrence(monkeypatch):
+    """Same normalized label + same value = benign duplicate: first occurrence maps."""
+    alias_table = {
+        "schema_version": 1,
+        "scope": "income_statement",
+        "canonical_fields": {
+            "net_income": {
+                "aliases": [
+                    {"label": "net earnings", "standards": ["IFRS"], "source": "synthetic"},
+                ],
+                "patterns": [],
+            }
+        },
+        "sector_profiles": {},
+    }
+    monkeypatch.setattr(sedar_mapper, "_load_alias_table", lambda: alias_table)
+
+    result = map_line_items(
+        [
+            {"label": "Net earnings", "value": 2592.4},
+            {"label": "Net earnings", "value": 2592.4},
+        ],
+        "IFRS",
+    )
+
+    assert result["mapped"]["net_income"]["value"] == 2592.4
+    assert result["meta"]["mapped_count"] == 1
+    assert result["meta"]["benign_skipped_count"] == 1
+    meta = result["meta"]
+    assert meta["mapped_count"] + meta["unmapped_count"] + meta["benign_skipped_count"] == meta["total"]
+
+
+def test_ambiguous_duplicate_different_values_still_blocks(monkeypatch):
+    """Same normalized label + different values = ambiguous: all occurrences go to unmapped."""
+    alias_table = {
+        "schema_version": 1,
+        "scope": "income_statement",
+        "canonical_fields": {
+            "net_income": {
+                "aliases": [
+                    {"label": "net earnings", "standards": ["IFRS"], "source": "synthetic"},
+                ],
+                "patterns": [],
+            }
+        },
+        "sector_profiles": {},
+    }
+    monkeypatch.setattr(sedar_mapper, "_load_alias_table", lambda: alias_table)
+
+    result = map_line_items(
+        [
+            {"label": "Net earnings", "value": 2592.4},
+            {"label": "Net earnings", "value": 2580.4},
+        ],
+        "IFRS",
+    )
+
+    assert "net_income" not in result["mapped"]
+    assert len(result["unmapped"]) == 2
+    assert result["meta"]["mapped_count"] == 0
+    assert result["meta"].get("benign_skipped_count", 0) == 0
+    meta = result["meta"]
+    assert meta["mapped_count"] + meta["unmapped_count"] + meta.get("benign_skipped_count", 0) == meta["total"]

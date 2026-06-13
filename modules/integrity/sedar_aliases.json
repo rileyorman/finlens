@@ -11,26 +11,44 @@
         },
         {
           "label": "revenues",
-          "standards": ["US GAAP"],
-          "source": "CNR_FY2025"
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CNR_FY2025 ATD_FY2025"
         }
       ],
       "patterns": []
     },
     "cost_of_revenue": {
-      "aliases": [],
+      "aliases": [
+        {
+          "label": "cost of sales, excluding depreciation, amortization and impairment",
+          "standards": ["IFRS"],
+          "source": "ATD_FY2025",
+          "semantics": {"excludes_da": true}
+        }
+      ],
       "patterns": []
     },
     "gross_profit": {
-      "aliases": [],
+      "aliases": [
+        {
+          "label": "gross profit",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "SHOP_FY2025"
+        }
+      ],
       "patterns": []
     },
     "operating_income": {
       "aliases": [
         {
           "label": "operating income",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CNR_FY2025 REI.UN_FY2025 ATD_FY2025"
+        },
+        {
+          "label": "income (loss) from operations",
           "standards": ["US GAAP"],
-          "source": "CNR_FY2025"
+          "source": "SHOP_FY2025"
         }
       ],
       "patterns": []
@@ -39,8 +57,13 @@
       "aliases": [
         {
           "label": "net income",
-          "standards": ["US GAAP"],
-          "source": "CNR_FY2025"
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CNR_FY2025 REI.UN_FY2025"
+        },
+        {
+          "label": "net earnings",
+          "standards": ["IFRS"],
+          "source": "ATD_FY2025"
         }
       ],
       "patterns": []
@@ -60,6 +83,16 @@
           "label": "interest expense",
           "standards": ["US GAAP"],
           "source": "CNR_FY2025"
+        },
+        {
+          "label": "interest costs, net",
+          "standards": ["IFRS"],
+          "source": "REI.UN_FY2025"
+        },
+        {
+          "label": "financial expenses",
+          "standards": ["IFRS"],
+          "source": "ATD_FY2025"
         }
       ],
       "patterns": []
