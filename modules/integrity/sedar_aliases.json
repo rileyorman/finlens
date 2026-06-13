@@ -71,6 +71,11 @@
           "source": "CNR_FY2025 REI.UN_FY2025"
         },
         {
+          "label": "net income (loss)",
+          "standards": ["IFRS"],
+          "source": "CSU_FY2025"
+        },
+        {
           "label": "net earnings",
           "standards": ["IFRS"],
           "source": "ATD_FY2025"

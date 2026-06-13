@@ -1056,9 +1056,21 @@
   },
   "mapping": {
     "mapped": {
+      "revenue": {
+        "value": 11623,
+        "source_label": "Revenue total",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "interest_expense": {
         "value": 297,
         "source_label": "Finance costs (note 18)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 586,
+        "source_label": "Net income (loss)",
         "match_type": "exact",
         "confidence": 0.99
       }
@@ -1079,10 +1091,6 @@
       {
         "label": "Maintenance and other recurring",
         "value": 8700
-      },
-      {
-        "label": "Revenue total",
-        "value": 11623
       },
       {
         "label": "Staff",
@@ -1173,10 +1181,6 @@
         "value": 353
       },
       {
-        "label": "Net income (loss)",
-        "value": 586
-      },
-      {
         "label": "Net income (loss) attributable to: Common shareholders of Constellation Software Inc.",
         "value": 512
       },
@@ -1229,8 +1233,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": null,
       "total": 43,
-      "mapped_count": 1,
-      "unmapped_count": 40,
+      "mapped_count": 3,
+      "unmapped_count": 38,
       "benign_skipped_count": 2,
       "benign_duplicates": [
         {

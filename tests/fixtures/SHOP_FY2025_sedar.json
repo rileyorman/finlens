@@ -909,6 +909,12 @@
   },
   "mapping": {
     "mapped": {
+      "revenue": {
+        "value": 11556,
+        "source_label": "Total revenues",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "gross_profit": {
         "value": 5555,
         "source_label": "Gross profit",
@@ -936,10 +942,6 @@
       {
         "label": "Merchant solutions",
         "value": 8804
-      },
-      {
-        "label": "Total revenues",
-        "value": 11556
       },
       {
         "label": "Subscription solutions",
@@ -1042,8 +1044,8 @@
       "accounting_standard": "U.S. GAAP",
       "sector_profile": null,
       "total": 30,
-      "mapped_count": 3,
-      "unmapped_count": 27,
+      "mapped_count": 4,
+      "unmapped_count": 26,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

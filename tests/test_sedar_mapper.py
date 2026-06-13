@@ -79,16 +79,16 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     assert mapped["interest_expense"]["value"] == _source_value(data, "Finance costs (note 18)")
     assert mapped["revenue"]["source_label"] == "Revenue total"
     assert mapped["revenue"]["value"] == _source_value(data, "Revenue total")
-    assert result["meta"]["mapped_count"] == 2
+    assert mapped["net_income"]["source_label"] == "Net income (loss)"
+    assert mapped["net_income"]["value"] == _source_value(data, "Net income (loss)")
+    assert result["meta"]["mapped_count"] == 3
 
     # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
-    # After Part C: first occurrence goes to unmapped (no alias for "net income (loss)"),
-    # second is benign-skipped. net_income must remain unmapped.
+    # The first occurrence maps to net_income; the second is benign-skipped.
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Revenue total" not in unmapped_labels
-    assert unmapped_labels.count("Net income (loss)") == 1
+    assert unmapped_labels.count("Net income (loss)") == 0
     assert result["meta"]["benign_skipped_count"] == 2
-    assert "net_income" not in mapped
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
