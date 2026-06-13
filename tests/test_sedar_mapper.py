@@ -93,17 +93,38 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
-def test_ry_fixture_uses_financial_sector_profile_only():
+def test_ry_fixture_override_preserves_defaults_under_financial_sector_profile():
+    """
+    RY (Royal Bank of Canada, IFRS, CAD).
+
+    OVERRIDE semantics: sector_profile=financial_sector ADDS sector-specific
+    fields without dropping defaults. Default `revenue` (66,605) and
+    `net_income` (20,369) still map. Sector additions `net_interest_income`
+    and `provision_for_credit_losses` are present. `total_revenue_bank`
+    does NOT map because its alias "total revenue" collides with default
+    revenue's alias — first-write-wins keeps revenue (defaults iterated
+    first). This is the RY trap defused: applying the sector profile no
+    longer silently drops revenue/net_income coverage.
+    """
     data, result = _mapped_fixture("RY_FY2025_sedar.json", sector="Financial Services")
     mapped = result["mapped"]
 
-    assert set(k for k, v in mapped.items() if not v.get("derived")) == {
-        "net_interest_income",
-        "provision_for_credit_losses",
-        "total_revenue_bank",
-    }
-    assert "revenue" not in mapped
-    assert "net_income" not in mapped
+    # Defaults preserved
+    assert mapped["revenue"]["value"] == 66605
+    assert mapped["revenue"]["source_label"] == "Total revenue"
+    assert mapped["net_income"]["value"] == 20369
+    assert mapped["net_income"]["source_label"] == "Net income"
+
+    # Sector additions
+    assert mapped["net_interest_income"]["value"] == 33000
+    assert mapped["net_interest_income"]["source_label"] == "Net interest income"
+    assert mapped["provision_for_credit_losses"]["value"] == 4362
+    assert mapped["provision_for_credit_losses"]["source_label"] == "Provision for credit losses"
+
+    # First-write-wins: default revenue claims "total revenue", so the
+    # profile's same-label total_revenue_bank does not map.
+    assert "total_revenue_bank" not in mapped
+
     assert result["meta"]["sector_profile"] == "financial_sector"
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)

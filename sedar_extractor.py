@@ -89,12 +89,19 @@ Top-level fields required:
   "scale": str,
   "fiscal_year_end": str,
   "filing_date": str or null,
+  "sector_inferred": str or null,
   "statements": {
     "balance_sheet": [],
     "income_statement": [],
     "cash_flow": []
   }
 }
+
+Rules for sector_inferred:
+- Infer the primary sector or industry from the filing text (issuer description, segment headings, business overview snippets on the supplied pages).
+- Use plain language, e.g. "Banking", "Real Estate (REIT)", "Specialty Retail", "Upstream Oil & Gas", "Software".
+- Return null if the supplied pages do not provide enough context to infer the sector confidently.
+- Do NOT guess from the ticker or company name alone — only infer from filing content.
 
 Rules for numbers:
 - Parse parentheses as negatives.
@@ -126,6 +133,7 @@ Return exactly this JSON shape:
   "scale": "scale stated in the filing, e.g. thousands or millions",
   "fiscal_year_end": "period end date or fiscal year end stated in the statements",
   "filing_date": "document filing/cover/approval/signature date in YYYY-MM-DD if clearly present, otherwise null",
+  "sector_inferred": "primary sector or industry inferred from filing content, e.g. 'Banking' or 'Real Estate (REIT)', otherwise null",
   "statements": {
     "balance_sheet": [
       {"label": "verbatim label", "values": {"period label": 123}, "confidence": 0.95}
@@ -269,6 +277,13 @@ def _confidence(value) -> float:
     return max(0.0, min(1.0, parsed))
 
 
+def _normalize_sector_inferred(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
 def _normalize_filing_date(value) -> str | None:
     if value is None:
         return None
@@ -340,6 +355,7 @@ def _normalize_extraction_payload(data: dict) -> dict:
         "scale": str(data.get("scale") or ""),
         "fiscal_year_end": str(data.get("fiscal_year_end") or ""),
         "filing_date": _normalize_filing_date(data.get("filing_date")),
+        "sector_inferred": _normalize_sector_inferred(data.get("sector_inferred")),
         "statements": normalized_statements,
     }
 
@@ -446,6 +462,7 @@ def extract_sedar_filing(pdf_path) -> SedarExtraction:
         "scale": extracted.get("scale", ""),
         "fiscal_year_end": extracted.get("fiscal_year_end", ""),
         "filing_date": extracted.get("filing_date"),
+        "sector_inferred": extracted.get("sector_inferred"),
         "statements": statements,
         "extraction_confidence": _extraction_confidence(statements),
         "pages_used": pages,

@@ -73,14 +73,17 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
 
 
 def _iter_target_fields(alias_table: dict[str, Any], sector_profile: str | None):
+    # OVERRIDE semantics: defaults always run; sector profile adds new canonical
+    # fields or overrides defaults at the same canonical name. Same canonical
+    # name → profile wins (dict.update). New canonical name → added.
+    # Alias-label collisions across two different canonical names are resolved
+    # in _build_match_indexes via first-write-wins; defaults are iterated first
+    # here so they claim collided labels before the profile sees them.
+    merged = dict(alias_table.get("canonical_fields") or {})
     if sector_profile:
         profile = (alias_table.get("sector_profiles") or {}).get(sector_profile, {})
-        fields = (profile.get("canonical_fields") or {}).items()
-        for field_name, config in fields:
-            yield field_name, config
-        return
-
-    for field_name, config in (alias_table.get("canonical_fields") or {}).items():
+        merged.update(profile.get("canonical_fields") or {})
+    for field_name, config in merged.items():
         yield field_name, config
 
 
@@ -99,13 +102,20 @@ def _build_match_indexes(
     patterns: list[tuple[str, str]] = []
     semantics_map: dict[str, dict] = {}
 
+    # First-write-wins on alias-label collisions: defaults are iterated before
+    # sector-profile fields, so a default claims a collided label and the
+    # profile's same-label alias is rejected. This is the RY-trap defuse —
+    # without it, profile total_revenue_bank ("total revenue") would steal
+    # the label from default revenue when the financial_sector profile resolves.
     for field_name, config in _iter_target_fields(alias_table, sector_profile):
         for alias in config.get("aliases") or []:
             if _standard_allowed(alias, accounting_standard):
-                exact[alias["label"]] = field_name
-                sem = alias.get("semantics")
-                if sem:
-                    semantics_map[alias["label"]] = sem
+                label = alias["label"]
+                if label not in exact:
+                    exact[label] = field_name
+                    sem = alias.get("semantics")
+                    if sem:
+                        semantics_map[label] = sem
         for pattern in config.get("patterns") or []:
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
