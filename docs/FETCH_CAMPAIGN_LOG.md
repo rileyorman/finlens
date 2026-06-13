@@ -41,14 +41,29 @@ Steps for each new filer:
 - Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
 - CSU + REI.UN filing_date NULL: diagnosed 2026-06-13. Fix designed (Option A: prepend cover pages 0-3). Pending empirical verification via reextract_sedar_fixtures.py next session.
 
-## Filer #8 — CAR.UN (Canadian Apartment REIT)
-Status: Queued
-Rationale: Residential REIT — most structurally distinct from REI.UN (retail). Largest Canadian residential REIT. Clean income statement baseline before office/industrial complexity. Confirms IFRS 13 fair value pattern generalizes across REIT types.
-Sector: reit_sector (profile TBD pending item 9 taxonomy design)
+## CAR.UN Filer #8 - Complete (e012859)
 
-## Filer #9 — DIR.UN or Allied REIT
-Status: Queued (candidate selection pending)
-Rationale: Industrial or office REIT. Completes 3-REIT evidence base needed to finalize item 9 REIT sector-skip taxonomy.
+- Company: Canadian Apartment Properties REIT (CAPREIT)
+- Ticker: CAR.UN
+- Fiscal year: FY2024
+- Fixture: `tests/fixtures/CARUN_FY2024_sedar.json`
+- Source: issuer-hosted FY2024 annual report
+- Source URL: https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf
+- Source note: SEDAR+ Radware CAPTCHA blocked the canonical-source path.
+- Document note: full annual report PDF; user-specified `capreit.ca/investors/` URL returned 404, working URL captured above.
+- Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
+
+## DIR.UN Filer #9 - Complete (24cf477)
+
+- Company: Dream Industrial REIT
+- Ticker: DIR.UN
+- Fiscal year: FY2024
+- Fixture: `tests/fixtures/DIRUN_FY2024_sedar.json`
+- Source: issuer-hosted FY2024 annual report
+- Source URL: https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf
+- Source note: SEDAR+ Radware CAPTCHA blocked the canonical-source path.
+- Document note: full annual report PDF (131 pages); user-specified `dreamindustrial.com/investors` URL didn't resolve, working IR domain `investors.dream.ca` captured above.
+- Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
 
 ## Campaign-Wide Flags
 
