@@ -42,6 +42,70 @@ def test_successful_cross_validation_writes_reason_to_cache(monkeypatch, tmp_pat
     assert cache["TEST|2025"]["fmp_fetch_reason"] == cv.FMP_FETCH_SUCCESS
 
 
+def test_sedar_top_level_values_fill_cv_record_when_statement_labels_are_ifrs(monkeypatch, tmp_path):
+    cache_file = tmp_path / "cv_cache.json"
+    monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
+    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
+        {
+            "revenue": 72856.8,
+            "net_income": 2592.4,
+            "total_assets": 32367.2,
+            "operating_cash_flow": 6621.7,
+        },
+        True,
+        cv.FMP_FETCH_SUCCESS,
+    ))
+    monkeypatch.setattr("modules.integrity.log.append_cv_to_log", lambda _result: None)
+    sedar_data = {
+        "source": "sedar_pdf",
+        "revenue": 72856.8,
+        "net_income": 2592.4,
+        "total_assets": 32367.2,
+        "operating_cash_flow": 6621.7,
+        "income_statement": [
+            {"line_item": "Rental revenue", "value": 71300.0},
+            {"line_item": "Residential inventory sales", "value": 1556.8},
+            {"line_item": "Net earnings", "value": 2592.4},
+        ],
+        "balance_sheet": [
+            {"line_item": "Total assets", "value": 32367.2},
+        ],
+        "cash_flow_statement": [
+            {"line_item": "Cash provided by operating activities", "value": 6621.7},
+        ],
+    }
+
+    result = cv.cross_validate_filing(sedar_data, "ATD", "FY2025")
+
+    finlens_values = {field.field: field.finlens_value for field in result.fields}
+    assert finlens_values["revenue"] == sedar_data["revenue"]
+    assert finlens_values["revenue"] not in {71300.0, 1556.8}
+    assert finlens_values == {
+        "revenue": 72856.8,
+        "net_income": 2592.4,
+        "total_assets": 32367.2,
+        "operating_cash_flow": 6621.7,
+    }
+
+
+def test_field_stays_null_when_absent_from_rows_and_top_level():
+    data = {"income_statement": [], "balance_sheet": [], "cash_flow_statement": []}
+
+    values = cv._extract_finlens_values(data)
+
+    assert values["revenue"] is None
+    assert values["total_assets"] is None
+
+
+def test_edgar_rows_take_precedence_over_top_level_fallback():
+    data = _normalized_data()
+    data["revenue"] = 999.0
+
+    values = cv._extract_finlens_values(data)
+
+    assert values["revenue"] == 100.0
+
+
 def test_premium_block_is_cacheable_with_reason(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)

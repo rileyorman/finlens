@@ -178,6 +178,12 @@ def _line_item_value(rows: list[dict], *labels: str) -> float | None:
     return None
 
 
+def _top_level_value(data: dict, field: str) -> float | None:
+    """Return a canonical top-level value, if present."""
+    v = data.get(field)
+    return float(v) if v is not None else None
+
+
 def _extract_finlens_values(normalized_data: dict) -> dict[str, float | None]:
     """
     Pull the 4 headline values out of FinLens normalized_data.
@@ -186,11 +192,19 @@ def _extract_finlens_values(normalized_data: dict) -> dict[str, float | None]:
     income   = normalized_data.get("income_statement",    [])
     balance  = normalized_data.get("balance_sheet",        [])
     cashflow = normalized_data.get("cash_flow_statement",  [])
+    revenue = _line_item_value(income, *_FINLENS_LABELS["revenue"])
+    net_income = _line_item_value(income, *_FINLENS_LABELS["net_income"])
+    total_assets = _line_item_value(balance, *_FINLENS_LABELS["total_assets"])
+    operating_cash_flow = _line_item_value(cashflow, *_FINLENS_LABELS["operating_cash_flow"])
     return {
-        "revenue":             _line_item_value(income,   *_FINLENS_LABELS["revenue"]),
-        "net_income":          _line_item_value(income,   *_FINLENS_LABELS["net_income"]),
-        "total_assets":        _line_item_value(balance,  *_FINLENS_LABELS["total_assets"]),
-        "operating_cash_flow": _line_item_value(cashflow, *_FINLENS_LABELS["operating_cash_flow"]),
+        "revenue":             revenue if revenue is not None else _top_level_value(normalized_data, "revenue"),
+        "net_income":          net_income if net_income is not None else _top_level_value(normalized_data, "net_income"),
+        "total_assets":        total_assets if total_assets is not None else _top_level_value(normalized_data, "total_assets"),
+        "operating_cash_flow": (
+            operating_cash_flow
+            if operating_cash_flow is not None
+            else _top_level_value(normalized_data, "operating_cash_flow")
+        ),
     }
 
 
