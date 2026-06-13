@@ -10,6 +10,16 @@
           "source": "CSU_FY2025"
         },
         {
+          "label": "total revenues",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "SHOP_FY2025"
+        },
+        {
+          "label": "revenue total",
+          "standards": ["IFRS"],
+          "source": "CSU_FY2025"
+        },
+        {
           "label": "revenues",
           "standards": ["IFRS", "US GAAP"],
           "source": "CNR_FY2025 ATD_FY2025"

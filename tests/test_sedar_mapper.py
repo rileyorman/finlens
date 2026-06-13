@@ -78,16 +78,17 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
 
     assert mapped["interest_expense"]["source_label"] == "Finance costs (note 18)"
     assert mapped["interest_expense"]["value"] == _source_value(data, "Finance costs (note 18)")
-    assert result["meta"]["mapped_count"] == 1
+    assert mapped["revenue"]["source_label"] == "Revenue total"
+    assert mapped["revenue"]["value"] == _source_value(data, "Revenue total")
+    assert result["meta"]["mapped_count"] == 2
 
     # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
     # After Part C: first occurrence goes to unmapped (no alias for "net income (loss)"),
     # second is benign-skipped. net_income must remain unmapped.
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert "Revenue total" in unmapped_labels
+    assert "Revenue total" not in unmapped_labels
     assert unmapped_labels.count("Net income (loss)") == 1
     assert result["meta"]["benign_skipped_count"] == 2
-    assert "revenue" not in mapped
     assert "net_income" not in mapped
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -224,7 +225,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     """
     SHOP (Shopify, US GAAP, USD, December year-end) maps four fields after
     alias additions (item 1, Jun 2026):
-    - "Revenues" → revenue
+    - "Total revenues" → revenue
     - "Gross profit" → gross_profit
     - "Income (loss) from operations" → operating_income
     - "Net income" → net_income
@@ -250,15 +251,17 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     assert mapped["net_income"]["match_type"] == "exact"
     assert mapped["net_income"]["source_label"] == "Net income"
 
-    assert "revenue" not in mapped
+    assert mapped["revenue"]["value"] == 11556
+    assert mapped["revenue"]["match_type"] == "exact"
+    assert mapped["revenue"]["source_label"] == "Total revenues"
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 3
+    assert result["meta"]["mapped_count"] == 4
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert "Total revenues" in unmapped_labels
+    assert "Total revenues" not in unmapped_labels
     assert "Net unrealized (loss) gain on equity and other investments" in unmapped_labels
 
 
