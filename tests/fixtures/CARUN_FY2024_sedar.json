@@ -1,0 +1,993 @@
+{
+  "source": "sedar_pdf",
+  "source_provenance": {
+    "pdf_origin_url": "https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf",
+    "sedar_access_note": "SEDAR+ document search was attempted first; Radware CAPTCHA blocked programmatic access to the canonical SEDAR+ path.",
+    "document_note": "Issuer-hosted FY2024 annual report PDF (CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf), retrieved 2026-06-13. This is the preferred annual-report artifact tier and was confirmed readable by pdfplumber.",
+    "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md"
+  },
+  "schema_version": 5,
+  "accounting_standard": "IFRS",
+  "currency": "CAD",
+  "scale": "thousands",
+  "fiscal_year_end": "2024-12-31",
+  "filing_date": "2025-02-13",
+  "sector_inferred": "Real Estate (REIT)",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Investment properties",
+        "values": {
+          "December 31, 2024": 14868362,
+          "December 31, 2023": 16532096
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Vendor takeback mortgages receivable",
+        "values": {
+          "December 31, 2024": 130161,
+          "December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investments held at fair value through profit or loss",
+        "values": {
+          "December 31, 2024": 2364,
+          "December 31, 2023": 162472
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative assets",
+        "values": {
+          "December 31, 2024": 8813,
+          "December 31, 2023": 35619
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax asset",
+        "values": {
+          "December 31, 2024": 11793,
+          "December 31, 2023": 19523
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets",
+        "values": {
+          "December 31, 2024": 27110,
+          "December 31, 2023": 29542
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current assets",
+        "values": {
+          "December 31, 2024": 15048603,
+          "December 31, 2023": 16779252
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "December 31, 2024": 136243,
+          "December 31, 2023": 29528
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amounts receivable",
+        "values": {
+          "December 31, 2024": 17384,
+          "December 31, 2023": 16526
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative assets",
+        "values": {
+          "December 31, 2024": 10263,
+          "December 31, 2023": 10851
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets",
+        "values": {
+          "December 31, 2024": 56140,
+          "December 31, 2023": 86633
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Assets held for sale",
+        "values": {
+          "December 31, 2024": 307460,
+          "December 31, 2023": 45850
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "December 31, 2024": 527490,
+          "December 31, 2023": 189388
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "December 31, 2024": 15576093,
+          "December 31, 2023": 16968640
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt",
+        "values": {
+          "December 31, 2024": 5347694,
+          "December 31, 2023": 6407750
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax liability",
+        "values": {
+          "December 31, 2024": 32076,
+          "December 31, 2023": 49481
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unit-based compensation financial liabilities",
+        "values": {
+          "December 31, 2024": 12305,
+          "December 31, 2023": 11070
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities",
+        "values": {
+          "December 31, 2024": 45462,
+          "December 31, 2023": 46837
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current liabilities",
+        "values": {
+          "December 31, 2024": 5437537,
+          "December 31, 2023": 6515138
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt",
+        "values": {
+          "December 31, 2024": 644320,
+          "December 31, 2023": 651371
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "ERES units held by non-controlling unitholders",
+        "values": {
+          "December 31, 2024": 170018,
+          "December 31, 2023": 186522
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2024": 101760,
+          "December 31, 2023": 105717
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Exchangeable LP Units",
+        "values": {
+          "December 31, 2024": 70220,
+          "December 31, 2023": 80383
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unit-based compensation financial liabilities",
+        "values": {
+          "December 31, 2024": 12326,
+          "December 31, 2023": 12353
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Derivative liabilities",
+        "values": {
+          "December 31, 2024": 3684,
+          "December 31, 2023": 7001
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities",
+        "values": {
+          "December 31, 2024": 108916,
+          "December 31, 2023": 107854
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Liabilities related to assets held for sale",
+        "values": {
+          "December 31, 2024": 0,
+          "December 31, 2023": 23706
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "December 31, 2024": 1111244,
+          "December 31, 2023": 1174907
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2024": 6548781,
+          "December 31, 2023": 7690045
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unit capital",
+        "values": {
+          "December 31, 2024": 4226115,
+          "December 31, 2023": 4227156
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "December 31, 2024": 4791648,
+          "December 31, 2023": 5063981
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "values": {
+          "December 31, 2024": 9549,
+          "December 31, 2023": -12542
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total unitholders' equity",
+        "values": {
+          "December 31, 2024": 9027312,
+          "December 31, 2023": 9278595
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and unitholders' equity",
+        "values": {
+          "December 31, 2024": 15576093,
+          "December 31, 2023": 16968640
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Revenue from investment properties",
+        "values": {
+          "2024": 1112742,
+          "2023": 1065317
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Property operating costs",
+        "values": {
+          "2024": -281431,
+          "2023": -276123
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Realty taxes",
+        "values": {
+          "2024": -100657,
+          "2023": -96408
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total operating expenses",
+        "values": {
+          "2024": -382088,
+          "2023": -372531
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net operating income",
+        "values": {
+          "2024": 730654,
+          "2023": 692786
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other income",
+        "values": {
+          "2024": 7384,
+          "2023": 13644
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trust expenses",
+        "values": {
+          "2024": -58624,
+          "2023": -62373
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unit-based compensation amortization expense",
+        "values": {
+          "2024": -8590,
+          "2023": -7816
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unit-based compensation amortization recovery relating to ERES UOP forfeitures upon senior management termination",
+        "values": {
+          "2024": 2284,
+          "2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total unit-based compensation amortization expense, net",
+        "values": {
+          "2024": -6306,
+          "2023": -7816
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense on debt and other financing costs",
+        "values": {
+          "2024": -220162,
+          "2023": -211664
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense on Exchangeable LP Units",
+        "values": {
+          "2024": -2429,
+          "2023": -2382
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net gain on derecognition of debt",
+        "values": {
+          "2024": 3012,
+          "2023": 3251
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total financing-related costs, net",
+        "values": {
+          "2024": -219579,
+          "2023": -210795
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments of investment properties",
+        "values": {
+          "2024": 58486,
+          "2023": -914585
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments of financial instruments",
+        "values": {
+          "2024": -5994,
+          "2023": -34373
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain (loss) on non-controlling interest",
+        "values": {
+          "2024": -118526,
+          "2023": 45209
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain (loss) on foreign currency translation",
+        "values": {
+          "2024": -26782,
+          "2023": 4161
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Transaction costs and other activities",
+        "values": {
+          "2024": -28532,
+          "2023": -13911
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income (loss) before income taxes",
+        "values": {
+          "2024": 332181,
+          "2023": -488053
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current income tax expense",
+        "values": {
+          "2024": -15713,
+          "2023": -8889
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax recovery (expense)",
+        "values": {
+          "2024": -23726,
+          "2023": 85368
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current income tax expense and deferred income tax recovery (expense), net",
+        "values": {
+          "2024": -39439,
+          "2023": 76479
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income (loss)",
+        "values": {
+          "2024": 292742,
+          "2023": -411574
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on foreign currency translation, net of taxes",
+        "values": {
+          "2024": 21759,
+          "2023": 12569
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on investments held at fair value through other comprehensive income",
+        "values": {
+          "2024": 332,
+          "2023": 421
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amortization of losses from accumulated other comprehensive loss to interest and other financing costs",
+        "values": {
+          "2024": 0,
+          "2023": 341
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other comprehensive income",
+        "values": {
+          "2024": 22091,
+          "2023": 13331
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Comprehensive income (loss)",
+        "values": {
+          "2024": 314833,
+          "2023": -398243
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income (loss)",
+        "values": {
+          "2024": 292742,
+          "2023": -411574
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments of investment properties",
+        "values": {
+          "2024": -58486,
+          "2023": 914585
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Fair value adjustments of financial instruments",
+        "values": {
+          "2024": 5994,
+          "2023": 34373
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Mark-to-market gain on ERES units held by non-controlling unitholders",
+        "values": {
+          "2024": -18634,
+          "2023": -59342
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total unit-based compensation amortization expense, net",
+        "values": {
+          "2024": 6306,
+          "2023": 7816
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other adjustments",
+        "values": {
+          "2024": 69575,
+          "2023": -81251
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Changes in non-cash operating assets and liabilities",
+        "values": {
+          "2024": 406,
+          "2023": -3635
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Items related to investing activities",
+        "values": {
+          "2024": -5797,
+          "2023": -9981
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Items related to financing activities",
+        "values": {
+          "2024": 356739,
+          "2023": 224928
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash provided by operating activities",
+        "values": {
+          "2024": 648845,
+          "2023": 615919
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Capital investments, net",
+        "values": {
+          "2024": -249808,
+          "2023": -307831
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Acquisitions, deposits and transaction costs of investment properties",
+        "values": {
+          "2024": -332638,
+          "2023": -242365
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Acquisition of investments",
+        "values": {
+          "2024": -13293,
+          "2023": -12619
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Disposition of investment properties (net of assumed mortgages and transaction costs)",
+        "values": {
+          "2024": 2135419,
+          "2023": 373676
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Disposition of investments and sale of other assets",
+        "values": {
+          "2024": 151478,
+          "2023": 41791
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from settlement of VTB mortgages receivable",
+        "values": {
+          "2024": 45830,
+          "2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment and interest income received",
+        "values": {
+          "2024": 5931,
+          "2023": 9981
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in restricted funds",
+        "values": {
+          "2024": -487,
+          "2023": -1102
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash provided by (used in) investing activities",
+        "values": {
+          "2024": 1742432,
+          "2023": -138469
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Borrowings",
+        "values": {
+          "2024": 887928,
+          "2023": 770080
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Principal repayments",
+        "values": {
+          "2024": -153237,
+          "2023": -158803
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lump-sum repayments",
+        "values": {
+          "2024": -2093290,
+          "2023": -550164
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Financing costs and CMHC premiums paid",
+        "values": {
+          "2024": -18878,
+          "2023": -18615
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Refunds (deposits) related to financing activities",
+        "values": {
+          "2024": 840,
+          "2023": -1386
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest paid on mortgages and credit facilities",
+        "values": {
+          "2024": -197773,
+          "2023": -184198
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt settlement costs paid",
+        "values": {
+          "2024": -4086,
+          "2023": -388
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase and cancellation of Trust Units",
+        "values": {
+          "2024": -327149,
+          "2023": -100907
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Distributions paid to Unitholders",
+        "values": {
+          "2024": -239964,
+          "2023": -234067
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net proceeds on issuance of Trust Units",
+        "values": {
+          "2024": 2904,
+          "2023": 2744
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Special interest paid to ERES non-controlling unitholders",
+        "values": {
+          "2024": -122617,
+          "2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest paid to ERES non-controlling unitholders",
+        "values": {
+          "2024": -12413,
+          "2023": -10868
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest paid to Exchangeable LP unitholders",
+        "values": {
+          "2024": -2422,
+          "2023": -2388
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease payments",
+        "values": {
+          "2024": -6304,
+          "2023": -6268
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash used in financing activities",
+        "values": {
+          "2024": -2286461,
+          "2023": -495228
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Changes in cash and cash equivalents during the year",
+        "values": {
+          "2024": 104816,
+          "2023": -17778
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on foreign currency translation",
+        "values": {
+          "2024": 1899,
+          "2023": 3
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of the year",
+        "values": {
+          "2024": 29528,
+          "2023": 47303
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, end of the year",
+        "values": {
+          "2024": 136243,
+          "2023": 29528
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.99,
+  "pages_used": {
+    "balance_sheet": [
+      25,
+      26,
+      60,
+      61,
+      75,
+      76,
+      102,
+      103,
+      112,
+      113,
+      125,
+      126,
+      145,
+      146
+    ],
+    "income_statement": [],
+    "cash_flow": [
+      25,
+      26,
+      105,
+      106
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "net_income": {
+        "value": 292742,
+        "source_label": "Net income (loss)",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Revenue from investment properties",
+        "value": 1112742
+      },
+      {
+        "label": "Property operating costs",
+        "value": -281431
+      },
+      {
+        "label": "Realty taxes",
+        "value": -100657
+      },
+      {
+        "label": "Total operating expenses",
+        "value": -382088
+      },
+      {
+        "label": "Net operating income",
+        "value": 730654
+      },
+      {
+        "label": "Other income",
+        "value": 7384
+      },
+      {
+        "label": "Trust expenses",
+        "value": -58624
+      },
+      {
+        "label": "Unit-based compensation amortization expense",
+        "value": -8590
+      },
+      {
+        "label": "Unit-based compensation amortization recovery relating to ERES UOP forfeitures upon senior management termination",
+        "value": 2284
+      },
+      {
+        "label": "Total unit-based compensation amortization expense, net",
+        "value": -6306
+      },
+      {
+        "label": "Interest expense on debt and other financing costs",
+        "value": -220162
+      },
+      {
+        "label": "Interest expense on Exchangeable LP Units",
+        "value": -2429
+      },
+      {
+        "label": "Net gain on derecognition of debt",
+        "value": 3012
+      },
+      {
+        "label": "Total financing-related costs, net",
+        "value": -219579
+      },
+      {
+        "label": "Fair value adjustments of investment properties",
+        "value": 58486
+      },
+      {
+        "label": "Fair value adjustments of financial instruments",
+        "value": -5994
+      },
+      {
+        "label": "Gain (loss) on non-controlling interest",
+        "value": -118526
+      },
+      {
+        "label": "Gain (loss) on foreign currency translation",
+        "value": -26782
+      },
+      {
+        "label": "Transaction costs and other activities",
+        "value": -28532
+      },
+      {
+        "label": "Net income (loss) before income taxes",
+        "value": 332181
+      },
+      {
+        "label": "Current income tax expense",
+        "value": -15713
+      },
+      {
+        "label": "Deferred income tax recovery (expense)",
+        "value": -23726
+      },
+      {
+        "label": "Total current income tax expense and deferred income tax recovery (expense), net",
+        "value": -39439
+      },
+      {
+        "label": "Gain on foreign currency translation, net of taxes",
+        "value": 21759
+      },
+      {
+        "label": "Gain on investments held at fair value through other comprehensive income",
+        "value": 332
+      },
+      {
+        "label": "Amortization of losses from accumulated other comprehensive loss to interest and other financing costs",
+        "value": 0
+      },
+      {
+        "label": "Other comprehensive income",
+        "value": 22091
+      },
+      {
+        "label": "Comprehensive income (loss)",
+        "value": 314833
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS",
+      "sector_profile": null,
+      "total": 29,
+      "mapped_count": 1,
+      "unmapped_count": 28,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
+  }
+}

@@ -484,6 +484,48 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_carun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
+    """
+    CAR.UN (CAPREIT, residential REIT, IFRS, CAD, December year-end).
+
+    Filer #8 intentionally maps through defaults only. REIT-specific labels
+    remain unmapped until the item 9 taxonomy design has evidence from CAR.UN
+    and a third REIT.
+    """
+    data = _load_fixture("CARUN_FY2024_sedar.json")
+    assert data["accounting_standard"] == "IFRS"
+    assert data["sector_inferred"] == "Real Estate (REIT)"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == (
+        "https://www.capreit.ca/wp-content/uploads/2025/02/"
+        "CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf"
+    )
+    assert "Radware CAPTCHA" in provenance["sedar_access_note"]
+    assert "annual report" in provenance["document_note"]
+    assert provenance["future_pattern"] == (
+        "issuer-hosted PDF is the established campaign protocol per "
+        "docs/FETCH_CAMPAIGN_LOG.md"
+    )
+
+    result = map_line_items(_line_items(data), data["accounting_standard"])
+    mapped = result["mapped"]
+
+    assert mapped["net_income"]["source_label"] == "Net income (loss)"
+    assert mapped["net_income"]["value"] == 292742
+
+    assert result["meta"]["mapped_count"] == 1
+    assert result["meta"]["sector_profile"] is None
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenue from investment properties" in unmapped_labels
+    assert "Property operating costs" in unmapped_labels
+    assert "Net operating income" in unmapped_labels
+    assert "Fair value adjustments of investment properties" in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_benign_duplicate_same_value_maps_first_occurrence(monkeypatch):
     """Same normalized label + same value = benign duplicate: first occurrence maps."""
     alias_table = {
