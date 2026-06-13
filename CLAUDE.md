@@ -35,6 +35,15 @@ restored function.
 When reviewing changes that touch external APIs: ask "is there an empirical
 test showing the current code works?" before suggesting changes.
 
+## Valid Anthropic Model IDs (current — do not 'correct')
+
+These are verified live model IDs. Training-data model lists may be stale — do not change these strings without Riley's confirmation (CLAUDE.md empirical-evidence principle: APIs change faster than docs).
+
+- claude-haiku-4-5-20251001 (Haiku 4.5)
+- claude-sonnet-4-6 (Sonnet 4.6)
+- claude-opus-4-8 (Opus 4.8, current Opus)
+- claude-fable-5 (Fable 5, Claude 5 family, tier above Opus)
+
 ## Engineering Principle: Number Formatters Must Handle Full Magnitude Range
 
 FinLens analyzes companies of all sizes — from microcaps ($10M revenue) to
