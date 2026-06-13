@@ -277,6 +277,26 @@ When encoding an existing procedure, convention, or spec into a file
 - If the source content is not provided in the task and cannot be found
   verbatim in the repo, ask for it — do not reconstruct from inference.
 
+## Engineering Principle: CI Python Version is Authoritative
+
+CI runs Python 3.11; local dev runs Python 3.13. These versions have real
+syntax differences that `py_compile` on 3.13 will silently pass:
+
+- **f-string backslash expressions** — `f"{func(f'\"{x}\"')}"` is valid in
+  3.13 (PEP 701) but raises `SyntaxError: f-string expression part cannot
+  include a backslash` in 3.11. Fix: assign the inner expression to a
+  variable before the f-string.
+- **3.12+ syntax** (e.g., type parameter syntax `type X = ...`) — not valid
+  in 3.11.
+
+**Rule:** `py_compile` run locally does NOT catch these errors — CI is the
+arbiter. When writing f-strings with complex expressions, avoid backslashes
+inside `{}` entirely: extract sub-expressions to named variables first.
+
+**Reference incident:** Jun 2026 — `modules/edgar_fetcher.py` used
+`f"...{quote(f'\"{query}\"')}..."` at two locations. Passed 3.13 locally,
+broke 3.11 CI. Fixed by pre-assigning `quoted_query = quote(f'"{query}"')`.
+
 ## Core Architecture
 
 Primary workflow:

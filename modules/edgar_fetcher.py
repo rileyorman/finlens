@@ -214,9 +214,10 @@ def search_companies(company_name: str, count: int = 10) -> list[dict]:
                 if matches:
                     return _filter_company_name_matches(query, _enrich_company_matches(matches))[:count]
 
+        quoted_query = quote(f'"{query}"')
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
-            f"?q={quote(f'\"{query}\"')}&dateRange=custom"
+            f"?q={quoted_query}&dateRange=custom"
             "&startdt=2020-01-01&enddt=2026-12-31&forms=10-K"
         )
         response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
@@ -298,9 +299,10 @@ def get_cik(ticker: str) -> str | None:
         except Exception:
             pass
 
+        quoted_ticker = quote(f'"{ticker}"')
         search_url = (
             "https://efts.sec.gov/LATEST/search-index"
-            f"?q={quote(f'\"{ticker}\"')}&dateRange=custom&startdt=2020-01-01&forms=10-K"
+            f"?q={quoted_ticker}&dateRange=custom&startdt=2020-01-01&forms=10-K"
         )
         try:
             response = _SESSION.get(search_url, headers=HEADERS, timeout=15)
