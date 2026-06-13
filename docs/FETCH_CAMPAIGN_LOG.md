@@ -39,6 +39,7 @@ Steps for each new filer:
 - Source note: SEDAR+ Radware CAPTCHA blocked the canonical-source path.
 - Document note: `12.31.2024-Q4-FS.pdf` is Q4 financial statements, not the annual report wrapper. The `Year Ended Dec 31 2024` columns carry the correct FY2024 figures.
 - Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
+- CSU + REI.UN filing_date NULL: diagnosed 2026-06-13. Fix designed (Option A: prepend cover pages 0-3). Pending empirical verification via reextract_sedar_fixtures.py next session.
 
 ## Campaign-Wide Flags
 
