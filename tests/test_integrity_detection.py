@@ -114,7 +114,7 @@ def test_poisoned_fixtures_are_caught():
 
 def test_sedar_extraction_confidence_rule_fires_for_low_mapped_confidence():
     data = _load_csu_sedar_with_mapping()
-    data["mapping"]["mapped"]["revenue"]["confidence"] = 0.84
+    data["mapping"]["mapped"]["interest_expense"]["confidence"] = 0.84
 
     result = validate_filing(data, "CSU", "Technology", {"source": "sedar_pdf"})
 
@@ -127,7 +127,7 @@ def test_sedar_extraction_confidence_rule_fires_for_low_mapped_confidence():
 
 def test_sedar_extraction_confidence_rule_silent_at_or_above_threshold():
     data = _load_csu_sedar_with_mapping()
-    data["mapping"]["mapped"]["revenue"]["confidence"] = 0.85
+    data["mapping"]["mapped"]["interest_expense"]["confidence"] = 0.85
 
     result = validate_filing(data, "CSU", "Technology", {"source": "sedar_pdf"})
 
@@ -138,7 +138,7 @@ def test_sedar_extraction_confidence_rule_silent_at_or_above_threshold():
 
 def test_sedar_pattern_match_is_informational_not_warning():
     data = _load_csu_sedar_with_mapping()
-    data["mapping"]["mapped"]["revenue"]["match_type"] = "pattern"
+    data["mapping"]["mapped"]["interest_expense"]["match_type"] = "pattern"
 
     result = validate_filing(data, "CSU", "Technology", {"source": "sedar_pdf"})
 

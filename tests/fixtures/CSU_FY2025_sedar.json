@@ -1,10 +1,11 @@
 {
   "source": "sedar_pdf",
-  "schema_version": 4,
+  "schema_version": 5,
   "accounting_standard": "IFRS",
   "currency": "USD",
   "scale": "millions",
-  "fiscal_year_end": "December 31, 2025",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": null,
   "statements": {
     "balance_sheet": [
       {
@@ -48,7 +49,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total current assets",
+        "label": "Current assets total",
         "values": {
           "December 31, 2025": 5803,
           "December 31, 2024": 4291
@@ -104,7 +105,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total non-current assets",
+        "label": "Non-current assets total",
         "values": {
           "December 31, 2025": 10368,
           "December 31, 2024": 8557
@@ -200,7 +201,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total current liabilities",
+        "label": "Current liabilities total",
         "values": {
           "December 31, 2025": 6074,
           "December 31, 2024": 4661
@@ -264,7 +265,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total non-current liabilities",
+        "label": "Non-current liabilities total",
         "values": {
           "December 31, 2025": 5830,
           "December 31, 2024": 4899
@@ -312,7 +313,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total shareholders' equity",
+        "label": "Shareholders' equity total",
         "values": {
           "December 31, 2025": 4267,
           "December 31, 2024": 3288
@@ -335,7 +336,7 @@
           "Year ended December 31, 2025": 415,
           "Year ended December 31, 2024": 393
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Professional services",
@@ -343,7 +344,7 @@
           "Year ended December 31, 2025": 2126,
           "Year ended December 31, 2024": 1975
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Hardware and other",
@@ -351,7 +352,7 @@
           "Year ended December 31, 2025": 382,
           "Year ended December 31, 2024": 302
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Maintenance and other recurring",
@@ -359,15 +360,15 @@
           "Year ended December 31, 2025": 8700,
           "Year ended December 31, 2024": 7396
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
-        "label": "Total Revenue",
+        "label": "Revenue total",
         "values": {
           "Year ended December 31, 2025": 11623,
           "Year ended December 31, 2024": 10066
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Staff",
@@ -383,7 +384,7 @@
           "Year ended December 31, 2025": 217,
           "Year ended December 31, 2024": 169
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Third party license, maintenance and professional services",
@@ -391,7 +392,7 @@
           "Year ended December 31, 2025": 1114,
           "Year ended December 31, 2024": 960
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Occupancy",
@@ -407,7 +408,7 @@
           "Year ended December 31, 2025": 587,
           "Year ended December 31, 2024": 502
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Professional fees",
@@ -415,7 +416,7 @@
           "Year ended December 31, 2025": 219,
           "Year ended December 31, 2024": 178
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Other, net",
@@ -442,12 +443,12 @@
         "confidence": 0.99
       },
       {
-        "label": "Total Expenses",
+        "label": "Expenses total",
         "values": {
           "Year ended December 31, 2025": 9728,
           "Year ended December 31, 2024": 8602
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Foreign exchange loss (gain)",
@@ -514,7 +515,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Total other items",
+        "label": "Other items total",
         "values": {
           "Year ended December 31, 2025": 955,
           "Year ended December 31, 2024": 452
@@ -642,6 +643,14 @@
         "confidence": 0.99
       },
       {
+        "label": "Total other comprehensive income (loss)",
+        "values": {
+          "Year ended December 31, 2025": 481,
+          "Year ended December 31, 2024": -135
+        },
+        "confidence": 0.99
+      },
+      {
         "label": "Total comprehensive income (loss) attributable to: Common shareholders of Constellation Software Inc.",
         "values": {
           "Year ended December 31, 2025": 865,
@@ -654,6 +663,14 @@
         "values": {
           "Year ended December 31, 2025": 202,
           "Year ended December 31, 2024": 21
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss)",
+        "values": {
+          "Year ended December 31, 2025": 1067,
+          "Year ended December 31, 2024": 633
         },
         "confidence": 0.99
       }
@@ -1036,5 +1053,199 @@
       12,
       13
     ]
+  },
+  "mapping": {
+    "mapped": {
+      "interest_expense": {
+        "value": 297,
+        "source_label": "Finance costs (note 18)",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "License",
+        "value": 415
+      },
+      {
+        "label": "Professional services",
+        "value": 2126
+      },
+      {
+        "label": "Hardware and other",
+        "value": 382
+      },
+      {
+        "label": "Maintenance and other recurring",
+        "value": 8700
+      },
+      {
+        "label": "Revenue total",
+        "value": 11623
+      },
+      {
+        "label": "Staff",
+        "value": 5924
+      },
+      {
+        "label": "Hardware",
+        "value": 217
+      },
+      {
+        "label": "Third party license, maintenance and professional services",
+        "value": 1114
+      },
+      {
+        "label": "Occupancy",
+        "value": 71
+      },
+      {
+        "label": "Travel, telecommunications, supplies, software and equipment",
+        "value": 587
+      },
+      {
+        "label": "Professional fees",
+        "value": 219
+      },
+      {
+        "label": "Other, net",
+        "value": 215
+      },
+      {
+        "label": "Depreciation",
+        "value": 201
+      },
+      {
+        "label": "Amortization of intangible assets (note 10)",
+        "value": 1182
+      },
+      {
+        "label": "Expenses total",
+        "value": 9728
+      },
+      {
+        "label": "Foreign exchange loss (gain)",
+        "value": 154
+      },
+      {
+        "label": "IRGA/TSS Membership liability revaluation charge",
+        "value": 440
+      },
+      {
+        "label": "Finance and other expense (income) (note 18)",
+        "value": -228
+      },
+      {
+        "label": "Bargain purchase gain (note 4)",
+        "value": -10
+      },
+      {
+        "label": "Impairment of intangible and other non-financial assets (note 10)",
+        "value": 43
+      },
+      {
+        "label": "Redeemable preferred securities expense (income)",
+        "value": 0
+      },
+      {
+        "label": "Revaluation of investment accounted for using the equity method to cost (note 6)",
+        "value": 260
+      },
+      {
+        "label": "Other items total",
+        "value": 955
+      },
+      {
+        "label": "Income (loss) before income taxes",
+        "value": 939
+      },
+      {
+        "label": "Current income tax expense (recovery) (note 15)",
+        "value": 606
+      },
+      {
+        "label": "Deferred income tax expense (recovery) (note 15 and 16)",
+        "value": -252
+      },
+      {
+        "label": "Income tax expense (recovery)",
+        "value": 353
+      },
+      {
+        "label": "Net income (loss)",
+        "value": 586
+      },
+      {
+        "label": "Net income (loss) attributable to: Common shareholders of Constellation Software Inc.",
+        "value": 512
+      },
+      {
+        "label": "Net income (loss) attributable to: Non-controlling interests (note 28)",
+        "value": 74
+      },
+      {
+        "label": "Basic and diluted (note 19)",
+        "value": 24.15
+      },
+      {
+        "label": "Foreign currency translation differences from foreign operations and other, net of tax",
+        "value": 271
+      },
+      {
+        "label": "Changes in the fair value of equity investments at FVOCI (note 6)",
+        "value": 209
+      },
+      {
+        "label": "Other comprehensive income (loss), net of income tax",
+        "value": 481
+      },
+      {
+        "label": "Total comprehensive income (loss)",
+        "value": 1067
+      },
+      {
+        "label": "Total other comprehensive income (loss) attributable to: Common shareholders of Constellation Software Inc.",
+        "value": 353
+      },
+      {
+        "label": "Total other comprehensive income (loss) attributable to: Non-controlling interests",
+        "value": 127
+      },
+      {
+        "label": "Total other comprehensive income (loss)",
+        "value": 481
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Common shareholders of Constellation Software Inc.",
+        "value": 865
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Non-controlling interests (note 28)",
+        "value": 202
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS",
+      "sector_profile": null,
+      "total": 43,
+      "mapped_count": 1,
+      "unmapped_count": 40,
+      "benign_skipped_count": 2,
+      "benign_duplicates": [
+        {
+          "normalized_label": "net income (loss)",
+          "occurrence_count": 2,
+          "value": 586.0
+        },
+        {
+          "normalized_label": "total comprehensive income (loss)",
+          "occurrence_count": 2,
+          "value": 1067.0
+        }
+      ],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
   }
 }

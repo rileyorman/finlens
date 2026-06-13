@@ -180,12 +180,13 @@ def _is_value(items: list, label: str) -> int | float | None:
 def test_csu_fy2025_fixture_contract_invariants():
     data = _json.loads(_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
+    assert data["filing_date"] is None
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "USD"
     assert data["accounting_standard"] == "IFRS"
     assert data["scale"] == "millions"
-    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-12-31"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -200,7 +201,7 @@ def test_csu_fy2025_fixture_income_statement_pdf_verified():
     data = _json.loads(_FIXTURE.read_text(encoding="utf-8"))
     items = data["statements"]["income_statement"]
 
-    assert _is_value(items, "Total Revenue") == 11623
+    assert _is_value(items, "Revenue total") == 11623
     assert _is_value(items, "Net income (loss)") == 586
     assert _is_value(items, "Staff") == 5924
     assert _is_value(items, "Amortization of intangible assets (note 10)") == 1182
@@ -232,14 +233,15 @@ def _cnr_value(items: list, label: str) -> int | float | None:
 def test_cnr_fy2025_fixture_contract_invariants():
     data = _json.loads(_CNR_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
+    assert data["filing_date"] == "2026-02-04"
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "CAD"
     # CN Rail files on SEDAR but reports under US GAAP (NYSE cross-listing).
     # This locks in the non-IFRS finding — do not change to IFRS.
     assert data["accounting_standard"] == "US GAAP"
     assert data["scale"] == "millions"
-    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-12-31"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -254,7 +256,7 @@ def test_cnr_fy2025_fixture_income_statement_pdf_verified():
     data = _json.loads(_CNR_FIXTURE.read_text(encoding="utf-8"))
     items = data["statements"]["income_statement"]
 
-    assert _cnr_value(items, "Revenues (Note 4)") == 17304
+    assert _cnr_value(items, "Revenues") == 17304
     assert _cnr_value(items, "Fuel") == 1786
     # Interest expense is parenthesized in the filing — must be negative.
     # A positive 913 here is a sign-handling bug.
@@ -267,7 +269,7 @@ def test_cnr_fy2025_fixture_income_statement_pdf_verified():
 # ---------------------------------------------------------------------------
 
 _RY_FIXTURE = _Path(__file__).parent / "fixtures" / "RY_FY2025_sedar.json"
-_RY_FY2025_PERIOD = "October 31, 2025"
+_RY_FY2025_PERIOD = "October 31 2025"
 
 
 def _ry_value(items: list, label: str) -> int | float | None:
@@ -284,14 +286,15 @@ def _ry_value(items: list, label: str) -> int | float | None:
 def test_ry_fy2025_fixture_contract_invariants():
     data = _json.loads(_RY_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
+    assert data["filing_date"] == "2025-12-02"
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "CAD"
     assert data["accounting_standard"] == "IFRS"
     assert data["scale"] == "millions"
     # Bank fiscal year ends October 31 — not December. This locks in the
     # non-calendar fiscal year. Do not change to December.
-    assert "October 31, 2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-10-31"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -359,13 +362,14 @@ def _reiun_cf_value(items: list, label: str) -> int | float | None:
 def test_reiun_fy2025_fixture_contract_invariants():
     data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
+    assert data["filing_date"] is None
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "CAD"
     assert data["accounting_standard"] == "IFRS"
     assert data["scale"] == "thousands"
     # REI.UN is a December year-end REIT — not calendar-year bank, not USD reporter.
-    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-12-31"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -506,7 +510,7 @@ def test_reiun_fy2025_reit_watch_items():
 # ---------------------------------------------------------------------------
 
 _SHOP_FIXTURE = _Path(__file__).parent / "fixtures" / "SHOP_FY2025_sedar.json"
-_SHOP_FY2025_PERIOD = "2025"
+_SHOP_FY2025_PERIOD = "December 31, 2025"
 _SHOP_BS_PERIOD = "December 31, 2025"
 
 
@@ -544,15 +548,15 @@ def _shop_cf_value(items: list, label: str) -> int | float | None:
 def test_shop_fy2025_fixture_contract_invariants():
     data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
-    # EDGAR-verified (SEDAR+ PDF not available at campaign time).
-    assert data["source"] == "edgar_xbrl"
+    assert data["schema_version"] == 5
+    assert data["filing_date"] == "2026-02-11"
+    assert data["source"] == "sedar_pdf"
     assert data["currency"] == "USD"
     # Shopify is a TSX/NYSE cross-lister but reports under US GAAP.
     # Do not change to IFRS — this locks in the foreign-filer finding.
-    assert data["accounting_standard"] == "US GAAP"
+    assert data["accounting_standard"] == "U.S. GAAP"
     assert data["scale"] == "millions"
-    assert "December 31, 2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-12-31"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -574,7 +578,7 @@ def test_shop_fy2025_fixture_income_statement_edgar_verified():
     data = _json.loads(_SHOP_FIXTURE.read_text(encoding="utf-8"))
     items = data["statements"]["income_statement"]
 
-    assert _shop_is_value(items, "Revenues") == 11556
+    assert _shop_is_value(items, "Total revenues") == 11556
     assert _shop_is_value(items, "Gross profit") == 5555
     # Operating income label is NOT "Operating income" in SHOP — it is
     # "Income (loss) from operations". Alias table gap documented below.
@@ -587,8 +591,8 @@ def test_shop_fy2025_fixture_income_statement_edgar_verified():
     assert _shop_is_value(items, "Comprehensive income") == 1242
 
     # Gross profit check: revenues - cost of revenues == gross profit.
-    revenues = _shop_is_value(items, "Revenues")
-    cogs = _shop_is_value(items, "Cost of revenues")
+    revenues = _shop_is_value(items, "Total revenues")
+    cogs = _shop_is_value(items, "Total cost of revenues")
     gross_profit = _shop_is_value(items, "Gross profit")
     assert revenues - cogs == gross_profit
 
@@ -603,7 +607,10 @@ def test_shop_fy2025_fixture_balance_sheet_edgar_verified():
     bs = data["statements"]["balance_sheet"]
 
     total_assets = _shop_bs_value(bs, "Total assets")
-    total_liabilities = _shop_bs_value(bs, "Total liabilities")
+    total_liabilities = (
+        _shop_bs_value(bs, "Total current liabilities")
+        + _shop_bs_value(bs, "Total long-term liabilities")
+    )
     total_equity = _shop_bs_value(bs, "Total shareholders' equity")
 
     assert total_assets == 15189
@@ -613,7 +620,7 @@ def test_shop_fy2025_fixture_balance_sheet_edgar_verified():
     assert total_liabilities + total_equity == total_assets
 
     # Large equity investment portfolio — SHOP-specific non-operating characteristic.
-    assert _shop_bs_value(bs, "Equity and other investments") == 4582
+    assert _shop_bs_value(bs, "Equity and other investments ($3,619 and $3,930, carried at fair value)") == 4582
 
 
 @pytest.mark.skipif(not _SHOP_FIXTURE.exists(), reason="SHOP fixture not present")
@@ -627,17 +634,17 @@ def test_shop_fy2025_fixture_cash_flow_edgar_verified():
 
     assert _shop_cf_value(cf, "Net cash provided by operating activities") == 2033
     assert _shop_cf_value(cf, "Net cash used in investing activities") == -1190
-    assert _shop_cf_value(cf, "Net cash used in financing activities") == -811
-    assert _shop_cf_value(cf, "Cash and cash equivalents, beginning of year") == 1498
-    assert _shop_cf_value(cf, "Cash and cash equivalents, end of year") == 1545
+    assert _shop_cf_value(cf, "Net cash (used in) provided by financing activities") == -811
+    assert _shop_cf_value(cf, "Cash, cash equivalents and restricted cash – beginning of year") == 1498
+    assert _shop_cf_value(cf, "Cash, cash equivalents and restricted cash – end of year") == 1545
 
     # FY2025 capital event: full maturity of convertible senior notes.
     assert _shop_cf_value(cf, "Maturities of convertible senior notes") == -1043
 
     # Cash reconciliation identity — any discrepancy is an extraction error.
-    net_change = _shop_cf_value(cf, "Net increase in cash and cash equivalents")
-    beginning = _shop_cf_value(cf, "Cash and cash equivalents, beginning of year")
-    ending = _shop_cf_value(cf, "Cash and cash equivalents, end of year")
+    net_change = _shop_cf_value(cf, "Net increase (decrease) in cash, cash equivalents and restricted cash")
+    beginning = _shop_cf_value(cf, "Cash, cash equivalents and restricted cash – beginning of year")
+    ending = _shop_cf_value(cf, "Cash, cash equivalents and restricted cash – end of year")
     assert beginning + net_change == ending
 
 
@@ -680,7 +687,10 @@ def test_shop_fy2025_shop_watch_items():
     assert dividend_labels == [], f"Unexpected dividend label(s) in CF: {dividend_labels}"
 
     # Equity investment portfolio is material relative to equity.
-    eq_investments = _shop_bs_value(bs_items, "Equity and other investments")
+    eq_investments = _shop_bs_value(
+        bs_items,
+        "Equity and other investments ($3,619 and $3,930, carried at fair value)",
+    )
     total_equity = _shop_bs_value(bs_items, "Total shareholders' equity")
     assert eq_investments / total_equity > 0.30  # > 30% of equity in non-operating investments
 
@@ -712,16 +722,16 @@ def _atd_value(items: list, label: str) -> int | float | None:
 def test_atd_fy2025_fixture_contract_invariants():
     data = _json.loads(_ATD_FIXTURE.read_text(encoding="utf-8"))
 
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
+    assert data["filing_date"] == "2025-06-25"
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "USD"
     # ATD is IFRS (Quebec-incorporated Canadian company).
     # Second IFRS/USD data point after CSU — do not change to US GAAP.
-    assert data["accounting_standard"] == "IFRS"
+    assert data["accounting_standard"] == "IFRS Accounting Standards"
     assert data["scale"] == "millions"
     # April fiscal year-end — first non-Dec/Oct year-end in corpus.
-    assert "April" in data["fiscal_year_end"]
-    assert "2025" in data["fiscal_year_end"]
+    assert data["fiscal_year_end"] == "2025-04-27"
     assert data["extraction_confidence"] >= 0.9
     assert set(data["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
 
@@ -743,10 +753,10 @@ def test_atd_fy2025_fixture_income_statement_pdf_verified():
     items = data["statements"]["income_statement"]
 
     assert _atd_value(items, "Revenues") == 72856.8
-    assert _atd_value(items, "Cost of sales, excluding depreciation, amortization and impairment") == 59835.5
+    assert _atd_value(items, "Cost of sales, excluding depreciation, amortization and impairment (Note 7)") == 59835.5
     assert _atd_value(items, "Operating income") == 3806.1
     assert _atd_value(items, "Earnings before income taxes") == 3322.1
-    assert _atd_value(items, "Income taxes") == 729.7
+    assert _atd_value(items, "Income taxes (Note 10)") == 729.7
     # "Net earnings" appears twice (IS + Comprehensive Income statement both
     # start with it). Both are 2592.4 — first occurrence returned here.
     assert _atd_value(items, "Net earnings") == 2592.4
@@ -754,14 +764,14 @@ def test_atd_fy2025_fixture_income_statement_pdf_verified():
 
     # (Gain)/loss on disposal is parenthesized in the filing (a net gain) — must be negative.
     # A positive 33.4 here is a sign-handling bug.
-    assert _atd_value(items, "(Gain) loss on disposal of property and equipment and other assets") == -33.4
+    assert _atd_value(items, "(Gain) loss on disposal of property and equipment and other assets (Notes 7 and 16)") == -33.4
 
     # Financial expenses is ATD's label for interest/financing costs.
-    assert _atd_value(items, "Financial expenses") == 690.8
+    assert _atd_value(items, "Financial expenses (Note 9)") == 690.8
 
     # Implied gross profit identity: revenues - cost of sales.
     revenues = _atd_value(items, "Revenues")
-    cost_of_sales = _atd_value(items, "Cost of sales, excluding depreciation, amortization and impairment")
+    cost_of_sales = _atd_value(items, "Cost of sales, excluding depreciation, amortization and impairment (Note 7)")
     assert abs((revenues - cost_of_sales) - 13021.3) < 0.1  # ~17.9% margin, reasonable for fuel/convenience retail
 
 
@@ -786,7 +796,7 @@ def test_atd_fy2025_fixture_balance_sheet_pdf_verified():
 
     # Cash and goodwill spot-checks.
     assert _atd_value(bs, "Cash and cash equivalents") == 2263.0
-    assert _atd_value(bs, "Goodwill") == 9563.7
+    assert _atd_value(bs, "Goodwill (Note 17)") == 9563.7
 
 
 @pytest.mark.skipif(not _ATD_FIXTURE.exists(), reason="ATD fixture not present")
@@ -842,11 +852,11 @@ def test_atd_fy2025_atd_watch_items():
     assert "2025" in (is_items[0].get("values") or {})
 
     # IFRS + USD confirmed at metadata level.
-    assert data["accounting_standard"] == "IFRS"
+    assert data["accounting_standard"] == "IFRS Accounting Standards"
     assert data["currency"] == "USD"
 
     # Cost of sales present; Gross profit subtotal absent.
-    cost_label = "Cost of sales, excluding depreciation, amortization and impairment"
+    cost_label = "Cost of sales, excluding depreciation, amortization and impairment (Note 7)"
     assert cost_label in is_labels
     gross_profit_labels = [lbl for lbl in is_labels if "gross profit" in lbl.lower()]
     assert gross_profit_labels == [], (

@@ -1,11 +1,11 @@
 {
-  "source": "edgar_xbrl",
-  "schema_version": 4,
-  "accounting_standard": "US GAAP",
+  "source": "sedar_pdf",
+  "schema_version": 5,
+  "accounting_standard": "U.S. GAAP",
   "currency": "USD",
   "scale": "millions",
-  "fiscal_year_end": "December 31, 2025",
-  "verification_note": "EDGAR XBRL-verified against SEC EDGAR annual filing (SHOP FY2025). No SEDAR+ PDF available — Shopify cross-lists on TSX and NYSE and submits identical annual filing to SEDAR+, but the PDF was not present in the local sedar/filings directory at campaign time. Page-locator run deferred pending SEDAR PDF retrieval.",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": "2026-02-11",
   "statements": {
     "balance_sheet": [
       {
@@ -20,15 +20,31 @@
         "label": "Marketable securities",
         "values": {
           "December 31, 2025": 4233,
-          "December 31, 2024": 3590
+          "December 31, 2024": 3981
         },
         "confidence": 0.99
       },
       {
-        "label": "Merchant cash advances, loans and related receivables, net",
+        "label": "Trade and other receivables, net",
+        "values": {
+          "December 31, 2025": 500,
+          "December 31, 2024": 342
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans and merchant cash advances, net",
         "values": {
           "December 31, 2025": 1784,
-          "December 31, 2024": 1482
+          "December 31, 2024": 1224
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other current assets",
+        "values": {
+          "December 31, 2025": 234,
+          "December 31, 2024": 209
         },
         "confidence": 0.99
       },
@@ -36,23 +52,87 @@
         "label": "Total current assets",
         "values": {
           "December 31, 2025": 8296,
-          "December 31, 2024": 7261
+          "December 31, 2024": 7254
         },
         "confidence": 0.99
       },
       {
-        "label": "Equity and other investments",
+        "label": "Property and equipment, net",
+        "values": {
+          "December 31, 2025": 53,
+          "December 31, 2024": 47
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating lease right-of-use assets, net",
+        "values": {
+          "December 31, 2025": 88,
+          "December 31, 2024": 93
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Intangible assets, net",
+        "values": {
+          "December 31, 2025": 30,
+          "December 31, 2024": 22
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred tax assets",
+        "values": {
+          "December 31, 2025": 33,
+          "December 31, 2024": 37
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other long-term assets",
+        "values": {
+          "December 31, 2025": 39,
+          "December 31, 2024": 21
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Long-term investments",
+        "values": {
+          "December 31, 2025": 975,
+          "December 31, 2024": 709
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Equity and other investments ($3,619 and $3,930, carried at fair value)",
         "values": {
           "December 31, 2025": 4582,
-          "December 31, 2024": 4679
+          "December 31, 2024": 4647
         },
         "confidence": 0.99
       },
       {
-        "label": "Equity method investments",
+        "label": "Equity method investment",
         "values": {
           "December 31, 2025": 602,
-          "December 31, 2024": 641
+          "December 31, 2024": 642
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Goodwill",
+        "values": {
+          "December 31, 2025": 491,
+          "December 31, 2024": 452
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total long-term assets",
+        "values": {
+          "December 31, 2025": 6893,
+          "December 31, 2024": 6670
         },
         "confidence": 0.99
       },
@@ -60,7 +140,39 @@
         "label": "Total assets",
         "values": {
           "December 31, 2025": 15189,
-          "December 31, 2024": 13927
+          "December 31, 2024": 13924
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2025": 1075,
+          "December 31, 2024": 737
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred revenue",
+        "values": {
+          "December 31, 2025": 300,
+          "December 31, 2024": 283
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating lease liabilities",
+        "values": {
+          "December 31, 2025": 17,
+          "December 31, 2024": 18
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Convertible senior notes",
+        "values": {
+          "December 31, 2025": 0,
+          "December 31, 2024": 918
         },
         "confidence": 0.99
       },
@@ -68,7 +180,31 @@
         "label": "Total current liabilities",
         "values": {
           "December 31, 2025": 1392,
-          "December 31, 2024": 1428
+          "December 31, 2024": 1956
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred revenue",
+        "values": {
+          "December 31, 2025": 98,
+          "December 31, 2024": 147
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Operating lease liabilities",
+        "values": {
+          "December 31, 2025": 171,
+          "December 31, 2024": 190
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred tax liabilities",
+        "values": {
+          "December 31, 2025": 55,
+          "December 31, 2024": 73
         },
         "confidence": 0.99
       },
@@ -76,23 +212,15 @@
         "label": "Total long-term liabilities",
         "values": {
           "December 31, 2025": 324,
-          "December 31, 2024": 1330
+          "December 31, 2024": 410
         },
         "confidence": 0.99
       },
       {
-        "label": "Total liabilities",
-        "values": {
-          "December 31, 2025": 1716,
-          "December 31, 2024": 2758
-        },
-        "confidence": 0.99
-      },
-      {
-        "label": "Common stock",
+        "label": "Common stock, unlimited Class A subordinate voting shares authorized, 1,225,830,706 and 1,215,229,233, issued and outstanding; unlimited Class B restricted voting shares authorized, 78,073,594 and 79,350,906 issued and outstanding; 1 Founder share authorized, 1 and 1 issued and outstanding",
         "values": {
           "December 31, 2025": 10376,
-          "December 31, 2024": 9847
+          "December 31, 2024": 9634
         },
         "confidence": 0.99
       },
@@ -100,7 +228,7 @@
         "label": "Additional paid-in capital",
         "values": {
           "December 31, 2025": 236,
-          "December 31, 2024": 184
+          "December 31, 2024": 305
         },
         "confidence": 0.99
       },
@@ -116,7 +244,7 @@
         "label": "Accumulated surplus",
         "values": {
           "December 31, 2025": 2860,
-          "December 31, 2024": 1148
+          "December 31, 2024": 1629
         },
         "confidence": 0.99
       },
@@ -124,7 +252,7 @@
         "label": "Total shareholders' equity",
         "values": {
           "December 31, 2025": 13473,
-          "December 31, 2024": 11169
+          "December 31, 2024": 11558
         },
         "confidence": 0.99
       },
@@ -132,7 +260,7 @@
         "label": "Total liabilities and shareholders' equity",
         "values": {
           "December 31, 2025": 15189,
-          "December 31, 2024": 13927
+          "December 31, 2024": 13924
         },
         "confidence": 0.99
       }
@@ -141,315 +269,785 @@
       {
         "label": "Subscription solutions",
         "values": {
-          "2025": 2752,
-          "2024": 2340
+          "December 31, 2025": 2752,
+          "December 31, 2024": 2350,
+          "December 31, 2023": 1837
         },
         "confidence": 0.99
       },
       {
         "label": "Merchant solutions",
         "values": {
-          "2025": 8804,
-          "2024": 7067
+          "December 31, 2025": 8804,
+          "December 31, 2024": 6530,
+          "December 31, 2023": 5223
         },
         "confidence": 0.99
       },
       {
-        "label": "Revenues",
+        "label": "Total revenues",
         "values": {
-          "2025": 11556,
-          "2024": 9407
+          "December 31, 2025": 11556,
+          "December 31, 2024": 8880,
+          "December 31, 2023": 7060
         },
         "confidence": 0.99
       },
       {
         "label": "Subscription solutions",
         "values": {
-          "2025": 520,
-          "2024": 451
+          "December 31, 2025": 520,
+          "December 31, 2024": 434,
+          "December 31, 2023": 354
         },
         "confidence": 0.99
       },
       {
         "label": "Merchant solutions",
         "values": {
-          "2025": 5481,
-          "2024": 4262
+          "December 31, 2025": 5481,
+          "December 31, 2024": 3974,
+          "December 31, 2023": 3191
         },
         "confidence": 0.99
       },
       {
-        "label": "Cost of revenues",
+        "label": "Total cost of revenues",
         "values": {
-          "2025": 6001,
-          "2024": 4713
+          "December 31, 2025": 6001,
+          "December 31, 2024": 4408,
+          "December 31, 2023": 3545
         },
         "confidence": 0.99
       },
       {
         "label": "Gross profit",
         "values": {
-          "2025": 5555,
-          "2024": 4694
+          "December 31, 2025": 5555,
+          "December 31, 2024": 4472,
+          "December 31, 2023": 3515
         },
         "confidence": 0.99
       },
       {
         "label": "Sales and marketing",
         "values": {
-          "2025": 1663,
-          "2024": 1386
+          "December 31, 2025": 1663,
+          "December 31, 2024": 1393,
+          "December 31, 2023": 1220
         },
         "confidence": 0.99
       },
       {
         "label": "Research and development",
         "values": {
-          "2025": 1536,
-          "2024": 1321
+          "December 31, 2025": 1536,
+          "December 31, 2024": 1367,
+          "December 31, 2023": 1730
         },
         "confidence": 0.99
       },
       {
         "label": "General and administrative",
         "values": {
-          "2025": 471,
-          "2024": 430
+          "December 31, 2025": 471,
+          "December 31, 2024": 410,
+          "December 31, 2023": 491
         },
         "confidence": 0.99
       },
       {
         "label": "Transaction and loan losses",
         "values": {
-          "2025": 417,
-          "2024": 329
+          "December 31, 2025": 417,
+          "December 31, 2024": 227,
+          "December 31, 2023": 152
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment on sales of Shopify's logistics businesses",
+        "values": {
+          "December 31, 2025": 0,
+          "December 31, 2024": 0,
+          "December 31, 2023": 1340
         },
         "confidence": 0.99
       },
       {
         "label": "Total operating expenses",
         "values": {
-          "2025": 4087,
-          "2024": 3466
+          "December 31, 2025": 4087,
+          "December 31, 2024": 3397,
+          "December 31, 2023": 4933
         },
         "confidence": 0.99
       },
       {
         "label": "Income (loss) from operations",
         "values": {
-          "2025": 1468,
-          "2024": 1228
+          "December 31, 2025": 1468,
+          "December 31, 2024": 1075,
+          "December 31, 2023": -1418
         },
         "confidence": 0.99
       },
       {
         "label": "Interest income",
         "values": {
-          "2025": 331,
-          "2024": 264
+          "December 31, 2025": 331,
+          "December 31, 2024": 308,
+          "December 31, 2023": 241
         },
         "confidence": 0.99
       },
       {
-        "label": "Net realized gain on equity and other investments",
+        "label": "Net realized gain (loss) on equity and other investments",
         "values": {
-          "2025": 33,
-          "2024": 31
+          "December 31, 2025": 33,
+          "December 31, 2024": 3,
+          "December 31, 2023": -5
         },
         "confidence": 0.99
       },
       {
         "label": "Net unrealized (loss) gain on equity and other investments",
         "values": {
-          "2025": -186,
-          "2024": 988
+          "December 31, 2025": -186,
+          "December 31, 2024": 988,
+          "December 31, 2023": 1424
         },
         "confidence": 0.99
       },
       {
-        "label": "Net loss on equity method investments",
+        "label": "Net loss on equity method investment",
         "values": {
-          "2025": -40,
-          "2024": -25
+          "December 31, 2025": -40,
+          "December 31, 2024": -138,
+          "December 31, 2023": -58
         },
         "confidence": 0.99
       },
       {
         "label": "Realized loss on embedded derivative",
         "values": {
-          "2025": -123,
-          "2024": 0
+          "December 31, 2025": -123,
+          "December 31, 2024": 0,
+          "December 31, 2023": 0
         },
         "confidence": 0.99
       },
       {
-        "label": "Foreign exchange gain",
+        "label": "Foreign exchange gain (loss)",
         "values": {
-          "2025": 26,
-          "2024": 13
+          "December 31, 2025": 26,
+          "December 31, 2024": -8,
+          "December 31, 2023": 1
         },
         "confidence": 0.99
       },
       {
-        "label": "Other income, net",
+        "label": "Total other income, net",
         "values": {
-          "2025": 41,
-          "2024": 1271
+          "December 31, 2025": 41,
+          "December 31, 2024": 1153,
+          "December 31, 2023": 1603
         },
         "confidence": 0.99
       },
       {
         "label": "Income before income taxes",
         "values": {
-          "2025": 1509,
-          "2024": 2499
+          "December 31, 2025": 1509,
+          "December 31, 2024": 2228,
+          "December 31, 2023": 185
         },
         "confidence": 0.99
       },
       {
         "label": "Provision for income taxes",
         "values": {
-          "2025": -278,
-          "2024": -245
+          "December 31, 2025": -278,
+          "December 31, 2024": -209,
+          "December 31, 2023": -53
         },
         "confidence": 0.99
       },
       {
         "label": "Net income",
         "values": {
-          "2025": 1231,
-          "2024": 2254
+          "December 31, 2025": 1231,
+          "December 31, 2024": 2019,
+          "December 31, 2023": 132
         },
         "confidence": 0.99
       },
       {
-        "label": "Other comprehensive income (loss)",
+        "label": "Basic",
         "values": {
-          "2025": 11,
-          "2024": -25
+          "December 31, 2025": 0.95,
+          "December 31, 2024": 1.57,
+          "December 31, 2023": 0.1
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Diluted",
+        "values": {
+          "December 31, 2025": 0.94,
+          "December 31, 2024": 1.55,
+          "December 31, 2023": 0.1
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized gain (loss) on cash flow hedges",
+        "values": {
+          "December 31, 2025": 15,
+          "December 31, 2024": -19,
+          "December 31, 2023": 20
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Tax effect on unrealized gain (loss) on cash flow hedges",
+        "values": {
+          "December 31, 2025": -4,
+          "December 31, 2024": 5,
+          "December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total other comprehensive income (loss)",
+        "values": {
+          "December 31, 2025": 11,
+          "December 31, 2024": -14,
+          "December 31, 2023": 20
         },
         "confidence": 0.99
       },
       {
         "label": "Comprehensive income",
         "values": {
-          "2025": 1242,
-          "2024": 2229
+          "December 31, 2025": 1242,
+          "December 31, 2024": 2005,
+          "December 31, 2023": 152
         },
         "confidence": 0.99
       }
     ],
     "cash_flow": [
       {
-        "label": "Net income",
+        "label": "Net income for the year",
         "values": {
-          "2025": 1231,
-          "2024": 2254
+          "December 31, 2025": 1231,
+          "December 31, 2024": 2019,
+          "December 31, 2023": 132
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Amortization and depreciation",
+        "values": {
+          "December 31, 2025": 31,
+          "December 31, 2024": 36,
+          "December 31, 2023": 70
         },
         "confidence": 0.99
       },
       {
         "label": "Stock-based compensation",
         "values": {
-          "2025": 722,
-          "2024": 633
+          "December 31, 2025": 449,
+          "December 31, 2024": 430,
+          "December 31, 2023": 615
         },
         "confidence": 0.99
       },
       {
-        "label": "Net unrealized loss (gain) on equity and other investments",
+        "label": "Impairment of right-of-use assets and leasehold improvements",
         "values": {
-          "2025": 186,
-          "2024": -988
+          "December 31, 2025": 13,
+          "December 31, 2024": 0,
+          "December 31, 2023": 38
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for transaction and loan losses",
+        "values": {
+          "December 31, 2025": 230,
+          "December 31, 2024": 148,
+          "December 31, 2023": 80
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax (recovery) expense",
+        "values": {
+          "December 31, 2025": -14,
+          "December 31, 2024": 78,
+          "December 31, 2023": -1
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Revenue related to non-cash consideration",
+        "values": {
+          "December 31, 2025": -49,
+          "December 31, 2024": -94,
+          "December 31, 2023": -158
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment on sales of Shopify's logistics businesses",
+        "values": {
+          "December 31, 2025": 0,
+          "December 31, 2024": 0,
+          "December 31, 2023": 1340
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net loss (gain) on equity and other investments",
+        "values": {
+          "December 31, 2025": 153,
+          "December 31, 2024": -992,
+          "December 31, 2023": -1419
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net loss on equity method investment",
+        "values": {
+          "December 31, 2025": 40,
+          "December 31, 2024": 138,
+          "December 31, 2023": 58
         },
         "confidence": 0.99
       },
       {
         "label": "Realized loss on embedded derivative",
         "values": {
-          "2025": 123,
-          "2024": 0
+          "December 31, 2025": 123,
+          "December 31, 2024": 0,
+          "December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized foreign exchange (gain) loss",
+        "values": {
+          "December 31, 2025": -57,
+          "December 31, 2024": 19,
+          "December 31, 2023": -6
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trade and other receivables",
+        "values": {
+          "December 31, 2025": -219,
+          "December 31, 2024": -148,
+          "December 31, 2023": -98
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Merchant cash advances and related receivables, net",
+        "values": {
+          "December 31, 2025": -141,
+          "December 31, 2024": -82,
+          "December 31, 2023": 214
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other current and long-term assets",
+        "values": {
+          "December 31, 2025": -38,
+          "December 31, 2024": -72,
+          "December 31, 2023": -50
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2025": 262,
+          "December 31, 2024": 110,
+          "December 31, 2023": 69
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred revenue",
+        "values": {
+          "December 31, 2025": 19,
+          "December 31, 2024": 26,
+          "December 31, 2023": 60
         },
         "confidence": 0.99
       },
       {
         "label": "Net cash provided by operating activities",
         "values": {
-          "2025": 2033,
-          "2024": 1519
+          "December 31, 2025": 2033,
+          "December 31, 2024": 1616,
+          "December 31, 2023": 944
         },
         "confidence": 0.99
       },
       {
         "label": "Purchases of property and equipment",
         "values": {
-          "2025": -97,
-          "2024": -84
+          "December 31, 2025": -26,
+          "December 31, 2024": -19,
+          "December 31, 2023": -39
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of marketable securities",
+        "values": {
+          "December 31, 2025": -7040,
+          "December 31, 2024": -8396,
+          "December 31, 2023": -5841
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Maturities of marketable securities",
+        "values": {
+          "December 31, 2025": 6552,
+          "December 31, 2024": 7457,
+          "December 31, 2023": 5590
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases and originations of loans",
+        "values": {
+          "December 31, 2025": -4014,
+          "December 31, 2024": -3006,
+          "December 31, 2023": -1861
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayments and sales of loans",
+        "values": {
+          "December 31, 2025": 3435,
+          "December 31, 2024": 2542,
+          "December 31, 2023": 1338
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of equity and other investments",
+        "values": {
+          "December 31, 2025": -99,
+          "December 31, 2024": -137,
+          "December 31, 2023": -364
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Acquisition of businesses, net of cash acquired",
+        "values": {
+          "December 31, 2025": -56,
+          "December 31, 2024": -30,
+          "December 31, 2023": -31
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other",
+        "values": {
+          "December 31, 2025": 58,
+          "December 31, 2024": 3,
+          "December 31, 2023": -36
         },
         "confidence": 0.99
       },
       {
         "label": "Net cash used in investing activities",
         "values": {
-          "2025": -1190,
-          "2024": -951
+          "December 31, 2025": -1190,
+          "December 31, 2024": -1586,
+          "December 31, 2023": -1244
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from the exercise of stock options",
+        "values": {
+          "December 31, 2025": 232,
+          "December 31, 2024": 61,
+          "December 31, 2023": 60
         },
         "confidence": 0.99
       },
       {
         "label": "Maturities of convertible senior notes",
         "values": {
-          "2025": -1043,
-          "2024": 0
+          "December 31, 2025": -1043,
+          "December 31, 2024": 0,
+          "December 31, 2023": 0
         },
         "confidence": 0.99
       },
       {
-        "label": "Net cash used in financing activities",
+        "label": "Net cash (used in) provided by financing activities",
         "values": {
-          "2025": -811,
-          "2024": -325
+          "December 31, 2025": -811,
+          "December 31, 2024": 61,
+          "December 31, 2023": 60
         },
         "confidence": 0.99
       },
       {
-        "label": "Effect of exchange rate changes on cash and cash equivalents",
+        "label": "Effect of foreign exchange on cash, cash equivalents and restricted cash",
         "values": {
-          "2025": 15,
-          "2024": -6
+          "December 31, 2025": 15,
+          "December 31, 2024": -6,
+          "December 31, 2023": 4
         },
         "confidence": 0.99
       },
       {
-        "label": "Net increase in cash and cash equivalents",
+        "label": "Net increase (decrease) in cash, cash equivalents and restricted cash",
         "values": {
-          "2025": 47,
-          "2024": 237
+          "December 31, 2025": 47,
+          "December 31, 2024": 85,
+          "December 31, 2023": -236
         },
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents, beginning of year",
+        "label": "Cash, cash equivalents and restricted cash \u2013 beginning of year",
         "values": {
-          "2025": 1498,
-          "2024": 1261
+          "December 31, 2025": 1498,
+          "December 31, 2024": 1413,
+          "December 31, 2023": 1649
         },
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents, end of year",
+        "label": "Cash, cash equivalents and restricted cash \u2013 end of year",
         "values": {
-          "2025": 1545,
-          "2024": 1498
+          "December 31, 2025": 1545,
+          "December 31, 2024": 1498,
+          "December 31, 2023": 1413
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash paid for income taxes, net",
+        "values": {
+          "December 31, 2025": 194,
+          "December 31, 2024": 116,
+          "December 31, 2023": 50
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash paid for interest",
+        "values": {
+          "December 31, 2025": 1,
+          "December 31, 2024": 1,
+          "December 31, 2023": 1
         },
         "confidence": 0.99
       }
     ]
   },
-  "extraction_confidence": 0.97,
+  "extraction_confidence": 0.99,
   "pages_used": {
-    "balance_sheet": [],
-    "income_statement": [],
-    "cash_flow": []
+    "balance_sheet": [
+      70,
+      71,
+      73,
+      74,
+      93,
+      94,
+      101,
+      102,
+      103,
+      113,
+      114,
+      115,
+      116
+    ],
+    "income_statement": [
+      51,
+      52,
+      70,
+      71,
+      74,
+      75,
+      88,
+      89,
+      92,
+      93,
+      94,
+      102,
+      103,
+      106,
+      107,
+      108,
+      109,
+      115,
+      116
+    ],
+    "cash_flow": [
+      76,
+      77
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "gross_profit": {
+        "value": 5555,
+        "source_label": "Gross profit",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "operating_income": {
+        "value": 1468,
+        "source_label": "Income (loss) from operations",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 1231,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Subscription solutions",
+        "value": 2752
+      },
+      {
+        "label": "Merchant solutions",
+        "value": 8804
+      },
+      {
+        "label": "Total revenues",
+        "value": 11556
+      },
+      {
+        "label": "Subscription solutions",
+        "value": 520
+      },
+      {
+        "label": "Merchant solutions",
+        "value": 5481
+      },
+      {
+        "label": "Total cost of revenues",
+        "value": 6001
+      },
+      {
+        "label": "Sales and marketing",
+        "value": 1663
+      },
+      {
+        "label": "Research and development",
+        "value": 1536
+      },
+      {
+        "label": "General and administrative",
+        "value": 471
+      },
+      {
+        "label": "Transaction and loan losses",
+        "value": 417
+      },
+      {
+        "label": "Impairment on sales of Shopify's logistics businesses",
+        "value": 0
+      },
+      {
+        "label": "Total operating expenses",
+        "value": 4087
+      },
+      {
+        "label": "Interest income",
+        "value": 331
+      },
+      {
+        "label": "Net realized gain (loss) on equity and other investments",
+        "value": 33
+      },
+      {
+        "label": "Net unrealized (loss) gain on equity and other investments",
+        "value": -186
+      },
+      {
+        "label": "Net loss on equity method investment",
+        "value": -40
+      },
+      {
+        "label": "Realized loss on embedded derivative",
+        "value": -123
+      },
+      {
+        "label": "Foreign exchange gain (loss)",
+        "value": 26
+      },
+      {
+        "label": "Total other income, net",
+        "value": 41
+      },
+      {
+        "label": "Income before income taxes",
+        "value": 1509
+      },
+      {
+        "label": "Provision for income taxes",
+        "value": -278
+      },
+      {
+        "label": "Basic",
+        "value": 0.95
+      },
+      {
+        "label": "Diluted",
+        "value": 0.94
+      },
+      {
+        "label": "Unrealized gain (loss) on cash flow hedges",
+        "value": 15
+      },
+      {
+        "label": "Tax effect on unrealized gain (loss) on cash flow hedges",
+        "value": -4
+      },
+      {
+        "label": "Total other comprehensive income (loss)",
+        "value": 11
+      },
+      {
+        "label": "Comprehensive income",
+        "value": 1242
+      }
+    ],
+    "meta": {
+      "accounting_standard": "U.S. GAAP",
+      "sector_profile": null,
+      "total": 30,
+      "mapped_count": 3,
+      "unmapped_count": 27,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
   }
 }

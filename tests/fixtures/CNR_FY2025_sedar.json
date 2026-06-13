@@ -1,10 +1,11 @@
 {
   "source": "sedar_pdf",
-  "schema_version": 4,
+  "schema_version": 5,
   "accounting_standard": "US GAAP",
   "currency": "CAD",
   "scale": "millions",
-  "fiscal_year_end": "December 31, 2025",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": "2026-02-04",
   "statements": {
     "balance_sheet": [
       {
@@ -24,7 +25,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Accounts receivable (Note 9)",
+        "label": "Accounts receivable",
         "values": {
           "2025": 1117,
           "2024": 1164
@@ -40,7 +41,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Other current assets (Note 10)",
+        "label": "Other current assets",
         "values": {
           "2025": 257,
           "2024": 334
@@ -56,7 +57,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Properties (Note 11)",
+        "label": "Properties",
         "values": {
           "2025": 49148,
           "2024": 47960
@@ -64,7 +65,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Operating lease right-of-use assets (Note 12)",
+        "label": "Operating lease right-of-use assets",
         "values": {
           "2025": 440,
           "2024": 485
@@ -72,7 +73,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Pension asset (Note 17)",
+        "label": "Pension asset",
         "values": {
           "2025": 5362,
           "2024": 4541
@@ -80,7 +81,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Deferred income tax assets (Note 7)",
+        "label": "Deferred income tax assets",
         "values": {
           "2025": 611,
           "2024": 689
@@ -88,7 +89,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Intangible assets, goodwill and other (Note 13)",
+        "label": "Intangible assets, goodwill and other",
         "values": {
           "2025": 523,
           "2024": 773
@@ -104,7 +105,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Accounts payable and other (Note 14)",
+        "label": "Accounts payable and other",
         "values": {
           "2025": 2790,
           "2024": 2810
@@ -112,7 +113,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Current portion of long-term debt (Note 15)",
+        "label": "Current portion of long-term debt",
         "values": {
           "2025": 906,
           "2024": 1166
@@ -128,7 +129,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Deferred income tax liabilities (Note 7)",
+        "label": "Deferred income tax liabilities",
         "values": {
           "2025": 11223,
           "2024": 10874
@@ -136,7 +137,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Other liabilities and deferred credits (Note 16)",
+        "label": "Other liabilities and deferred credits",
         "values": {
           "2025": 999,
           "2024": 612
@@ -144,7 +145,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Pension and other postretirement benefits (Note 17)",
+        "label": "Pension and other postretirement benefits",
         "values": {
           "2025": 453,
           "2024": 483
@@ -152,7 +153,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Long-term debt (Note 15)",
+        "label": "Long-term debt",
         "values": {
           "2025": 20300,
           "2024": 19728
@@ -160,7 +161,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Operating lease liabilities (Note 12)",
+        "label": "Operating lease liabilities",
         "values": {
           "2025": 316,
           "2024": 343
@@ -176,7 +177,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Common shares (Note 18)",
+        "label": "Common shares",
         "values": {
           "2025": 3454,
           "2024": 3474
@@ -184,7 +185,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Common shares in Share Trusts (Note 18)",
+        "label": "Common shares in Share Trusts",
         "values": {
           "2025": -152,
           "2024": -129
@@ -200,7 +201,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Accumulated other comprehensive loss (Note 20)",
+        "label": "Accumulated other comprehensive loss",
         "values": {
           "2025": -1067,
           "2024": -1020
@@ -234,7 +235,7 @@
     ],
     "income_statement": [
       {
-        "label": "Revenues (Note 4)",
+        "label": "Revenues",
         "values": {
           "2025": 17304,
           "2024": 17046,
@@ -297,7 +298,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Loss on assets held for sale (Note 5)",
+        "label": "Loss on assets held for sale",
         "values": {
           "2025": 0,
           "2024": 78,
@@ -333,7 +334,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Other components of net periodic benefit income (Note 17)",
+        "label": "Other components of net periodic benefit income",
         "values": {
           "2025": 502,
           "2024": 454,
@@ -342,7 +343,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Other income (Note 6)",
+        "label": "Other income",
         "values": {
           "2025": 88,
           "2024": 42,
@@ -360,7 +361,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Income tax expense (Note 7)",
+        "label": "Income tax expense",
         "values": {
           "2025": -1544,
           "2024": -1404,
@@ -412,6 +413,15 @@
           "2023": 659.1
         },
         "confidence": 0.95
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 4720,
+          "2024": 4448,
+          "2023": 5625
+        },
+        "confidence": 0.99
       },
       {
         "label": "Net gain (loss) on foreign currency translation",
@@ -506,7 +516,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Loss on assets held for sale (Note 5)",
+        "label": "Loss on assets held for sale",
         "values": {
           "2025": 0,
           "2024": 78,
@@ -515,7 +525,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Gain on disposal of property (Note 6)",
+        "label": "Gain on disposal of property",
         "values": {
           "2025": 0,
           "2024": 0,
@@ -524,7 +534,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Deferred income taxes (Note 7)",
+        "label": "Deferred income taxes",
         "values": {
           "2025": 334,
           "2024": 325,
@@ -596,7 +606,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Business acquisitions and combinations (Note 3)",
+        "label": "Business acquisitions and combinations",
         "values": {
           "2025": 0,
           "2024": 0,
@@ -605,7 +615,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Proceeds from disposal of property (Note 6)",
+        "label": "Proceeds from disposal of property",
         "values": {
           "2025": 0,
           "2024": 0,
@@ -632,7 +642,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Issuance of debt (Note 15)",
+        "label": "Issuance of debt",
         "values": {
           "2025": 1965,
           "2024": 3483,
@@ -641,7 +651,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Repayment of debt (Note 15)",
+        "label": "Repayment of debt",
         "values": {
           "2025": -446,
           "2024": -1038,
@@ -650,7 +660,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Change in commercial paper, net (Note 15)",
+        "label": "Change in commercial paper, net",
         "values": {
           "2025": -612,
           "2024": -1381,
@@ -668,7 +678,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Issuance of common shares for stock options exercised (Note 19)",
+        "label": "Issuance of common shares for stock options exercised",
         "values": {
           "2025": 56,
           "2024": 41,
@@ -677,7 +687,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Withholding taxes remitted on the net settlement of equity settled awards (Note 19)",
+        "label": "Withholding taxes remitted on the net settlement of equity settled awards",
         "values": {
           "2025": -9,
           "2024": -52,
@@ -686,7 +696,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Repurchase of common shares (Note 18)",
+        "label": "Repurchase of common shares",
         "values": {
           "2025": -2059,
           "2024": -2600,
@@ -704,7 +714,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Purchase of common shares by Share Trusts (Note 18)",
+        "label": "Purchase of common shares by Share Trusts",
         "values": {
           "2025": -56,
           "2024": -50,
@@ -794,7 +804,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Income taxes paid (Note 7)",
+        "label": "Income taxes paid",
         "values": {
           "2025": -935,
           "2024": -1221,
@@ -837,5 +847,144 @@
       51,
       52
     ]
+  },
+  "mapping": {
+    "mapped": {
+      "revenue": {
+        "value": 17304,
+        "source_label": "Revenues",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "operating_income": {
+        "value": 6587,
+        "source_label": "Operating income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "interest_expense": {
+        "value": -913,
+        "source_label": "Interest expense",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 4720,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Labor and fringe benefits",
+        "value": 3510
+      },
+      {
+        "label": "Purchased services and material",
+        "value": 2306
+      },
+      {
+        "label": "Fuel",
+        "value": 1786
+      },
+      {
+        "label": "Depreciation and amortization",
+        "value": 1938
+      },
+      {
+        "label": "Equipment rents",
+        "value": 432
+      },
+      {
+        "label": "Other",
+        "value": 745
+      },
+      {
+        "label": "Loss on assets held for sale",
+        "value": 0
+      },
+      {
+        "label": "Total operating expenses",
+        "value": 10717
+      },
+      {
+        "label": "Other components of net periodic benefit income",
+        "value": 502
+      },
+      {
+        "label": "Other income",
+        "value": 88
+      },
+      {
+        "label": "Income before income taxes",
+        "value": 6264
+      },
+      {
+        "label": "Income tax expense",
+        "value": -1544
+      },
+      {
+        "label": "Basic",
+        "value": 7.58
+      },
+      {
+        "label": "Diluted",
+        "value": 7.57
+      },
+      {
+        "label": "Basic",
+        "value": 623.1
+      },
+      {
+        "label": "Diluted",
+        "value": 623.7
+      },
+      {
+        "label": "Net gain (loss) on foreign currency translation",
+        "value": -286
+      },
+      {
+        "label": "Net change in pension and other postretirement benefit plans",
+        "value": 424
+      },
+      {
+        "label": "Derivative instruments",
+        "value": -2
+      },
+      {
+        "label": "Other comprehensive income (loss) before income taxes",
+        "value": 136
+      },
+      {
+        "label": "Income tax recovery (expense)",
+        "value": -183
+      },
+      {
+        "label": "Other comprehensive income (loss)",
+        "value": -47
+      },
+      {
+        "label": "Comprehensive income",
+        "value": 4673
+      }
+    ],
+    "meta": {
+      "accounting_standard": "US GAAP",
+      "sector_profile": null,
+      "total": 28,
+      "mapped_count": 4,
+      "unmapped_count": 23,
+      "benign_skipped_count": 1,
+      "benign_duplicates": [
+        {
+          "normalized_label": "net income",
+          "occurrence_count": 2,
+          "value": 4720.0
+        }
+      ],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
   }
 }

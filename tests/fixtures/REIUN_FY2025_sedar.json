@@ -1,10 +1,11 @@
 {
   "source": "sedar_pdf",
-  "schema_version": 4,
+  "schema_version": 5,
   "accounting_standard": "IFRS",
   "currency": "CAD",
   "scale": "thousands",
-  "fiscal_year_end": "December 31, 2025",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": null,
   "statements": {
     "balance_sheet": [
       {
@@ -91,9 +92,9 @@
         "label": "Mortgages payable associated with assets held for sale",
         "values": {
           "December 31, 2025": 28343,
-          "December 31, 2024": null
+          "December 31, 2024": 0
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Lines of credit and other bank loans",
@@ -162,6 +163,14 @@
         "confidence": 0.99
       },
       {
+        "label": "Total revenue",
+        "values": {
+          "2025": 1436571,
+          "2024": 1239526
+        },
+        "confidence": 0.99
+      },
+      {
         "label": "Recoverable under tenant leases",
         "values": {
           "2025": 414386,
@@ -182,6 +191,14 @@
         "values": {
           "2025": 181831,
           "2024": 64389
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total operating costs",
+        "values": {
+          "2025": 637855,
+          "2024": 498578
         },
         "confidence": 0.99
       },
@@ -226,6 +243,14 @@
         "confidence": 0.99
       },
       {
+        "label": "Total other income (loss)",
+        "values": {
+          "2025": -345150,
+          "2024": 69154
+        },
+        "confidence": 0.99
+      },
+      {
         "label": "Interest costs, net",
         "values": {
           "2025": 277885,
@@ -258,6 +283,14 @@
         "confidence": 0.99
       },
       {
+        "label": "Total other expenses",
+        "values": {
+          "2025": 384271,
+          "2024": 337431
+        },
+        "confidence": 0.99
+      },
+      {
         "label": "Income before income taxes",
         "values": {
           "2025": 69295,
@@ -268,10 +301,10 @@
       {
         "label": "Current income tax recovery",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": -794
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Net income",
@@ -306,7 +339,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Unrealized gain during the year",
+        "label": "Unrealized gain during the year - Interest rate swap agreements",
         "values": {
           "2025": 1132,
           "2024": 767
@@ -314,7 +347,7 @@
         "confidence": 0.97
       },
       {
-        "label": "Reclassified during the year to income",
+        "label": "Reclassified during the year to income - Interest rate swap agreements",
         "values": {
           "2025": -1991,
           "2024": -9404
@@ -322,23 +355,23 @@
         "confidence": 0.97
       },
       {
-        "label": "Unrealized gain during the year",
+        "label": "Unrealized gain during the year - Bond forward agreement",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": 1997
         },
         "confidence": 0.97
       },
       {
-        "label": "Realized loss during the year",
+        "label": "Realized loss during the year - Bond forward agreement",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": -6354
         },
         "confidence": 0.97
       },
       {
-        "label": "Reclassified during the year to income",
+        "label": "Reclassified during the year to income - Bond forward agreement",
         "values": {
           "2025": -7411,
           "2024": -8269
@@ -351,7 +384,7 @@
           "2025": 340,
           "2024": -769
         },
-        "confidence": 0.98
+        "confidence": 0.97
       },
       {
         "label": "Actuarial gain on pension plan",
@@ -359,7 +392,7 @@
           "2025": 48,
           "2024": 142
         },
-        "confidence": 0.98
+        "confidence": 0.97
       },
       {
         "label": "Other comprehensive loss, net of tax",
@@ -367,7 +400,7 @@
           "2025": -7882,
           "2024": -21890
         },
-        "confidence": 0.98
+        "confidence": 0.97
       },
       {
         "label": "Comprehensive income, net of tax",
@@ -431,33 +464,33 @@
         "label": "Impairment of residential inventory",
         "values": {
           "2025": 1160,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Inventory gain from transfer of residential inventory to investment property",
         "values": {
           "2025": -4635,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Allowance for credit loss on mortgages and loans receivables",
         "values": {
           "2025": 16477,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Provision for guarantee loss",
         "values": {
           "2025": 37819,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Loss (income) from equity-accounted investments",
@@ -478,10 +511,10 @@
       {
         "label": "Fair value gain on marketable securities",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": -6645
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Transaction losses, net on disposition of investment properties",
@@ -489,15 +522,15 @@
           "2025": 5721,
           "2024": 6
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Proceeds from bond forward hedge settlement in hedge reserve",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": -6354
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Adjustments for changes in other working capital items",
@@ -551,9 +584,9 @@
         "label": "Earn-outs on investment properties",
         "values": {
           "2025": -180,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Contributions to equity-accounted investments",
@@ -574,10 +607,10 @@
       {
         "label": "Proceeds from disposition of equity-accounted investments",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": 29601
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Advances of mortgages and loans receivable",
@@ -614,10 +647,10 @@
       {
         "label": "Proceeds from sale of marketable securities, net of selling costs",
         "values": {
-          "2025": null,
+          "2025": 0,
           "2024": 27294
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Lease payments received from finance lease receivables",
@@ -695,9 +728,9 @@
         "label": "Units repurchased under normal course issuer bid",
         "values": {
           "2025": -127178,
-          "2024": null
+          "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.99
       },
       {
         "label": "Units repurchased for settlement of Unit compensation exercises and proceeds received from issuance of Units, net of issue costs",
@@ -705,7 +738,7 @@
           "2025": -7748,
           "2024": -11706
         },
-        "confidence": 0.97
+        "confidence": 0.99
       },
       {
         "label": "Repayment of lease liabilities",
@@ -751,8 +784,189 @@
   },
   "extraction_confidence": 0.97,
   "pages_used": {
-    "balance_sheet": [5, 6, 15, 16, 46, 47],
-    "income_statement": [6, 7, 8, 17, 18, 50, 51],
-    "cash_flow": [9, 10]
+    "balance_sheet": [
+      5,
+      6,
+      15,
+      16,
+      46,
+      47
+    ],
+    "income_statement": [
+      6,
+      7,
+      8,
+      17,
+      18,
+      50,
+      51
+    ],
+    "cash_flow": [
+      9,
+      10
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "revenue": {
+        "value": 1436571,
+        "source_label": "Total revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "operating_income": {
+        "value": 798716,
+        "source_label": "Operating income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "interest_expense": {
+        "value": 277885,
+        "source_label": "Interest costs, net",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 69295,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Rental revenue",
+        "value": 1176428
+      },
+      {
+        "label": "Residential inventory sales",
+        "value": 244189
+      },
+      {
+        "label": "Property management and other service fees",
+        "value": 15954
+      },
+      {
+        "label": "Recoverable under tenant leases",
+        "value": 414386
+      },
+      {
+        "label": "Non-recoverable costs",
+        "value": 41638
+      },
+      {
+        "label": "Residential inventory cost of sales",
+        "value": 181831
+      },
+      {
+        "label": "Total operating costs",
+        "value": 637855
+      },
+      {
+        "label": "Interest income",
+        "value": 38237
+      },
+      {
+        "label": "Income (loss) from equity-accounted investments",
+        "value": -236934
+      },
+      {
+        "label": "Fair value loss on investment properties, net",
+        "value": -137359
+      },
+      {
+        "label": "Investment and other income (loss), net",
+        "value": -9094
+      },
+      {
+        "label": "Total other income (loss)",
+        "value": -345150
+      },
+      {
+        "label": "General and administrative",
+        "value": 44751
+      },
+      {
+        "label": "Internal leasing costs",
+        "value": 13715
+      },
+      {
+        "label": "Transaction and other costs",
+        "value": 47920
+      },
+      {
+        "label": "Total other expenses",
+        "value": 384271
+      },
+      {
+        "label": "Income before income taxes",
+        "value": 69295
+      },
+      {
+        "label": "Current income tax recovery",
+        "value": 0
+      },
+      {
+        "label": "Basic",
+        "value": 0.23
+      },
+      {
+        "label": "Diluted",
+        "value": 0.23
+      },
+      {
+        "label": "Unrealized gain during the year - Interest rate swap agreements",
+        "value": 1132
+      },
+      {
+        "label": "Reclassified during the year to income - Interest rate swap agreements",
+        "value": -1991
+      },
+      {
+        "label": "Unrealized gain during the year - Bond forward agreement",
+        "value": 0
+      },
+      {
+        "label": "Realized loss during the year - Bond forward agreement",
+        "value": 0
+      },
+      {
+        "label": "Reclassified during the year to income - Bond forward agreement",
+        "value": -7411
+      },
+      {
+        "label": "Other comprehensive income (loss) from equity-accounted investments",
+        "value": 340
+      },
+      {
+        "label": "Actuarial gain on pension plan",
+        "value": 48
+      },
+      {
+        "label": "Other comprehensive loss, net of tax",
+        "value": -7882
+      },
+      {
+        "label": "Comprehensive income, net of tax",
+        "value": 61413
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS",
+      "sector_profile": null,
+      "total": 34,
+      "mapped_count": 4,
+      "unmapped_count": 29,
+      "benign_skipped_count": 1,
+      "benign_duplicates": [
+        {
+          "normalized_label": "net income",
+          "occurrence_count": 2,
+          "value": 69295.0
+        }
+      ],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
   }
 }
