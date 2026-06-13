@@ -786,6 +786,7 @@ def _sedar_extraction_to_financial_data(
         "pages_used": extraction_result.get("pages_used"),
         "mapping": mapping,
         "sedar_extraction": extraction_result,
+        "sedar_filing_date": extraction_result.get("filing_date"),
         "income_statement": _sedar_statement_rows(
             statements.get("income_statement", []),
             income_current,
@@ -2086,7 +2087,7 @@ if page == "Portfolio Manager":
             _ra_sd,
             (ra.get("ticker") or (_ra_sd or {}).get("ticker")),
             ra.get("source", "pdf"),
-            filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date")),
+            filing_date=(ra.get("sec_filing_date") or (ra.get("summary_data") or {}).get("sec_filing_date") or _ra_fd.get("sedar_filing_date")),
             accession=ra.get("accession"),
         )
         if _ra_fd and _ra_fd.get("_integrity") is None:
@@ -5568,7 +5569,7 @@ if uploaded_file:
             summary_data,
             resolved_ticker,
             _upload_source,
-            filing_date=(summary_data or {}).get("sec_filing_date"),
+            filing_date=((summary_data or {}).get("sec_filing_date") or financial_data.get("sedar_filing_date")),
         )
         if financial_data and financial_data.get("_integrity") is None:
             st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")

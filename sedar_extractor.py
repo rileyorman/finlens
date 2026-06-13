@@ -2,6 +2,7 @@ import json
 import os
 import re
 from pathlib import Path
+from datetime import datetime
 from typing import NotRequired, TypedDict
 
 import pdfplumber
@@ -13,7 +14,7 @@ from modules.integrity.sedar_mapper import map_line_items
 
 
 SEDAR_MODEL = "claude-sonnet-4-6"
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 STATEMENT_KEYS = ("balance_sheet", "income_statement", "cash_flow")
 
 
@@ -42,6 +43,7 @@ class SedarExtraction(TypedDict):
     currency: str
     scale: str
     fiscal_year_end: str
+    filing_date: NotRequired[str]
     statements: SedarStatements
     extraction_confidence: float
     pages_used: dict[str, list[int]]
@@ -86,6 +88,7 @@ Top-level fields required:
   "currency": str,
   "scale": str,
   "fiscal_year_end": str,
+  "filing_date": str or null,
   "statements": {
     "balance_sheet": [],
     "income_statement": [],
@@ -101,6 +104,13 @@ Rules for numbers:
 - Do NOT pre-multiply values by the scale. Downstream ingestion normalizes scale.
 - Use null only when a value is absent or illegible.
 
+Rules for filing_date:
+- Locate the filing/cover date: the date the document was filed, dated, approved, signed, or stated as "dated as of".
+- Use the cover page, signature/approval line, or filing/date metadata visible in the supplied pages when present.
+- filing_date is NOT the fiscal period end and NOT the fiscal_year_end.
+- If no clear filing/cover date is present, return null for filing_date.
+- Do NOT guess. Do NOT substitute the period-end date. A wrong filing_date is worse than no filing_date.
+
 Rules for confidence:
 - confidence must be a number from 0 to 1.
 - Use lower confidence for unclear labels, ambiguous columns, or damaged extraction.
@@ -115,6 +125,7 @@ Return exactly this JSON shape:
   "currency": "currency stated in the filing, e.g. CAD or USD",
   "scale": "scale stated in the filing, e.g. thousands or millions",
   "fiscal_year_end": "period end date or fiscal year end stated in the statements",
+  "filing_date": "document filing/cover/approval/signature date in YYYY-MM-DD if clearly present, otherwise null",
   "statements": {
     "balance_sheet": [
       {"label": "verbatim label", "values": {"period label": 123}, "confidence": 0.95}
@@ -258,6 +269,38 @@ def _confidence(value) -> float:
     return max(0.0, min(1.0, parsed))
 
 
+def _normalize_filing_date(value) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        value = str(value)
+    text = value.strip()
+    if not text:
+        return None
+
+    text = re.sub(r"(?i)\bdated\s+as\s+of\b", "", text).strip(" ,:")
+    patterns = (
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%B %d, %Y",
+        "%b %d, %Y",
+        "%d %B %Y",
+        "%d %b %Y",
+        "%B %d %Y",
+        "%b %d %Y",
+    )
+    for pattern in patterns:
+        try:
+            return datetime.strptime(text, pattern).date().isoformat()
+        except ValueError:
+            continue
+
+    match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+    if match:
+        return match.group(1)
+    return None
+
+
 def _normalize_statement_items(items) -> list[SedarLineItem]:
     normalized = []
     if not isinstance(items, list):
@@ -296,6 +339,7 @@ def _normalize_extraction_payload(data: dict) -> dict:
         "currency": str(data.get("currency") or ""),
         "scale": str(data.get("scale") or ""),
         "fiscal_year_end": str(data.get("fiscal_year_end") or ""),
+        "filing_date": _normalize_filing_date(data.get("filing_date")),
         "statements": normalized_statements,
     }
 
@@ -401,6 +445,7 @@ def extract_sedar_filing(pdf_path) -> SedarExtraction:
         "currency": extracted.get("currency", ""),
         "scale": extracted.get("scale", ""),
         "fiscal_year_end": extracted.get("fiscal_year_end", ""),
+        "filing_date": extracted.get("filing_date"),
         "statements": statements,
         "extraction_confidence": _extraction_confidence(statements),
         "pages_used": pages,

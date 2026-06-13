@@ -73,6 +73,7 @@ def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
             "currency": "CAD",
             "scale": "millions",
             "fiscal_year_end": "December 31",
+            "filing_date": "February 12, 2026",
             "statements": {
                 "balance_sheet": [
                     {"label": "Total assets", "values": {"2025": "10,000"}, "confidence": 0.97}
@@ -105,15 +106,52 @@ def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
     result = sedar_extractor.extract_sedar_filing("dummy.pdf")
 
     assert result["source"] == "sedar_pdf"
-    assert result["schema_version"] == 4
+    assert result["schema_version"] == 5
     assert result["accounting_standard"] == "IFRS"
     assert result["currency"] == "CAD"
     assert result["scale"] == "millions"
     assert result["fiscal_year_end"] == "December 31"
+    assert result["filing_date"] == "2026-02-12"
     assert result["pages_used"]["balance_sheet"] == [1, 2]
     assert set(result["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
     assert result["statements"]["income_statement"][0]["values"]["2025"] == -250
     assert result["extraction_confidence"] == pytest.approx(0.88)
+
+
+def test_extract_sedar_filing_leaves_filing_date_null_when_absent(monkeypatch):
+    raw_response = json.dumps(
+        {
+            "accounting_standard": "IFRS",
+            "currency": "CAD",
+            "scale": "millions",
+            "fiscal_year_end": "December 31, 2025",
+            "statements": {
+                "balance_sheet": [],
+                "income_statement": [],
+                "cash_flow": [],
+            },
+        }
+    )
+
+    class FakeMessages:
+        def create(self, **kwargs):
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text=raw_response)])
+
+    fake_client = SimpleNamespace(messages=FakeMessages())
+
+    monkeypatch.setattr(sedar_extractor, "locate_statement_pages", lambda pdf_path: {
+        "balance_sheet": [],
+        "income_statement": [],
+        "cash_flow": [],
+    })
+    monkeypatch.setattr(sedar_extractor, "_extract_located_page_text", lambda pdf_path, pages: "")
+    monkeypatch.setattr(sedar_extractor, "_api_key", lambda: "test-key")
+    monkeypatch.setattr(sedar_extractor, "_make_client", lambda api_key: fake_client)
+
+    result = sedar_extractor.extract_sedar_filing("dummy.pdf")
+
+    assert result["schema_version"] == 5
+    assert result["filing_date"] is None
 
 
 # ---------------------------------------------------------------------------
