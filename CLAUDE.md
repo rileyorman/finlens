@@ -475,7 +475,7 @@ Development happens on the `dev` branch.
 
 Stable, tested, demo-ready changes are merged from `dev` into `main` for deployment.
 
-Doc-only commits follow the same gate as code: Codex proposes → CC reviews → CC commits. No direct commits by Riley or Codex without CC review, even for Markdown-only changes.
+Doc-only commits should route through the same gate as code (Codex proposes → CC reviews → CC commits) to keep the audit trail consistent. Riley retains override authority for hotfixes.
 
 Pre-commit gate — two tiers:
 - **Every commit (machine-enforced):** `py_compile` runs automatically on all

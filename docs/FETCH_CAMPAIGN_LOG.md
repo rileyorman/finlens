@@ -43,4 +43,4 @@ Steps for each new filer:
 ## Campaign-Wide Flags
 
 - SEDAR+ CAPTCHA is a campaign-wide concern.
-- SEDAR+ access strategy is established — see above. Revisit triggers: QuoteMedia (first paying users), SEDAR+ official API (12-18 months), human-in-the-loop CAPTCHA solver (post Next.js migration).
+- SEDAR+ access strategy is established — see above. Revisit triggers: QuoteMedia (first paying users), SEDAR+ official API (12-18 months), human-in-the-loop CAPTCHA solver (post-commercial — see Access Strategy above).
