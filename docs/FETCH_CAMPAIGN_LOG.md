@@ -41,6 +41,15 @@ Steps for each new filer:
 - Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
 - CSU + REI.UN filing_date NULL: diagnosed 2026-06-13. Fix designed (Option A: prepend cover pages 0-3). Pending empirical verification via reextract_sedar_fixtures.py next session.
 
+## Filer #8 — CAR.UN (Canadian Apartment REIT)
+Status: Queued
+Rationale: Residential REIT — most structurally distinct from REI.UN (retail). Largest Canadian residential REIT. Clean income statement baseline before office/industrial complexity. Confirms IFRS 13 fair value pattern generalizes across REIT types.
+Sector: reit_sector (profile TBD pending item 9 taxonomy design)
+
+## Filer #9 — DIR.UN or Allied REIT
+Status: Queued (candidate selection pending)
+Rationale: Industrial or office REIT. Completes 3-REIT evidence base needed to finalize item 9 REIT sector-skip taxonomy.
+
 ## Campaign-Wide Flags
 
 - SEDAR+ CAPTCHA is a campaign-wide concern.
