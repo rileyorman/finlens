@@ -254,6 +254,47 @@ def test_shop_fixture_maps_revenue_and_net_income_us_gaap():
     assert "Net unrealized (loss) gain on equity and other investments" in unmapped_labels
 
 
+def test_atd_fixture_zero_mapped_under_current_alias_table():
+    """
+    ATD (Alimentation Couche-Tard, IFRS, USD, April year-end) has no income
+    statement labels that match any current IFRS alias:
+    - "Revenues" is tagged ["US GAAP"] only — ATD proves IFRS filers use this label too.
+    - "Operating income" is tagged ["US GAAP"] only (same gap as REI.UN, open queue item 1).
+    - "Net earnings" is an ATD/IFRS term; current table has no "net earnings" alias.
+    - "Financial expenses" is ATD's interest label; table has "Finance costs" (IFRS) only.
+    - No "Gross profit" subtotal exists in the ATD IS at all.
+
+    Also: "Net earnings" appears TWICE in the IS (IS + Comprehensive Income preamble).
+    The collision guard drops both to unmapped — no net_income mapping is possible
+    even if a "net earnings" alias were added without resolving the collision first.
+
+    This test locks in CURRENT behavior. When queue item 1 aliases are added
+    ("operating income" → IFRS, "revenues" → IFRS), update mapped_count accordingly.
+
+    Do NOT weaken this to make it pass — a surprise mapping is a finding.
+    """
+    data = _load_fixture("ATD_FY2025_sedar.json")
+    assert data["accounting_standard"] == "IFRS"
+    result = map_line_items(_line_items(data), "IFRS")
+
+    assert result["meta"]["mapped_count"] == 0
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+
+    # Key alias gaps confirmed by ATD FY2025:
+    assert "Revenues" in unmapped_labels
+    assert "Operating income" in unmapped_labels
+    assert "Net earnings" in unmapped_labels         # appears twice — collision guard fires
+    assert "Financial expenses" in unmapped_labels   # ATD's interest label (≠ "Finance costs")
+
+    # No gross profit label exists in ATD IS at all.
+    gross_profit_present = any("gross profit" in lbl.lower() for lbl in unmapped_labels)
+    assert not gross_profit_present, "ATD IS should have no Gross profit subtotal"
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_reiun_fixture_zero_mapped_under_current_alias_table():
     """
     REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end) has no income
