@@ -174,6 +174,16 @@ def test_standard_normalization_us_gaap_with_periods_maps_us_gaap_alias():
     _assert_conservation(result)
 
 
+def test_operating_income_maps_under_ifrs():
+    result = map_line_items(
+        [{"label": "Operating income", "value": 798716, "confidence": 0.99}],
+        "IFRS",
+    )
+    assert result["mapped"]["operating_income"]["value"] == 798716
+    assert result["mapped"]["operating_income"]["match_type"] == "exact"
+    _assert_conservation(result)
+
+
 def test_standard_normalization_ifrs_exact_passes():
     # "IFRS" must continue to work as before.
     result = map_line_items(
