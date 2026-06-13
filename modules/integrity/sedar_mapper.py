@@ -32,9 +32,14 @@ def _normalize_label(label: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+def _normalize_standard(s: str) -> str:
+    return s.replace(".", "").replace(" ", "").casefold()
+
+
 def _standard_allowed(rule: dict[str, Any], accounting_standard: str) -> bool:
     standards = rule.get("standards") or []
-    return accounting_standard in standards
+    norm = _normalize_standard(accounting_standard)
+    return any(_normalize_standard(s) == norm for s in standards)
 
 
 def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str | None:

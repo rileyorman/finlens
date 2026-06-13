@@ -145,6 +145,53 @@ def test_standard_filter_rejects_ifrs_only_alias_for_us_gaap():
     _assert_conservation(result)
 
 
+def test_standard_normalization_us_gaap_with_periods():
+    # "U.S. GAAP" (Claude verbatim extraction) must match alias table tag "US GAAP".
+    result = map_line_items(
+        [{"label": "Finance costs", "value": 297, "confidence": 0.99}],
+        "U.S. GAAP",
+    )
+    # "Finance costs" is IFRS-only — still rejected even after normalization.
+    assert "interest_expense" not in result["mapped"]
+    assert result["unmapped"] == [{"label": "Finance costs", "value": 297}]
+    _assert_conservation(result)
+
+
+def test_standard_normalization_us_gaap_with_periods_maps_us_gaap_alias():
+    # "U.S. GAAP" input must allow US GAAP-tagged aliases to fire.
+    result = map_line_items(
+        [{"label": "Operating income", "value": 500, "confidence": 0.99}],
+        "U.S. GAAP",
+    )
+    assert result["mapped"]["operating_income"]["value"] == 500
+    assert result["mapped"]["operating_income"]["match_type"] == "exact"
+    _assert_conservation(result)
+
+
+def test_standard_normalization_ifrs_exact_passes():
+    # "IFRS" must continue to work as before.
+    result = map_line_items(
+        [{"label": "Finance costs", "value": 297, "confidence": 0.99}],
+        "IFRS",
+    )
+    assert result["mapped"]["interest_expense"]["value"] == 297
+    _assert_conservation(result)
+
+
+def test_standard_normalization_different_standard_still_rejects():
+    # A genuinely different standard ("Japanese GAAP") must not match US GAAP or IFRS aliases.
+    result = map_line_items(
+        [
+            {"label": "Finance costs", "value": 100},
+            {"label": "Operating income", "value": 200},
+        ],
+        "Japanese GAAP",
+    )
+    assert result["mapped"] == {}
+    assert result["meta"]["mapped_count"] == 0
+    _assert_conservation(result)
+
+
 def test_normalization_maps_note_references_case_and_trailing_punctuation():
     result = map_line_items(
         [{"label": "  Finance Costs (Note 18).  ", "value": 297, "confidence": 0.99}],
