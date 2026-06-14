@@ -12,15 +12,15 @@ Scannable provenance log for campaign filer source handling.
 - QuoteMedia API: exists, provides getCompanyFilings + PDF links for SEDAR filings. Enterprise pricing — revisit post-revenue as a legitimate business expense.
 - Avantis AI: direct CSA real-time feed partnership. Enterprise-only, post-commercial.
 
-**Current campaign protocol — Issuer-Hosted PDF (default):**
-All major TSX companies publish clean annual financial statement PDFs on their investor relations pages. This is the default sourcing method for all campaign filers until QuoteMedia becomes viable.
+**Campaign fetch protocol — Manual Issuer Download (primary):**
 
 Steps for each new filer:
-1. Go directly to the company IR page for annual financial statements PDF — issuer-hosted is the PRIMARY path.
-2. Do NOT attempt SEDAR+ first. Empirical finding: SEDAR+ has been Radware CAPTCHA-blocked on every campaign filer to date (CNQ, CAR.UN, DIR.UN). Attempting it wastes a fetch cycle on a known wall. Revisit SEDAR+ as a source only once an access strategy exists (QuoteMedia, official API, or human-in-the-loop solver — see triggers above).
-3. Download PDF directly from IR page. If annual report is CID-encoded/unreadable, fall back to Q4 financial statements PDF and document the artifact-tier deviation in document_note.
-4. Document in fixture source_provenance: pdf_origin_url, sedar_access_note (record that SEDAR+ was skipped per CAPTCHA finding), document_note, future_pattern.
-5. Flag mid/small-cap filers that don't self-publish as a known gap (these are the filers that will need the SEDAR+ access strategy).
+1. Riley downloads the PDF directly from the company's issuer IR page in his browser. This sails through Cloudflare/Radware challenges that block automated fetch, keeps provenance clean (issuer-hosted), and wastes zero fetch cycles. Save to C:\Users\riley\.finlens\pdfs\.
+2. Codex extracts from the local file — Codex does NOT fetch. Rationale: Codex cold-starts each session (no learning from prior fetches), repeatedly defaults to SEDAR+-first, and reaches for third-party mirrors that break the audit trail. Fetching is Riley's job; extraction is Codex's.
+3. source_provenance must record: pdf_origin_url (real issuer IR URL), retrieval_method ('manual browser download from issuer IR'), document_note, future_pattern.
+4. Do NOT use third-party mirrors (annualreports.com etc.) for committed fixtures — design-evidence only, never a fixture source.
+5. Do NOT attempt SEDAR+ — Radware CAPTCHA-blocked; awaiting access strategy.
+6. Automated issuer-IR fetch stays documented only for the eventual commercial product, where end users can't hand-download.
 
 **Audit trail:** source_provenance field in fixture JSON is mandatory for all filers where SEDAR+ is not the actual source. Pattern established with CNQ filer #7 (be3c4c0).
 
@@ -67,5 +67,5 @@ Steps for each new filer:
 
 ## Campaign-Wide Flags
 
-- SEDAR+ Radware CAPTCHA confirmed blocking on all filers — issuer-hosted is now the established primary source, not a fallback. SEDAR+ access strategy still needed for mid/small caps that don't self-publish.
-- SEDAR+ access strategy is established — see above. Revisit triggers: QuoteMedia (first paying users), SEDAR+ official API (12-18 months), human-in-the-loop CAPTCHA solver (post-commercial — see Access Strategy above).
+- Manual issuer download (Riley, browser) is the established primary fetch path — not a fallback. Codex does not fetch; Codex extracts from the local file Riley supplies. Empirical drivers: SEDAR+ Radware CAPTCHA-blocked on all filers; issuer IR pages can also be Cloudflare-blocked (AEM, 2026-06-13); third-party mirrors break the source-provenance audit trail.
+- SEDAR+ access strategy is established — see above. Revisit triggers: QuoteMedia (first paying users), SEDAR+ official API (12-18 months), human-in-the-loop CAPTCHA solver (post-commercial — see Access Strategy above). Strategy still needed for mid/small caps that don't self-publish.
