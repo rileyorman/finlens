@@ -6,7 +6,7 @@ Run the full FinLens Sunday audit in order. Complete every step before moving to
 
 **Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Do not block the rest of the audit, but include the finding in the Step 6 summary.
 
-If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` first. Then run `/audit-run`. The audit writes a dated report to `docs/audits/integrity_audit_YYYYMMDD.md` with a PASS/FAIL header and a prioritized findings list. That report is the CC report card — save the file path; Step 6 and Step 7 reference it.
+If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` first. Then run `/audit-run`. The audit writes a dated report to `docs/audits/integrity_audit_YYYYMMDD.md` with a PASS/FAIL header and a prioritized findings list. That report is the CC report card — save the file path; Step 6 and Step 8 reference it.
 
 **Schema and cache health (sub-check):** Read `modules/analysis_cache.py` and find `CURRENT_SCHEMA_VERSION`. Check `git log --since="7 days ago" --oneline` for any commits that touch `normalize_financial_data`, library schema, or data shapes. If any such commits exist and `CURRENT_SCHEMA_VERSION` was not bumped, flag it as a required follow-up (do not auto-bump without Riley's sign-off). Include: current version + whether it is consistent with the week's changes.
 
@@ -89,13 +89,7 @@ Commit the updated report file and any CODEX_MEMORY.md changes to `dev` with mes
 
 ---
 
-**Step 7 — Opus strategic review**
-
-Follow the instructions in `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md`. Open a new claude.ai chat, set the model to the most capable Opus available, attach the files listed in that prompt plus the CC report card from Step 1, and paste the review prompt. After receiving the review, save the response to `docs/audits/YYYY-MM-DD-opus-review.md` and commit to `dev`.
-
----
-
-**Step 8 — Sector Profile Review (data-layer health check)**
+**Step 7 — Sector Profile Review (data-layer health check)**
 
 For each sector profile (financial_sector, resource_sector, reit_sector, and any future profiles), scan the unmapped[] lists across all fixtures belonging to that sector and surface:
 (a) High-frequency unmapped labels — any label appearing in 2+ filers of the same sector is a candidate for promotion to a canonical field (this is how the 4 universal REIT fields were found).
@@ -103,3 +97,11 @@ For each sector profile (financial_sector, resource_sector, reit_sector, and any
 (c) New label variants — existing canonical fields picking up new alias spellings from recently added filers.
 (d) Cross-sector leakage — a label that should map but doesn't because its alias lives in the wrong profile.
 Note: only has teeth once a sector has 2+ filers. Currently qualifying: reit_sector (3 filers), resource_sector (1, will qualify when a 2nd resource filer lands). This step systematizes the 'Feed the Loop' discipline on the campaign corpus — the same review that will later run automatically on user uploads (network-effects flywheel).
+
+Rationale: Steps 1-7 are now all CC operational work. Step 8 runs the Opus handoff in a new chat last so the human is not bouncing between the Opus chat and CC mid-audit.
+
+---
+
+**Step 8 — Opus strategic review**
+
+Follow the instructions in `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md`. Note: this remains the filename for compatibility even though the Opus review is now audit Step 8. Open a new claude.ai chat, set the model to the most capable Opus available, attach the files listed in that prompt plus the CC report card from Step 1, and paste the review prompt. After receiving the review, save the response to `docs/audits/YYYY-MM-DD-opus-review.md` and commit to `dev`.
