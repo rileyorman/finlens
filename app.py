@@ -840,6 +840,123 @@ def _sedar_extraction_to_financial_data(
     return financial_data
 
 
+# --- Registry-backed library load -------------------------------------------
+# NOTE: The filing library is currently a single SHARED session — there is no
+# per-user (Supabase) isolation yet. This registry-load surface is for Riley's
+# own use right now. Before it becomes a signup pre-seed feature, per-user
+# library isolation must be sorted (tracked in pre-commercial priorities). Do
+# not treat loaded registry filings as user-scoped until that lands.
+#
+# Loading a registry filing is FREE and INSTANT: it reads the committed fixture
+# JSON and registers it as a library entry. NO Claude API call, NO pipeline
+# re-run, NO integrity-log write — each fixture already carries validated
+# financials + mapping. The registry file itself is READ-ONLY from the
+# library's perspective: library load/delete never modifies it.
+_REGISTRY_PATH = Path(__file__).resolve().parent / "tests" / "fixtures" / "filing_registry.json"
+
+
+def _load_filing_registry() -> dict:
+    """Read the committed master filing registry (read-only catalog).
+
+    Cached in session state so the file is not re-read on every Streamlit
+    rerun. The registry is the source catalog that library entries are loaded
+    *from* — it is never written by library operations.
+    """
+    cached = st.session_state.get("filing_registry_cache")
+    if cached is not None:
+        return cached
+    try:
+        with open(_REGISTRY_PATH, "r", encoding="utf-8") as f:
+            registry = json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not read filing registry: {e}")
+        registry = {"filings": [], "registry_notes": []}
+    st.session_state["filing_registry_cache"] = registry
+    return registry
+
+
+def _registry_entry_id(filing: dict) -> str:
+    """Stable, deterministic library id for a registry filing.
+
+    Derived from the fixture filename so re-loading the same registry filing
+    updates in place (lib_add is keyed on id) instead of duplicating, and so
+    'already loaded' detection is reliable.
+    """
+    stem = Path(filing.get("fixture_path", "")).stem
+    if not stem:
+        stem = f"{filing.get('ticker', 'NA')}_{filing.get('fiscal_year', '')}"
+    return f"registry::{stem}"
+
+
+def _load_registry_filing_into_library(filing: dict) -> tuple[bool, str]:
+    """Read a registry filing's fixture and register it as a library entry.
+
+    Free + instant + deterministic. Converts the committed fixture JSON to
+    financial_data via the same SEDAR converter the upload path uses, then
+    stores it via lib_add. No AI analysis is attached (thesis/Dalio/Lynch/
+    Marks) — running analysis is a separate, paid action.
+
+    Returns (loaded, message). loaded=False means it was skipped (already in
+    the library, or the fixture is missing/unreadable).
+    """
+    fixture_rel = filing.get("fixture_path", "")
+    # Registry fixture_paths are repo-relative; resolve against app.py's dir
+    # (the repo root). The registry's source_pdf_paths are Riley's local
+    # absolute paths and are intentionally NOT used for loading.
+    fixture_abs = Path(__file__).resolve().parent / fixture_rel
+    if not fixture_rel or not fixture_abs.exists():
+        return False, f"fixture missing: {fixture_rel or '(no path)'}"
+
+    entry_id = _registry_entry_id(filing)
+    if any(e.get("id") == entry_id for e in lib_get()):
+        return False, "already loaded"
+
+    try:
+        with open(fixture_abs, "r", encoding="utf-8") as f:
+            extraction_result = json.load(f)
+    except Exception as e:
+        return False, f"could not read fixture: {e}"
+
+    ticker = filing.get("ticker")
+    company_name = filing.get("company_name")
+    file_name = Path(fixture_rel).name
+
+    financial_data = _sedar_extraction_to_financial_data(
+        extraction_result,
+        file_name,
+        company_name=company_name,
+        ticker=ticker,
+    )
+    # Pin the period label to the registry's authoritative fiscal_year so the
+    # library row matches the catalog (the converter infers it from the
+    # statement period keys, which can differ in formatting).
+    if filing.get("fiscal_year"):
+        financial_data["fiscal_year"] = filing["fiscal_year"]
+
+    # Minimal summary_data carries only the ticker so the library row groups
+    # correctly. No investment signal / thesis — this is a financials-only
+    # load by design.
+    summary_data = {"ticker": ticker} if ticker and ticker != "—" else None
+
+    try:
+        lib_add(
+            entry_id,
+            file_name,
+            0,  # no PDF bytes — loaded from a committed fixture, not a file
+            financial_data,
+            summary_data,
+            None,   # bear_bull_data — no AI analysis on a free load
+            None,   # dashboard_data — no AI analysis on a free load
+            raw_text=None,
+            mda_sentiment=None,
+            source="sedar",
+            file_type="pdf",
+        )
+    except Exception as e:
+        return False, f"load failed: {e}"
+    return True, "loaded"
+
+
 def _edgar_cache_identifier() -> str:
     identifier = (
         st.session_state.get("edgar_selected_ticker")
@@ -1861,6 +1978,72 @@ document.addEventListener('focusin', function(e) {
         }
         </style>
         """, unsafe_allow_html=True)
+
+        # --- Load from Registry (pre-validated SEDAR catalog) --------------
+        # Free, instant pre-seed: loads committed fixtures into the library
+        # with no AI call. See _load_registry_filing_into_library for the
+        # shared-session / per-user-isolation caveat.
+        _registry = _load_filing_registry()
+        _registry_filings = _registry.get("filings", [])
+        if _registry_filings:
+            _lib_ids = {e.get("id") for e in lib_get()}
+            _reg_loaded = sum(1 for f in _registry_filings if _registry_entry_id(f) in _lib_ids)
+            with st.expander(
+                f"📥 Load from Registry ({_reg_loaded}/{len(_registry_filings)} loaded)",
+                expanded=False,
+            ):
+                st.caption(
+                    "Pre-validated SEDAR filings. Loading is free and instant "
+                    "(no AI call) — financials + mapping only. Run analysis "
+                    "separately for thesis and insights."
+                )
+                if st.button("Load all", key="registry_load_all",
+                             width='stretch', type="primary"):
+                    _added = 0
+                    for _f in _registry_filings:
+                        _ok, _ = _load_registry_filing_into_library(_f)
+                        if _ok:
+                            _added += 1
+                    st.session_state["filing_library"] = lib_get()
+                    st.success(
+                        f"Loaded {_added} filing(s); "
+                        f"{len(_registry_filings) - _added} already present."
+                    )
+                    st.rerun()
+
+                for _f in _registry_filings:
+                    _rid       = _registry_entry_id(_f)
+                    _already   = _rid in _lib_ids
+                    _r_ticker  = _f.get("ticker") or "—"
+                    _r_company = _f.get("company_name") or _r_ticker
+                    _r_sector  = (_f.get("sector") or "—").replace("_sector", "")
+                    _r_fy      = _f.get("fiscal_year", "")
+                    _r_stored  = _f.get("stored_field_count")
+                    _r_resolved = _f.get("resolved_field_count")
+                    _is_stale  = _f.get("validation_status") == "stale_mapping_pending_reextract"
+                    # Integrity-first: show stale status visibly, never hide it.
+                    _status_txt = "⚠️ stale fixture" if _is_stale else "✓ validated"
+                    _status_col = "#c0392b" if _is_stale else "#27ae60"
+                    st.markdown(
+                        f"<div style='font-size:11px;line-height:1.45;margin-top:6px'>"
+                        f"<b>{_r_ticker}</b> · {_r_fy} "
+                        f"<span style='color:#888'>· {_r_sector}</span><br>"
+                        f"<span style='color:#888'>{_r_company}</span><br>"
+                        f"<span style='color:{_status_col};font-weight:600'>{_status_txt}</span> "
+                        f"<span style='color:#888'>· stored {_r_stored} · resolved {_r_resolved}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if _already:
+                        st.caption("✓ in library")
+                    elif st.button("Load", key=f"registry_load_{_rid}", width='stretch'):
+                        _ok, _msg = _load_registry_filing_into_library(_f)
+                        st.session_state["filing_library"] = lib_get()
+                        if _ok:
+                            st.success(f"Loaded {_r_ticker}.")
+                        else:
+                            st.info(f"{_r_ticker}: {_msg}.")
+                        st.rerun()
 
         lib_entries = lib_get()
         lib_count   = len(lib_entries)
