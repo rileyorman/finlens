@@ -6176,6 +6176,17 @@ if st.session_state.financial_data:
                         )
         elif mda_sentiment and mda_sentiment.get("error"):
             st.caption(f"MD&A sentiment unavailable: {mda_sentiment['error']}")
+        elif not st.session_state.get("loaded_from_quick"):
+            # mda_sentiment is None for registry/library/SEDAR financials-only
+            # loads (the fixture carries statements + mapping, no MD&A prose).
+            # Explain the absence instead of rendering nothing, so the feature
+            # doesn't look missing. Quick Analysis has its own note (above), so
+            # exclude it here to avoid a double message.
+            st.caption(
+                "ℹ️ MD&A Sentiment not available — this filing contains financial "
+                "statements only (no MD&A prose). Upload a full annual report PDF "
+                "or load via EDGAR for MD&A analysis."
+            )
 
         # --- Scenario Simulator ---
         if st.button("Learn more about Scenario Analysis →", key="lm_scenario"):
