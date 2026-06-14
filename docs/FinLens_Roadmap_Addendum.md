@@ -481,3 +481,6 @@ Use the per-feature tags above for the design phase only. Implementation tools (
 **What:** Buttons exist but land at Education page top, not the relevant section.
 **Implementation:** st.query_params (e.g. ?page=education&section=dcf); Education page reads param, expands/scrolls to section. Streamlit has no native anchor scrolling.
 **Sizing:** ~1 hour. Bundle into next Education pass (with Munger mental-models chapter), not a standalone commit.
+
+### Resource Economics Snapshot (post-campaign)
+Resource Economics Snapshot — fuse filing fundamentals with commodity/market data (AISC vs spot for mining, netback vs price for O&G). Three-tier spec: docs/RESOURCE_ECONOMICS_SNAPSHOT_SPEC.md. Tier 1 free/buildable now; Tier 2 gated on MD&A fetcher; Tier 3 ties to Industry Context panel.
