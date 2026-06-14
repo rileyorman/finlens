@@ -34,6 +34,7 @@ CACHE_DIR = _APP_BASE / "cache" if sys.platform == "win32" else Path("/tmp/finle
 LIBRARY_PDFS_DIR = LIBRARY_DIR / "pdfs"
 FILING_LIBRARY_PATH = LIBRARY_DIR / "filing_library.json"
 ANALYSIS_CACHE_DIR = LIBRARY_DIR / "analysis"
+INVERSION_DIR = LIBRARY_DIR / "inversions"
 EDGAR_TEXT_DIR = LIBRARY_DIR / "edgar_text"
 YFINANCE_CACHE_DIR = LIBRARY_DIR / "yfinance_cache"
 
@@ -88,7 +89,15 @@ def _migrate_appdata_storage() -> None:
         pass
 
 
-for _dir in (LIBRARY_DIR, LIBRARY_PDFS_DIR, ANALYSIS_CACHE_DIR, EDGAR_TEXT_DIR, CACHE_DIR, YFINANCE_CACHE_DIR):
+for _dir in (
+    LIBRARY_DIR,
+    LIBRARY_PDFS_DIR,
+    ANALYSIS_CACHE_DIR,
+    INVERSION_DIR,
+    EDGAR_TEXT_DIR,
+    CACHE_DIR,
+    YFINANCE_CACHE_DIR,
+):
     _dir.mkdir(parents=True, exist_ok=True)
 FILING_LIBRARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 _migrate_appdata_storage()
