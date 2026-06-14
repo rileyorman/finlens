@@ -30,7 +30,8 @@ JSON shape:
       "grounding": "which real metric/number makes this plausible"
     }
   ],
-  "margin_of_safety_note": "where downside protection is thin or absent, value-investor framing"
+  "margin_of_safety_note": "where downside protection is thin or absent, value-investor framing",
+  "dcf_snapshot": null
 }
 
 Company context:
@@ -40,12 +41,17 @@ Sector: __SECTOR__
 Real fundamentals and mapped filing metrics:
 __FUNDAMENTALS_JSON__
 
+DCF valuation snapshot:
+__DCF_SNAPSHOT_JSON__
+
 Instructions:
 - Use the supplied real numbers as the evidence base.
 - If a metric is missing, say that uncertainty weakens the margin-of-safety assessment.
+- __DCF_INSTRUCTION__
 - Focus on business failure, balance-sheet failure, capital allocation failure, cycle risk, or valuation fragility.
 - thesis_killers must contain no more than 3 items.
 - failure_modes severity must be one of: high, medium, low.
+- Return the exact supplied dcf_snapshot object in the dcf_snapshot key, or null when none was supplied.
 """
 
 
@@ -122,6 +128,65 @@ def _compact_mapping(mapping: dict) -> dict:
     return compact
 
 
+def _clean_dcf_snapshot(dcf_snapshot: dict | None) -> dict | None:
+    if not isinstance(dcf_snapshot, dict):
+        return None
+
+    allowed = {
+        "intrinsic_value_per_share",
+        "current_price",
+        "margin_of_safety_pct",
+        "is_undervalued",
+        "enterprise_value",
+        "equity_value",
+        "assumptions",
+    }
+    cleaned = {key: dcf_snapshot.get(key) for key in allowed if key in dcf_snapshot}
+
+    assumptions = cleaned.get("assumptions")
+    if isinstance(assumptions, dict):
+        allowed_assumptions = {
+            "wacc",
+            "terminal_growth",
+            "terminal_growth_rate",
+            "revenue_growth",
+            "revenue_growth_rate",
+            "forecast_period",
+        }
+        cleaned["assumptions"] = {
+            key: assumptions.get(key)
+            for key in allowed_assumptions
+            if key in assumptions
+        }
+    elif "assumptions" in cleaned:
+        cleaned.pop("assumptions")
+
+    return cleaned or None
+
+
+def _has_real_dcf_valuation(dcf_snapshot: dict | None) -> bool:
+    if not isinstance(dcf_snapshot, dict):
+        return False
+    return (
+        dcf_snapshot.get("intrinsic_value_per_share") is not None
+        and dcf_snapshot.get("margin_of_safety_pct") is not None
+    )
+
+
+def _dcf_instruction(dcf_snapshot: dict | None) -> str:
+    if _has_real_dcf_valuation(dcf_snapshot):
+        return (
+            "A DCF valuation anchor is supplied. Incorporate the quantified margin of safety into "
+            "the margin_of_safety_note: intrinsic value per share vs current price, the MoS %, and "
+            "how the pre-mortem failure scenario could compress intrinsic value and erode that cushion."
+        )
+    return (
+        "No usable DCF valuation anchor is supplied. Keep margin-of-safety reasoning qualitative "
+        "and explicitly note the absence of a valuation anchor. Do not fabricate intrinsic value, "
+        "price, or margin-of-safety percentages."
+    )
+
+
 def _fundamentals(financial_data: dict, mapping: dict) -> dict:
     revenue = _field_value(financial_data, ("revenue", "total_revenue"))
     if revenue is None:
@@ -167,13 +232,22 @@ def _fundamentals(financial_data: dict, mapping: dict) -> dict:
     }
 
 
-def _build_prompt(financial_data: dict, ticker: str, sector: str | None, mapping: dict) -> str:
+def _build_prompt(
+    financial_data: dict,
+    ticker: str,
+    sector: str | None,
+    mapping: dict,
+    dcf_snapshot: dict | None = None,
+) -> str:
     payload = _fundamentals(financial_data or {}, mapping or {})
+    cleaned_dcf = _clean_dcf_snapshot(dcf_snapshot)
     return (
         USER_PROMPT_TEMPLATE
         .replace("__TICKER__", str(ticker or ""))
         .replace("__SECTOR__", str(sector or "Unknown"))
         .replace("__FUNDAMENTALS_JSON__", json.dumps(payload, indent=2, default=str))
+        .replace("__DCF_SNAPSHOT_JSON__", json.dumps(cleaned_dcf, indent=2, default=str))
+        .replace("__DCF_INSTRUCTION__", _dcf_instruction(cleaned_dcf))
     )
 
 
@@ -181,9 +255,10 @@ def _parse_response(raw: str) -> dict:
     return json.loads(_strip_json_fences(raw))
 
 
-def generate_inversion(financial_data, ticker, sector, mapping) -> dict:
+def generate_inversion(financial_data, ticker, sector, mapping, dcf_snapshot=None) -> dict:
     try:
-        prompt = _build_prompt(financial_data or {}, ticker or "", sector, mapping or {})
+        cleaned_dcf = _clean_dcf_snapshot(dcf_snapshot)
+        prompt = _build_prompt(financial_data or {}, ticker or "", sector, mapping or {}, cleaned_dcf)
         client = _make_client(_api_key())
         response = client.messages.create(
             model=ANALYSIS_MODEL,
@@ -194,6 +269,7 @@ def generate_inversion(financial_data, ticker, sector, mapping) -> dict:
         parsed = _parse_response(_text_content(response))
         if not isinstance(parsed, dict):
             return {"error": "Munger inversion response was not a JSON object"}
+        parsed["dcf_snapshot"] = cleaned_dcf
         return parsed
     except json.JSONDecodeError as exc:
         return {"error": f"Munger inversion response could not be parsed as JSON: {exc}"}

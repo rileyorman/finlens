@@ -7,7 +7,7 @@ from pathlib import Path
 from config import INVERSION_DIR, safe_write_text
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _STORE_DIR = INVERSION_DIR
 
 
@@ -41,7 +41,10 @@ def load_inversion(ticker, period) -> dict | None:
         if not path.exists():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else None
+        if not isinstance(data, dict):
+            return None
+        data.setdefault("dcf_snapshot", None)
+        return data
     except Exception:
         return None
 
