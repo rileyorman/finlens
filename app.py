@@ -47,6 +47,7 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.peer_comparison import get_peer_data, peer_map
 from modules.dcf_calculator import calculate_dcf
+from modules.economics.resource_economics import build_resource_economics_snapshot
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import load_analysis, save_analysis
 from modules.filing_library import (
@@ -5765,7 +5766,7 @@ if st.session_state.financial_data:
     if _fd_check.get("currency") and _fd_check["currency"] != "USD":
         st.warning(f"⚠️ Financial data may not be normalized — currency: {_fd_check['currency']}")
 
-    tab_stmts, tab_dash = st.tabs(["📊 Statements", "📈 Dashboard"])
+    tab_stmts, tab_dash, tab_econ = st.tabs(["📊 Statements", "📈 Dashboard", "🪨 Economics"])
 
     # =====================================================================
     with tab_stmts:
@@ -7028,6 +7029,263 @@ if st.session_state.financial_data:
                 st.caption("Re-analyse to generate bear case.")
 
         st.caption("Powered by Dalio · Lynch · Marks frameworks")
+
+    # =====================================================================
+    with tab_econ:
+    # =====================================================================
+    # Resource Economics Snapshot — Tier 1
+    # Spec: docs/RESOURCE_ECONOMICS_SNAPSHOT_SPEC.md (sections 2, 3-Tier1, 4).
+    # Brains: modules/economics/resource_economics.py. This tab is UI only.
+    # Gate: visible only when the SEDAR mapper resolved a resource sector profile.
+
+        _econ_mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
+        _econ_meta = (_econ_mapping.get("meta") or {}) if isinstance(_econ_mapping, dict) else {}
+        _econ_sector_profile = _econ_meta.get("sector_profile")
+        _is_resource = _econ_sector_profile in ("mining_sector", "resource_sector")
+
+        if not _is_resource:
+            st.info(
+                "📊 **Economics Snapshot** is available for resource-sector filings "
+                "(mining or oil & gas). The mapper resolved this filing's sector profile "
+                f"as `{_econ_sector_profile or 'None'}`. Load Agnico Eagle (AEM) or "
+                "Canadian Natural Resources (CNQ) to see the panel."
+            )
+        else:
+            # Build fundamentals dict the module's _extract_field / _extract_text understand.
+            _sedar_extraction = financial_data.get("sedar_extraction") or {}
+            _econ_sector_inferred = (
+                _sedar_extraction.get("sector_inferred")
+                or summary_data.get("sector_inferred")
+                or financial_data.get("sector_inferred")
+            )
+            _econ_fundamentals = {
+                "mapping": _econ_mapping,
+                "sector_inferred": _econ_sector_inferred,
+                "currency": financial_data.get("currency"),
+                "scale": financial_data.get("scale") or _sedar_extraction.get("scale"),
+                "fiscal_year_end": (
+                    _sedar_extraction.get("fiscal_year_end")
+                    or financial_data.get("fiscal_year")
+                ),
+            }
+            # Session-state cache — module accepts a plain dict; spec section 3 calls for it.
+            st.session_state.setdefault("economics_cache", {})
+            _econ_cache = st.session_state["economics_cache"]
+
+            try:
+                _econ_snapshot = build_resource_economics_snapshot(
+                    _econ_fundamentals,
+                    ticker or "",
+                    cache=_econ_cache,
+                )
+            except Exception as _econ_exc:
+                st.error(f"Economics snapshot failed: {_econ_exc}")
+                _econ_snapshot = None
+
+            if _econ_snapshot:
+                _econ_metrics = _econ_snapshot["metrics"]
+                _econ_metadata = _econ_snapshot["metadata"]
+                _econ_reasons = _econ_metadata.get("none_reasons") or {}
+                _econ_company_mkt = _econ_snapshot["market_data"]["company"]
+                _econ_cmdt_mkt = _econ_snapshot["market_data"]["commodity"]
+                _econ_spot = _econ_snapshot["commodity_spot_price"]
+                _econ_trend = _econ_snapshot["commodity_trend"]
+                _econ_cheap = _econ_snapshot["cheap_company_or_cheap_sector"]
+                _econ_fetch_errs = _econ_metadata.get("fetch_errors") or {}
+
+                # --- Header line ---
+                _econ_cmdt_label = (_econ_cmdt_mkt.get("commodity") or "—").title()
+                _econ_proxy = _econ_cmdt_mkt.get("proxy_used") or "—"
+                _econ_proxy_role = _econ_cmdt_mkt.get("proxy_role") or "—"
+                st.markdown(
+                    f'<div style="font-size:20px;font-weight:700;color:#F1F5F9;margin:0 0 4px 0">'
+                    f'Resource Economics Snapshot — Tier 1</div>'
+                    f'<div style="font-size:12px;color:#64748B;margin:0 0 16px 0">'
+                    f'Filing fundamentals × yfinance commodity overlay. '
+                    f'Commodity: {escape(_econ_cmdt_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
+                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.</div>',
+                    unsafe_allow_html=True,
+                )
+
+                # --- Helpers (local; reused across cards) ---
+                def _econ_fmt_pct(v):
+                    return f"{v*100:.1f}%" if isinstance(v, (int, float)) else "—"
+                def _econ_fmt_mult(v):
+                    return f"{v:.2f}×" if isinstance(v, (int, float)) else "—"
+                def _econ_fmt_price(v):
+                    return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
+
+                _econ_card_style = (
+                    "background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);"
+                    "border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;"
+                    "box-shadow:0 4px 24px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;"
+                    "padding:0.85rem 1rem;margin:0 0 0.5rem 0;"
+                )
+                _econ_label_style = (
+                    "font-size:10px;font-weight:600;letter-spacing:0.08em;"
+                    "text-transform:uppercase;color:#64748B;"
+                )
+                _econ_value_style = (
+                    "font-size:28px;font-weight:600;color:#F1F5F9;letter-spacing:-0.02em;"
+                )
+                _econ_reason_style = (
+                    "font-size:11px;color:#94A3B8;margin-top:6px;font-style:italic;"
+                )
+
+                def _econ_metric_card(label, value, reason=None):
+                    body = (
+                        f'<div style="{_econ_label_style}">{escape(label)}</div>'
+                        f'<div style="{_econ_value_style}">{escape(value)}</div>'
+                    )
+                    if reason:
+                        body += f'<div style="{_econ_reason_style}">{escape(reason)}</div>'
+                    st.markdown(
+                        f'<div style="{_econ_card_style}">{body}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                # --- Row 1: three metric cards ---
+                _ec1, _ec2, _ec3 = st.columns(3)
+                with _ec1:
+                    _econ_metric_card(
+                        "Earnings Yield",
+                        _econ_fmt_pct(_econ_metrics.get("earnings_yield")),
+                        _econ_reasons.get("earnings_yield"),
+                    )
+                with _ec2:
+                    _econ_metric_card(
+                        "Revenue / Market Cap",
+                        _econ_fmt_mult(_econ_metrics.get("revenue_to_market_cap")),
+                        _econ_reasons.get("revenue_to_market_cap"),
+                    )
+                with _ec3:
+                    _econ_metric_card(
+                        "Net Margin",
+                        _econ_fmt_pct(_econ_metrics.get("net_margin")),
+                        _econ_reasons.get("net_margin"),
+                    )
+
+                # --- Row 2: commodity spot + cheap company/sector flag ---
+                _ecA, _ecB = st.columns([1, 1])
+                with _ecA:
+                    _spot_reason = _econ_spot.get("reason") or (
+                        f"via {_econ_proxy} ({_econ_proxy_role})"
+                        if _econ_cmdt_mkt.get("proxy_used") else None
+                    )
+                    _econ_metric_card(
+                        f"{_econ_cmdt_label} Spot",
+                        _econ_fmt_price(_econ_spot.get("value")),
+                        _spot_reason,
+                    )
+                with _ecB:
+                    _flag = _econ_cheap.get("company_flag")
+                    _flag_label_map = {
+                        "high_earnings_yield": "Cheap company signal",
+                        "not_high_earnings_yield": "Not flagged cheap",
+                    }
+                    _flag_label = _flag_label_map.get(_flag, "Insufficient data")
+                    _flag_reason = _econ_cheap.get("reason") or (
+                        f"Earnings yield {_econ_fmt_pct(_econ_metrics.get('earnings_yield'))} "
+                        f"vs 8% threshold. See trend below for sector context."
+                        if _flag else None
+                    )
+                    _econ_metric_card(
+                        "Cheap company / cheap sector?",
+                        _flag_label,
+                        _flag_reason,
+                    )
+
+                # --- Commodity price trend chart ---
+                _trend_points = _econ_trend.get("points") or []
+                if _trend_points:
+                    st.markdown(
+                        f'<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                        f'Commodity Price Trend — last 1 year</div>'
+                        f'<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                        f'Source proxy: <code>{escape(_econ_trend.get("proxy_used") or "—")}</code>. '
+                        f'Filing fiscal year end overlaid in dotted gray.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    _trend_xs = [p["date"] for p in _trend_points]
+                    _trend_ys = [p["close"] for p in _trend_points]
+                    _trend_fig = go.Figure()
+                    _trend_fig.add_trace(go.Scatter(
+                        x=_trend_xs, y=_trend_ys,
+                        mode='lines',
+                        line=dict(color='#F4B942', width=2),
+                        fill='tozeroy',
+                        fillcolor='rgba(244,185,66,0.08)',
+                        name=_econ_trend.get("proxy_used") or "Commodity",
+                    ))
+                    _fye = _econ_metadata.get("fiscal_year_end")
+                    if _fye:
+                        _trend_fig.add_vline(
+                            x=_fye,
+                            line_dash='dot',
+                            line_color='rgba(148,163,184,0.6)',
+                            annotation_text=f'FYE {_fye}',
+                            annotation_font=dict(color='#94A3B8', size=10),
+                            annotation_position='top',
+                        )
+                    _trend_fig.update_layout(
+                        paper_bgcolor='#1E2433',
+                        plot_bgcolor='#1E2433',
+                        font=dict(color='#94A3B8', size=11),
+                        margin=dict(l=40, r=20, t=20, b=40),
+                        showlegend=False,
+                        height=280,
+                    )
+                    _trend_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                    _trend_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Close')
+                    st.plotly_chart(_trend_fig, width='stretch', config={"displayModeBar": False})
+                else:
+                    st.caption("Commodity price trend unavailable — proxy returned no points.")
+
+                # --- Tier 2 placeholder slot (clearly upcoming, no fake data) ---
+                _econ_tier2_style = (
+                    "background:rgba(30,36,51,0.5);"
+                    "border:0.5px dashed rgba(244,185,66,0.35);border-radius:12px;"
+                    "padding:1rem 1.2rem;margin:18px 0 0 0;"
+                )
+                st.markdown(
+                    f'<div style="{_econ_tier2_style}">'
+                    f'<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;'
+                    f'text-transform:uppercase;color:#F4B942;margin-bottom:4px">'
+                    f'TIER 2 · COMING SOON</div>'
+                    f'<div style="font-size:15px;font-weight:600;color:#F1F5F9;margin-bottom:6px">'
+                    f'AISC vs Spot · Netback vs Price</div>'
+                    f'<div style="font-size:12px;color:#94A3B8;line-height:1.5">'
+                    f'The flagship margin-of-safety metric — All-In Sustaining Cost vs commodity '
+                    f'spot (mining) or netback vs commodity price (oil &amp; gas). These figures '
+                    f'live in the MD&amp;A, not the consolidated income statement, so this tier is '
+                    f'gated on the MD&amp;A fetcher. See '
+                    f'<code>docs/RESOURCE_ECONOMICS_SNAPSHOT_SPEC.md</code> §3 Tier 2.</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+                # --- Honest provenance + coverage footer ---
+                with st.expander("Data provenance & coverage", expanded=False):
+                    st.markdown(f"**Ticker resolved:** `{_econ_metadata.get('ticker_used') or '—'}`")
+                    st.markdown(
+                        f"**Sector inferred:** `{_econ_sector_inferred or '—'}` "
+                        f"→ profile: `{_econ_sector_profile}`"
+                    )
+                    st.markdown(
+                        f"**Commodity:** `{_econ_metadata.get('commodity') or '—'}` "
+                        f"via `{_econ_metadata.get('proxy_used') or '—'}`"
+                    )
+                    st.markdown(
+                        f"**Scale applied:** `{_econ_metadata.get('scale') or '—'}` "
+                        f"(factor ×{_econ_metadata.get('scale_factor_applied')})"
+                    )
+                    _missing = _econ_metadata.get("missing_inputs") or []
+                    if _missing:
+                        st.markdown(f"**Missing inputs:** {', '.join(_missing)}")
+                    if _econ_fetch_errs.get("company"):
+                        st.warning(f"Company fetch error: {_econ_fetch_errs['company']}")
+                    if _econ_fetch_errs.get("commodity"):
+                        st.warning(f"Commodity fetch error: {_econ_fetch_errs['commodity']}")
 
 else:
     if not uploaded_file:
