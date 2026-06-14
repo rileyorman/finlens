@@ -50,6 +50,8 @@ from modules.dcf_calculator import calculate_dcf
 from modules.economics.resource_economics import build_resource_economics_snapshot
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import load_analysis, save_analysis
+from modules.analysis.munger_inversion import generate_inversion
+from modules.analysis.inversion_store import inversion_exists, load_inversion, save_inversion
 from modules.filing_library import (
     add_entry as lib_add,
     get_entries as lib_get,
@@ -6109,6 +6111,141 @@ if st.session_state.financial_data:
                     st.error(f"🔴 **{flag['label']}** — {flag['detail']}")
                 for flag in [f for f in flags if f["severity"] == "yellow"]:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
+
+        # --- Munger Inversion (value-investing pre-mortem) ---
+        # PAID Claude call. Pay-once guard: a saved inversion loads free from disk;
+        # only the explicit Run / Re-run buttons (marked with $) spend money. The
+        # engine + decoupled store are committed in modules/analysis/ (994c090);
+        # this panel only wires the UI. Runs off fundamentals, so it works for any
+        # filing with financial_data — including financials-only registry loads.
+        _inv_ticker = ticker or company
+        _inv_period = (
+            financial_data.get("fiscal_year")
+            or financial_data.get("period")
+            or period
+            or ""
+        )
+        _inv_sector = (
+            financial_data.get("sector_inferred")
+            or financial_data.get("sector")
+            or (summary_data.get("sector") if isinstance(summary_data, dict) else None)
+        )
+        _inv_key = f"munger_inv_{_inv_ticker}_{_inv_period}"
+
+        # Hydrate the session cache from disk once so tab switches and reruns don't
+        # re-read the file every time. A None value means "checked, nothing saved".
+        if _inv_key not in st.session_state:
+            if _inv_period and inversion_exists(_inv_ticker, _inv_period):
+                st.session_state[_inv_key] = load_inversion(_inv_ticker, _inv_period)
+            else:
+                st.session_state[_inv_key] = None
+
+        def _run_and_save_inversion():
+            """Run the paid inversion, persist on success, never save an error payload."""
+            with st.spinner("Running Munger inversion — value-investing pre-mortem (~10–20s)..."):
+                _res = generate_inversion(financial_data, _inv_ticker, _inv_sector, _mapping or {})
+            if isinstance(_res, dict) and "error" not in _res:
+                _res["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                save_inversion(_inv_ticker, _inv_period, _res)
+                st.session_state[_inv_key] = _res
+                st.rerun()
+            else:
+                _msg = _res.get("error") if isinstance(_res, dict) else "unknown error"
+                st.caption(f"Inversion unavailable: {_msg}")
+
+        _SEVERITY_STYLE = {
+            "high":   {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B", "label": "HIGH"},
+            "medium": {"bg": "#1C0F00", "color": "#FCD34D", "border": "#92400E", "label": "MEDIUM"},
+            "low":    {"bg": "#1E2433", "color": "#94A3B8", "border": "#374B6B", "label": "LOW"},
+        }
+
+        def _render_inversion(inv: dict):
+            # Thesis Killers — the one-glance headline (2–3 things most likely to break the thesis).
+            _killers = [k for k in (inv.get("thesis_killers") or []) if k]
+            if _killers:
+                st.markdown(
+                    '<div style="font-size:11px;color:#64748B;letter-spacing:0.08em;'
+                    'text-transform:uppercase;margin:4px 0 8px 0">Thesis Killers</div>',
+                    unsafe_allow_html=True,
+                )
+                _cards = "".join(
+                    f'<div style="flex:1;min-width:180px;background:#1F0000;'
+                    f'border:1px solid #991B1B;border-left:4px solid #F87171;'
+                    f'border-radius:8px;padding:12px 16px">'
+                    f'<span style="color:#FCA5A5;font-size:14px;font-weight:600">'
+                    f'{escape(str(k))}</span></div>'
+                    for k in _killers
+                )
+                st.markdown(
+                    f'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">{_cards}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            # Pre-Mortem narrative — full prose, never truncated.
+            _narr = inv.get("premortem_narrative")
+            if _narr:
+                st.markdown("**Pre-Mortem**")
+                st.markdown(_escape_md_dollars(str(_narr)))
+
+            # Failure Modes — severity badge + the real metric that makes each plausible.
+            _modes = [m for m in (inv.get("failure_modes") or []) if isinstance(m, dict)]
+            if _modes:
+                st.markdown("**Failure Modes**")
+                for m in _modes:
+                    _sev = str(m.get("severity") or "low").lower()
+                    _ss = _SEVERITY_STYLE.get(_sev, _SEVERITY_STYLE["low"])
+                    _mode_txt = escape(str(m.get("mode") or "—"))
+                    _ground = escape(str(m.get("grounding") or ""))
+                    st.markdown(
+                        f'<div style="background:#141A24;border:1px solid #243044;'
+                        f'border-radius:8px;padding:12px 16px;margin-bottom:8px">'
+                        f'<span style="display:inline-block;background:{_ss["bg"]};'
+                        f'color:{_ss["color"]};border:1px solid {_ss["border"]};'
+                        f'border-radius:4px;padding:2px 10px;font-size:11px;'
+                        f'font-weight:700;letter-spacing:0.06em;margin-right:10px">'
+                        f'{_ss["label"]}</span>'
+                        f'<span style="color:#E2E8F0;font-size:14px;font-weight:600">'
+                        f'{_mode_txt}</span>'
+                        f'<div style="color:#94A3B8;font-size:13px;margin-top:6px">'
+                        f'{_ground}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+            # Margin of Safety — value-investor framing.
+            _mos = inv.get("margin_of_safety_note")
+            if _mos:
+                st.markdown("**Margin of Safety**")
+                st.markdown(_escape_md_dollars(str(_mos)))
+
+        _saved_inv = st.session_state.get(_inv_key)
+
+        with st.expander("🔄 Munger Inversion — Pre-Mortem", expanded=bool(_saved_inv)):
+            st.caption(
+                "Charlie Munger's inversion: assume the investment has failed badly "
+                "in 3–5 years, then work backward from the real reported numbers to "
+                "find what most plausibly killed it."
+            )
+
+            if _saved_inv:
+                _gen = _saved_inv.get("generated_at")
+                _note = f"✓ saved inversion · generated {_gen}" if _gen else "✓ saved inversion"
+                st.markdown(
+                    f'<div style="color:#4ADE80;font-size:12px;margin-bottom:10px">'
+                    f'{escape(_note)}</div>',
+                    unsafe_allow_html=True,
+                )
+                _render_inversion(_saved_inv)
+                st.divider()
+                st.caption("Re-run only if the filing or your thesis changed — this spends another Claude call.")
+                if st.button("↻ Re-run inversion ($)", key=f"inv_rerun_{_inv_key}"):
+                    _run_and_save_inversion()
+            else:
+                st.markdown(
+                    "Run a one-time pre-mortem on this filing. This is a **paid Claude "
+                    "call**; once generated it's saved to disk and free to view forever after."
+                )
+                if st.button("🔍 Run Munger Inversion ($)", key=f"inv_run_{_inv_key}", type="primary"):
+                    _run_and_save_inversion()
 
         # --- MD&A Sentiment ---
 
