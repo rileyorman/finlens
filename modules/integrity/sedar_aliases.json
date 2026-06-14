@@ -203,6 +203,91 @@
           "patterns": []
         }
       }
+    },
+    "reit_sector": {
+      "canonical_fields": {
+        "rental_revenue": {
+          "aliases": [
+            {
+              "label": "rental revenue",
+              "standards": ["IFRS"],
+              "source": "REI.UN_FY2025"
+            },
+            {
+              "label": "revenue from investment properties",
+              "standards": ["IFRS"],
+              "source": "CAR.UN_FY2024"
+            },
+            {
+              "label": "investment properties revenue",
+              "standards": ["IFRS"],
+              "source": "DIR.UN_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "net_operating_income": {
+          "aliases": [
+            {
+              "label": "operating income",
+              "standards": ["IFRS"],
+              "source": "REI.UN_FY2025",
+              "prefer_profile": true
+            },
+            {
+              "label": "net operating income",
+              "standards": ["IFRS"],
+              "source": "CAR.UN_FY2024"
+            },
+            {
+              "label": "net rental income",
+              "standards": ["IFRS"],
+              "source": "DIR.UN_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "property_operating_costs": {
+          "aliases": [
+            {
+              "label": "total operating costs",
+              "standards": ["IFRS"],
+              "source": "REI.UN_FY2025"
+            },
+            {
+              "label": "property operating costs",
+              "standards": ["IFRS"],
+              "source": "CAR.UN_FY2024"
+            },
+            {
+              "label": "investment properties operating expenses",
+              "standards": ["IFRS"],
+              "source": "DIR.UN_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "investment_property_fair_value_delta": {
+          "aliases": [
+            {
+              "label": "fair value loss on investment properties, net",
+              "standards": ["IFRS"],
+              "source": "REI.UN_FY2025"
+            },
+            {
+              "label": "fair value adjustments of investment properties",
+              "standards": ["IFRS"],
+              "source": "CAR.UN_FY2024"
+            },
+            {
+              "label": "fair value adjustments to investment properties",
+              "standards": ["IFRS"],
+              "source": "DIR.UN_FY2024"
+            }
+          ],
+          "patterns": []
+        }
+      }
     }
   }
 }

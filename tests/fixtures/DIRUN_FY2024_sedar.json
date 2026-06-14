@@ -700,6 +700,30 @@
   },
   "mapping": {
     "mapped": {
+      "rental_revenue": {
+        "value": 466218,
+        "source_label": "Investment properties revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "property_operating_costs": {
+        "value": -110786,
+        "source_label": "Investment properties operating expenses",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_operating_income": {
+        "value": 355432,
+        "source_label": "Net rental income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "investment_property_fair_value_delta": {
+        "value": -24765,
+        "source_label": "Fair value adjustments to investment properties",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 259611,
         "source_label": "Net income",
@@ -708,18 +732,6 @@
       }
     },
     "unmapped": [
-      {
-        "label": "Investment properties revenue",
-        "value": 466218
-      },
-      {
-        "label": "Investment properties operating expenses",
-        "value": -110786
-      },
-      {
-        "label": "Net rental income",
-        "value": 355432
-      },
       {
         "label": "Share of net income from equity accounted investments",
         "value": 42982
@@ -747,10 +759,6 @@
       {
         "label": "Total other expenses",
         "value": -111304
-      },
-      {
-        "label": "Fair value adjustments to investment properties",
-        "value": -24765
       },
       {
         "label": "Fair value adjustments to financial instruments",
@@ -795,10 +803,10 @@
     ],
     "meta": {
       "accounting_standard": "IFRS",
-      "sector_profile": null,
+      "sector_profile": "reit_sector",
       "total": 22,
-      "mapped_count": 1,
-      "unmapped_count": 21,
+      "mapped_count": 5,
+      "unmapped_count": 17,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

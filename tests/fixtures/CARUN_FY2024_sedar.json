@@ -857,6 +857,30 @@
   },
   "mapping": {
     "mapped": {
+      "rental_revenue": {
+        "value": 1112742,
+        "source_label": "Revenue from investment properties",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "property_operating_costs": {
+        "value": -281431,
+        "source_label": "Property operating costs",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_operating_income": {
+        "value": 730654,
+        "source_label": "Net operating income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "investment_property_fair_value_delta": {
+        "value": 58486,
+        "source_label": "Fair value adjustments of investment properties",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 292742,
         "source_label": "Net income (loss)",
@@ -866,24 +890,12 @@
     },
     "unmapped": [
       {
-        "label": "Revenue from investment properties",
-        "value": 1112742
-      },
-      {
-        "label": "Property operating costs",
-        "value": -281431
-      },
-      {
         "label": "Realty taxes",
         "value": -100657
       },
       {
         "label": "Total operating expenses",
         "value": -382088
-      },
-      {
-        "label": "Net operating income",
-        "value": 730654
       },
       {
         "label": "Other income",
@@ -920,10 +932,6 @@
       {
         "label": "Total financing-related costs, net",
         "value": -219579
-      },
-      {
-        "label": "Fair value adjustments of investment properties",
-        "value": 58486
       },
       {
         "label": "Fair value adjustments of financial instruments",
@@ -980,10 +988,10 @@
     ],
     "meta": {
       "accounting_standard": "IFRS",
-      "sector_profile": null,
+      "sector_profile": "reit_sector",
       "total": 29,
-      "mapped_count": 1,
-      "unmapped_count": 28,
+      "mapped_count": 5,
+      "unmapped_count": 24,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

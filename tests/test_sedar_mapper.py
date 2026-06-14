@@ -378,28 +378,41 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     assert "Net financial expenses" in unmapped_labels
 
 
-def test_reiun_fixture_maps_three_fields_after_alias_additions():
+def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     """
     REI.UN (Canadian Retail REIT, IFRS, CAD, December year-end).
 
-    After alias additions (item 1) and benign-duplicate relaxation (item 13),
-    three IS line items map:
-    - "Operating income" → operating_income  (alias promoted to IFRS)
-    - "Interest costs, net" → interest_expense  (new IFRS alias from REI.UN evidence)
-    - "Net income" → net_income  (alias promoted to IFRS; first of two identical occurrences)
-
-    "Rental revenue" is deliberately NOT mapped to generic revenue — it belongs in a
-    future REIT sector profile (Phase 2 Design, validated Jun 2026).
-
-    Do NOT weaken assertions. If mapped_count changes, update and document the new alias.
+    REIT-sector profile uses OVERRIDE semantics: it augments the default
+    canonical fields. REI.UN keeps default revenue, interest_expense, and
+    net_income mappings while adding the v1 universal REIT fields.
     """
     data = _load_fixture("REIUN_FY2025_sedar.json")
     assert data["accounting_standard"] == "IFRS"
-    result = map_line_items(_line_items(data), data["accounting_standard"])
+    assert data["sector_inferred"] == "Real Estate (REIT)"
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
     mapped = result["mapped"]
 
-    assert mapped["operating_income"]["source_label"] == "Operating income"
-    assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
+    assert mapped["rental_revenue"]["source_label"] == "Rental revenue"
+    assert mapped["rental_revenue"]["value"] == _source_value(data, "Rental revenue")
+
+    assert mapped["net_operating_income"]["source_label"] == "Operating income"
+    assert mapped["net_operating_income"]["value"] == _source_value(data, "Operating income")
+
+    assert mapped["property_operating_costs"]["source_label"] == "Total operating costs"
+    assert mapped["property_operating_costs"]["value"] == _source_value(data, "Total operating costs")
+
+    assert mapped["investment_property_fair_value_delta"]["source_label"] == (
+        "Fair value loss on investment properties, net"
+    )
+    assert mapped["investment_property_fair_value_delta"]["value"] == _source_value(
+        data, "Fair value loss on investment properties, net"
+    )
+
+    assert "operating_income" not in mapped
 
     assert mapped["interest_expense"]["source_label"] == "Interest costs, net"
     assert mapped["interest_expense"]["value"] == _source_value(data, "Interest costs, net")
@@ -410,14 +423,16 @@ def test_reiun_fixture_maps_three_fields_after_alias_additions():
     assert mapped["revenue"]["source_label"] == "Total revenue"
     assert mapped["revenue"]["value"] == _source_value(data, "Total revenue")
 
-    assert result["meta"]["mapped_count"] == 4
+    assert result["meta"]["sector_profile"] == "reit_sector"
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-
-    # REIT-specific labels that must remain unmapped (no generic alias exists).
-    assert "Rental revenue" in unmapped_labels
-    assert "Fair value loss on investment properties, net" in unmapped_labels
+    assert "Rental revenue" not in unmapped_labels
+    assert "Total operating costs" not in unmapped_labels
+    assert "Operating income" not in unmapped_labels
+    assert "Fair value loss on investment properties, net" not in unmapped_labels
+    assert "Income (loss) from equity-accounted investments" in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -484,13 +499,13 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
-def test_carun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
+def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     """
     CAR.UN (CAPREIT, residential REIT, IFRS, CAD, December year-end).
 
-    Filer #8 intentionally maps through defaults only. REIT-specific labels
-    remain unmapped until the item 9 taxonomy design has evidence from CAR.UN
-    and a third REIT.
+    REIT-sector profile uses OVERRIDE semantics: it augments the default
+    canonical fields. CAR.UN keeps default net_income while adding the v1
+    universal REIT fields.
     """
     data = _load_fixture("CARUN_FY2024_sedar.json")
     assert data["accounting_standard"] == "IFRS"
@@ -507,32 +522,53 @@ def test_carun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
         "docs/FETCH_CAMPAIGN_LOG.md"
     )
 
-    result = map_line_items(_line_items(data), data["accounting_standard"])
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
     mapped = result["mapped"]
+
+    assert mapped["rental_revenue"]["source_label"] == "Revenue from investment properties"
+    assert mapped["rental_revenue"]["value"] == _source_value(data, "Revenue from investment properties")
+
+    assert mapped["net_operating_income"]["source_label"] == "Net operating income"
+    assert mapped["net_operating_income"]["value"] == _source_value(data, "Net operating income")
+
+    assert mapped["property_operating_costs"]["source_label"] == "Property operating costs"
+    assert mapped["property_operating_costs"]["value"] == _source_value(data, "Property operating costs")
+
+    assert mapped["investment_property_fair_value_delta"]["source_label"] == (
+        "Fair value adjustments of investment properties"
+    )
+    assert mapped["investment_property_fair_value_delta"]["value"] == _source_value(
+        data, "Fair value adjustments of investment properties"
+    )
 
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == 292742
 
-    assert result["meta"]["mapped_count"] == 1
-    assert result["meta"]["sector_profile"] is None
+    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert "Revenue from investment properties" in unmapped_labels
-    assert "Property operating costs" in unmapped_labels
-    assert "Net operating income" in unmapped_labels
-    assert "Fair value adjustments of investment properties" in unmapped_labels
+    assert "Revenue from investment properties" not in unmapped_labels
+    assert "Property operating costs" not in unmapped_labels
+    assert "Net operating income" not in unmapped_labels
+    assert "Fair value adjustments of investment properties" not in unmapped_labels
+    assert "Fair value adjustments of financial instruments" in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
-def test_dirun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
+def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     """
     DIR.UN (Dream Industrial REIT, industrial REIT, IFRS, CAD, December year-end).
 
-    Filer #9 intentionally maps through defaults only. REIT-specific labels
-    remain unmapped until the item 9 taxonomy design has evidence from REI.UN,
-    CAR.UN, and DIR.UN.
+    REIT-sector profile uses OVERRIDE semantics: it augments the default
+    canonical fields. DIR.UN keeps default net_income while adding the v1
+    universal REIT fields.
     """
     data = _load_fixture("DIRUN_FY2024_sedar.json")
     assert data["source"] == "sedar_pdf"
@@ -551,20 +587,46 @@ def test_dirun_fixture_maps_defaults_only_for_reit_taxonomy_evidence():
         "docs/FETCH_CAMPAIGN_LOG.md"
     )
 
-    result = map_line_items(_line_items(data), data["accounting_standard"])
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
     mapped = result["mapped"]
+
+    assert mapped["rental_revenue"]["source_label"] == "Investment properties revenue"
+    assert mapped["rental_revenue"]["value"] == _source_value(data, "Investment properties revenue")
+
+    assert mapped["net_operating_income"]["source_label"] == "Net rental income"
+    assert mapped["net_operating_income"]["value"] == _source_value(data, "Net rental income")
+
+    assert mapped["property_operating_costs"]["source_label"] == (
+        "Investment properties operating expenses"
+    )
+    assert mapped["property_operating_costs"]["value"] == _source_value(
+        data, "Investment properties operating expenses"
+    )
+
+    assert mapped["investment_property_fair_value_delta"]["source_label"] == (
+        "Fair value adjustments to investment properties"
+    )
+    assert mapped["investment_property_fair_value_delta"]["value"] == _source_value(
+        data, "Fair value adjustments to investment properties"
+    )
 
     assert mapped["net_income"]["source_label"] == "Net income"
     assert mapped["net_income"]["value"] == 259611
 
-    assert result["meta"]["mapped_count"] == 1
-    assert result["meta"]["sector_profile"] is None
+    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
-    assert "Investment properties revenue" in unmapped_labels
-    assert "Investment properties operating expenses" in unmapped_labels
-    assert "Net rental income" in unmapped_labels
-    assert "Fair value adjustments to investment properties" in unmapped_labels
+    assert "Investment properties revenue" not in unmapped_labels
+    assert "Investment properties operating expenses" not in unmapped_labels
+    assert "Net rental income" not in unmapped_labels
+    assert "Fair value adjustments to investment properties" not in unmapped_labels
+    assert "Share of net income from equity accounted investments" in unmapped_labels
+    assert "Fair value adjustments to financial instruments" in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)

@@ -27,6 +27,16 @@ RESOURCE_SECTOR_TOKENS = (
     "natural gas",
     "exploration and production",
 )
+# reit_sector v1 baseline — 4 universal fields confirmed across 3 REITs (REI.UN/CAR.UN/DIR.UN, Jun 2026).
+# DELIBERATELY EVOLVABLE: revisit as REIT corpus grows. Each new REIT filer must be checked against these 4
+# fields (do they still hold?) and against the 2 'common, not universal' candidates (equity_accounted_income,
+# fair_value_adjustments_financial_instruments — promote to canonical if a 4th REIT confirms). New label variants
+# for existing fields get added as aliases. This profile is a living hypothesis, not a frozen answer.
+REIT_SECTOR_TOKENS = (
+    "reit",
+    "real estate",
+    "real estate investment trust",
+)
 
 
 @lru_cache(maxsize=1)
@@ -83,6 +93,10 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
         token in sector_text for token in RESOURCE_SECTOR_TOKENS
     ):
         return "resource_sector"
+    if "reit_sector" in sector_profiles and any(
+        token in sector_text for token in REIT_SECTOR_TOKENS
+    ):
+        return "reit_sector"
     return None
 
 
@@ -125,11 +139,16 @@ def _build_match_indexes(
         for alias in config.get("aliases") or []:
             if _standard_allowed(alias, accounting_standard):
                 label = alias["label"]
-                if label not in exact:
+                # Rare explicit sector-profile override for labels whose
+                # sector meaning is more precise than a generic default.
+                # Defaults still claim ordinary collisions first (RY trap).
+                if label not in exact or alias.get("prefer_profile"):
                     exact[label] = field_name
                     sem = alias.get("semantics")
                     if sem:
                         semantics_map[label] = sem
+                    else:
+                        semantics_map.pop(label, None)
         for pattern in config.get("patterns") or []:
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))

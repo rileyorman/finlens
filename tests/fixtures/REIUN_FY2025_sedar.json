@@ -6,6 +6,7 @@
   "scale": "thousands",
   "fiscal_year_end": "2025-12-31",
   "filing_date": null,
+  "sector_inferred": "Real Estate (REIT)",
   "statements": {
     "balance_sheet": [
       {
@@ -808,15 +809,33 @@
   },
   "mapping": {
     "mapped": {
+      "rental_revenue": {
+        "value": 1176428,
+        "source_label": "Rental revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "revenue": {
         "value": 1436571,
         "source_label": "Total revenue",
         "match_type": "exact",
         "confidence": 0.99
       },
-      "operating_income": {
+      "property_operating_costs": {
+        "value": 637855,
+        "source_label": "Total operating costs",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_operating_income": {
         "value": 798716,
         "source_label": "Operating income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "investment_property_fair_value_delta": {
+        "value": -137359,
+        "source_label": "Fair value loss on investment properties, net",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -834,10 +853,6 @@
       }
     },
     "unmapped": [
-      {
-        "label": "Rental revenue",
-        "value": 1176428
-      },
       {
         "label": "Residential inventory sales",
         "value": 244189
@@ -859,20 +874,12 @@
         "value": 181831
       },
       {
-        "label": "Total operating costs",
-        "value": 637855
-      },
-      {
         "label": "Interest income",
         "value": 38237
       },
       {
         "label": "Income (loss) from equity-accounted investments",
         "value": -236934
-      },
-      {
-        "label": "Fair value loss on investment properties, net",
-        "value": -137359
       },
       {
         "label": "Investment and other income (loss), net",
@@ -953,10 +960,10 @@
     ],
     "meta": {
       "accounting_standard": "IFRS",
-      "sector_profile": null,
+      "sector_profile": "reit_sector",
       "total": 34,
-      "mapped_count": 4,
-      "unmapped_count": 29,
+      "mapped_count": 7,
+      "unmapped_count": 26,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
