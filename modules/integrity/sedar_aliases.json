@@ -79,6 +79,11 @@
           "label": "net earnings",
           "standards": ["IFRS"],
           "source": "ATD_FY2025"
+        },
+        {
+          "label": "net income for the year",
+          "standards": ["IFRS"],
+          "source": "AEM_FY2025"
         }
       ],
       "patterns": []
@@ -283,6 +288,55 @@
               "label": "fair value adjustments to investment properties",
               "standards": ["IFRS"],
               "source": "DIR.UN_FY2024"
+            }
+          ],
+          "patterns": []
+        }
+      }
+    },
+    "mining_sector": {
+      "canonical_fields": {
+        "revenue": {
+          "aliases": [
+            {
+              "label": "revenues from mining operations",
+              "standards": ["IFRS"],
+              "source": "AEM_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "production_costs": {
+          "aliases": [
+            {
+              "label": "production",
+              "standards": ["IFRS"],
+              "source": "AEM_FY2025"
+            },
+            {
+              "label": "production (i)",
+              "standards": ["IFRS"],
+              "source": "AEM_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "exploration_expense": {
+          "aliases": [
+            {
+              "label": "exploration and corporate development",
+              "standards": ["IFRS"],
+              "source": "AEM_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "mine_development_amortization": {
+          "aliases": [
+            {
+              "label": "amortization of property, plant and mine development",
+              "standards": ["IFRS"],
+              "source": "AEM_FY2025"
             }
           ],
           "patterns": []

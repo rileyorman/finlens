@@ -37,6 +37,17 @@ REIT_SECTOR_TOKENS = (
     "real estate",
     "real estate investment trust",
 )
+# mining_sector v1 baseline — designed from AEM FY2025 (gold miner). DELIBERATELY EVOLVABLE:
+# revisit as mining corpus grows (2nd miner confirms universals). Separate from resource_sector
+# (O&G) by design: mining has no royalty-deduction line, carries mine-development amortization,
+# care-and-maintenance, and mining-specific taxes that O&G lacks. AISC components (by-product
+# credits, sustaining capex) are MD&A-only, not in income statement — future MD&A-extraction target.
+MINING_SECTOR_TOKENS = (
+    "gold mining",
+    "mining",
+    "precious metals",
+    "mineral",
+)
 
 
 @lru_cache(maxsize=1)
@@ -97,20 +108,35 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
         token in sector_text for token in REIT_SECTOR_TOKENS
     ):
         return "reit_sector"
+    if "mining_sector" in sector_profiles and any(
+        token in sector_text for token in MINING_SECTOR_TOKENS
+    ):
+        return "mining_sector"
     return None
 
 
 def _iter_target_fields(alias_table: dict[str, Any], sector_profile: str | None):
     # OVERRIDE semantics: defaults always run; sector profile adds new canonical
-    # fields or overrides defaults at the same canonical name. Same canonical
-    # name → profile wins (dict.update). New canonical name → added.
+    # fields or augments defaults at the same canonical name. Same canonical
+    # name → aliases/patterns are appended. New canonical name → added.
     # Alias-label collisions across two different canonical names are resolved
     # in _build_match_indexes via first-write-wins; defaults are iterated first
     # here so they claim collided labels before the profile sees them.
     merged = dict(alias_table.get("canonical_fields") or {})
     if sector_profile:
         profile = (alias_table.get("sector_profiles") or {}).get(sector_profile, {})
-        merged.update(profile.get("canonical_fields") or {})
+        for field_name, profile_config in (profile.get("canonical_fields") or {}).items():
+            if field_name not in merged:
+                merged[field_name] = profile_config
+                continue
+            base_config = dict(merged[field_name])
+            base_config["aliases"] = list(base_config.get("aliases") or []) + list(
+                profile_config.get("aliases") or []
+            )
+            base_config["patterns"] = list(base_config.get("patterns") or []) + list(
+                profile_config.get("patterns") or []
+            )
+            merged[field_name] = base_config
     for field_name, config in merged.items():
         yield field_name, config
 

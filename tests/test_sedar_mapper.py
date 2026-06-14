@@ -224,6 +224,18 @@ def test_standard_normalization_maps_accounting_family_variants():
     assert sedar_mapper._normalize_standard("United States GAAP") == "usgaap"
 
 
+def test_prefer_profile_escape_hatch_is_limited_to_reit_operating_income():
+    alias_table = sedar_mapper._load_alias_table()
+    uses = []
+    for profile_name, profile in (alias_table.get("sector_profiles") or {}).items():
+        for field_name, config in (profile.get("canonical_fields") or {}).items():
+            for alias in config.get("aliases") or []:
+                if alias.get("prefer_profile"):
+                    uses.append((profile_name, field_name, alias["label"]))
+
+    assert uses == [("reit_sector", "net_operating_income", "operating income")]
+
+
 def test_operating_income_maps_under_ifrs():
     result = map_line_items(
         [{"label": "Operating income", "value": 798716, "confidence": 0.99}],
@@ -494,6 +506,89 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert "Revenue" in unmapped_labels
     assert "Product sales" not in unmapped_labels
     assert "Less: royalties" not in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
+    """
+    AEM (Agnico Eagle, gold miner, IFRS, USD, December year-end).
+
+    Mining-sector profile uses OVERRIDE semantics: it augments the default
+    canonical fields. AEM maps mining-native income-statement fields while
+    preserving default interest_expense and net_income coverage.
+    """
+    data = _load_fixture("AEM_FY2025_sedar.json")
+    assert data["source"] == "sedar_pdf"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["currency"] == "USD"
+    assert data["scale"] == "thousands"
+    assert data["fiscal_year_end"] == "2025-12-31"
+    assert data["filing_date"] == "2026-02-12"
+    assert data["sector_inferred"] == "Gold Mining"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == (
+        "https://www.agnicoeagle.com/English/investor-relations/"
+        "financial-reports/default.aspx"
+    )
+    assert provenance["sedar_access_note"] == (
+        "SEDAR+ skipped per CAPTCHA finding; issuer IR Cloudflare-blocked "
+        "to automated fetch"
+    )
+    assert provenance["retrieval_method"] == (
+        "manual browser download from issuer IR page by Riley, 2026-06-13"
+    )
+    assert "PDF page 96" in provenance["document_note"]
+    assert provenance["future_pattern"] == (
+        "tier-3 manual issuer download is acceptable when IR is Cloudflare-blocked; "
+        "mirrors are not"
+    )
+
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+
+    assert mapped["revenue"]["source_label"] == "Revenues from mining operations (Note 19)"
+    assert mapped["revenue"]["value"] == _source_value(
+        data, "Revenues from mining operations (Note 19)"
+    )
+
+    assert mapped["production_costs"]["source_label"] == "Production (i)"
+    assert mapped["production_costs"]["value"] == _source_value(data, "Production (i)")
+
+    assert mapped["exploration_expense"]["source_label"] == (
+        "Exploration and corporate development"
+    )
+    assert mapped["exploration_expense"]["value"] == _source_value(
+        data, "Exploration and corporate development"
+    )
+
+    assert mapped["mine_development_amortization"]["source_label"] == (
+        "Amortization of property, plant and mine development (Note 9)"
+    )
+    assert mapped["mine_development_amortization"]["value"] == _source_value(
+        data, "Amortization of property, plant and mine development (Note 9)"
+    )
+
+    assert mapped["interest_expense"]["source_label"] == "Finance costs (Note 14)"
+    assert mapped["interest_expense"]["value"] == _source_value(data, "Finance costs (Note 14)")
+
+    assert mapped["net_income"]["source_label"] == "Net income for the year"
+    assert mapped["net_income"]["value"] == _source_value(data, "Net income for the year")
+
+    assert result["meta"]["sector_profile"] == "mining_sector"
+    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenues from mining operations (Note 19)" not in unmapped_labels
+    assert "Production (i)" not in unmapped_labels
+    assert "Care and maintenance" in unmapped_labels
+    assert "Income and mining taxes expense (Note 25)" in unmapped_labels
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
