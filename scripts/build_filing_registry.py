@@ -44,10 +44,9 @@ FILING_MANIFEST = {
         "sector_override": "Financial Services",
         "commit": "49f14d0",
         "notes": (
-            "Source PDF has .pdf.pdf double extension. Stored fixture mapping.meta.sector_profile is null "
-            "because the fixture predates sector_inferred persistence; campaign mapper test resolves RY "
-            "through the financial_sector profile. Stored mapping (2) predates sector_inferred persistence "
-            "(001e9f7); live mapper resolves 4 via financial_sector. Re-extract to align fixture."
+            "Source PDF has .pdf.pdf double extension. Stored fixture mapping is aligned with the "
+            "financial_sector profile: stored_field_count equals resolved_field_count, and the "
+            "registry row is campaign_validated."
         ),
     },
     "REIUN_FY2025_sedar.json": {
@@ -80,9 +79,9 @@ FILING_MANIFEST = {
         "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\ATD_FY2025_annual_financials.pdf",
         "commit": "e941cb7",
         "notes": (
-            "Stored mapping is empty due to pre-normalizer-fix extraction (predates 6a314df); "
-            "live mapper produces 5 mapped + derived gross_profit. Re-extract via "
-            "scripts/reextract_sedar_fixtures.py next API-capable session."
+            "Stored fixture mapping is aligned after the IFRS-standard normalizer refresh: "
+            "stored_field_count equals resolved_field_count, including 5 mapped fields plus "
+            "derived gross_profit, and the registry row is campaign_validated."
         ),
     },
     "cnq_fy2024_sedar.json": {
@@ -149,8 +148,8 @@ REGISTRY_NOTES = [
     r"REI.UN source PDF is duplicated across C:\Users\riley\.finlens\sedar\filings and C:\Users\riley\.finlens\pdfs.",
     "CNR, CSU, RioCan/REI.UN, and RY source PDFs carry the legacy .pdf.pdf double extension.",
     "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
-    "RY sector is recorded as financial_sector from the campaign override test because the stored fixture predates sector_inferred persistence.",
-    "ATD and RY stored mappings are stale: ATD predates the IFRS-standard normalizer fix (6a314df); RY predates sector_inferred persistence (001e9f7). Live mapper resolves both correctly; re-extract to align the fixtures.",
+    "RY resolves through the financial_sector profile; the fixture now persists sector_inferred and its stored mapping is aligned.",
+    "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated.",
 ]
 
 

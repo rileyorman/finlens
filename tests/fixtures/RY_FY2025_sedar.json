@@ -1120,9 +1120,21 @@
   },
   "mapping": {
     "mapped": {
+      "net_interest_income": {
+        "value": 33000,
+        "source_label": "Net interest income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "revenue": {
         "value": 66605,
         "source_label": "Total revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "provision_for_credit_losses": {
+        "value": 4362,
+        "source_label": "Provision for credit losses",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -1169,10 +1181,6 @@
       {
         "label": "Interest expense \u2013 Total",
         "value": 70825
-      },
-      {
-        "label": "Net interest income",
-        "value": 33000
       },
       {
         "label": "Insurance service result",
@@ -1233,10 +1241,6 @@
       {
         "label": "Non-interest income \u2013 Total",
         "value": 33605
-      },
-      {
-        "label": "Provision for credit losses",
-        "value": 4362
       },
       {
         "label": "Non-interest expense \u2013 Human resources",
@@ -1301,14 +1305,15 @@
     ],
     "meta": {
       "accounting_standard": "IFRS",
-      "sector_profile": null,
+      "sector_profile": "financial_sector",
       "total": 43,
-      "mapped_count": 2,
-      "unmapped_count": 41,
+      "mapped_count": 4,
+      "unmapped_count": 39,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
       "collisions": []
     }
-  }
+  },
+  "sector_inferred": "Banking"
 }

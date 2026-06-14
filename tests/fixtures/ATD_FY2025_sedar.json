@@ -939,16 +939,50 @@
     ]
   },
   "mapping": {
-    "mapped": {},
+    "mapped": {
+      "revenue": {
+        "value": 72856.8,
+        "source_label": "Revenues",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cost_of_revenue": {
+        "value": 59835.5,
+        "source_label": "Cost of sales, excluding depreciation, amortization and impairment (Note 7)",
+        "match_type": "exact",
+        "confidence": 0.99,
+        "semantics": {
+          "excludes_da": true
+        }
+      },
+      "operating_income": {
+        "value": 3806.1,
+        "source_label": "Operating income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "interest_expense": {
+        "value": 690.8,
+        "source_label": "Financial expenses (Note 9)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 2592.4,
+        "source_label": "Net earnings",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "gross_profit": {
+        "value": 13021.3,
+        "source_label": "derived: revenue - cost_of_revenue",
+        "match_type": "derived",
+        "confidence": null,
+        "derived": true,
+        "excludes_da": true
+      }
+    },
     "unmapped": [
-      {
-        "label": "Revenues",
-        "value": 72856.8
-      },
-      {
-        "label": "Cost of sales, excluding depreciation, amortization and impairment (Note 7)",
-        "value": 59835.5
-      },
       {
         "label": "Operating, selling, general and administrative expenses (Note 7)",
         "value": 7143.2
@@ -962,16 +996,8 @@
         "value": 2105.4
       },
       {
-        "label": "Operating income",
-        "value": 3806.1
-      },
-      {
         "label": "Share of earnings of joint ventures and associated companies (Note 6)",
         "value": 28.5
-      },
-      {
-        "label": "Financial expenses (Note 9)",
-        "value": 690.8
       },
       {
         "label": "Other financial items (Note 9)",
@@ -992,10 +1018,6 @@
       {
         "label": "Income taxes (Note 10)",
         "value": 729.7
-      },
-      {
-        "label": "Net earnings",
-        "value": 2592.4
       },
       {
         "label": "Less: Net earnings attributable to non-controlling interests (Note 5)",
@@ -1062,8 +1084,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": null,
       "total": 30,
-      "mapped_count": 0,
-      "unmapped_count": 29,
+      "mapped_count": 5,
+      "unmapped_count": 24,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
@@ -1072,8 +1094,9 @@
           "value": 2592.4
         }
       ],
-      "gross_profit_derived": false,
+      "gross_profit_derived": true,
       "collisions": []
     }
-  }
+  },
+  "sector_inferred": "Convenience Retail & Fuel"
 }
