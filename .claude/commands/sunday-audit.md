@@ -92,3 +92,14 @@ Commit the updated report file and any CODEX_MEMORY.md changes to `dev` with mes
 **Step 7 — Opus strategic review**
 
 Follow the instructions in `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md`. Open a new claude.ai chat, set the model to the most capable Opus available, attach the files listed in that prompt plus the CC report card from Step 1, and paste the review prompt. After receiving the review, save the response to `docs/audits/YYYY-MM-DD-opus-review.md` and commit to `dev`.
+
+---
+
+**Step 8 — Sector Profile Review (data-layer health check)**
+
+For each sector profile (financial_sector, resource_sector, reit_sector, and any future profiles), scan the unmapped[] lists across all fixtures belonging to that sector and surface:
+(a) High-frequency unmapped labels — any label appearing in 2+ filers of the same sector is a candidate for promotion to a canonical field (this is how the 4 universal REIT fields were found).
+(b) 'Common, not universal' promotion candidates — fields currently at 2/3 coverage that a new filer could push to universal. Known pending: equity_accounted_income and fair_value_adjustments_financial_instruments (REIT, both 2/3, awaiting a 4th REIT).
+(c) New label variants — existing canonical fields picking up new alias spellings from recently added filers.
+(d) Cross-sector leakage — a label that should map but doesn't because its alias lives in the wrong profile.
+Note: only has teeth once a sector has 2+ filers. Currently qualifying: reit_sector (3 filers), resource_sector (1, will qualify when a 2nd resource filer lands). This step systematizes the 'Feed the Loop' discipline on the campaign corpus — the same review that will later run automatically on user uploads (network-effects flywheel).
