@@ -57,7 +57,7 @@ FILING_MANIFEST = {
         "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\RioCan_FY2025_annual_financials.pdf.pdf",
         "commit": "d8dd41c",
         "notes": (
-            "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap; "
+            "Source PDF has .pdf.pdf double extension; filing_date resolved by cover-page extraction input; "
             r"byte-identical duplicate exists at C:\Users\riley\.finlens\pdfs\REI_UN_2025.pdf; "
             "only library-registered filer."
         ),

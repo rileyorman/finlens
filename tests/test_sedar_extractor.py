@@ -44,6 +44,16 @@ def test_page_locator_skips_toc_references_and_low_numeric_pages():
     assert result["cash_flow"] == []
 
 
+def test_ordered_unique_pages_prepends_cover_pages_and_dedups_matches():
+    pages = {
+        "balance_sheet": [2, 7],
+        "income_statement": [9],
+        "cash_flow": [],
+    }
+
+    assert sedar_extractor._ordered_unique_pages(pages) == [0, 1, 2, 3, 7, 9]
+
+
 def test_number_parsing_parentheses_commas_and_scale_preserved():
     payload = {
         "accounting_standard": "IFRS",
@@ -384,7 +394,7 @@ def test_reiun_fy2025_fixture_contract_invariants():
     data = _json.loads(_REIUN_FIXTURE.read_text(encoding="utf-8"))
 
     assert data["schema_version"] == 5
-    assert data["filing_date"] is None
+    assert data["filing_date"] == "2026-02-17"
     assert data["source"] == "sedar_pdf"
     assert data["currency"] == "CAD"
     assert data["accounting_standard"] == "IFRS"

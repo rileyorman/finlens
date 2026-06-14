@@ -16,6 +16,7 @@ from modules.integrity.sedar_mapper import map_line_items
 SEDAR_MODEL = "claude-sonnet-4-6"
 SCHEMA_VERSION = 5
 STATEMENT_KEYS = ("balance_sheet", "income_statement", "cash_flow")
+COVER_PAGE_INPUT_PAGES = tuple(range(4))
 
 
 class SedarExtractionError(Exception):
@@ -207,6 +208,9 @@ def locate_statement_pages(pdf_path) -> dict[str, list[int]]:
 def _ordered_unique_pages(pages: dict[str, list[int]]) -> list[int]:
     ordered = []
     seen = set()
+    for page_num in COVER_PAGE_INPUT_PAGES:
+        ordered.append(page_num)
+        seen.add(page_num)
     for key in STATEMENT_KEYS:
         for page_num in pages.get(key, []):
             if isinstance(page_num, int) and page_num >= 0 and page_num not in seen:

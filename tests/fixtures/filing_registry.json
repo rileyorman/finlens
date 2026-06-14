@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-14T14:48:47Z",
+  "generated_at": "2026-06-14T15:24:30Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -74,9 +74,9 @@
       },
       "stored_field_count": 7,
       "resolved_field_count": 7,
-      "filing_date": null,
+      "filing_date": "2026-02-17",
       "commit": "d8dd41c",
-      "notes": "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap; byte-identical duplicate exists at C:\\Users\\riley\\.finlens\\pdfs\\REI_UN_2025.pdf; only library-registered filer."
+      "notes": "Source PDF has .pdf.pdf double extension; filing_date resolved by cover-page extraction input; byte-identical duplicate exists at C:\\Users\\riley\\.finlens\\pdfs\\REI_UN_2025.pdf; only library-registered filer."
     },
     {
       "ticker": "SHOP",
