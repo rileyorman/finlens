@@ -7389,7 +7389,19 @@ if st.session_state.financial_data:
                         f'Filing fiscal year end overlaid in dotted gray.</div>',
                         unsafe_allow_html=True,
                     )
-                    _trend_xs = [p["date"] for p in _trend_points]
+                    # Trend dates arrive as ISO strings; parse to datetime so the
+                    # x-axis is a true date axis and the FYE overlay positions
+                    # correctly. Fall back to raw strings only if any point fails
+                    # to parse (so the x list never mixes types).
+                    def _econ_parse_date(value):
+                        try:
+                            return datetime.fromisoformat(str(value))
+                        except (ValueError, TypeError):
+                            return None
+
+                    _raw_xs = [p["date"] for p in _trend_points]
+                    _parsed_xs = [_econ_parse_date(x) for x in _raw_xs]
+                    _trend_xs = _parsed_xs if all(d is not None for d in _parsed_xs) else _raw_xs
                     _trend_ys = [p["close"] for p in _trend_points]
                     _trend_fig = go.Figure()
                     _trend_fig.add_trace(go.Scatter(
@@ -7400,15 +7412,27 @@ if st.session_state.financial_data:
                         fillcolor='rgba(244,185,66,0.08)',
                         name=_econ_trend.get("proxy_used") or "Commodity",
                     ))
+                    # Overlay the filing's fiscal-year-end as a dotted vertical line.
+                    # NOTE: plotly 6.7.0's add_vline crashes on datetime/string x
+                    # (TypeError in its annotation math), so we draw the line with
+                    # add_shape + add_annotation instead. Skip the overlay entirely
+                    # when fiscal_year_end is missing or unparseable (e.g. CSU/REI.UN
+                    # with null filing dates) — render the chart without it, no crash.
                     _fye = _econ_metadata.get("fiscal_year_end")
-                    if _fye:
-                        _trend_fig.add_vline(
-                            x=_fye,
-                            line_dash='dot',
-                            line_color='rgba(148,163,184,0.6)',
-                            annotation_text=f'FYE {_fye}',
-                            annotation_font=dict(color='#94A3B8', size=10),
-                            annotation_position='top',
+                    _fye_dt = _econ_parse_date(_fye) if _fye else None
+                    if _fye_dt is not None:
+                        _trend_fig.add_shape(
+                            type='line',
+                            x0=_fye_dt, x1=_fye_dt,
+                            yref='paper', y0=0, y1=1,
+                            line=dict(dash='dot', color='rgba(148,163,184,0.6)'),
+                        )
+                        _trend_fig.add_annotation(
+                            x=_fye_dt, yref='paper', y=1,
+                            text=f'FYE {_fye}',
+                            showarrow=False,
+                            font=dict(color='#94A3B8', size=10),
+                            yanchor='bottom',
                         )
                     _trend_fig.update_layout(
                         paper_bgcolor='#1E2433',
