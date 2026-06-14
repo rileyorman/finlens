@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-14T02:32:30Z",
+  "filings": [
+    {
+      "ticker": "CSU",
+      "company_name": "Constellation Software Inc.",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": null,
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/CSU_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\CSU_FY2025_annual_financials.pdf.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 3,
+      "resolved_field_count": 3,
+      "filing_date": null,
+      "commit": "f93868b",
+      "notes": "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap."
+    },
+    {
+      "ticker": "CNR",
+      "company_name": "Canadian National Railway Company",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": null,
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/CNR_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\CNR_FY2025_annual_financials.pdf.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 4,
+      "resolved_field_count": 4,
+      "filing_date": "2026-02-04",
+      "commit": "49f14d0",
+      "notes": "Source PDF has .pdf.pdf double extension."
+    },
+    {
+      "ticker": "RY",
+      "company_name": "Royal Bank of Canada",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "financial_sector",
+      "validation_status": "stale_mapping_pending_reextract",
+      "fixture_path": "tests/fixtures/RY_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RY_FY2025_annual_financials.pdf.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 2,
+      "resolved_field_count": 4,
+      "filing_date": "2025-12-02",
+      "commit": "49f14d0",
+      "notes": "Source PDF has .pdf.pdf double extension. Stored fixture mapping.meta.sector_profile is null because the fixture predates sector_inferred persistence; campaign mapper test resolves RY through the financial_sector profile. Stored mapping (2) predates sector_inferred persistence (001e9f7); live mapper resolves 4 via financial_sector. Re-extract to align fixture."
+    },
+    {
+      "ticker": "REI.UN",
+      "company_name": "RioCan Real Estate Investment Trust",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "reit_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/REIUN_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RioCan_FY2025_annual_financials.pdf.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 7,
+      "resolved_field_count": 7,
+      "filing_date": null,
+      "commit": "d8dd41c",
+      "notes": "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap; byte-identical duplicate exists at C:\\Users\\riley\\.finlens\\pdfs\\REI_UN_2025.pdf; only library-registered filer."
+    },
+    {
+      "ticker": "SHOP",
+      "company_name": "Shopify Inc.",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": null,
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/SHOP_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\SHOP_FY2025_annual_financials.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 4,
+      "resolved_field_count": 4,
+      "filing_date": "2026-02-11",
+      "commit": "b6e79c5",
+      "notes": ""
+    },
+    {
+      "ticker": "ATD",
+      "company_name": "Alimentation Couche-Tard Inc.",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": null,
+      "validation_status": "stale_mapping_pending_reextract",
+      "fixture_path": "tests/fixtures/ATD_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\ATD_FY2025_annual_financials.pdf",
+      "provenance": {
+        "issuer_url": null,
+        "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
+      },
+      "stored_field_count": 0,
+      "resolved_field_count": 5,
+      "filing_date": "2025-06-25",
+      "commit": "e941cb7",
+      "notes": "Stored mapping is empty due to pre-normalizer-fix extraction (predates 6a314df); live mapper produces 5 mapped + derived gross_profit. Re-extract via scripts/reextract_sedar_fixtures.py next API-capable session."
+    },
+    {
+      "ticker": "CNQ",
+      "company_name": "Canadian Natural Resources Limited",
+      "fiscal_year": "FY2024",
+      "source": "sedar",
+      "sector": "resource_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/cnq_fy2024_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024_financial_statements.pdf",
+      "provenance": {
+        "issuer_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
+        "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
+      },
+      "stored_field_count": 5,
+      "resolved_field_count": 5,
+      "filing_date": "2025-03-05",
+      "commit": "be3c4c0",
+      "notes": "Fixture filename is lowercase (predates casing convention); two source PDFs exist: C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024.pdf is the CID-unreadable annual report, and Q4 financial statements were used for extraction."
+    },
+    {
+      "ticker": "CAR.UN",
+      "company_name": "Canadian Apartment Properties REIT",
+      "fiscal_year": "FY2024",
+      "source": "sedar",
+      "sector": "reit_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/CARUN_FY2024_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CARUN_FY2024_annual_report.pdf",
+      "provenance": {
+        "issuer_url": "https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf",
+        "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
+      },
+      "stored_field_count": 5,
+      "resolved_field_count": 5,
+      "filing_date": "2025-02-13",
+      "commit": "e012859",
+      "notes": ""
+    },
+    {
+      "ticker": "DIR.UN",
+      "company_name": "Dream Industrial REIT",
+      "fiscal_year": "FY2024",
+      "source": "sedar",
+      "sector": "reit_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/DIRUN_FY2024_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\DIRUN_FY2024_annual_report.pdf",
+      "provenance": {
+        "issuer_url": "https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf",
+        "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
+      },
+      "stored_field_count": 5,
+      "resolved_field_count": 5,
+      "filing_date": "2025-02-18",
+      "commit": "24cf477",
+      "notes": ""
+    },
+    {
+      "ticker": "AEM",
+      "company_name": "Agnico Eagle Mines Limited",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "mining_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/AEM_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\Agnico_2025-Annual-Report.pdf",
+      "provenance": {
+        "issuer_url": "https://www.agnicoeagle.com/English/investor-relations/financial-reports/default.aspx",
+        "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
+      },
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
+      "filing_date": "2026-02-12",
+      "commit": "60cfff3",
+      "notes": "Tier-3 manual issuer download; orphan superseded FY2024 mirror PDF exists at C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2024_annual_report.pdf for design evidence only."
+    }
+  ],
+  "registry_notes": [
+    "AEM FY2024 annualreports.com mirror PDF and extraction artifact are superseded design-evidence only (f52ca62).",
+    "CNQ has two source PDFs: the annual report is CID-unreadable, so issuer-hosted Q4 financial statements were used.",
+    "REI.UN source PDF is duplicated across C:\\Users\\riley\\.finlens\\sedar\\filings and C:\\Users\\riley\\.finlens\\pdfs.",
+    "CNR, CSU, RioCan/REI.UN, and RY source PDFs carry the legacy .pdf.pdf double extension.",
+    "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
+    "RY sector is recorded as financial_sector from the campaign override test because the stored fixture predates sector_inferred persistence.",
+    "ATD and RY stored mappings are stale: ATD predates the IFRS-standard normalizer fix (6a314df); RY predates sector_inferred persistence (001e9f7). Live mapper resolves both correctly; re-extract to align the fixtures."
+  ]
+}
