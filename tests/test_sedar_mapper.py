@@ -594,6 +594,57 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_aliases():
+    """
+    TECK.B (Teck Resources, polymetallic miner, IFRS, CAD, December year-end).
+
+    This fixture is evidence for the mining_sector v1 review. The existing
+    profile resolves from sector_inferred but does not yet cover Teck's
+    polymetallic labels; those remain unmapped for the design session.
+    """
+    data = _load_fixture("TECKB_FY2025_sedar.json")
+    assert data["source"] == "sedar_pdf"
+    assert data["accounting_standard"] == (
+        "IFRS Accounting Standards as issued by the International Accounting Standards Board"
+    )
+    assert data["currency"] == "CAD"
+    assert data["scale"] == "millions"
+    assert data["fiscal_year_end"] == "2025-12-31"
+    assert data["filing_date"] is None
+    assert data["sector_inferred"] == "Diversified Mining (Copper)"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == "https://www.teck.com/investors/financial-reports/"
+    assert provenance["sedar_access_note"] == "SEDAR+ skipped per CAPTCHA finding"
+    assert provenance["retrieval_method"] == (
+        "manual browser download from issuer IR page by Riley, 2026-06-13"
+    )
+    assert "PDF page 7" in provenance["document_note"]
+    assert provenance["future_pattern"] == "tier-1 manual issuer download; mirrors not acceptable"
+
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+
+    assert mapped["gross_profit"]["source_label"] == "Gross profit"
+    assert mapped["gross_profit"]["value"] == _source_value(data, "Gross profit")
+
+    assert result["meta"]["sector_profile"] == "mining_sector"
+    assert result["meta"]["mapped_count"] == 1
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Gross profit" not in unmapped_labels
+    assert "Revenue (Note 6)" in unmapped_labels
+    assert "Cost of sales" in unmapped_labels
+    assert "Exploration" in unmapped_labels
+    assert "Provision for income taxes from continuing operations (Note 23(a))" in unmapped_labels
+
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     """
     CAR.UN (CAPREIT, residential REIT, IFRS, CAD, December year-end).

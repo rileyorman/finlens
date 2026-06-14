@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-14T02:32:30Z",
+  "generated_at": "2026-06-14T03:21:54Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -191,6 +191,25 @@
       "filing_date": "2026-02-12",
       "commit": "60cfff3",
       "notes": "Tier-3 manual issuer download; orphan superseded FY2024 mirror PDF exists at C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2024_annual_report.pdf for design evidence only."
+    },
+    {
+      "ticker": "TECK.B",
+      "company_name": "Teck Resources Limited",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "mining_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/TECKB_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\Teck-Annual-Financial-Statements-2025.pdf",
+      "provenance": {
+        "issuer_url": "https://www.teck.com/investors/financial-reports/",
+        "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
+      },
+      "stored_field_count": 1,
+      "resolved_field_count": 1,
+      "filing_date": null,
+      "commit": null,
+      "notes": "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector resolves, but Teck currently maps only gross_profit pending profile-extension review."
     }
   ],
   "registry_notes": [

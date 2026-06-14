@@ -128,6 +128,18 @@ FILING_MANIFEST = {
             r"C:\Users\riley\.finlens\pdfs\AEM_FY2024_annual_report.pdf for design evidence only."
         ),
     },
+    "TECKB_FY2025_sedar.json": {
+        "order": 11,
+        "ticker": "TECK.B",
+        "company_name": "Teck Resources Limited",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\Teck-Annual-Financial-Statements-2025.pdf",
+        "commit": None,
+        "notes": (
+            "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector "
+            "resolves, but Teck currently maps only gross_profit pending profile-extension review."
+        ),
+    },
 }
 
 

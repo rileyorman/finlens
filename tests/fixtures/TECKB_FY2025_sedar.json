@@ -1,0 +1,1202 @@
+{
+  "source": "sedar_pdf",
+  "source_provenance": {
+    "pdf_origin_url": "https://www.teck.com/investors/financial-reports/",
+    "sedar_access_note": "SEDAR+ skipped per CAPTCHA finding",
+    "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13",
+    "document_note": "FY2025 annual financial statements; consolidated statements of income extracted from PDF page 7, reporting Years ended December 31, 2025 and 2024.",
+    "future_pattern": "tier-1 manual issuer download; mirrors not acceptable"
+  },
+  "schema_version": 5,
+  "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
+  "currency": "CAD",
+  "scale": "millions",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": null,
+  "sector_inferred": "Diversified Mining (Copper)",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and cash equivalents (Note 12)",
+        "values": {
+          "2025": 5012,
+          "2024": 7587
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current income taxes receivable",
+        "values": {
+          "2025": 317,
+          "2024": 267
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trade and settlement receivables",
+        "values": {
+          "2025": 2564,
+          "2024": 1661
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Inventories (Note 13)",
+        "values": {
+          "2025": 2748,
+          "2024": 2598
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Prepaids and other current assets",
+        "values": {
+          "2025": 523,
+          "2024": 461
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current assets subtotal",
+        "values": {
+          "2025": 11164,
+          "2024": 12574
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Financial assets (Note 14)",
+        "values": {
+          "2025": 1058,
+          "2024": 764
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment in joint venture and associate (Note 15)",
+        "values": {
+          "2025": 1231,
+          "2024": 1223
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Property, plant and equipment (Note 16)",
+        "values": {
+          "2025": 29721,
+          "2024": 30568
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Intangible assets (Note 17)",
+        "values": {
+          "2025": 169,
+          "2024": 196
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax assets (Note 23(b))",
+        "values": {
+          "2025": 931,
+          "2024": 572
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Goodwill (Note 8(b))",
+        "values": {
+          "2025": 421,
+          "2024": 442
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets (Note 18)",
+        "values": {
+          "2025": 741,
+          "2024": 698
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "2025": 45436,
+          "2024": 47037
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Trade accounts payable and other liabilities (Note 19)",
+        "values": {
+          "2025": 3404,
+          "2024": 2735
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current portion of debt (Note 20)",
+        "values": {
+          "2025": 403,
+          "2024": 423
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current portion of lease liabilities (Note 21(c))",
+        "values": {
+          "2025": 169,
+          "2024": 175
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current income taxes payable",
+        "values": {
+          "2025": 182,
+          "2024": 850
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current portion of provisions (Note 25)",
+        "values": {
+          "2025": 245,
+          "2024": 187
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Current liabilities subtotal",
+        "values": {
+          "2025": 4403,
+          "2024": 4370
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Debt (Note 20)",
+        "values": {
+          "2025": 3501,
+          "2024": 4108
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease liabilities (Note 21(c))",
+        "values": {
+          "2025": 789,
+          "2024": 776
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "QB advances from SMM/SC (Note 22)",
+        "values": {
+          "2025": 4745,
+          "2024": 4483
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred income tax liabilities (Note 23(b))",
+        "values": {
+          "2025": 2460,
+          "2024": 2293
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retirement benefit liabilities (Note 24(a))",
+        "values": {
+          "2025": 351,
+          "2024": 373
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provisions (Note 25)",
+        "values": {
+          "2025": 2340,
+          "2024": 2439
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Financial and other liabilities (Note 26)",
+        "values": {
+          "2025": 840,
+          "2024": 1099
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "2025": 19429,
+          "2024": 19941
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Attributable to shareholders of the company",
+        "values": {
+          "2025": 25096,
+          "2024": 26077
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Attributable to non-controlling interests (Note 28)",
+        "values": {
+          "2025": 911,
+          "2024": 1019
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "2025": 26007,
+          "2024": 27096
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and equity",
+        "values": {
+          "2025": 45436,
+          "2024": 47037
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Revenue (Note 6)",
+        "values": {
+          "2025": 10756,
+          "2024": 9065
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cost of sales",
+        "values": {
+          "2025": -8099,
+          "2024": -7458
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gross profit",
+        "values": {
+          "2025": 2657,
+          "2024": 1607
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "General and administration",
+        "values": {
+          "2025": -269,
+          "2024": -275
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Exploration",
+        "values": {
+          "2025": -90,
+          "2024": -87
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Research and innovation",
+        "values": {
+          "2025": -35,
+          "2024": -50
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Asset impairment (Note 8)",
+        "values": {
+          "2025": 0,
+          "2024": -1053
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other operating income (expense) (Note 9)",
+        "values": {
+          "2025": -15,
+          "2024": -151
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) from operations",
+        "values": {
+          "2025": 2248,
+          "2024": -9
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Finance income (Note 10)",
+        "values": {
+          "2025": 271,
+          "2024": 234
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Finance expense (Note 10)",
+        "values": {
+          "2025": -912,
+          "2024": -953
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Non-operating income (expense) (Note 11)",
+        "values": {
+          "2025": 52,
+          "2024": 7
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of profit (loss) of joint venture and associate (Note 15)",
+        "values": {
+          "2025": -3,
+          "2024": 3
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) from continuing operations before taxes",
+        "values": {
+          "2025": 1656,
+          "2024": -718
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for income taxes from continuing operations (Note 23(a))",
+        "values": {
+          "2025": -584,
+          "2024": -205
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) from continuing operations for the year",
+        "values": {
+          "2025": 1072,
+          "2024": -923
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit from discontinued operations (Note 5(c))",
+        "values": {
+          "2025": 0,
+          "2024": 1206
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit for the year",
+        "values": {
+          "2025": 1072,
+          "2024": 283
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) from continuing operations attributable to: Shareholders of the company",
+        "values": {
+          "2025": 1401,
+          "2024": -467
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) from continuing operations attributable to: Non-controlling interests",
+        "values": {
+          "2025": -329,
+          "2024": -456
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) attributable to: Shareholders of the company",
+        "values": {
+          "2025": 1401,
+          "2024": 406
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit (loss) attributable to: Non-controlling interests",
+        "values": {
+          "2025": -329,
+          "2024": -123
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings (loss) per share from continuing operations - Basic",
+        "values": {
+          "2025": 2.84,
+          "2024": -0.9
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings (loss) per share from continuing operations - Diluted",
+        "values": {
+          "2025": 2.83,
+          "2024": -0.9
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings per share from discontinued operations - Basic",
+        "values": {
+          "2025": 0,
+          "2024": 1.69
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings per share from discontinued operations - Diluted",
+        "values": {
+          "2025": 0,
+          "2024": 1.68
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings per share - Basic",
+        "values": {
+          "2025": 2.84,
+          "2024": 0.79
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Earnings per share - Diluted",
+        "values": {
+          "2025": 2.83,
+          "2024": 0.78
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Weighted average shares outstanding (millions)",
+        "values": {
+          "2025": 493.8,
+          "2024": 516.0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Weighted average diluted shares outstanding (millions)",
+        "values": {
+          "2025": 495.4,
+          "2024": 520.0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Shares outstanding at end of year (millions)",
+        "values": {
+          "2025": 488.5,
+          "2024": 506.3
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Profit for the year (comprehensive income statement)",
+        "values": {
+          "2025": 1072,
+          "2024": 283
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Currency translation differences (net of taxes of $1 and $7)",
+        "values": {
+          "2025": -1133,
+          "2024": 1684
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Change in fair value of debt securities (net of taxes of $nil and $nil)",
+        "values": {
+          "2025": 4,
+          "2024": 4
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of other comprehensive loss of joint venture and associate (net of taxes of $nil and $nil)",
+        "values": {
+          "2025": -1,
+          "2024": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Items that may be reclassified to profit subtotal",
+        "values": {
+          "2025": -1130,
+          "2024": 1688
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Change in fair value of marketable equity securities (net of taxes of $(3) and $(7))",
+        "values": {
+          "2025": 27,
+          "2024": 50
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Remeasurements of retirement benefit plans (net of taxes of $(13) and $nil)",
+        "values": {
+          "2025": 14,
+          "2024": -5
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Items that will not be reclassified to profit subtotal",
+        "values": {
+          "2025": 41,
+          "2024": 45
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Total other comprehensive income (loss) from continuing operations for the year",
+        "values": {
+          "2025": -1089,
+          "2024": 1733
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Remeasurements of retirement benefit plans (net of taxes of $nil and $(30)) - discontinued",
+        "values": {
+          "2025": 0,
+          "2024": 51
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss) for the year",
+        "values": {
+          "2025": -17,
+          "2024": 2067
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Shareholders of the company",
+        "values": {
+          "2025": 248,
+          "2024": 2156
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
+        "values": {
+          "2025": -265,
+          "2024": -89
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income attributable to shareholders of the company from: Continuing operations",
+        "values": {
+          "2025": 248,
+          "2024": 1231
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income attributable to shareholders of the company from: Discontinued operations",
+        "values": {
+          "2025": 0,
+          "2024": 925
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Profit (loss) from continuing operations",
+        "values": {
+          "2025": 1072,
+          "2024": -923
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation and amortization",
+        "values": {
+          "2025": 1757,
+          "2024": 1726
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Provision for income taxes from continuing operations",
+        "values": {
+          "2025": 584,
+          "2024": 205
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Asset impairment",
+        "values": {
+          "2025": 0,
+          "2024": 1053
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net finance expense",
+        "values": {
+          "2025": 641,
+          "2024": 719
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income taxes paid",
+        "values": {
+          "2025": -1235,
+          "2024": -1833
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Expenditures on decommissioning and restoration provisions",
+        "values": {
+          "2025": -106,
+          "2024": -76
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "QB variable consideration to IMSA and Codelco",
+        "values": {
+          "2025": -142,
+          "2024": 51
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange (gains) losses",
+        "values": {
+          "2025": 41,
+          "2024": -146
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Embedded derivatives and other",
+        "values": {
+          "2025": -155,
+          "2024": -70
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net change in non-cash working capital items",
+        "values": {
+          "2025": -978,
+          "2024": -276
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash provided by continuing operating activities",
+        "values": {
+          "2025": 1479,
+          "2024": 430
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash provided by discontinued operating activities",
+        "values": {
+          "2025": 0,
+          "2024": 2360
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total operating activities",
+        "values": {
+          "2025": 1479,
+          "2024": 2790
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Expenditures on property, plant and equipment",
+        "values": {
+          "2025": -1838,
+          "2024": -2262
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Capitalized stripping costs",
+        "values": {
+          "2025": -224,
+          "2024": -373
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Expenditures on investments and other assets",
+        "values": {
+          "2025": -187,
+          "2024": -68
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net proceeds from sale of steelmaking coal business",
+        "values": {
+          "2025": 0,
+          "2024": 9483
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from sale of investments and other assets",
+        "values": {
+          "2025": 88,
+          "2024": 55
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from interest and dividend income",
+        "values": {
+          "2025": 251,
+          "2024": 194
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash provided by (used in) continuing investing activities",
+        "values": {
+          "2025": -1910,
+          "2024": 7029
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in discontinued investing activities",
+        "values": {
+          "2025": 0,
+          "2024": -856
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total investing activities",
+        "values": {
+          "2025": -1910,
+          "2024": 6173
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Proceeds from debt",
+        "values": {
+          "2025": 308,
+          "2024": 77
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Redemption, purchase or repayment of debt",
+        "values": {
+          "2025": -733,
+          "2024": -2549
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayment of lease liabilities",
+        "values": {
+          "2025": -112,
+          "2024": -68
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "QB advances from SMM/SC",
+        "values": {
+          "2025": 476,
+          "2024": 652
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Sale of minority interest in steelmaking coal business",
+        "values": {
+          "2025": 0,
+          "2024": 1675
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest and finance charges paid",
+        "values": {
+          "2025": -686,
+          "2024": -863
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issuance of Class B subordinate voting shares",
+        "values": {
+          "2025": 26,
+          "2024": 172
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase and cancellation of Class B subordinate voting shares",
+        "values": {
+          "2025": -1011,
+          "2024": -1240
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends paid",
+        "values": {
+          "2025": -246,
+          "2024": -514
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net contributions from non-controlling interests",
+        "values": {
+          "2025": 157,
+          "2024": 263
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of other liabilities",
+        "values": {
+          "2025": -25,
+          "2024": -102
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in continuing financing activities",
+        "values": {
+          "2025": -1846,
+          "2024": -2497
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in discontinued financing activities",
+        "values": {
+          "2025": 0,
+          "2024": -68
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total financing activities",
+        "values": {
+          "2025": -1846,
+          "2024": -2565
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Increase (decrease) in cash and cash equivalents",
+        "values": {
+          "2025": -2277,
+          "2024": 6398
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Effect of exchange rate changes on cash and cash equivalents",
+        "values": {
+          "2025": -298,
+          "2024": 445
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents at beginning of year",
+        "values": {
+          "2025": 7587,
+          "2024": 744
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents at end of year",
+        "values": {
+          "2025": 5012,
+          "2024": 7587
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.98,
+  "pages_used": {
+    "balance_sheet": [
+      2,
+      3,
+      9,
+      10
+    ],
+    "income_statement": [
+      2,
+      3,
+      6,
+      7,
+      8,
+      25,
+      26
+    ],
+    "cash_flow": [
+      8,
+      9
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "gross_profit": {
+        "value": 2657,
+        "source_label": "Gross profit",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Revenue (Note 6)",
+        "value": 10756
+      },
+      {
+        "label": "Cost of sales",
+        "value": -8099
+      },
+      {
+        "label": "General and administration",
+        "value": -269
+      },
+      {
+        "label": "Exploration",
+        "value": -90
+      },
+      {
+        "label": "Research and innovation",
+        "value": -35
+      },
+      {
+        "label": "Asset impairment (Note 8)",
+        "value": 0
+      },
+      {
+        "label": "Other operating income (expense) (Note 9)",
+        "value": -15
+      },
+      {
+        "label": "Profit (loss) from operations",
+        "value": 2248
+      },
+      {
+        "label": "Finance income (Note 10)",
+        "value": 271
+      },
+      {
+        "label": "Finance expense (Note 10)",
+        "value": -912
+      },
+      {
+        "label": "Non-operating income (expense) (Note 11)",
+        "value": 52
+      },
+      {
+        "label": "Share of profit (loss) of joint venture and associate (Note 15)",
+        "value": -3
+      },
+      {
+        "label": "Profit (loss) from continuing operations before taxes",
+        "value": 1656
+      },
+      {
+        "label": "Provision for income taxes from continuing operations (Note 23(a))",
+        "value": -584
+      },
+      {
+        "label": "Profit (loss) from continuing operations for the year",
+        "value": 1072
+      },
+      {
+        "label": "Profit from discontinued operations (Note 5(c))",
+        "value": 0
+      },
+      {
+        "label": "Profit for the year",
+        "value": 1072
+      },
+      {
+        "label": "Profit (loss) from continuing operations attributable to: Shareholders of the company",
+        "value": 1401
+      },
+      {
+        "label": "Profit (loss) from continuing operations attributable to: Non-controlling interests",
+        "value": -329
+      },
+      {
+        "label": "Profit (loss) attributable to: Shareholders of the company",
+        "value": 1401
+      },
+      {
+        "label": "Profit (loss) attributable to: Non-controlling interests",
+        "value": -329
+      },
+      {
+        "label": "Earnings (loss) per share from continuing operations - Basic",
+        "value": 2.84
+      },
+      {
+        "label": "Earnings (loss) per share from continuing operations - Diluted",
+        "value": 2.83
+      },
+      {
+        "label": "Earnings per share from discontinued operations - Basic",
+        "value": 0
+      },
+      {
+        "label": "Earnings per share from discontinued operations - Diluted",
+        "value": 0
+      },
+      {
+        "label": "Earnings per share - Basic",
+        "value": 2.84
+      },
+      {
+        "label": "Earnings per share - Diluted",
+        "value": 2.83
+      },
+      {
+        "label": "Weighted average shares outstanding (millions)",
+        "value": 493.8
+      },
+      {
+        "label": "Weighted average diluted shares outstanding (millions)",
+        "value": 495.4
+      },
+      {
+        "label": "Shares outstanding at end of year (millions)",
+        "value": 488.5
+      },
+      {
+        "label": "Profit for the year (comprehensive income statement)",
+        "value": 1072
+      },
+      {
+        "label": "Currency translation differences (net of taxes of $1 and $7)",
+        "value": -1133
+      },
+      {
+        "label": "Change in fair value of debt securities (net of taxes of $nil and $nil)",
+        "value": 4
+      },
+      {
+        "label": "Share of other comprehensive loss of joint venture and associate (net of taxes of $nil and $nil)",
+        "value": -1
+      },
+      {
+        "label": "Items that may be reclassified to profit subtotal",
+        "value": -1130
+      },
+      {
+        "label": "Change in fair value of marketable equity securities (net of taxes of $(3) and $(7))",
+        "value": 27
+      },
+      {
+        "label": "Remeasurements of retirement benefit plans (net of taxes of $(13) and $nil)",
+        "value": 14
+      },
+      {
+        "label": "Items that will not be reclassified to profit subtotal",
+        "value": 41
+      },
+      {
+        "label": "Total other comprehensive income (loss) from continuing operations for the year",
+        "value": -1089
+      },
+      {
+        "label": "Remeasurements of retirement benefit plans (net of taxes of $nil and $(30)) - discontinued",
+        "value": 0
+      },
+      {
+        "label": "Total comprehensive income (loss) for the year",
+        "value": -17
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Shareholders of the company",
+        "value": 248
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
+        "value": -265
+      },
+      {
+        "label": "Total comprehensive income attributable to shareholders of the company from: Continuing operations",
+        "value": 248
+      },
+      {
+        "label": "Total comprehensive income attributable to shareholders of the company from: Discontinued operations",
+        "value": 0
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
+      "sector_profile": "mining_sector",
+      "total": 46,
+      "mapped_count": 1,
+      "unmapped_count": 45,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
+  }
+}
