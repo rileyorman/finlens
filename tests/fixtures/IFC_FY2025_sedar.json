@@ -1,0 +1,1124 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 5,
+  "accounting_standard": "IFRS Accounting Standards",
+  "currency": "CAD",
+  "scale": "millions",
+  "fiscal_year_end": "2025-12-31",
+  "filing_date": "2026-02-10",
+  "sector_inferred": "Property and Casualty Insurance",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "2025": 1365,
+          "2024": 1145
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt securities",
+        "values": {
+          "2025": 30959,
+          "2024": 29771
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Preferred shares",
+        "values": {
+          "2025": 1548,
+          "2024": 1660
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares",
+        "values": {
+          "2025": 7190,
+          "2024": 6350
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment property",
+        "values": {
+          "2025": 701,
+          "2024": 571
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loans",
+        "values": {
+          "2025": 805,
+          "2024": 785
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total investments",
+        "values": {
+          "2025": 42568,
+          "2024": 40282
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Reinsurance contract assets",
+        "values": {
+          "2025": 4548,
+          "2024": 4788
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income taxes receivable",
+        "values": {
+          "2025": 68,
+          "2024": 71
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred tax assets",
+        "values": {
+          "2025": 746,
+          "2024": 744
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investments in associates and joint ventures",
+        "values": {
+          "2025": 1144,
+          "2024": 940
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Property and equipment",
+        "values": {
+          "2025": 865,
+          "2024": 820
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Intangible assets",
+        "values": {
+          "2025": 4901,
+          "2024": 5060
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Goodwill",
+        "values": {
+          "2025": 4889,
+          "2024": 4507
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets",
+        "values": {
+          "2025": 3139,
+          "2024": 2314
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "2025": 62868,
+          "2024": 59526
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance contract liabilities",
+        "values": {
+          "2025": 32550,
+          "2024": 31900
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income taxes payable",
+        "values": {
+          "2025": 433,
+          "2024": 142
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deferred tax liabilities",
+        "values": {
+          "2025": 497,
+          "2024": 593
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Debt outstanding",
+        "values": {
+          "2025": 4426,
+          "2024": 4681
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other liabilities",
+        "values": {
+          "2025": 4126,
+          "2024": 4062
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "2025": 42032,
+          "2024": 41378
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Common shares",
+        "values": {
+          "2025": 8089,
+          "2024": 8126
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Preferred shares and other equity",
+        "values": {
+          "2025": 1766,
+          "2024": 1619
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share capital",
+        "values": {
+          "2025": 9855,
+          "2024": 9745
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Contributed surplus",
+        "values": {
+          "2025": 343,
+          "2024": 298
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "2025": 10316,
+          "2024": 7922
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "values": {
+          "2025": 322,
+          "2024": 183
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "2025": 20836,
+          "2024": 18148
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities and equity",
+        "values": {
+          "2025": 62868,
+          "2024": 59526
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Insurance revenue",
+        "values": {
+          "2025": 26950,
+          "2024": 26523
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance service expense",
+        "values": {
+          "2025": -21491,
+          "2024": -22418
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance service result from insurance contracts",
+        "values": {
+          "2025": 5459,
+          "2024": 4105
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Expense from reinsurance contracts",
+        "values": {
+          "2025": -2363,
+          "2024": -2579
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income from reinsurance contracts",
+        "values": {
+          "2025": 1198,
+          "2024": 1660
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net expense from reinsurance contracts",
+        "values": {
+          "2025": -1165,
+          "2024": -919
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance service result",
+        "values": {
+          "2025": 4294,
+          "2024": 3186
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net investment income",
+        "values": {
+          "2025": 1632,
+          "2024": 1559
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net gains (losses) on investment portfolio",
+        "values": {
+          "2025": 672,
+          "2024": 148
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net investment return",
+        "values": {
+          "2025": 2304,
+          "2024": 1707
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Insurance finance income (expense)",
+        "values": {
+          "2025": -1041,
+          "2024": -1083
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Reinsurance finance income (expense)",
+        "values": {
+          "2025": 162,
+          "2024": 184
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net insurance financial result",
+        "values": {
+          "2025": -879,
+          "2024": -899
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net investment return and net insurance financial result",
+        "values": {
+          "2025": 1425,
+          "2024": 808
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share of profit from investments in associates and joint ventures",
+        "values": {
+          "2025": 67,
+          "2024": 89
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other net gains (losses)",
+        "values": {
+          "2025": 95,
+          "2024": 303
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other income and expense",
+        "values": {
+          "2025": -953,
+          "2024": -879
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other finance costs",
+        "values": {
+          "2025": -225,
+          "2024": -222
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Acquisition, integration and restructuring costs",
+        "values": {
+          "2025": -396,
+          "2024": -407
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "2025": 4307,
+          "2024": 2878
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income tax benefit (expense)",
+        "values": {
+          "2025": -942,
+          "2024": -568
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 3365,
+          "2024": 2310
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income attributable to: Shareholders",
+        "values": {
+          "2025": 3365,
+          "2024": 2297
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income attributable to: Non-controlling interests",
+        "values": {
+          "2025": 0,
+          "2024": 13
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Basic",
+        "values": {
+          "2025": 18.39,
+          "2024": 12.37
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Diluted",
+        "values": {
+          "2025": 18.35,
+          "2024": 12.36
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Dividends paid per common share (in dollars)",
+        "values": {
+          "2025": 5.32,
+          "2024": 4.84
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 3365,
+          "2024": 2310
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "FVTOCI debt securities: Net changes in unrealized gains (losses)",
+        "values": {
+          "2025": 247,
+          "2024": 89
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI debt securities: Reclassification of net losses (gains)",
+        "values": {
+          "2025": 1,
+          "2024": 26
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI debt securities: Income tax benefit (expense)",
+        "values": {
+          "2025": -53,
+          "2024": -30
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI debt securities subtotal",
+        "values": {
+          "2025": 195,
+          "2024": 85
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Translation of foreign operations",
+        "values": {
+          "2025": -155,
+          "2024": 811
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Net investment hedges",
+        "values": {
+          "2025": 90,
+          "2024": -410
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Income tax benefit (expense)",
+        "values": {
+          "2025": 9,
+          "2024": 18
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Foreign currency subtotal",
+        "values": {
+          "2025": -56,
+          "2024": 419
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Items that may be reclassified subsequently to Net income",
+        "values": {
+          "2025": 139,
+          "2024": 504
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Employee future benefits: Actuarial gains (losses), net of other surplus remeasurement",
+        "values": {
+          "2025": 226,
+          "2024": 23
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Employee future benefits: Income tax benefit (expense)",
+        "values": {
+          "2025": -11,
+          "2024": 6
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Employee future benefits subtotal",
+        "values": {
+          "2025": 215,
+          "2024": 29
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "FVTOCI equity securities: Net changes in unrealized gains (losses)",
+        "values": {
+          "2025": 62,
+          "2024": 167
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI equity securities: Realized gains (losses)",
+        "values": {
+          "2025": 48,
+          "2024": 2
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI equity securities: Income tax benefit (expense)",
+        "values": {
+          "2025": -27,
+          "2024": -54
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "FVTOCI equity securities subtotal",
+        "values": {
+          "2025": 83,
+          "2024": 115
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Items that will not be reclassified subsequently to Net income",
+        "values": {
+          "2025": 298,
+          "2024": 144
+        },
+        "confidence": 0.97
+      },
+      {
+        "label": "Other comprehensive income (loss)",
+        "values": {
+          "2025": 437,
+          "2024": 648
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss)",
+        "values": {
+          "2025": 3802,
+          "2024": 2958
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Shareholders",
+        "values": {
+          "2025": 3802,
+          "2024": 2945
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
+        "values": {
+          "2025": 0,
+          "2024": 13
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Income before income taxes",
+        "values": {
+          "2025": 4307,
+          "2024": 2878
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Income tax received (paid), net",
+        "values": {
+          "2025": -820,
+          "2024": -745
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Adjustments for non-cash items",
+        "values": {
+          "2025": 36,
+          "2024": 263
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Changes in other operating assets and liabilities",
+        "values": {
+          "2025": 865,
+          "2024": 991
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash flows provided by (used in) operating activities",
+        "values": {
+          "2025": 4388,
+          "2024": 3387
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from sale of business",
+        "values": {
+          "2025": 0,
+          "2024": 145
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from sale of investments",
+        "values": {
+          "2025": 26845,
+          "2024": 29989
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of investments",
+        "values": {
+          "2025": -28348,
+          "2024": -31129
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from sale of (purchases of) brokerages and other equity investments, net",
+        "values": {
+          "2025": -621,
+          "2024": -190
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of intangibles and property and equipment, net",
+        "values": {
+          "2025": -457,
+          "2024": -429
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash flows provided by (used in) investing activities",
+        "values": {
+          "2025": -2581,
+          "2024": -1614
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Payment of lease liabilities",
+        "values": {
+          "2025": -91,
+          "2024": -98
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from issuance of debt, net",
+        "values": {
+          "2025": 298,
+          "2024": 298
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repayment of debt",
+        "values": {
+          "2025": -524,
+          "2024": -663
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Borrowing on (repayment of) the credit facility and commercial paper",
+        "values": {
+          "2025": 0,
+          "2024": -105
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from issuance of common shares on exercise of stock options",
+        "values": {
+          "2025": 0,
+          "2024": 11
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds from issuance of preferred shares",
+        "values": {
+          "2025": 147,
+          "2024": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repurchase of common shares for cancellation",
+        "values": {
+          "2025": -198,
+          "2024": -24
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Repurchase of common shares for share-based payment plans",
+        "values": {
+          "2025": -196,
+          "2024": -180
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Payment of dividends on common shares and preferred shares, and other equity distributions",
+        "values": {
+          "2025": -1037,
+          "2024": -953
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Payment of dividends to non-controlling interests",
+        "values": {
+          "2025": 0,
+          "2024": -13
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cancellation of non-controlling interests",
+        "values": {
+          "2025": 0,
+          "2024": -279
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash flows provided by (used in) financing activities",
+        "values": {
+          "2025": -1601,
+          "2024": -2006
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net increase (decrease) in cash and cash equivalents",
+        "values": {
+          "2025": 206,
+          "2024": -233
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, net of bank overdraft, beginning of year",
+        "values": {
+          "2025": 997,
+          "2024": 1171
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Exchange rate differences on cash and cash equivalents",
+        "values": {
+          "2025": 10,
+          "2024": 59
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash and cash equivalents, net of bank overdraft, end of year",
+        "values": {
+          "2025": 1213,
+          "2024": 997
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.97,
+  "pages_used": {
+    "balance_sheet": [
+      2,
+      3,
+      7,
+      8,
+      9,
+      15,
+      16,
+      28,
+      29,
+      84,
+      85
+    ],
+    "income_statement": [
+      2,
+      3,
+      7,
+      8,
+      9,
+      10,
+      11,
+      92,
+      93,
+      94
+    ],
+    "cash_flow": [
+      2,
+      3,
+      7,
+      8,
+      12,
+      13
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "net_income": {
+        "value": 3365,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Insurance revenue",
+        "value": 26950
+      },
+      {
+        "label": "Insurance service expense",
+        "value": -21491
+      },
+      {
+        "label": "Insurance service result from insurance contracts",
+        "value": 5459
+      },
+      {
+        "label": "Expense from reinsurance contracts",
+        "value": -2363
+      },
+      {
+        "label": "Income from reinsurance contracts",
+        "value": 1198
+      },
+      {
+        "label": "Net expense from reinsurance contracts",
+        "value": -1165
+      },
+      {
+        "label": "Insurance service result",
+        "value": 4294
+      },
+      {
+        "label": "Net investment income",
+        "value": 1632
+      },
+      {
+        "label": "Net gains (losses) on investment portfolio",
+        "value": 672
+      },
+      {
+        "label": "Net investment return",
+        "value": 2304
+      },
+      {
+        "label": "Insurance finance income (expense)",
+        "value": -1041
+      },
+      {
+        "label": "Reinsurance finance income (expense)",
+        "value": 162
+      },
+      {
+        "label": "Net insurance financial result",
+        "value": -879
+      },
+      {
+        "label": "Net investment return and net insurance financial result",
+        "value": 1425
+      },
+      {
+        "label": "Share of profit from investments in associates and joint ventures",
+        "value": 67
+      },
+      {
+        "label": "Other net gains (losses)",
+        "value": 95
+      },
+      {
+        "label": "Other income and expense",
+        "value": -953
+      },
+      {
+        "label": "Other finance costs",
+        "value": -225
+      },
+      {
+        "label": "Acquisition, integration and restructuring costs",
+        "value": -396
+      },
+      {
+        "label": "Income before income taxes",
+        "value": 4307
+      },
+      {
+        "label": "Income tax benefit (expense)",
+        "value": -942
+      },
+      {
+        "label": "Net income attributable to: Shareholders",
+        "value": 3365
+      },
+      {
+        "label": "Net income attributable to: Non-controlling interests",
+        "value": 0
+      },
+      {
+        "label": "Basic",
+        "value": 18.39
+      },
+      {
+        "label": "Diluted",
+        "value": 18.35
+      },
+      {
+        "label": "Dividends paid per common share (in dollars)",
+        "value": 5.32
+      },
+      {
+        "label": "FVTOCI debt securities: Net changes in unrealized gains (losses)",
+        "value": 247
+      },
+      {
+        "label": "FVTOCI debt securities: Reclassification of net losses (gains)",
+        "value": 1
+      },
+      {
+        "label": "FVTOCI debt securities: Income tax benefit (expense)",
+        "value": -53
+      },
+      {
+        "label": "FVTOCI debt securities subtotal",
+        "value": 195
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Translation of foreign operations",
+        "value": -155
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Net investment hedges",
+        "value": 90
+      },
+      {
+        "label": "Foreign currency gains (losses) on: Income tax benefit (expense)",
+        "value": 9
+      },
+      {
+        "label": "Foreign currency subtotal",
+        "value": -56
+      },
+      {
+        "label": "Items that may be reclassified subsequently to Net income",
+        "value": 139
+      },
+      {
+        "label": "Employee future benefits: Actuarial gains (losses), net of other surplus remeasurement",
+        "value": 226
+      },
+      {
+        "label": "Employee future benefits: Income tax benefit (expense)",
+        "value": -11
+      },
+      {
+        "label": "Employee future benefits subtotal",
+        "value": 215
+      },
+      {
+        "label": "FVTOCI equity securities: Net changes in unrealized gains (losses)",
+        "value": 62
+      },
+      {
+        "label": "FVTOCI equity securities: Realized gains (losses)",
+        "value": 48
+      },
+      {
+        "label": "FVTOCI equity securities: Income tax benefit (expense)",
+        "value": -27
+      },
+      {
+        "label": "FVTOCI equity securities subtotal",
+        "value": 83
+      },
+      {
+        "label": "Items that will not be reclassified subsequently to Net income",
+        "value": 298
+      },
+      {
+        "label": "Other comprehensive income (loss)",
+        "value": 437
+      },
+      {
+        "label": "Total comprehensive income (loss)",
+        "value": 3802
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Shareholders",
+        "value": 3802
+      },
+      {
+        "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
+        "value": 0
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS Accounting Standards",
+      "sector_profile": "financial_sector",
+      "total": 49,
+      "mapped_count": 1,
+      "unmapped_count": 47,
+      "benign_skipped_count": 1,
+      "benign_duplicates": [
+        {
+          "normalized_label": "net income",
+          "occurrence_count": 2,
+          "value": 3365.0
+        }
+      ],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
+  },
+  "source_provenance": {
+    "retrieval_method": "manual browser download from issuer IR",
+    "pdf_origin_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
+    "document_note": "Q4 2025 Financial Statements"
+  }
+}

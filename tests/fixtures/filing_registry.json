@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-15T22:58:15Z",
+  "generated_at": "2026-06-15T23:23:49Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -210,6 +210,25 @@
       "filing_date": "2026-02-18",
       "commit": null,
       "notes": "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector resolves, but Teck currently maps only gross_profit pending profile-extension review."
+    },
+    {
+      "ticker": "IFC",
+      "company_name": "Intact Financial Corporation",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "financial_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/IFC_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\IFC_FY2025_financial_statements.pdf",
+      "provenance": {
+        "issuer_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
+        "retrieval_method": "manual browser download from issuer IR"
+      },
+      "stored_field_count": 1,
+      "resolved_field_count": 1,
+      "filing_date": "2026-02-10",
+      "commit": null,
+      "notes": "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Maps net_income only. sector_inferred 'Property and Casualty Insurance' routes to the bank-shaped financial_sector via token match, which maps nothing useful for an insurer; the full IFRS 17 unmapped[] is preserved as the evidence base for a dedicated insurance_sector profile, deferred until a second insurer confirms the label pattern."
     }
   ],
   "registry_notes": [

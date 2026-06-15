@@ -65,6 +65,18 @@ Steps for each new filer:
 - Document note: full annual report PDF (131 pages); user-specified `dreamindustrial.com/investors` URL didn't resolve, working IR domain `investors.dream.ca` captured above.
 - Fixture audit trail: `source_provenance` records the issuer-hosted URL and SEDAR+ access limitation.
 
+## IFC Filer #12 - Complete
+
+- Company: Intact Financial Corporation
+- Ticker: IFC
+- Fiscal year: FY2025
+- Fixture: `tests/fixtures/IFC_FY2025_sedar.json`
+- Source: issuer-hosted Q4 2025 financial statements (manual browser download from issuer IR)
+- Source URL: https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf
+- filing_date: 2026-02-10 (visually verified — management sign-off date above CEO/CFO signatures on the Management's Responsibility page).
+- Mapping: net_income only (3,365). No insurance_sector profile built; no insurance lines forced into financial_sector or any existing canonical field.
+- KNOWN FINDING — sector profile gap: sector_inferred "Property and Casualty Insurance" currently routes to `financial_sector` via token match, but `financial_sector` is bank-shaped and maps nothing useful for an insurer (only the default net_income resolves). The full IFRS 17 unmapped[] (insurance revenue, insurance service expense/result, reinsurance lines, net investment return, net insurance financial result, IFRS 17 balance-sheet lines) is preserved as-is — it is the evidence base for a future dedicated `insurance_sector` profile. Deferred until filer #2 (a second insurer) confirms the IFRS 17 label pattern is not Intact-specific.
+
 ## Campaign-Wide Flags
 
 - Manual issuer download (Riley, browser) is the established primary fetch path — not a fallback. Codex does not fetch; Codex extracts from the local file Riley supplies. Empirical drivers: SEDAR+ Radware CAPTCHA-blocked on all filers; issuer IR pages can also be Cloudflare-blocked (AEM, 2026-06-13); third-party mirrors break the source-provenance audit trail.

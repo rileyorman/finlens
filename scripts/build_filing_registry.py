@@ -139,6 +139,21 @@ FILING_MANIFEST = {
             "resolves, but Teck currently maps only gross_profit pending profile-extension review."
         ),
     },
+    "IFC_FY2025_sedar.json": {
+        "order": 12,
+        "ticker": "IFC",
+        "company_name": "Intact Financial Corporation",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\IFC_FY2025_financial_statements.pdf",
+        "commit": None,
+        "notes": (
+            "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Maps "
+            "net_income only. sector_inferred 'Property and Casualty Insurance' routes to the "
+            "bank-shaped financial_sector via token match, which maps nothing useful for an insurer; "
+            "the full IFRS 17 unmapped[] is preserved as the evidence base for a dedicated "
+            "insurance_sector profile, deferred until a second insurer confirms the label pattern."
+        ),
+    },
 }
 
 
