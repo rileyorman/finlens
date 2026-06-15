@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-14T15:24:30Z",
+  "generated_at": "2026-06-15T22:58:15Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -207,7 +207,7 @@
       },
       "stored_field_count": 1,
       "resolved_field_count": 1,
-      "filing_date": null,
+      "filing_date": "2026-02-18",
       "commit": null,
       "notes": "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector resolves, but Teck currently maps only gross_profit pending profile-extension review."
     }

@@ -610,7 +610,10 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     assert data["currency"] == "CAD"
     assert data["scale"] == "millions"
     assert data["fiscal_year_end"] == "2025-12-31"
-    assert data["filing_date"] is None
+    # Management sign-off date under the CFO signature on the Management's
+    # Responsibility page (verified via Option A drift dry-run); the competing
+    # 2025-12-31 on the same page is the internal-control assessment date (FYE).
+    assert data["filing_date"] == "2026-02-18"
     assert data["sector_inferred"] == "Diversified Mining (Copper)"
     provenance = data["source_provenance"]
     assert provenance["pdf_origin_url"] == "https://www.teck.com/investors/financial-reports/"
