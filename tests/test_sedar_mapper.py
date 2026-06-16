@@ -330,6 +330,23 @@ def test_normalization_maps_note_references_case_and_trailing_punctuation():
     _assert_conservation(result)
 
 
+def test_normalization_strips_trailing_empirical_footnote_markers_only():
+    assert sedar_mapper._normalize_label("Production (i)") == "production"
+    assert sedar_mapper._normalize_label("Revenue (ii)") == "revenue"
+    assert sedar_mapper._normalize_label("Operating costs (a)") == "operating costs"
+
+    assert sedar_mapper._normalize_label("Net income (loss)") == "net income (loss)"
+    assert sedar_mapper._normalize_label("Net earnings (loss)") == "net earnings (loss)"
+    assert (
+        sedar_mapper._normalize_label("Income (loss) before income taxes")
+        == "income (loss) before income taxes"
+    )
+    assert (
+        sedar_mapper._normalize_label("Insurance finance income (expense)")
+        == "insurance finance income (expense)"
+    )
+
+
 def test_shop_fixture_maps_four_fields_us_gaap():
     """
     SHOP (Shopify, US GAAP, USD, December year-end) maps four fields after

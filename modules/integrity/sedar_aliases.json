@@ -391,11 +391,6 @@
               "label": "production",
               "standards": ["IFRS"],
               "source": "AEM_FY2025"
-            },
-            {
-              "label": "production (i)",
-              "standards": ["IFRS"],
-              "source": "AEM_FY2025"
             }
           ],
           "patterns": []

@@ -48,6 +48,9 @@ MINING_SECTOR_TOKENS = (
     "precious metals",
     "mineral",
 )
+_TRAILING_FOOTNOTE_MARKER_RE = re.compile(
+    r"\s*\((?:(?i:i{1,3}|iv|v|vi{0,3}|ix|x)|[a-z]|([a-z])\1)\)\s*$",
+)
 
 
 @lru_cache(maxsize=1)
@@ -58,6 +61,7 @@ def _load_alias_table() -> dict[str, Any]:
 
 def _normalize_label(label: str) -> str:
     text = re.sub(r"\s*\([^)]*\bnote\b[^)]*\)", "", str(label or ""), flags=re.IGNORECASE)
+    text = _TRAILING_FOOTNOTE_MARKER_RE.sub("", text)
     text = text.lower().strip()
     text = re.sub(r"[\s.,;:!?]+$", "", text)
     return re.sub(r"\s+", " ", text)
