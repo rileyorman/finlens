@@ -367,8 +367,6 @@ Current files in `modules/`:
 - `supabase_storage.py` - optional Supabase persistence for filings and PDFs.
 - `watchlist.py` - local watchlist persistence.
 
-Note: if `git status` shows `modules/learning.py` as deleted, treat that as existing working-tree state. Do not restore or remove it unless explicitly asked.
-
 ## Current Tech Stack
 
 Core:
@@ -552,10 +550,12 @@ CREATE TABLE pdfs (
 
 ## Cache Directory
 
-`config.py` currently places the cache outside OneDrive on Windows:
+`config.py` places the cache outside OneDrive, under the app data base
+(`_APP_BASE`, which is `~/.finlens` by default, overridable via the
+`FINLENS_DATA_DIR` env var). On Windows:
 
 ```python
-CACHE_DIR = Path(r"C:\Users\riley\AppData\Local\FinLens\cache")
+CACHE_DIR = _APP_BASE / "cache"   # e.g. ~/.finlens/cache
 ```
 
 On non-Windows systems, it uses:
