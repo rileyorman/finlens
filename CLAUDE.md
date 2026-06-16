@@ -259,6 +259,10 @@ categories above, CC MUST proactively run a grep audit and report findings
 — even if Riley didn't ask. The cost of an extra audit is small; the cost
 of recurring bugs is large.
 
+## Engineering Principle: Fixture mapped_count Changes Require Registry Regen + Full Suite
+
+When any fixture's mapped_count changes (new alias, re-map, new filer), regenerate filing_registry.json via scripts/build_filing_registry.py and run the FULL test suite including test_filing_registry.py — never a narrowed subset. The registry sync tests (test_registry_stored_field_counts_match_fixtures, test_registry_resolved_field_counts_match_live_mapper) are the machine-checkable backstop; a narrowed test run hides registry drift.
+
 ## Engineering Principle: Minimize Human Error
 
 No procedure may depend on a human remembering it. In order of preference:
