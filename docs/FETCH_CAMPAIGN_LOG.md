@@ -77,6 +77,20 @@ Steps for each new filer:
 - Mapping: net_income only (3,365). No insurance_sector profile built; no insurance lines forced into financial_sector or any existing canonical field.
 - KNOWN FINDING — sector profile gap: sector_inferred "Property and Casualty Insurance" currently routes to `financial_sector` via token match, but `financial_sector` is bank-shaped and maps nothing useful for an insurer (only the default net_income resolves). The full IFRS 17 unmapped[] (insurance revenue, insurance service expense/result, reinsurance lines, net investment return, net insurance financial result, IFRS 17 balance-sheet lines) is preserved as-is — it is the evidence base for a future dedicated `insurance_sector` profile. Deferred until filer #2 (a second insurer) confirms the IFRS 17 label pattern is not Intact-specific.
 
+## SLF Filer #13 - Complete
+
+- Company: Sun Life Financial Inc.
+- Ticker: SLF
+- Fiscal year: FY2025
+- Fixture: `tests/fixtures/SLF_FY2025_sedar.json`
+- Source: standalone Q4 2025 Consolidated Financial Statements (Deloitte LLP auditor; footer "Sun Life Financial Inc. December 31, 2025 — Consolidated Financial Statements"), manual browser download from issuer IR. An earlier extraction read the wrong 247-page annual report; the committed fixture is the corrected re-extraction from the 109-page standalone statements PDF.
+- Source URL: https://www.sunlife.com/content/dam/sunlife/regional/global-marketing/documents/com/pa-e-q425-2025-fin-stats.pdf
+- filing_date: 2026-02-11 (visually verified — management sign-off date under the CEO/CFO signatures on the "Financial Reporting Responsibilities" page, page 1 / 0-indexed).
+- Mapping: maps NOTHING via defaults. SLF's net income label "Total net income (loss)" is not a current default net_income alias, so it is left UNMAPPED here — no alias added, no insurance_sector built, no line forced into a canonical field. Full IFRS 17 unmapped[] preserved.
+- KNOWN FINDING — insurance_sector now JUSTIFIED (second insurer, first LIFE insurer): the IFRS 17 income-statement CORE is confirmed structural across P&C (IFC) and Life (SLF) — same spine, label variants only ("Net insurance service result" vs IFC "Insurance service result"; "Net investment result" vs "Net investment return"; plural "expenses"). The unmapped[] (insurance revenue / insurance service expenses / net insurance service result / insurance finance lines / net investment result / segregated-fund and participating-account life-specific lines) completes the second-filer evidence base.
+- KNOWN FINDING — default-tier gap: "Total net income (loss)" is a generic IFRS label (not insurance-specific) that should be added to the default net_income aliases during the profile build.
+- KNOWN FINDING — sector mis-route confirmed on TWO insurers: sector_inferred "Insurance and Financial Services" routes to bank-shaped `financial_sector` via token match. Fix during the insurance_sector build.
+
 ## Campaign-Wide Flags
 
 - Manual issuer download (Riley, browser) is the established primary fetch path — not a fallback. Codex does not fetch; Codex extracts from the local file Riley supplies. Empirical drivers: SEDAR+ Radware CAPTCHA-blocked on all filers; issuer IR pages can also be Cloudflare-blocked (AEM, 2026-06-13); third-party mirrors break the source-provenance audit trail.

@@ -154,6 +154,24 @@ FILING_MANIFEST = {
             "insurance_sector profile, deferred until a second insurer confirms the label pattern."
         ),
     },
+    "SLF_FY2025_sedar.json": {
+        "order": 13,
+        "ticker": "SLF",
+        "company_name": "Sun Life Financial Inc.",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\SLF_FY2025_financial_statements.pdf",
+        "commit": None,
+        "notes": (
+            "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 "
+            "2025 Consolidated Financial Statements (Deloitte LLP auditor). Maps NOTHING via "
+            "defaults — net income label 'Total net income (loss)' is not yet a default net_income "
+            "alias (default-tier gap, not insurance-specific). Full IFRS 17 unmapped[] preserved. "
+            "With IFC, confirms the IFRS 17 income-statement core is structural across P&C and Life "
+            "(label variants only), justifying a dedicated insurance_sector profile; sector_inferred "
+            "'Insurance and Financial Services' mis-routes to bank-shaped financial_sector on a "
+            "second insurer. Build insurance_sector + add the net_income default alias then."
+        ),
+    },
 }
 
 

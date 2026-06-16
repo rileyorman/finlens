@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-15T23:23:49Z",
+  "generated_at": "2026-06-16T00:01:33Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -229,6 +229,25 @@
       "filing_date": "2026-02-10",
       "commit": null,
       "notes": "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Maps net_income only. sector_inferred 'Property and Casualty Insurance' routes to the bank-shaped financial_sector via token match, which maps nothing useful for an insurer; the full IFRS 17 unmapped[] is preserved as the evidence base for a dedicated insurance_sector profile, deferred until a second insurer confirms the label pattern."
+    },
+    {
+      "ticker": "SLF",
+      "company_name": "Sun Life Financial Inc.",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "financial_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/SLF_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025_financial_statements.pdf",
+      "provenance": {
+        "issuer_url": "https://www.sunlife.com/content/dam/sunlife/regional/global-marketing/documents/com/pa-e-q425-2025-fin-stats.pdf",
+        "retrieval_method": "manual browser download from issuer IR"
+      },
+      "stored_field_count": 0,
+      "resolved_field_count": 0,
+      "filing_date": "2026-02-11",
+      "commit": null,
+      "notes": "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 2025 Consolidated Financial Statements (Deloitte LLP auditor). Maps NOTHING via defaults \u2014 net income label 'Total net income (loss)' is not yet a default net_income alias (default-tier gap, not insurance-specific). Full IFRS 17 unmapped[] preserved. With IFC, confirms the IFRS 17 income-statement core is structural across P&C and Life (label variants only), justifying a dedicated insurance_sector profile; sector_inferred 'Insurance and Financial Services' mis-routes to bank-shaped financial_sector on a second insurer. Build insurance_sector + add the net_income default alias then."
     }
   ],
   "registry_notes": [
