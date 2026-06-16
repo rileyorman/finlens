@@ -29,18 +29,26 @@ sedar_only        Boolean. If true, the rule only applies when normalized_data
                   record a skipped check for these rules.
 """
 
-# Tokens used to identify financial-sector filers.
-# Applied as substring matches against sector.lower() so "Financial Services"
-# and "Banking" both match without needing an exact string.
+# Tokens used to identify sector-shaped rule exceptions.
+# Applied as substring matches against sector.lower().
+INSURANCE_SECTOR_TOKENS = (
+    "insurance",
+    "property and casualty",
+    "life insurer",
+)
+
+# Financial-sector tokens deliberately exclude insurance. Insurance has its
+# own mapper profile and must not route through bank-shaped financial_sector.
 FINANCIAL_SECTOR_TOKENS = (
     "financial",
     "bank",
-    "insurance",
     "capital markets",
     "thrift",
     "mortgage",
     "diversified financials",
 )
+
+FINANCIAL_RULE_SKIP_TOKENS = FINANCIAL_SECTOR_TOKENS + INSURANCE_SECTOR_TOKENS
 
 RULES = [
     # ------------------------------------------------------------------
@@ -59,7 +67,7 @@ RULES = [
             "min": 0.0,
             "max": 1.0,
         },
-        "sector_skip": FINANCIAL_SECTOR_TOKENS,
+        "sector_skip": FINANCIAL_RULE_SKIP_TOKENS,
         "requires_fields": ["gross_profit", "revenue"],
     },
 
@@ -98,7 +106,7 @@ RULES = [
             "c": "gross_profit",
             "tolerance": 0.01,
         },
-        "sector_skip": FINANCIAL_SECTOR_TOKENS,
+        "sector_skip": FINANCIAL_RULE_SKIP_TOKENS,
         "requires_fields": ["revenue", "cost_of_revenue", "gross_profit"],
     },
 

@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .rules import FINANCIAL_SECTOR_TOKENS
+from .rules import FINANCIAL_SECTOR_TOKENS, INSURANCE_SECTOR_TOKENS
 
 
 _ALIAS_FILE = Path(__file__).with_name("sedar_aliases.json")
@@ -96,6 +96,13 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
 
     if sector_text in sector_profiles:
         return sector_text
+    # Insurance must win before financial_sector: SLF emits
+    # "Insurance and Financial Services", which contains a financial token but
+    # has IFRS 17 insurance statements, not bank-shaped financial statements.
+    if "insurance_sector" in sector_profiles and any(
+        token in sector_text for token in INSURANCE_SECTOR_TOKENS
+    ):
+        return "insurance_sector"
     if "financial_sector" in sector_profiles and any(
         token in sector_text for token in FINANCIAL_SECTOR_TOKENS
     ):

@@ -150,6 +150,54 @@ def test_ry_fixture_override_preserves_defaults_under_financial_sector_profile()
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_insurance_sector_routes_before_financial_and_preserves_defaults():
+    """
+    Insurers use IFRS 17 insurance lines, not bank-shaped financial statements.
+    The profile must augment defaults so net_income remains mapped while the
+    insurance-sector fields are added. SLF's sector text contains "Financial",
+    so this also locks in insurance-before-financial routing precedence.
+    """
+    ifc, ifc_result = _mapped_fixture(
+        "IFC_FY2025_sedar.json",
+        sector="Property and Casualty Insurance",
+    )
+    ifc_mapped = ifc_result["mapped"]
+
+    assert ifc_result["meta"]["sector_profile"] == "insurance_sector"
+    assert ifc_mapped["net_income"]["source_label"] == "Net income"
+    assert ifc_mapped["net_income"]["value"] == 3365
+    assert ifc_mapped["insurance_revenue"]["source_label"] == "Insurance revenue"
+    assert ifc_mapped["insurance_revenue"]["value"] == _source_value(ifc, "Insurance revenue")
+    assert ifc_mapped["insurance_service_expenses"]["source_label"] == "Insurance service expense"
+    assert ifc_mapped["net_insurance_service_result"]["source_label"] == "Insurance service result"
+    assert ifc_mapped["insurance_finance_result"]["source_label"] == "Insurance finance income (expense)"
+    assert ifc_mapped["net_investment_result"]["source_label"] == "Net investment return"
+    assert ifc_result["meta"]["mapped_count"] == 6
+    _assert_conservation(ifc_result)
+    _assert_unmapped_labels_are_verbatim(ifc, ifc_result)
+
+    slf, slf_result = _mapped_fixture(
+        "SLF_FY2025_sedar.json",
+        sector="Insurance and Financial Services",
+    )
+    slf_mapped = slf_result["mapped"]
+
+    assert slf_result["meta"]["sector_profile"] == "insurance_sector"
+    assert slf_mapped["net_income"]["source_label"] == "Total net income (loss)"
+    assert slf_mapped["net_income"]["value"] == 3782
+    assert slf_mapped["insurance_revenue"]["source_label"] == "Insurance revenue"
+    assert slf_mapped["insurance_revenue"]["value"] == _source_value(slf, "Insurance revenue")
+    assert slf_mapped["insurance_service_expenses"]["source_label"] == "Insurance service expenses"
+    assert slf_mapped["net_insurance_service_result"]["source_label"] == "Net insurance service result"
+    assert slf_mapped["insurance_finance_result"]["source_label"] == (
+        "Insurance finance income (expenses) from insurance contracts issued"
+    )
+    assert slf_mapped["net_investment_result"]["source_label"] == "Net investment result"
+    assert slf_result["meta"]["mapped_count"] == 6
+    _assert_conservation(slf_result)
+    _assert_unmapped_labels_are_verbatim(slf, slf_result)
+
+
 def test_collision_guard_keeps_both_distinct_labels_unmapped(monkeypatch):
     alias_table = {
         "schema_version": 1,

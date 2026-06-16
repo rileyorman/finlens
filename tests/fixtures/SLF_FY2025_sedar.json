@@ -1026,6 +1026,36 @@
   },
   "mapping": {
     "mapped": {
+      "insurance_revenue": {
+        "value": 23982,
+        "source_label": "Insurance revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "insurance_service_expenses": {
+        "value": -20414,
+        "source_label": "Insurance service expenses",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_insurance_service_result": {
+        "value": 3474,
+        "source_label": "Net insurance service result",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "insurance_finance_result": {
+        "value": -6787,
+        "source_label": "Insurance finance income (expenses) from insurance contracts issued",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_investment_result": {
+        "value": 1818,
+        "source_label": "Net investment result",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 3782,
         "source_label": "Total net income (loss)",
@@ -1035,28 +1065,12 @@
     },
     "unmapped": [
       {
-        "label": "Insurance revenue",
-        "value": 23982
-      },
-      {
-        "label": "Insurance service expenses",
-        "value": -20414
-      },
-      {
         "label": "Reinsurance contract held net income (expenses)",
         "value": -94
       },
       {
-        "label": "Net insurance service result",
-        "value": 3474
-      },
-      {
         "label": "Net investment income (loss)",
         "value": 8859
-      },
-      {
-        "label": "Insurance finance income (expenses) from insurance contracts issued",
-        "value": -6787
       },
       {
         "label": "Insurance finance income (expenses) from reinsurance contracts held",
@@ -1081,10 +1095,6 @@
       {
         "label": "Net investment result for insurance contracts for account of segregated fund holders",
         "value": 0
-      },
-      {
-        "label": "Net investment result",
-        "value": 1818
       },
       {
         "label": "Fee income",
@@ -1217,10 +1227,10 @@
     ],
     "meta": {
       "accounting_standard": "IFRS",
-      "sector_profile": "financial_sector",
+      "sector_profile": "insurance_sector",
       "total": 47,
-      "mapped_count": 1,
-      "unmapped_count": 45,
+      "mapped_count": 6,
+      "unmapped_count": 40,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

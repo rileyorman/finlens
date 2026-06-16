@@ -901,6 +901,36 @@
   },
   "mapping": {
     "mapped": {
+      "insurance_revenue": {
+        "value": 26950,
+        "source_label": "Insurance revenue",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "insurance_service_expenses": {
+        "value": -21491,
+        "source_label": "Insurance service expense",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_insurance_service_result": {
+        "value": 4294,
+        "source_label": "Insurance service result",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_investment_result": {
+        "value": 2304,
+        "source_label": "Net investment return",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "insurance_finance_result": {
+        "value": -1041,
+        "source_label": "Insurance finance income (expense)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 3365,
         "source_label": "Net income",
@@ -909,14 +939,6 @@
       }
     },
     "unmapped": [
-      {
-        "label": "Insurance revenue",
-        "value": 26950
-      },
-      {
-        "label": "Insurance service expense",
-        "value": -21491
-      },
       {
         "label": "Insurance service result from insurance contracts",
         "value": 5459
@@ -934,24 +956,12 @@
         "value": -1165
       },
       {
-        "label": "Insurance service result",
-        "value": 4294
-      },
-      {
         "label": "Net investment income",
         "value": 1632
       },
       {
         "label": "Net gains (losses) on investment portfolio",
         "value": 672
-      },
-      {
-        "label": "Net investment return",
-        "value": 2304
-      },
-      {
-        "label": "Insurance finance income (expense)",
-        "value": -1041
       },
       {
         "label": "Reinsurance finance income (expense)",
@@ -1100,10 +1110,10 @@
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards",
-      "sector_profile": "financial_sector",
+      "sector_profile": "insurance_sector",
       "total": 49,
-      "mapped_count": 1,
-      "unmapped_count": 47,
+      "mapped_count": 6,
+      "unmapped_count": 42,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

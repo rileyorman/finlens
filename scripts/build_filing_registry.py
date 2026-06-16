@@ -147,11 +147,9 @@ FILING_MANIFEST = {
         "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\IFC_FY2025_financial_statements.pdf",
         "commit": None,
         "notes": (
-            "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Maps "
-            "net_income only. sector_inferred 'Property and Casualty Insurance' routes to the "
-            "bank-shaped financial_sector via token match, which maps nothing useful for an insurer; "
-            "the full IFRS 17 unmapped[] is preserved as the evidence base for a dedicated "
-            "insurance_sector profile, deferred until a second insurer confirms the label pattern."
+            "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Resolves "
+            "through insurance_sector after the second-insurer confirmation pass, preserving "
+            "default net_income while adding the IFRS 17 core insurance fields."
         ),
     },
     "SLF_FY2025_sedar.json": {
@@ -163,13 +161,10 @@ FILING_MANIFEST = {
         "commit": None,
         "notes": (
             "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 "
-            "2025 Consolidated Financial Statements (Deloitte LLP auditor). Maps NOTHING via "
-            "defaults — net income label 'Total net income (loss)' is not yet a default net_income "
-            "alias (default-tier gap, not insurance-specific). Full IFRS 17 unmapped[] preserved. "
-            "With IFC, confirms the IFRS 17 income-statement core is structural across P&C and Life "
-            "(label variants only), justifying a dedicated insurance_sector profile; sector_inferred "
-            "'Insurance and Financial Services' mis-routes to bank-shaped financial_sector on a "
-            "second insurer. Build insurance_sector + add the net_income default alias then."
+            "2025 Consolidated Financial Statements (Deloitte LLP auditor). Confirms with IFC that "
+            "the IFRS 17 income-statement core is structural across P&C and Life. Resolves through "
+            "insurance_sector despite sector_inferred containing 'Financial Services', preserving "
+            "default net_income via 'Total net income (loss)' while adding the IFRS 17 core fields."
         ),
     },
 }
@@ -183,6 +178,7 @@ REGISTRY_NOTES = [
     "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
     "RY resolves through the financial_sector profile; the fixture now persists sector_inferred and its stored mapping is aligned.",
     "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated.",
+    "IFC and SLF resolve through insurance_sector; insurance routing intentionally wins before financial_sector.",
 ]
 
 

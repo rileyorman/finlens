@@ -132,6 +132,80 @@
     }
   },
   "sector_profiles": {
+    "insurance_sector": {
+      "canonical_fields": {
+        "insurance_revenue": {
+          "aliases": [
+            {
+              "label": "insurance revenue",
+              "standards": ["IFRS"],
+              "source": "IFC_FY2025 SLF_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "insurance_service_expenses": {
+          "aliases": [
+            {
+              "label": "insurance service expense",
+              "standards": ["IFRS"],
+              "source": "IFC_FY2025"
+            },
+            {
+              "label": "insurance service expenses",
+              "standards": ["IFRS"],
+              "source": "SLF_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "net_insurance_service_result": {
+          "aliases": [
+            {
+              "label": "insurance service result",
+              "standards": ["IFRS"],
+              "source": "IFC_FY2025"
+            },
+            {
+              "label": "net insurance service result",
+              "standards": ["IFRS"],
+              "source": "SLF_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "insurance_finance_result": {
+          "aliases": [
+            {
+              "label": "insurance finance income (expense)",
+              "standards": ["IFRS"],
+              "source": "IFC_FY2025"
+            },
+            {
+              "label": "insurance finance income (expenses) from insurance contracts issued",
+              "standards": ["IFRS"],
+              "source": "SLF_FY2025"
+            }
+          ],
+          "patterns": []
+        },
+        "net_investment_result": {
+          "aliases": [
+            {
+              "label": "net investment return",
+              "standards": ["IFRS"],
+              "source": "IFC_FY2025"
+            },
+            {
+              "label": "net investment result",
+              "standards": ["IFRS"],
+              "source": "SLF_FY2025"
+            }
+          ],
+          "patterns": []
+        }
+      }
+    },
     "financial_sector": {
       "canonical_fields": {
         "net_interest_income": {

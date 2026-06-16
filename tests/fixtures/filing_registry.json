@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-16T00:19:01Z",
+  "generated_at": "2026-06-16T00:25:48Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -216,7 +216,7 @@
       "company_name": "Intact Financial Corporation",
       "fiscal_year": "FY2025",
       "source": "sedar",
-      "sector": "financial_sector",
+      "sector": "insurance_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/IFC_FY2025_sedar.json",
       "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\IFC_FY2025_financial_statements.pdf",
@@ -224,18 +224,18 @@
         "issuer_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
         "retrieval_method": "manual browser download from issuer IR"
       },
-      "stored_field_count": 1,
-      "resolved_field_count": 1,
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
       "filing_date": "2026-02-10",
       "commit": null,
-      "notes": "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Maps net_income only. sector_inferred 'Property and Casualty Insurance' routes to the bank-shaped financial_sector via token match, which maps nothing useful for an insurer; the full IFRS 17 unmapped[] is preserved as the evidence base for a dedicated insurance_sector profile, deferred until a second insurer confirms the label pattern."
+      "notes": "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Resolves through insurance_sector after the second-insurer confirmation pass, preserving default net_income while adding the IFRS 17 core insurance fields."
     },
     {
       "ticker": "SLF",
       "company_name": "Sun Life Financial Inc.",
       "fiscal_year": "FY2025",
       "source": "sedar",
-      "sector": "financial_sector",
+      "sector": "insurance_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/SLF_FY2025_sedar.json",
       "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025_financial_statements.pdf",
@@ -243,11 +243,11 @@
         "issuer_url": "https://www.sunlife.com/content/dam/sunlife/regional/global-marketing/documents/com/pa-e-q425-2025-fin-stats.pdf",
         "retrieval_method": "manual browser download from issuer IR"
       },
-      "stored_field_count": 1,
-      "resolved_field_count": 1,
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
       "filing_date": "2026-02-11",
       "commit": null,
-      "notes": "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 2025 Consolidated Financial Statements (Deloitte LLP auditor). Maps NOTHING via defaults \u2014 net income label 'Total net income (loss)' is not yet a default net_income alias (default-tier gap, not insurance-specific). Full IFRS 17 unmapped[] preserved. With IFC, confirms the IFRS 17 income-statement core is structural across P&C and Life (label variants only), justifying a dedicated insurance_sector profile; sector_inferred 'Insurance and Financial Services' mis-routes to bank-shaped financial_sector on a second insurer. Build insurance_sector + add the net_income default alias then."
+      "notes": "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 2025 Consolidated Financial Statements (Deloitte LLP auditor). Confirms with IFC that the IFRS 17 income-statement core is structural across P&C and Life. Resolves through insurance_sector despite sector_inferred containing 'Financial Services', preserving default net_income via 'Total net income (loss)' while adding the IFRS 17 core fields."
     }
   ],
   "registry_notes": [
@@ -257,6 +257,7 @@
     "CNR, CSU, RioCan/REI.UN, and RY source PDFs carry the legacy .pdf.pdf double extension.",
     "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
     "RY resolves through the financial_sector profile; the fixture now persists sector_inferred and its stored mapping is aligned.",
-    "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated."
+    "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated.",
+    "IFC and SLF resolve through insurance_sector; insurance routing intentionally wins before financial_sector."
   ]
 }
