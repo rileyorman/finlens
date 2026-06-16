@@ -1262,7 +1262,7 @@ if not st.session_state["onboarding_complete"]:
         <style>
         .onboarding-wrap {
             max-width: 920px;
-            margin: 3.5rem auto 0;
+            margin: 1.5rem auto 0;
             text-align: center;
         }
         .onboarding-logo {
@@ -1291,6 +1291,68 @@ if not st.session_state["onboarding_complete"]:
             font-size: 17px;
             line-height: 1.65;
         }
+        [class*="st-key-onboarding_card_"] div[data-testid="stButton"] {
+            height: 100%;
+        }
+        [class*="st-key-onboarding_card_"] button {
+            width: 100%;
+            min-height: 210px;
+            height: 210px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
+            white-space: normal;
+            background: linear-gradient(135deg, #252D40 0%, #1E2840 100%);
+            border: 0.5px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1.75rem;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+            transition: all 0.25s ease;
+            overflow: hidden;
+        }
+        [class*="st-key-onboarding_card_"] button > div,
+        [class*="st-key-onboarding_card_"] button div[data-testid="stMarkdownContainer"] {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            text-align: left;
+        }
+        [class*="st-key-onboarding_card_"] button:hover {
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+            transform: translateY(-2px);
+        }
+        [class*="st-key-onboarding_card_"] button p {
+            color: #CBD5E1;
+            font-size: 14px;
+            line-height: 1.55;
+            text-align: left;
+            white-space: normal;
+            margin: 0;
+        }
+        [class*="st-key-onboarding_card_"] button strong {
+            display: block;
+            color: #F1F5F9;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0;
+            margin-bottom: 0.75rem;
+        }
+        .onboarding-trust {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin: -0.5rem auto 2.5rem;
+            color: #94A3B8;
+            font-size: 13px;
+            letter-spacing: 0.04em;
+        }
+        .onboarding-trust span { white-space: nowrap; }
+        .onboarding-trust span::before { content: '◆ '; color: #FFB454; font-size: 9px; vertical-align: middle; }
         </style>
         <div class="onboarding-wrap">
             <div class="onboarding-logo">
@@ -1302,10 +1364,15 @@ if not st.session_state["onboarding_complete"]:
                 </svg>
             </div>
             <div class="onboarding-title">Fin<span style="color:#378ADD;font-weight:300">Lens</span></div>
-            <div class="onboarding-tagline">AI-Powered Investment Analysis Platform</div>
+            <div class="onboarding-tagline">Source-Traced Fundamental Analysis</div>
             <div class="onboarding-copy">
-                FinLens transforms raw filings, market data, and portfolio signals into institutional-grade investment intelligence.
-                Fetch filings from SEC EDGAR or SEDAR+, analyse financials with AI, track short interest and momentum, and stress-test your assumptions — all in one workspace.
+                FinLens traces every financial figure back to its source filing, with a full audit trail — SEC EDGAR and SEDAR+, US GAAP and IFRS. Built on value-investing fundamentals: downside first, margin of safety, intrinsic value versus price.
+            </div>
+            <div class="onboarding-trust">
+              <span>Every figure traced to source</span>
+              <span>Audit trail on every load</span>
+              <span>SEC EDGAR + SEDAR+</span>
+              <span>US GAAP + IFRS</span>
             </div>
         </div>
         """,
@@ -1316,38 +1383,40 @@ if not st.session_state["onboarding_complete"]:
         [
             (
                 "Single Analysis",
-                "Upload or fetch a 10-K or 10-Q via SEC EDGAR or SEDAR+, get AI-powered investment analysis, red flag detection, and scenario simulation",
+                "Fetch or upload a 10-K or 10-Q from SEC EDGAR or SEDAR+. Every figure traced back to the filing, then analysed for red flags, downside risk, and margin of safety.",
+                "single",
             ),
             (
                 "Filing Comparison",
-                "Compare two filings year-over-year from your library or manual upload to spot language shifts and sentiment changes",
+                "Compare two filings year-over-year to surface language shifts, sentiment changes, and quiet restatements between reporting periods.",
+                "comparison",
             ),
         ],
         [
             (
                 "Stock Tracker",
-                "Track live price, momentum, short interest, RSI, and moving averages for any ticker",
+                "Live price, momentum, short interest, RSI, and moving averages for any ticker.",
+                "stocks",
             ),
             (
                 "Portfolio Manager",
-                "Analyse multiple holdings, score distress and momentum, and get a portfolio-level investment view",
+                "Score every holding for distress and momentum, then roll up to a portfolio-level view of concentration and risk.",
+                "portfolio",
             ),
         ],
     ]
 
-    for row in feature_rows:
+    for row_index, row in enumerate(feature_rows):
         _, left, right, _ = st.columns([1, 2, 2, 1])
-        for col, (title, copy) in zip((left, right), row):
+        for col, (title, copy, slug) in zip((left, right), row):
             with col:
-                st.markdown(
-                    f"""
-                    <div class="feature-card">
-                        <h3>{title}</h3>
-                        <p>{copy}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                if st.button(f"**{title}**\n\n{copy}", key=f"onboarding_card_{slug}", width='stretch'):
+                    st.session_state["nav_mode"] = title
+                    st.query_params["page"] = slug
+                    st.session_state["onboarding_complete"] = True
+                    st.rerun()
+        if row_index < len(feature_rows) - 1:
+            st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
     _, start_col, _ = st.columns([1, 2, 1])
     with start_col:
