@@ -1025,7 +1025,14 @@
     ]
   },
   "mapping": {
-    "mapped": {},
+    "mapped": {
+      "net_income": {
+        "value": 3782,
+        "source_label": "Total net income (loss)",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
     "unmapped": [
       {
         "label": "Insurance revenue",
@@ -1106,10 +1113,6 @@
       {
         "label": "Less: Income tax expense (benefit)",
         "value": 1016
-      },
-      {
-        "label": "Total net income (loss)",
-        "value": 3782
       },
       {
         "label": "Less: Net income (loss) allocated to the participating account",
@@ -1216,8 +1219,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "financial_sector",
       "total": 47,
-      "mapped_count": 0,
-      "unmapped_count": 46,
+      "mapped_count": 1,
+      "unmapped_count": 45,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

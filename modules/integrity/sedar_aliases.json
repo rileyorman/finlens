@@ -76,6 +76,11 @@
           "source": "CSU_FY2025"
         },
         {
+          "label": "total net income (loss)",
+          "standards": ["IFRS"],
+          "source": "SLF_FY2025"
+        },
+        {
           "label": "net earnings",
           "standards": ["IFRS"],
           "source": "ATD_FY2025"
