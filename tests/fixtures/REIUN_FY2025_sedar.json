@@ -807,6 +807,9 @@
       10
     ]
   },
+  "source_provenance": {
+    "document_note": "property_operating_costs (637855) maps RioCan's 'Operating costs' subtotal, which by RioCan's own grouping INCLUDES 'Residential inventory cost of sales' (181831) alongside recoverable+non-recoverable rental operating costs (456024). RioCan is a hybrid REIT (residential inventory-sales business), so this subtotal is broader than pure property operating costs but is the figure that reconciles to RioCan's stated NOI. Confirmed vs source 2026-06-17."
+  },
   "mapping": {
     "mapped": {
       "rental_revenue": {
