@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from modules.integrity.sedar_mapper import map_line_items
+from modules.integrity.sedar_mapper import _is_mining_family_sector, map_line_items
 from scripts.build_filing_registry import FILING_MANIFEST
 
 
@@ -42,15 +42,23 @@ def _mapper_source_value(values: dict) -> int | float | None:
     return next(iter((values or {}).values()), None)
 
 
-def _line_items_from_fixture(fixture: dict) -> list[dict]:
+def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:
+    if _is_mining_family_sector(sector):
+        return ("income_statement", "balance_sheet", "cash_flow")
+    return ("income_statement", "balance_sheet")
+
+
+def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[dict]:
     rows = []
-    for statement_key in ("income_statement", "balance_sheet"):
+    sector_arg = sector if sector is not None else fixture.get("sector_inferred")
+    for statement_key in _mapping_statement_keys(sector_arg):
         for item in fixture["statements"][statement_key]:
             values = item.get("values") or {}
             rows.append({
                 "label": item["label"],
                 "value": _mapper_source_value(values),
                 "confidence": item.get("confidence"),
+                "statement": statement_key,
             })
     return rows
 
@@ -60,7 +68,7 @@ def _resolved_mapped_count(fixture_path: Path) -> int:
     manifest_entry = FILING_MANIFEST[fixture_path.name]
     sector_override = manifest_entry.get("sector_override") or fixture.get("sector_inferred") or None
     result = map_line_items(
-        _line_items_from_fixture(fixture),
+        _line_items_from_fixture(fixture, sector_override),
         fixture["accounting_standard"],
         sector=sector_override,
     )

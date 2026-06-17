@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-17T16:39:32Z",
+  "generated_at": "2026-06-17T18:22:14Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -248,6 +248,25 @@
       "filing_date": "2026-02-11",
       "commit": null,
       "notes": "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 2025 Consolidated Financial Statements (Deloitte LLP auditor). Confirms with IFC that the IFRS 17 income-statement core is structural across P&C and Life. Resolves through insurance_sector despite sector_inferred containing 'Financial Services', preserving default net_income via 'Total net income (loss)' while adding the IFRS 17 core fields."
+    },
+    {
+      "ticker": "NFG",
+      "company_name": "New Found Gold Corp.",
+      "fiscal_year": "FY2024",
+      "source": "sedar",
+      "sector": "mining_exploration_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/NFG_FY2024_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\NFG_FY2024.pdf",
+      "provenance": {
+        "issuer_url": "https://newfoundgold.ca/investors/ (manual download, FY2024 standalone financial statements)",
+        "retrieval_method": "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17"
+      },
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
+      "filing_date": "2025-03-20",
+      "commit": null,
+      "notes": "Manual issuer-IR download; first pre-revenue mining exploration filer. Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."
     }
   ],
   "registry_notes": [

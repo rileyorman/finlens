@@ -45,10 +45,11 @@ def _load_json(path: Path) -> dict:
 def test_sedar_fixture_stored_mapping_matches_live_mapper(fixture_path: Path):
     fixture = _load_json(fixture_path)
     stored_mapped = fixture["mapping"]["mapped"]
+    sector = _sector_argument(fixture, FILING_MANIFEST[fixture_path.name])
     live_mapped = map_line_items(
-        _line_items_from_fixture(fixture),
+        _line_items_from_fixture(fixture, sector),
         fixture["accounting_standard"],
-        sector=_sector_argument(fixture, FILING_MANIFEST[fixture_path.name]),
+        sector=sector,
     )["mapped"]
 
     missing_from_live = sorted(set(stored_mapped) - set(live_mapped))

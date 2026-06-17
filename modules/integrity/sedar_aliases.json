@@ -383,6 +383,75 @@
         }
       }
     },
+    "mining_exploration_sector": {
+      "canonical_fields": {
+        "net_loss": {
+          "aliases": [
+            {
+              "label": "loss and comprehensive loss for the year",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "operating_loss": {
+          "aliases": [
+            {
+              "label": "loss from operating activities",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "exploration_expense": {
+          "aliases": [
+            {
+              "label": "exploration and evaluation expenditures",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "cash": {
+          "aliases": [
+            {
+              "label": "cash",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            },
+            {
+              "label": "cash and cash equivalents",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            },
+            {
+              "label": "cash at end of year",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            },
+            {
+              "label": "cash and cash equivalents, end of year",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "net_cash_used_in_operating_activities": {
+          "aliases": [
+            {
+              "label": "net cash used in operating activities",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024"
+            }
+          ],
+          "patterns": []
+        }
+      }
+    },
     "mining_sector": {
       "canonical_fields": {
         "revenue": {

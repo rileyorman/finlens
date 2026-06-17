@@ -1,0 +1,1308 @@
+{
+  "source": "sedar_pdf",
+  "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\NFG_FY2024.pdf",
+    "pdf_origin_url": "https://newfoundgold.ca/investors/ (manual download, FY2024 standalone financial statements)",
+    "sedar_access_note": "SEDAR+ not accessed for this fixture; source PDF was already present locally and was read only from disk.",
+    "retrieval_method": "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17",
+    "document_note": "FY2024 standalone financial statements; Statements of Financial Position p.4, Loss and Comprehensive Loss p.5, Cash Flows p.6 with continuation on p.7 for ending cash.",
+    "future_pattern": "use local canonical PDF when supplied; do not substitute fetched copies for NFG fixture validation",
+    "canonical_field_rationale": "Exploration and evaluation expenditures is the expensed income-statement exploration line and is the canonical exploration_expense field. Exploration and evaluation assets is the capitalized balance-sheet E&E asset; it is preserved in unmapped[] as balance-sheet context and must not be collapsed into the same slot.",
+    "ground_truth_verified": {
+      "verified_date": "2026-06-17",
+      "verified_by": "Riley (hand-check vs source PDF)",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\NFG_FY2024.pdf",
+      "statement_pages": "Financial Position p.4; Loss and Comprehensive Loss p.5; Cash Flows p.6 (ending-cash continuation p.7)",
+      "fields_confirmed": "loss_and_comprehensive_loss -50268354, loss_from_operating_activities -60316924, exploration_and_evaluation_expenditures 52563340, exploration_and_evaluation_assets 34505484, total_assets 74019011, total_liabilities 7448306, total_equity 66570705, cash 22317548, net_cash_used_in_operating_activities -55683060",
+      "notes": "Balance-sheet identity ties: liabilities 7448306 + equity 66570705 = assets 74019011. FY2024 statement has no revenue, cost-of-sales, gross-profit, or mine-operations line; loss is driven by expensed exploration plus G&A. Cash-burn context is net cash used in operating activities -55683060 against cash 22317548. Dual-treatment decision: expensed Exploration and evaluation expenditures maps to exploration_expense; capitalized Exploration and evaluation assets remains unmapped as balance-sheet context."
+    }
+  },
+  "schema_version": 5,
+  "accounting_standard": "IFRS",
+  "currency": "CAD",
+  "scale": "actual",
+  "fiscal_year_end": "2024-12-31",
+  "filing_date": "2025-03-20",
+  "sector_inferred": "Mineral Exploration",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash",
+        "values": {
+          "December 31, 2024": 22317548,
+          "December 31, 2023": 53884809
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investments",
+        "values": {
+          "December 31, 2024": 926019,
+          "December 31, 2023": 3596592
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Prepaid expenses and deposits",
+        "values": {
+          "December 31, 2024": 1480341,
+          "December 31, 2023": 1519157
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Sales taxes recoverable",
+        "values": {
+          "December 31, 2024": 2209948,
+          "December 31, 2023": 3299646
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest receivable",
+        "values": {
+          "December 31, 2024": 0,
+          "December 31, 2023": 75322
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Secured notes",
+        "values": {
+          "December 31, 2024": 2817554,
+          "December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "December 31, 2024": 29751410,
+          "December 31, 2023": 62375526
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "values": {
+          "December 31, 2024": 34505484,
+          "December 31, 2023": 9093187
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Investment in Kirkland Lake Discoveries Corp.",
+        "values": {
+          "December 31, 2024": 1525756,
+          "December 31, 2023": 2861250
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Property and equipment",
+        "values": {
+          "December 31, 2024": 7938149,
+          "December 31, 2023": 7638608
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Secured notes",
+        "values": {
+          "December 31, 2024": 0,
+          "December 31, 2023": 2454300
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Right-of-use assets",
+        "values": {
+          "December 31, 2024": 118509,
+          "December 31, 2023": 156622
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Other assets",
+        "values": {
+          "December 31, 2024": 179703,
+          "December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current assets",
+        "values": {
+          "December 31, 2024": 44267601,
+          "December 31, 2023": 22203967
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total Assets",
+        "values": {
+          "December 31, 2024": 74019011,
+          "December 31, 2023": 84579493
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2024": 7325203,
+          "December 31, 2023": 6492354
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Flow-through share premium",
+        "values": {
+          "December 31, 2024": 0,
+          "December 31, 2023": 12426322
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease liabilities",
+        "values": {
+          "December 31, 2024": 53783,
+          "December 31, 2023": 88958
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "December 31, 2024": 7378986,
+          "December 31, 2023": 19007634
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease liabilities",
+        "values": {
+          "December 31, 2024": 69320,
+          "December 31, 2023": 68839
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total non-current liabilities",
+        "values": {
+          "December 31, 2024": 69320,
+          "December 31, 2023": 68839
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2024": 7448306,
+          "December 31, 2023": 19076473
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share capital",
+        "values": {
+          "December 31, 2024": 341346716,
+          "December 31, 2023": 290244029
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Reserves",
+        "values": {
+          "December 31, 2024": 34988421,
+          "December 31, 2023": 34755069
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Deficit",
+        "values": {
+          "December 31, 2024": -309764432,
+          "December 31, 2023": -259496078
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "December 31, 2024": 66570705,
+          "December 31, 2023": 65503020
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total Liabilities and Equity",
+        "values": {
+          "December 31, 2024": 74019011,
+          "December 31, 2023": 84579493
+        },
+        "confidence": 0.99
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Corporate development and investor relations",
+        "values": {
+          "Year ended December 31, 2024": 711506,
+          "Year ended December 31, 2023": 1274632
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation",
+        "values": {
+          "Year ended December 31, 2024": 813654,
+          "Year ended December 31, 2023": 940208
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Exploration and evaluation expenditures",
+        "values": {
+          "Year ended December 31, 2024": 52563340,
+          "Year ended December 31, 2023": 94038277
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Office and sundry",
+        "values": {
+          "Year ended December 31, 2024": 779138,
+          "Year ended December 31, 2023": 798198
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Professional fees",
+        "values": {
+          "Year ended December 31, 2024": 1332556,
+          "Year ended December 31, 2023": 1652312
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Salaries and consulting",
+        "values": {
+          "Year ended December 31, 2024": 2612010,
+          "Year ended December 31, 2023": 2499578
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share-based compensation",
+        "values": {
+          "Year ended December 31, 2024": 889045,
+          "Year ended December 31, 2023": 1410563
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Transfer agent and regulatory fees",
+        "values": {
+          "Year ended December 31, 2024": 446384,
+          "Year ended December 31, 2023": 635848
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Travel",
+        "values": {
+          "Year ended December 31, 2024": 169291,
+          "Year ended December 31, 2023": 217954
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss from operating activities",
+        "values": {
+          "Year ended December 31, 2024": -60316924,
+          "Year ended December 31, 2023": -103467570
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of flow-through share premium",
+        "values": {
+          "Year ended December 31, 2024": 12426322,
+          "Year ended December 31, 2023": 22932528
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange gain",
+        "values": {
+          "Year ended December 31, 2024": 224286,
+          "Year ended December 31, 2023": 101959
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on sale of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 4217935
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss from equity investment",
+        "values": {
+          "Year ended December 31, 2024": -1306722,
+          "Year ended December 31, 2023": -795995
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on dilution of equity investment",
+        "values": {
+          "Year ended December 31, 2024": -28772,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment of equity investment",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -1000237
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on disposal of property and equipment",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -5928
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Part XII.6 tax",
+        "values": {
+          "Year ended December 31, 2024": -928769,
+          "Year ended December 31, 2023": -584120
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Revaluation of secured notes",
+        "values": {
+          "Year ended December 31, 2024": 140786,
+          "Year ended December 31, 2023": 33599
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -8000
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense",
+        "values": {
+          "Year ended December 31, 2024": -25105,
+          "Year ended December 31, 2023": -27119
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest income",
+        "values": {
+          "Year ended December 31, 2024": 2869403,
+          "Year ended December 31, 2023": 2791248
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Realized losses on disposal of investments",
+        "values": {
+          "Year ended December 31, 2024": -380877,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized losses on investments",
+        "values": {
+          "Year ended December 31, 2024": -1191882,
+          "Year ended December 31, 2023": -4079063
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of legal claim",
+        "values": {
+          "Year ended December 31, 2024": -1750100,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Total",
+        "values": {
+          "Year ended December 31, 2024": 10048570,
+          "Year ended December 31, 2023": 23576807
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss and comprehensive loss for the year",
+        "values": {
+          "Year ended December 31, 2024": -50268354,
+          "Year ended December 31, 2023": -79890763
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss per share \u2013 basic and diluted ($)",
+        "values": {
+          "Year ended December 31, 2024": -0.26,
+          "Year ended December 31, 2023": -0.45
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "values": {
+          "Year ended December 31, 2024": 194032544,
+          "Year ended December 31, 2023": 178363103
+        },
+        "confidence": 0.99
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Loss for the year",
+        "values": {
+          "Year ended December 31, 2024": -50268354,
+          "Year ended December 31, 2023": -79890763
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Depreciation",
+        "values": {
+          "Year ended December 31, 2024": 813654,
+          "Year ended December 31, 2023": 940208
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Gain on sale of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -4123183
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss from equity investment",
+        "values": {
+          "Year ended December 31, 2024": 1306722,
+          "Year ended December 31, 2023": 795995
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on dilution of equity investment",
+        "values": {
+          "Year ended December 31, 2024": 28772,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment of equity investment",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 1000237
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Loss on disposal of property and equipment",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 5928
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Impairment of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 8000
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Revaluation of secured notes",
+        "values": {
+          "Year ended December 31, 2024": -140786,
+          "Year ended December 31, 2023": -33599
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Foreign exchange (gain) loss on secured notes",
+        "values": {
+          "Year ended December 31, 2024": -222468,
+          "Year ended December 31, 2023": 43299
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized foreign exchange gain",
+        "values": {
+          "Year ended December 31, 2024": -1719,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest income on secured notes",
+        "values": {
+          "Year ended December 31, 2024": -302718,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest expense",
+        "values": {
+          "Year ended December 31, 2024": 25105,
+          "Year ended December 31, 2023": 27119
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of flow-through share premium",
+        "values": {
+          "Year ended December 31, 2024": -12426322,
+          "Year ended December 31, 2023": -22932528
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Settlement of legal claim",
+        "values": {
+          "Year ended December 31, 2024": 1750100,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share-based compensation",
+        "values": {
+          "Year ended December 31, 2024": 889045,
+          "Year ended December 31, 2023": 1410563
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Realized losses on disposal of investments",
+        "values": {
+          "Year ended December 31, 2024": 380877,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Unrealized losses on investments",
+        "values": {
+          "Year ended December 31, 2024": 1191882,
+          "Year ended December 31, 2023": 4079063
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Subtotal before non-cash working capital changes",
+        "values": {
+          "Year ended December 31, 2024": -56976210,
+          "Year ended December 31, 2023": -98669661
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Decrease (increase) in prepaid expenses and deposits",
+        "values": {
+          "Year ended December 31, 2024": 38816,
+          "Year ended December 31, 2023": -97103
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Increase in other assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -106179
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Decrease (increase) in sales taxes recoverable",
+        "values": {
+          "Year ended December 31, 2024": 1089698,
+          "Year ended December 31, 2023": -155358
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Increase in interest receivable",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -75322
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Increase (decrease) in accounts payable and accrued liabilities",
+        "values": {
+          "Year ended December 31, 2024": 164636,
+          "Year ended December 31, 2023": -170689
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in operating activities",
+        "values": {
+          "Year ended December 31, 2024": -55683060,
+          "Year ended December 31, 2023": -99274312
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Expenditures on claims staking and mineral license renewals",
+        "values": {
+          "Year ended December 31, 2024": -5550,
+          "Year ended December 31, 2023": -16565
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Interest received on secured notes",
+        "values": {
+          "Year ended December 31, 2024": 378040,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": -3853119,
+          "Year ended December 31, 2023": -208034
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Transaction costs on sale of exploration and evaluation assets",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -94752
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds on disposal of investments",
+        "values": {
+          "Year ended December 31, 2024": 1097814,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Proceeds on disposal of property and equipment",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": 9084
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchases of property and equipment",
+        "values": {
+          "Year ended December 31, 2024": -625775,
+          "Year ended December 31, 2023": -1487150
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of secured notes",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -2464000
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Purchase of investments",
+        "values": {
+          "Year ended December 31, 2024": 0,
+          "Year ended December 31, 2023": -174500
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash used in investing activities",
+        "values": {
+          "Year ended December 31, 2024": -3008590,
+          "Year ended December 31, 2023": -4435917
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Issuance of common shares in prospectus offering",
+        "values": {
+          "Year ended December 31, 2024": 27522494,
+          "Year ended December 31, 2023": 78986588
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Share issue costs",
+        "values": {
+          "Year ended December 31, 2024": -924657,
+          "Year ended December 31, 2023": -3517377
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Stock options exercised",
+        "values": {
+          "Year ended December 31, 2024": 862500,
+          "Year ended December 31, 2023": 131630
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Increase in other assets",
+        "values": {
+          "Year ended December 31, 2024": -179703,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease principal payments",
+        "values": {
+          "Year ended December 31, 2024": -134001,
+          "Year ended December 31, 2023": -143957
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Lease interest payments",
+        "values": {
+          "Year ended December 31, 2024": -25105,
+          "Year ended December 31, 2023": -27119
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net cash generated from financing activities",
+        "values": {
+          "Year ended December 31, 2024": 27121528,
+          "Year ended December 31, 2023": 75429765
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Effect of exchange rate fluctuations on cash held",
+        "values": {
+          "Year ended December 31, 2024": 2861,
+          "Year ended December 31, 2023": 0
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Net decrease in cash",
+        "values": {
+          "Year ended December 31, 2024": -31567261,
+          "Year ended December 31, 2023": -28280464
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash at beginning of year",
+        "values": {
+          "Year ended December 31, 2024": 53884809,
+          "Year ended December 31, 2023": 82165273
+        },
+        "confidence": 0.99
+      },
+      {
+        "label": "Cash at end of year",
+        "values": {
+          "Year ended December 31, 2024": 22317548,
+          "Year ended December 31, 2023": 53884809
+        },
+        "confidence": 0.99
+      }
+    ]
+  },
+  "extraction_confidence": 0.99,
+  "pages_used": {
+    "balance_sheet": [
+      4
+    ],
+    "income_statement": [
+      5
+    ],
+    "cash_flow": [
+      6,
+      7
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "exploration_expense": {
+        "value": 52563340,
+        "source_label": "Exploration and evaluation expenditures",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "operating_loss": {
+        "value": -60316924,
+        "source_label": "Loss from operating activities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_loss": {
+        "value": -50268354,
+        "source_label": "Loss and comprehensive loss for the year",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cash": {
+        "value": 22317548,
+        "source_label": "Cash",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 74019011,
+        "source_label": "Total Assets",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_cash_used_in_operating_activities": {
+        "value": -55683060,
+        "source_label": "Net cash used in operating activities",
+        "match_type": "exact",
+        "confidence": 0.99
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Corporate development and investor relations",
+        "value": 711506
+      },
+      {
+        "label": "Depreciation",
+        "value": 813654
+      },
+      {
+        "label": "Office and sundry",
+        "value": 779138
+      },
+      {
+        "label": "Professional fees",
+        "value": 1332556
+      },
+      {
+        "label": "Salaries and consulting",
+        "value": 2612010
+      },
+      {
+        "label": "Share-based compensation",
+        "value": 889045
+      },
+      {
+        "label": "Transfer agent and regulatory fees",
+        "value": 446384
+      },
+      {
+        "label": "Travel",
+        "value": 169291
+      },
+      {
+        "label": "Settlement of flow-through share premium",
+        "value": 12426322
+      },
+      {
+        "label": "Foreign exchange gain",
+        "value": 224286
+      },
+      {
+        "label": "Gain on sale of exploration and evaluation assets",
+        "value": 0
+      },
+      {
+        "label": "Loss from equity investment",
+        "value": -1306722
+      },
+      {
+        "label": "Loss on dilution of equity investment",
+        "value": -28772
+      },
+      {
+        "label": "Impairment of equity investment",
+        "value": 0
+      },
+      {
+        "label": "Loss on disposal of property and equipment",
+        "value": 0
+      },
+      {
+        "label": "Part XII.6 tax",
+        "value": -928769
+      },
+      {
+        "label": "Revaluation of secured notes",
+        "value": 140786
+      },
+      {
+        "label": "Impairment of exploration and evaluation assets",
+        "value": 0
+      },
+      {
+        "label": "Interest expense",
+        "value": -25105
+      },
+      {
+        "label": "Interest income",
+        "value": 2869403
+      },
+      {
+        "label": "Realized losses on disposal of investments",
+        "value": -380877
+      },
+      {
+        "label": "Unrealized losses on investments",
+        "value": -1191882
+      },
+      {
+        "label": "Settlement of legal claim",
+        "value": -1750100
+      },
+      {
+        "label": "Total",
+        "value": 10048570
+      },
+      {
+        "label": "Loss per share \u2013 basic and diluted ($)",
+        "value": -0.26
+      },
+      {
+        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "value": 194032544
+      },
+      {
+        "label": "Investments",
+        "value": 926019
+      },
+      {
+        "label": "Prepaid expenses and deposits",
+        "value": 1480341
+      },
+      {
+        "label": "Sales taxes recoverable",
+        "value": 2209948
+      },
+      {
+        "label": "Interest receivable",
+        "value": 0
+      },
+      {
+        "label": "Secured notes",
+        "value": 2817554
+      },
+      {
+        "label": "Total current assets",
+        "value": 29751410
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "value": 34505484
+      },
+      {
+        "label": "Investment in Kirkland Lake Discoveries Corp.",
+        "value": 1525756
+      },
+      {
+        "label": "Property and equipment",
+        "value": 7938149
+      },
+      {
+        "label": "Secured notes",
+        "value": 0
+      },
+      {
+        "label": "Right-of-use assets",
+        "value": 118509
+      },
+      {
+        "label": "Other assets",
+        "value": 179703
+      },
+      {
+        "label": "Total non-current assets",
+        "value": 44267601
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 7325203
+      },
+      {
+        "label": "Flow-through share premium",
+        "value": 0
+      },
+      {
+        "label": "Lease liabilities",
+        "value": 53783
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 7378986
+      },
+      {
+        "label": "Lease liabilities",
+        "value": 69320
+      },
+      {
+        "label": "Total non-current liabilities",
+        "value": 69320
+      },
+      {
+        "label": "Total liabilities",
+        "value": 7448306
+      },
+      {
+        "label": "Share capital",
+        "value": 341346716
+      },
+      {
+        "label": "Reserves",
+        "value": 34988421
+      },
+      {
+        "label": "Deficit",
+        "value": -309764432
+      },
+      {
+        "label": "Total equity",
+        "value": 66570705
+      },
+      {
+        "label": "Total Liabilities and Equity",
+        "value": 74019011
+      },
+      {
+        "label": "Loss for the year",
+        "value": -50268354
+      },
+      {
+        "label": "Loss from equity investment",
+        "value": 1306722
+      },
+      {
+        "label": "Loss on dilution of equity investment",
+        "value": 28772
+      },
+      {
+        "label": "Revaluation of secured notes",
+        "value": -140786
+      },
+      {
+        "label": "Foreign exchange (gain) loss on secured notes",
+        "value": -222468
+      },
+      {
+        "label": "Unrealized foreign exchange gain",
+        "value": -1719
+      },
+      {
+        "label": "Interest income on secured notes",
+        "value": -302718
+      },
+      {
+        "label": "Interest expense",
+        "value": 25105
+      },
+      {
+        "label": "Settlement of flow-through share premium",
+        "value": -12426322
+      },
+      {
+        "label": "Settlement of legal claim",
+        "value": 1750100
+      },
+      {
+        "label": "Realized losses on disposal of investments",
+        "value": 380877
+      },
+      {
+        "label": "Unrealized losses on investments",
+        "value": 1191882
+      },
+      {
+        "label": "Subtotal before non-cash working capital changes",
+        "value": -56976210
+      },
+      {
+        "label": "Decrease (increase) in prepaid expenses and deposits",
+        "value": 38816
+      },
+      {
+        "label": "Increase in other assets",
+        "value": 0
+      },
+      {
+        "label": "Decrease (increase) in sales taxes recoverable",
+        "value": 1089698
+      },
+      {
+        "label": "Increase in interest receivable",
+        "value": 0
+      },
+      {
+        "label": "Increase (decrease) in accounts payable and accrued liabilities",
+        "value": 164636
+      },
+      {
+        "label": "Expenditures on claims staking and mineral license renewals",
+        "value": -5550
+      },
+      {
+        "label": "Interest received on secured notes",
+        "value": 378040
+      },
+      {
+        "label": "Purchases of exploration and evaluation assets",
+        "value": -3853119
+      },
+      {
+        "label": "Transaction costs on sale of exploration and evaluation assets",
+        "value": 0
+      },
+      {
+        "label": "Proceeds on disposal of investments",
+        "value": 1097814
+      },
+      {
+        "label": "Proceeds on disposal of property and equipment",
+        "value": 0
+      },
+      {
+        "label": "Purchases of property and equipment",
+        "value": -625775
+      },
+      {
+        "label": "Purchase of secured notes",
+        "value": 0
+      },
+      {
+        "label": "Purchase of investments",
+        "value": 0
+      },
+      {
+        "label": "Net cash used in investing activities",
+        "value": -3008590
+      },
+      {
+        "label": "Issuance of common shares in prospectus offering",
+        "value": 27522494
+      },
+      {
+        "label": "Share issue costs",
+        "value": -924657
+      },
+      {
+        "label": "Stock options exercised",
+        "value": 862500
+      },
+      {
+        "label": "Increase in other assets",
+        "value": -179703
+      },
+      {
+        "label": "Lease principal payments",
+        "value": -134001
+      },
+      {
+        "label": "Lease interest payments",
+        "value": -25105
+      },
+      {
+        "label": "Net cash generated from financing activities",
+        "value": 27121528
+      },
+      {
+        "label": "Effect of exchange rate fluctuations on cash held",
+        "value": 2861
+      },
+      {
+        "label": "Net decrease in cash",
+        "value": -31567261
+      },
+      {
+        "label": "Cash at beginning of year",
+        "value": 53884809
+      },
+      {
+        "label": "Cash at end of year",
+        "value": 22317548
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS",
+      "sector_profile": "mining_exploration_sector",
+      "total": 102,
+      "mapped_count": 6,
+      "unmapped_count": 90,
+      "benign_skipped_count": 6,
+      "benign_duplicates": [
+        {
+          "normalized_label": "depreciation",
+          "occurrence_count": 2,
+          "value": 813654.0
+        },
+        {
+          "normalized_label": "share-based compensation",
+          "occurrence_count": 2,
+          "value": 889045.0
+        },
+        {
+          "normalized_label": "gain on sale of exploration and evaluation assets",
+          "occurrence_count": 2,
+          "value": 0.0
+        },
+        {
+          "normalized_label": "impairment of equity investment",
+          "occurrence_count": 2,
+          "value": 0.0
+        },
+        {
+          "normalized_label": "loss on disposal of property and equipment",
+          "occurrence_count": 2,
+          "value": 0.0
+        },
+        {
+          "normalized_label": "impairment of exploration and evaluation assets",
+          "occurrence_count": 2,
+          "value": 0.0
+        }
+      ],
+      "gross_profit_derived": false,
+      "collisions": []
+    }
+  }
+}

@@ -26,6 +26,21 @@ def _line_items(data: dict) -> list[dict]:
                 "label": item["label"],
                 "value": _mapper_source_value(values),
                 "confidence": item.get("confidence"),
+                "statement": statement_key,
+            })
+    return rows
+
+
+def _all_statement_line_items(data: dict) -> list[dict]:
+    rows = []
+    for statement_key in ("income_statement", "balance_sheet", "cash_flow"):
+        for item in data["statements"][statement_key]:
+            values = item.get("values") or {}
+            rows.append({
+                "label": item["label"],
+                "value": _mapper_source_value(values),
+                "confidence": item.get("confidence"),
+                "statement": statement_key,
             })
     return rows
 
@@ -64,6 +79,13 @@ def _balance_source_value(data: dict, label: str) -> int | float | None:
     raise AssertionError(f"Balance sheet label not found: {label}")
 
 
+def _cash_flow_source_value(data: dict, label: str) -> int | float | None:
+    for item in data["statements"]["cash_flow"]:
+        if item["label"] == label:
+            return _mapper_source_value(item.get("values") or {})
+    raise AssertionError(f"Cash flow label not found: {label}")
+
+
 def _mapped_fixture(name: str, sector: str | None = None) -> tuple[dict, dict]:
     data = _load_fixture(name)
     return data, map_line_items(_line_items(data), data["accounting_standard"], sector=sector)
@@ -80,7 +102,7 @@ def _assert_unmapped_labels_are_verbatim(data: dict, result: dict) -> None:
     from collections import Counter
     fixture_labels = Counter(
         item["label"]
-        for statement_key in ("income_statement", "balance_sheet")
+        for statement_key in ("income_statement", "balance_sheet", "cash_flow")
         for item in data["statements"][statement_key]
     )
     unmapped_labels = Counter(item["label"] for item in result["unmapped"])
@@ -755,6 +777,139 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
 
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_nfg_fixture_maps_mining_exploration_sector_without_producer_spine():
+    """
+    NFG (New Found Gold, pre-revenue mineral explorer, IFRS, CAD actual dollars).
+
+    Exploration-stage miners are structurally distinct from producers: no
+    revenue/cost/gross-profit spine, expensed E&E drives the loss, capitalized
+    E&E stays on the balance sheet, and cash burn versus cash is the key metric.
+    """
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    assert data["source"] == "sedar_pdf"
+    assert data["accounting_standard"] == "IFRS"
+    assert data["currency"] == "CAD"
+    assert data["scale"] == "actual"
+    assert data["fiscal_year_end"] == "2024-12-31"
+    assert data["filing_date"] == "2025-03-20"
+    assert data["sector_inferred"] == "Mineral Exploration"
+    provenance = data["source_provenance"]
+    assert provenance["pdf_origin_url"] == (
+        "https://newfoundgold.ca/investors/ "
+        "(manual download, FY2024 standalone financial statements)"
+    )
+    assert provenance["retrieval_method"] == (
+        "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17"
+    )
+    assert "SEDAR+ not accessed" in provenance["sedar_access_note"]
+    assert "Exploration and evaluation expenditures is the expensed" in (
+        provenance["canonical_field_rationale"]
+    )
+
+    income_labels = {item["label"].lower() for item in data["statements"]["income_statement"]}
+    assert not any("revenue" in label for label in income_labels)
+    assert not any("cost of sales" in label for label in income_labels)
+    assert not any("gross profit" in label for label in income_labels)
+    assert not any("mine operations" in label or "mining operations" in label for label in income_labels)
+
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+
+    assert mapped["net_loss"]["source_label"] == "Loss and comprehensive loss for the year"
+    assert mapped["net_loss"]["value"] == -50268354
+
+    assert mapped["operating_loss"]["source_label"] == "Loss from operating activities"
+    assert mapped["operating_loss"]["value"] == -60316924
+
+    assert mapped["exploration_expense"]["source_label"] == (
+        "Exploration and evaluation expenditures"
+    )
+    assert mapped["exploration_expense"]["value"] == 52563340
+
+    assert mapped["cash"]["source_label"] == "Cash"
+    assert mapped["cash"]["value"] == 22317548
+    assert "cash_beginning_of_year" not in mapped
+    assert "cash_end_of_year" not in mapped
+
+    assert mapped["net_cash_used_in_operating_activities"]["source_label"] == (
+        "Net cash used in operating activities"
+    )
+    assert mapped["net_cash_used_in_operating_activities"]["value"] == -55683060
+
+    assert mapped["total_assets"]["source_label"] == "Total Assets"
+    assert mapped["total_assets"]["value"] == 74019011
+    assert _balance_source_value(data, "Total liabilities") == 7448306
+    assert _balance_source_value(data, "Total equity") == 66570705
+    assert 7448306 + 66570705 == mapped["total_assets"]["value"]
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Exploration and evaluation expenditures" not in unmapped_labels
+    assert "Exploration and evaluation assets" in unmapped_labels
+    assert "Cash at beginning of year" in unmapped_labels
+    assert "Cash at end of year" in unmapped_labels
+    assert _balance_source_value(data, "Exploration and evaluation assets") == 34505484
+    assert _cash_flow_source_value(data, "Net cash used in operating activities") == -55683060
+    assert (
+        _cash_flow_source_value(data, "Net cash used in operating activities")
+        + _cash_flow_source_value(data, "Net cash used in investing activities")
+        + _cash_flow_source_value(data, "Net cash generated from financing activities")
+        + _cash_flow_source_value(data, "Effect of exchange rate fluctuations on cash held")
+        == _cash_flow_source_value(data, "Net decrease in cash")
+    )
+    assert (
+        _cash_flow_source_value(data, "Cash at beginning of year")
+        + _cash_flow_source_value(data, "Net decrease in cash")
+        == _cash_flow_source_value(data, "Cash at end of year")
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["collisions"] == []
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_nfg_stored_mapping_matches_live_mapper_snapshot():
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert data["mapping"]["mapped"] == result["mapped"]
+
+
+def test_mining_no_token_no_revenue_spine_routes_to_exploration_profile():
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector="Gold Mining",
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["exploration_expense"]["value"] == 52563340
+    assert result["mapped"]["net_cash_used_in_operating_activities"]["value"] == -55683060
+
+
+def test_mining_exploration_route_does_not_catch_producers_byte_identical():
+    for fixture_name in ("AEM_FY2025_sedar.json", "TECKB_FY2025_sedar.json"):
+        data = _load_fixture(fixture_name)
+        result = map_line_items(
+            _all_statement_line_items(data),
+            data["accounting_standard"],
+            sector=data["sector_inferred"],
+        )
+
+        assert result["meta"]["sector_profile"] == "mining_sector"
+        assert result["mapped"] == data["mapping"]["mapped"]
 
 
 def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():

@@ -42,11 +42,21 @@ REIT_SECTOR_TOKENS = (
 # (O&G) by design: mining has no royalty-deduction line, carries mine-development amortization,
 # care-and-maintenance, and mining-specific taxes that O&G lacks. AISC components (by-product
 # credits, sustaining capex) are MD&A-only, not in income statement — future MD&A-extraction target.
+MINING_EXPLORATION_SECTOR_TOKENS = (
+    "mining_exploration_sector",
+    "mineral exploration",
+    "mining exploration",
+    "exploration stage",
+    "pre-revenue exploration",
+    "junior miner",
+)
 MINING_SECTOR_TOKENS = (
     "gold mining",
     "mining",
     "precious metals",
     "mineral",
+    "gold",
+    "metals",
 )
 _TRAILING_FOOTNOTE_MARKER_RE = re.compile(
     r"\s*\((?:(?i:i{1,3}|iv|v|vi{0,3}|ix|x)|[a-z]|([a-z])\1)\)\s*$",
@@ -91,7 +101,74 @@ def _standard_allowed(rule: dict[str, Any], accounting_standard: str) -> bool:
     return any(_normalize_standard(s) == norm for s in standards)
 
 
-def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str | None:
+def _has_explicit_exploration_token(sector_text: str) -> bool:
+    return any(token in sector_text for token in MINING_EXPLORATION_SECTOR_TOKENS)
+
+
+def _is_mining_family_sector(sector: str | None) -> bool:
+    sector_text = str(sector or "").lower()
+    return _has_explicit_exploration_token(sector_text) or any(
+        token in sector_text for token in MINING_SECTOR_TOKENS
+    )
+
+
+def _income_statement_rows(line_items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    rows = [item for item in (line_items or []) if item.get("statement") == "income_statement"]
+    return rows if rows else list(line_items or [])
+
+
+def _mining_revenue_spine_label(normalized_label: str) -> bool:
+    label = normalized_label.replace("-", " ")
+    revenue_like = (
+        label in {"revenue", "revenues", "sales", "product sales", "metal sales"}
+        or label.startswith("revenue ")
+        or label.startswith("revenues ")
+        or label.startswith("sales ")
+        or label.startswith("product sales ")
+        or "revenues from mining operations" in label
+    )
+    if revenue_like and "sales tax" not in label and "sales taxes" not in label:
+        return True
+
+    cost_or_margin_like = (
+        label in {"cost of sales", "cost of revenue", "gross profit", "production"}
+        or label.startswith("cost of sales")
+        or label.startswith("costs of sales")
+        or label.startswith("cost of revenue")
+        or label.startswith("gross profit")
+    )
+    mine_operations_like = (
+        "mine operations" in label
+        or "mining operations" in label
+        or "mine operating" in label
+    )
+    return cost_or_margin_like or mine_operations_like
+
+
+def _mining_exploration_loss_shape(line_items: list[dict[str, Any]] | None) -> bool:
+    income_rows = _income_statement_rows(line_items)
+    if not income_rows:
+        return False
+
+    labels = [_normalize_label(item.get("label", "")) for item in income_rows]
+    has_revenue_spine = any(_mining_revenue_spine_label(label) for label in labels)
+    has_loss_or_expense_shape = any(
+        label.startswith("loss from operating")
+        or label.startswith("operating loss")
+        or "exploration" in label
+        or label == "expenses"
+        or label.endswith("expenses")
+        or label.endswith("expenditures")
+        for label in labels
+    )
+    return not has_revenue_spine and has_loss_or_expense_shape
+
+
+def _profile_for_sector(
+    alias_table: dict[str, Any],
+    sector: str | None,
+    line_items: list[dict[str, Any]] | None = None,
+) -> str | None:
     if not sector:
         return None
 
@@ -119,10 +196,16 @@ def _profile_for_sector(alias_table: dict[str, Any], sector: str | None) -> str 
         token in sector_text for token in REIT_SECTOR_TOKENS
     ):
         return "reit_sector"
-    if "mining_sector" in sector_profiles and any(
-        token in sector_text for token in MINING_SECTOR_TOKENS
-    ):
-        return "mining_sector"
+    if _is_mining_family_sector(sector_text):
+        # Exploration-stage miners have pre-revenue statements, so they must not
+        # route through the producer mining profile's revenue/production spine.
+        if "mining_exploration_sector" in sector_profiles and (
+            _has_explicit_exploration_token(sector_text)
+            or _mining_exploration_loss_shape(line_items)
+        ):
+            return "mining_exploration_sector"
+        if "mining_sector" in sector_profiles:
+            return "mining_sector"
     return None
 
 
@@ -374,7 +457,7 @@ def map_line_items(
     sector: str | None = None,
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
-    sector_profile = _profile_for_sector(alias_table, sector)
+    sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
     exact, patterns, semantics_map = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
@@ -463,6 +546,20 @@ def map_line_items(
     for canonical_field, matches in candidates.items():
         distinct_labels = {match["normalized_label"] for match in matches}
         if len(matches) > 1 and len(distinct_labels) > 1:
+            values = [_coerce_number(match["item"].get("value")) for match in matches]
+            if (
+                canonical_field == "cash"
+                and values
+                and values[0] is not None
+                and len(set(values)) == 1
+            ):
+                match = matches[0]
+                mapped[canonical_field] = _mapped_item(
+                    match["item"], match["match_type"], match.get("semantics")
+                )
+                for duplicate_match in matches[1:]:
+                    unmapped.append(_unmapped_item(duplicate_match["item"]))
+                continue
             collisions.append({
                 "canonical_field": canonical_field,
                 "labels": [match["item"].get("label") for match in matches],

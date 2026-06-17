@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from modules.integrity.sedar_mapper import map_line_items
+from modules.integrity.sedar_mapper import _is_mining_family_sector, map_line_items
 
 
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
@@ -168,6 +168,19 @@ FILING_MANIFEST = {
             "default net_income via 'Total net income (loss)' while adding the IFRS 17 core fields."
         ),
     },
+    "NFG_FY2024_sedar.json": {
+        "order": 14,
+        "ticker": "NFG",
+        "company_name": "New Found Gold Corp.",
+        "fiscal_year": "FY2024",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\NFG_FY2024.pdf",
+        "commit": None,
+        "notes": (
+            "Manual issuer-IR download; first pre-revenue mining exploration filer. "
+            "Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized "
+            "E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."
+        ),
+    },
 }
 
 
@@ -213,15 +226,23 @@ def _mapper_source_value(values: dict) -> int | float | None:
     return next(iter((values or {}).values()), None)
 
 
-def _line_items_from_fixture(fixture: dict) -> list[dict]:
+def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:
+    if _is_mining_family_sector(sector):
+        return ("income_statement", "balance_sheet", "cash_flow")
+    return ("income_statement", "balance_sheet")
+
+
+def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[dict]:
     rows = []
-    for statement_key in ("income_statement", "balance_sheet"):
+    sector_arg = sector if sector is not None else fixture.get("sector_inferred")
+    for statement_key in _mapping_statement_keys(sector_arg):
         for item in fixture["statements"][statement_key]:
             values = item.get("values") or {}
             rows.append({
                 "label": item["label"],
                 "value": _mapper_source_value(values),
                 "confidence": item.get("confidence"),
+                "statement": statement_key,
             })
     return rows
 
@@ -232,7 +253,7 @@ def _sector_argument(fixture: dict, manifest_entry: dict) -> str | None:
 
 def _resolved_mapping(fixture: dict, sector_override: str | None) -> dict:
     return map_line_items(
-        _line_items_from_fixture(fixture),
+        _line_items_from_fixture(fixture, sector_override),
         fixture["accounting_standard"],
         sector=sector_override,
     )
