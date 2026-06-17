@@ -1,6 +1,16 @@
 {
   "source": "sedar_pdf",
   "source_provenance": {
+    "ground_truth_verified": {
+      "verified_date": "2026-06-17",
+      "verified_by": "Riley (hand-check vs source PDF)",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024_financial_statements.pdf",
+      "source_pdf_note": "25-page Q4 financial statements pack; NOT the 121-page CNQ_FY2024.pdf annual-report wrapper",
+      "reporting_basis": "interim_unaudited",
+      "statement_pages": "Statement of Earnings (Year Ended Dec 31 2024 column) + balance sheet",
+      "fields_confirmed": "total_revenue 41509 (Product sales, gross), royalties -5853 (sign preserved), operating_expense 8093, depletion_depreciation_amortization 6681, net_income 6106, total_assets 85359",
+      "notes": "Gross 'Product sales' correctly used, not net 'Revenue' 35656. Balance-sheet identity ties: liabilities 45891 + equity 39468 = assets 85359. Board approval Mar 5 2025 confirmed. BASIS: source is the interim/unaudited Q4 financial statements pack, not the audited annual report."
+    },
     "pdf_origin_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
     "sedar_access_note": "SEDAR+ was not used because Radware CAPTCHA blocked programmatic access to the canonical SEDAR+ document search path.",
     "document_note": "Issuer-hosted Q4 financial statements PDF (12.31.2024-Q4-FS.pdf), not the annual report wrapper. The Year Ended Dec 31 2024 columns carry the correct FY2024 figures used by this fixture.",
