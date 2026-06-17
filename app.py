@@ -1383,7 +1383,7 @@ if not st.session_state["onboarding_complete"]:
         [
             (
                 "Single Analysis",
-                "Fetch or upload a 10-K or 10-Q from SEC EDGAR or SEDAR+. Every figure traced back to the filing, then analysed for red flags, downside risk, and margin of safety.",
+                "Fetch from SEC EDGAR, or upload SEDAR+ filings as PDF. Every figure traced back to the filing, then analysed for red flags, downside risk, and margin of safety.",
                 "single",
             ),
             (
