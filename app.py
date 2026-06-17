@@ -80,6 +80,7 @@ from config import (
     CACHE_DIR,
     EDGAR_TEXT_DIR,
     LIBRARY_DIR,
+    LIBRARY_PDF_CACHE_DIR,
     LIBRARY_PDFS_DIR,
     FILING_LIBRARY_PATH,
     YFINANCE_CACHE_DIR,
@@ -228,6 +229,7 @@ def _upload_analysis_source(resolved_ticker: str | None) -> str:
 
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
+LIBRARY_PDF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 EDGAR_TEXT_DIR.mkdir(parents=True, exist_ok=True)
@@ -411,7 +413,7 @@ def _pdf_cache_path(ticker: str | None, period: str | None) -> str | None:
     if not ticker or not period:
         return None
     safe = re.sub(r"[^\w\-]", "_", f"{ticker}_{period}")
-    return str(LIBRARY_PDFS_DIR / f"{safe}.pdf")
+    return str(LIBRARY_PDF_CACHE_DIR / f"{safe}.pdf")
 
 
 def _library_pdf_cache_path(entry: dict) -> str | None:
@@ -4674,7 +4676,7 @@ if "financial_data" not in st.session_state:
     st.session_state.loaded_from_quick   = False
     st.session_state.analysis_loaded_from_cache = False
     st.session_state.uploader_key        = 0
-    LIBRARY_PDFS_DIR.mkdir(parents=True, exist_ok=True)
+    LIBRARY_PDF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 if "summary_data" not in st.session_state:
     st.session_state.summary_data = None

@@ -32,6 +32,7 @@ LIBRARY_DIR = _APP_BASE
 CACHE_DIR = _APP_BASE / "cache" if sys.platform == "win32" else Path("/tmp/finlens_cache")
 
 LIBRARY_PDFS_DIR = LIBRARY_DIR / "pdfs"
+LIBRARY_PDF_CACHE_DIR = LIBRARY_PDFS_DIR / "_cache"
 FILING_LIBRARY_PATH = LIBRARY_DIR / "filing_library.json"
 ANALYSIS_CACHE_DIR = LIBRARY_DIR / "analysis"
 INVERSION_DIR = LIBRARY_DIR / "inversions"
@@ -81,7 +82,7 @@ def _migrate_appdata_storage() -> None:
     try:
         _copy_file_if_missing(old_dir / "filing_library.json", FILING_LIBRARY_PATH)
         _copy_file_if_missing(old_dir / "watchlist.json", LIBRARY_DIR / "watchlist.json")
-        _copy_dir_files_if_missing(old_dir / "pdfs", LIBRARY_PDFS_DIR)
+        _copy_dir_files_if_missing(old_dir / "pdfs", LIBRARY_PDF_CACHE_DIR)
         _copy_dir_files_if_missing(old_dir / "analysis", ANALYSIS_CACHE_DIR, "*.json")
         _copy_dir_files_if_missing(old_dir / "cache", CACHE_DIR, "*.json")
         _copy_dir_files_if_missing(old_dir / "edgar_text", EDGAR_TEXT_DIR)
@@ -92,6 +93,7 @@ def _migrate_appdata_storage() -> None:
 for _dir in (
     LIBRARY_DIR,
     LIBRARY_PDFS_DIR,
+    LIBRARY_PDF_CACHE_DIR,
     ANALYSIS_CACHE_DIR,
     INVERSION_DIR,
     EDGAR_TEXT_DIR,
@@ -111,7 +113,7 @@ try:
         if old_temp.exists() and old_temp != LIBRARY_DIR:
             _copy_file_if_missing(old_temp / "filing_library.json", FILING_LIBRARY_PATH)
             _copy_file_if_missing(old_temp / "watchlist.json", LIBRARY_DIR / "watchlist.json")
-            _copy_dir_files_if_missing(old_temp / "pdfs", LIBRARY_PDFS_DIR)
+            _copy_dir_files_if_missing(old_temp / "pdfs", LIBRARY_PDF_CACHE_DIR)
             _copy_dir_files_if_missing(old_temp / "analysis", ANALYSIS_CACHE_DIR, "*.json")
             _copy_dir_files_if_missing(old_temp / "edgar_text", EDGAR_TEXT_DIR)
 except Exception:
