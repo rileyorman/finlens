@@ -216,6 +216,158 @@ def _mapped_item(
     return result
 
 
+def _reit_development_revenue_label(normalized_label: str) -> bool:
+    label = normalized_label.replace("-", " ")
+    has_development_term = "inventory" in label or "development" in label
+    has_revenue_term = "sales" in label or "revenue" in label
+    return (
+        has_development_term
+        and has_revenue_term
+        and not _reit_development_cost_label(normalized_label)
+    )
+
+
+def _reit_development_cost_label(normalized_label: str) -> bool:
+    label = normalized_label.replace("-", " ")
+    has_development_term = "inventory" in label or "development" in label
+    has_cost_term = (
+        "cost of sales" in label
+        or "costs of sales" in label
+        or "cost of revenue" in label
+        or "cogs" in label
+    )
+    return has_development_term and has_cost_term
+
+
+def _reit_rental_operating_cost_label(normalized_label: str) -> bool:
+    label = normalized_label.replace("-", " ")
+    return (
+        "recoverable under tenant leases" in label
+        or "non recoverable costs" in label
+        or "rental operating costs" in label
+        or "rental operating expenses" in label
+        or "realty taxes" in label
+    )
+
+
+def _coerce_cost_magnitude(value: Any) -> float | None:
+    number = _coerce_number(value)
+    if number is None:
+        return None
+    return abs(number)
+
+
+def _clean_derived_number(value: float) -> int | float:
+    rounded = round(value, 6)
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def _line_component(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_label": item.get("label"),
+        "value": item.get("value"),
+    }
+
+
+def _derive_reit_rental_noi(
+    mapped: dict[str, dict[str, Any]],
+    unmapped: list[dict[str, Any]],
+    normalized_items: list[dict[str, Any]],
+    sector_profile: str | None,
+) -> None:
+    if sector_profile != "reit_sector":
+        return
+
+    development_revenue_items = [
+        row["item"]
+        for row in normalized_items
+        if _reit_development_revenue_label(row["normalized_label"])
+    ]
+    development_cost_items = [
+        row["item"]
+        for row in normalized_items
+        if _reit_development_cost_label(row["normalized_label"])
+    ]
+    if not development_revenue_items or not development_cost_items:
+        return
+
+    rental_revenue = mapped.get("rental_revenue")
+    if rental_revenue is None:
+        return
+
+    rental_revenue_value = _coerce_number(rental_revenue.get("value"))
+    if rental_revenue_value is None:
+        return
+
+    rental_cost_items = [
+        row["item"]
+        for row in normalized_items
+        if _reit_rental_operating_cost_label(row["normalized_label"])
+        and not _reit_development_cost_label(row["normalized_label"])
+    ]
+    rental_cost_values = [
+        value
+        for value in (_coerce_cost_magnitude(item.get("value")) for item in rental_cost_items)
+        if value is not None
+    ]
+
+    rental_cost_source = "rental operating cost components"
+    if rental_cost_values:
+        rental_operating_costs = sum(rental_cost_values)
+    else:
+        property_operating_costs = mapped.get("property_operating_costs")
+        property_operating_costs_value = (
+            _coerce_cost_magnitude(property_operating_costs.get("value"))
+            if property_operating_costs is not None
+            else None
+        )
+        development_cost_values = [
+            value
+            for value in (
+                _coerce_cost_magnitude(item.get("value")) for item in development_cost_items
+            )
+            if value is not None
+        ]
+        if property_operating_costs_value is None or not development_cost_values:
+            return
+        rental_operating_costs = property_operating_costs_value - sum(development_cost_values)
+        rental_cost_source = "property_operating_costs excluding development inventory costs"
+
+    if rental_operating_costs < 0:
+        return
+
+    reported_blended_subtotal = mapped.get("net_operating_income")
+    if reported_blended_subtotal is not None:
+        unmapped.append({
+            "label": reported_blended_subtotal.get("source_label"),
+            "value": reported_blended_subtotal.get("value"),
+        })
+
+    mapped["net_operating_income"] = {
+        "value": _clean_derived_number(rental_revenue_value - rental_operating_costs),
+        "source_label": "derived: rental_revenue - rental_operating_costs_excluding_development",
+        "match_type": "derived",
+        "confidence": None,
+        "derived": True,
+        "components": {
+            "rental_revenue": {
+                "source_label": rental_revenue.get("source_label"),
+                "value": rental_revenue.get("value"),
+            },
+            "rental_operating_costs": [
+                _line_component(item) for item in rental_cost_items
+            ],
+            "rental_operating_cost_source": rental_cost_source,
+            "excluded_development_revenue": [
+                _line_component(item) for item in development_revenue_items
+            ],
+            "excluded_development_costs": [
+                _line_component(item) for item in development_cost_items
+            ],
+        },
+    }
+
+
 def map_line_items(
     line_items: list[dict[str, Any]],
     accounting_standard: str,
@@ -347,6 +499,8 @@ def map_line_items(
                     "excludes_da": excludes_da,
                 }
                 gross_profit_derived = True
+
+    _derive_reit_rental_noi(mapped, unmapped, normalized_items, sector_profile)
 
     # mapped_count counts only line-item-backed entries (not derived synthetic values).
     mapped_count = sum(1 for v in mapped.values() if not v.get("derived"))

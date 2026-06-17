@@ -813,10 +813,10 @@
       "verified_by": "Riley (hand-check vs source PDF)",
       "source_pdf": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RioCan_FY2025_annual_financials.pdf.pdf",
       "statement_pages": "Statement of Income + balance sheet (2025 column)",
-      "fields_confirmed": "rental_revenue 1176428, revenue 1436571, property_operating_costs 637855, net_operating_income 798716, investment_property_fair_value_delta -137359, interest_expense 277885, net_income 69295, total_assets 14894392",
-      "notes": "Balance-sheet identity ties: liabilities 7737129 + equity 7157263 = assets 14894392. FLAG: net_operating_income 798716 is a BLENDED development+rental figure (includes 'Residential inventory cost of sales' 181831) — flagged for a separate scoped mapper decision; value NOT changed in this pass."
+      "fields_confirmed": "rental_revenue 1176428, revenue 1436571, property_operating_costs 637855, net_operating_income 720404, investment_property_fair_value_delta -137359, interest_expense 277885, net_income 69295, total_assets 14894392",
+      "notes": "Balance-sheet identity ties: liabilities 7737129 + equity 7157263 = assets 14894392. net_operating_income is now canonical rental NOI: Rental revenue 1176428 less Recoverable under tenant leases 414386 and Non-recoverable costs 41638 = 720404. RioCan's reported blended Operating income subtotal 798716 is preserved in mapping.unmapped[] as Operating income; it includes Residential inventory sales 244189 and Residential inventory cost of sales 181831."
     },
-    "document_note": "property_operating_costs (637855) maps RioCan's 'Operating costs' subtotal, which by RioCan's own grouping INCLUDES 'Residential inventory cost of sales' (181831) alongside recoverable+non-recoverable rental operating costs (456024). RioCan is a hybrid REIT (residential inventory-sales business), so this subtotal is broader than pure property operating costs but is the figure that reconciles to RioCan's stated NOI. Confirmed vs source 2026-06-17."
+    "document_note": "property_operating_costs (637855) maps RioCan's 'Operating costs' subtotal, which by RioCan's own grouping INCLUDES 'Residential inventory cost of sales' (181831) alongside recoverable+non-recoverable rental operating costs (456024). RioCan is a hybrid REIT (residential inventory-sales business), so this subtotal is broader than pure rental operating costs. Canonical net_operating_income now excludes both Residential inventory sales and Residential inventory cost of sales and is derived from rental lines only. Confirmed vs source 2026-06-17."
   },
   "mapping": {
     "mapped": {
@@ -839,10 +839,40 @@
         "confidence": 0.99
       },
       "net_operating_income": {
-        "value": 798716,
-        "source_label": "Operating income",
-        "match_type": "exact",
-        "confidence": 0.99
+        "value": 720404,
+        "source_label": "derived: rental_revenue - rental_operating_costs_excluding_development",
+        "match_type": "derived",
+        "confidence": null,
+        "derived": true,
+        "components": {
+          "rental_revenue": {
+            "source_label": "Rental revenue",
+            "value": 1176428
+          },
+          "rental_operating_costs": [
+            {
+              "source_label": "Recoverable under tenant leases",
+              "value": 414386
+            },
+            {
+              "source_label": "Non-recoverable costs",
+              "value": 41638
+            }
+          ],
+          "rental_operating_cost_source": "rental operating cost components",
+          "excluded_development_revenue": [
+            {
+              "source_label": "Residential inventory sales",
+              "value": 244189
+            }
+          ],
+          "excluded_development_costs": [
+            {
+              "source_label": "Residential inventory cost of sales",
+              "value": 181831
+            }
+          ]
+        }
       },
       "investment_property_fair_value_delta": {
         "value": -137359,
@@ -1033,14 +1063,18 @@
       {
         "label": "Total liabilities and equity",
         "value": 14894392
+      },
+      {
+        "label": "Operating income",
+        "value": 798716
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 50,
-      "mapped_count": 8,
-      "unmapped_count": 41,
+      "mapped_count": 7,
+      "unmapped_count": 42,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

@@ -492,8 +492,36 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["rental_revenue"]["source_label"] == "Rental revenue"
     assert mapped["rental_revenue"]["value"] == _source_value(data, "Rental revenue")
 
-    assert mapped["net_operating_income"]["source_label"] == "Operating income"
-    assert mapped["net_operating_income"]["value"] == _source_value(data, "Operating income")
+    assert mapped["net_operating_income"]["source_label"] == (
+        "derived: rental_revenue - rental_operating_costs_excluding_development"
+    )
+    assert mapped["net_operating_income"]["value"] == (
+        _source_value(data, "Rental revenue")
+        - _source_value(data, "Recoverable under tenant leases")
+        - _source_value(data, "Non-recoverable costs")
+    )
+    assert mapped["net_operating_income"]["components"]["rental_operating_costs"] == [
+        {
+            "source_label": "Recoverable under tenant leases",
+            "value": _source_value(data, "Recoverable under tenant leases"),
+        },
+        {
+            "source_label": "Non-recoverable costs",
+            "value": _source_value(data, "Non-recoverable costs"),
+        },
+    ]
+    assert mapped["net_operating_income"]["components"]["excluded_development_revenue"] == [
+        {
+            "source_label": "Residential inventory sales",
+            "value": _source_value(data, "Residential inventory sales"),
+        }
+    ]
+    assert mapped["net_operating_income"]["components"]["excluded_development_costs"] == [
+        {
+            "source_label": "Residential inventory cost of sales",
+            "value": _source_value(data, "Residential inventory cost of sales"),
+        }
+    ]
 
     assert mapped["property_operating_costs"]["source_label"] == "Total operating costs"
     assert mapped["property_operating_costs"]["value"] == _source_value(data, "Total operating costs")
@@ -517,13 +545,13 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["revenue"]["value"] == _source_value(data, "Total revenue")
 
     assert result["meta"]["sector_profile"] == "reit_sector"
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Rental revenue" not in unmapped_labels
     assert "Total operating costs" not in unmapped_labels
-    assert "Operating income" not in unmapped_labels
+    assert "Operating income" in unmapped_labels
     assert "Fair value loss on investment properties, net" not in unmapped_labels
     assert "Income (loss) from equity-accounted investments" in unmapped_labels
 
