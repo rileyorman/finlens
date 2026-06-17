@@ -648,7 +648,7 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     assert provenance["retrieval_method"] == (
         "manual browser download from issuer IR page by Riley, 2026-06-13"
     )
-    assert "PDF page 96" in provenance["document_note"]
+    assert "PDF page 112" in provenance["document_note"]
     assert provenance["future_pattern"] == (
         "tier-3 manual issuer download is acceptable when IR is Cloudflare-blocked; "
         "mirrors are not"

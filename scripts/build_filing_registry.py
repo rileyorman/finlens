@@ -22,29 +22,30 @@ FILING_MANIFEST = {
         "ticker": "CSU",
         "company_name": "Constellation Software Inc.",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\CSU_FY2025_annual_financials.pdf.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CSU_FY2025.pdf",
         "commit": "f93868b",
-        "notes": "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap.",
+        "notes": "filing_date null reflects known cover-date gap. PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed).",
     },
     "CNR_FY2025_sedar.json": {
         "order": 2,
         "ticker": "CNR",
         "company_name": "Canadian National Railway Company",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\CNR_FY2025_annual_financials.pdf.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CNR_FY2025.pdf",
         "commit": "49f14d0",
-        "notes": "Source PDF has .pdf.pdf double extension.",
+        "notes": "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed).",
     },
     "RY_FY2025_sedar.json": {
         "order": 3,
         "ticker": "RY",
         "company_name": "Royal Bank of Canada",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\RY_FY2025_annual_financials.pdf.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\RY_FY2025.pdf",
         "sector_override": "Financial Services",
         "commit": "49f14d0",
         "notes": (
-            "Source PDF has .pdf.pdf double extension. Stored fixture mapping is aligned with the "
+            "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed). "
+            "Stored fixture mapping is aligned with the "
             "financial_sector profile: stored_field_count equals resolved_field_count, and the "
             "registry row is campaign_validated."
         ),
@@ -54,12 +55,12 @@ FILING_MANIFEST = {
         "ticker": "REI.UN",
         "company_name": "RioCan Real Estate Investment Trust",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\RioCan_FY2025_annual_financials.pdf.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\REI_UN_FY2025.pdf",
         "commit": "d8dd41c",
         "notes": (
-            "Source PDF has .pdf.pdf double extension; filing_date resolved by cover-page extraction input; "
-            r"byte-identical duplicate exists at C:\Users\riley\.finlens\pdfs\REI_UN_2025.pdf; "
-            "only library-registered filer."
+            "filing_date resolved by cover-page extraction input; PDF consolidated to canonical pdfs root "
+            "2026-06-17 (legacy .pdf.pdf double extension removed); byte-identical duplicate removed during "
+            "the same consolidation; only library-registered filer."
         ),
     },
     "SHOP_FY2025_sedar.json": {
@@ -67,7 +68,7 @@ FILING_MANIFEST = {
         "ticker": "SHOP",
         "company_name": "Shopify Inc.",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\SHOP_FY2025_annual_financials.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\SHOP_FY2025.pdf",
         "commit": "b6e79c5",
         "notes": "",
     },
@@ -76,7 +77,7 @@ FILING_MANIFEST = {
         "ticker": "ATD",
         "company_name": "Alimentation Couche-Tard Inc.",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\sedar\filings\ATD_FY2025_annual_financials.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\ATD_FY2025.pdf",
         "commit": "e941cb7",
         "notes": (
             "Stored fixture mapping is aligned after the IFRS-standard normalizer refresh: "
@@ -89,12 +90,12 @@ FILING_MANIFEST = {
         "ticker": "CNQ",
         "company_name": "Canadian Natural Resources Limited",
         "fiscal_year": "FY2024",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CNQ_FY2024_financial_statements.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CNQ_FY2024.pdf",
         "commit": "be3c4c0",
         "notes": (
-            "Fixture filename is lowercase (predates casing convention); two source PDFs exist: "
-            r"C:\Users\riley\.finlens\pdfs\CNQ_FY2024.pdf is the CID-unreadable annual report, "
-            "and Q4 financial statements were used for extraction."
+            "Fixture filename is lowercase (predates casing convention). The CID-unreadable annual-report "
+            "wrapper was moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical CNQ_FY2024.pdf "
+            "is now the Q4 financial statements used for extraction."
         ),
     },
     "CARUN_FY2024_sedar.json": {
@@ -102,7 +103,7 @@ FILING_MANIFEST = {
         "ticker": "CAR.UN",
         "company_name": "Canadian Apartment Properties REIT",
         "fiscal_year": "FY2024",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CARUN_FY2024_annual_report.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\CAR_UN_FY2024.pdf",
         "commit": "e012859",
         "notes": "",
     },
@@ -111,7 +112,7 @@ FILING_MANIFEST = {
         "ticker": "DIR.UN",
         "company_name": "Dream Industrial REIT",
         "fiscal_year": "FY2024",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\DIRUN_FY2024_annual_report.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\DIR_UN_FY2024.pdf",
         "commit": "24cf477",
         "notes": "",
     },
@@ -120,11 +121,11 @@ FILING_MANIFEST = {
         "ticker": "AEM",
         "company_name": "Agnico Eagle Mines Limited",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\Agnico_2025-Annual-Report.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\AEM_FY2025.pdf",
         "commit": "60cfff3",
         "notes": (
-            "Tier-3 manual issuer download; orphan superseded FY2024 mirror PDF exists at "
-            r"C:\Users\riley\.finlens\pdfs\AEM_FY2024_annual_report.pdf for design evidence only."
+            "Tier-3 manual issuer download; superseded FY2024 mirror moved to pdfs/_superseded/ during "
+            "2026-06-17 consolidation; canonical is AEM_FY2025.pdf."
         ),
     },
     "TECKB_FY2025_sedar.json": {
@@ -132,7 +133,7 @@ FILING_MANIFEST = {
         "ticker": "TECK.B",
         "company_name": "Teck Resources Limited",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\Teck-Annual-Financial-Statements-2025.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\TECK_B_FY2025.pdf",
         "commit": None,
         "notes": (
             "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector "
@@ -144,7 +145,7 @@ FILING_MANIFEST = {
         "ticker": "IFC",
         "company_name": "Intact Financial Corporation",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\IFC_FY2025_financial_statements.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\IFC_FY2025.pdf",
         "commit": None,
         "notes": (
             "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Resolves "
@@ -157,7 +158,7 @@ FILING_MANIFEST = {
         "ticker": "SLF",
         "company_name": "Sun Life Financial Inc.",
         "fiscal_year": "FY2025",
-        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\SLF_FY2025_financial_statements.pdf",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\SLF_FY2025.pdf",
         "commit": None,
         "notes": (
             "Manual issuer download; second insurance filer and first LIFE insurer. Standalone Q4 "
@@ -171,10 +172,11 @@ FILING_MANIFEST = {
 
 
 REGISTRY_NOTES = [
-    "AEM FY2024 annualreports.com mirror PDF and extraction artifact are superseded design-evidence only (f52ca62).",
-    "CNQ has two source PDFs: the annual report is CID-unreadable, so issuer-hosted Q4 financial statements were used.",
-    r"REI.UN source PDF is duplicated across C:\Users\riley\.finlens\sedar\filings and C:\Users\riley\.finlens\pdfs.",
-    "CNR, CSU, RioCan/REI.UN, and RY source PDFs carry the legacy .pdf.pdf double extension.",
+    "2026-06-17 storage consolidation: all campaign source PDFs moved to a single canonical root (~/.finlens/pdfs/) with TICKER_FYxxxx.pdf naming; superseded files in pdfs/_superseded/, non-campaign files in pdfs/_noncampaign/.",
+    "AEM FY2024 annualreports.com mirror PDF and extraction artifact are superseded design-evidence only (f52ca62); moved to pdfs/_superseded/ on 2026-06-17.",
+    "CNQ annual-report wrapper is CID-unreadable; the issuer-hosted Q4 financial statements are canonical (CNQ_FY2024.pdf); wrapper moved to pdfs/_superseded/ on 2026-06-17.",
+    "REI.UN byte-identical duplicate removed during the 2026-06-17 consolidation; canonical is pdfs/REI_UN_FY2025.pdf.",
+    "CNR, CSU, REI.UN, and RY legacy .pdf.pdf double extensions were removed during the 2026-06-17 consolidation.",
     "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
     "RY resolves through the financial_sector profile; the fixture now persists sector_inferred and its stored mapping is aligned.",
     "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated.",

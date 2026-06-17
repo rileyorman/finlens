@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-06-17T05:55:10Z",
+  "generated_at": "2026-06-17T16:39:32Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -10,7 +10,7 @@
       "sector": null,
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/CSU_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\CSU_FY2025_annual_financials.pdf.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CSU_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -19,7 +19,7 @@
       "resolved_field_count": 4,
       "filing_date": null,
       "commit": "f93868b",
-      "notes": "Source PDF has .pdf.pdf double extension; filing_date null reflects known cover-date gap."
+      "notes": "filing_date null reflects known cover-date gap. PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed)."
     },
     {
       "ticker": "CNR",
@@ -29,7 +29,7 @@
       "sector": null,
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/CNR_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\CNR_FY2025_annual_financials.pdf.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CNR_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -38,7 +38,7 @@
       "resolved_field_count": 5,
       "filing_date": "2026-02-04",
       "commit": "49f14d0",
-      "notes": "Source PDF has .pdf.pdf double extension."
+      "notes": "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed)."
     },
     {
       "ticker": "RY",
@@ -48,7 +48,7 @@
       "sector": "financial_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/RY_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RY_FY2025_annual_financials.pdf.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\RY_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -57,7 +57,7 @@
       "resolved_field_count": 5,
       "filing_date": "2025-12-02",
       "commit": "49f14d0",
-      "notes": "Source PDF has .pdf.pdf double extension. Stored fixture mapping is aligned with the financial_sector profile: stored_field_count equals resolved_field_count, and the registry row is campaign_validated."
+      "notes": "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed). Stored fixture mapping is aligned with the financial_sector profile: stored_field_count equals resolved_field_count, and the registry row is campaign_validated."
     },
     {
       "ticker": "REI.UN",
@@ -67,7 +67,7 @@
       "sector": "reit_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/REIUN_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RioCan_FY2025_annual_financials.pdf.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\REI_UN_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -76,7 +76,7 @@
       "resolved_field_count": 7,
       "filing_date": "2026-02-17",
       "commit": "d8dd41c",
-      "notes": "Source PDF has .pdf.pdf double extension; filing_date resolved by cover-page extraction input; byte-identical duplicate exists at C:\\Users\\riley\\.finlens\\pdfs\\REI_UN_2025.pdf; only library-registered filer."
+      "notes": "filing_date resolved by cover-page extraction input; PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed); byte-identical duplicate removed during the same consolidation; only library-registered filer."
     },
     {
       "ticker": "SHOP",
@@ -86,7 +86,7 @@
       "sector": null,
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/SHOP_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\SHOP_FY2025_annual_financials.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SHOP_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -105,7 +105,7 @@
       "sector": null,
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/ATD_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\sedar\\filings\\ATD_FY2025_annual_financials.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\ATD_FY2025.pdf",
       "provenance": {
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
@@ -124,7 +124,7 @@
       "sector": "resource_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/cnq_fy2024_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024_financial_statements.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024.pdf",
       "provenance": {
         "issuer_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
@@ -133,7 +133,7 @@
       "resolved_field_count": 6,
       "filing_date": "2025-03-05",
       "commit": "be3c4c0",
-      "notes": "Fixture filename is lowercase (predates casing convention); two source PDFs exist: C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024.pdf is the CID-unreadable annual report, and Q4 financial statements were used for extraction."
+      "notes": "Fixture filename is lowercase (predates casing convention). The CID-unreadable annual-report wrapper was moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical CNQ_FY2024.pdf is now the Q4 financial statements used for extraction."
     },
     {
       "ticker": "CAR.UN",
@@ -143,7 +143,7 @@
       "sector": "reit_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/CARUN_FY2024_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CARUN_FY2024_annual_report.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CAR_UN_FY2024.pdf",
       "provenance": {
         "issuer_url": "https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
@@ -162,7 +162,7 @@
       "sector": "reit_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/DIRUN_FY2024_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\DIRUN_FY2024_annual_report.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\DIR_UN_FY2024.pdf",
       "provenance": {
         "issuer_url": "https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
@@ -181,7 +181,7 @@
       "sector": "mining_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/AEM_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\Agnico_2025-Annual-Report.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2025.pdf",
       "provenance": {
         "issuer_url": "https://www.agnicoeagle.com/English/investor-relations/financial-reports/default.aspx",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
@@ -190,7 +190,7 @@
       "resolved_field_count": 7,
       "filing_date": "2026-02-12",
       "commit": "60cfff3",
-      "notes": "Tier-3 manual issuer download; orphan superseded FY2024 mirror PDF exists at C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2024_annual_report.pdf for design evidence only."
+      "notes": "Tier-3 manual issuer download; superseded FY2024 mirror moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical is AEM_FY2025.pdf."
     },
     {
       "ticker": "TECK.B",
@@ -200,7 +200,7 @@
       "sector": "mining_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/TECKB_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\Teck-Annual-Financial-Statements-2025.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\TECK_B_FY2025.pdf",
       "provenance": {
         "issuer_url": "https://www.teck.com/investors/financial-reports/",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
@@ -219,7 +219,7 @@
       "sector": "insurance_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/IFC_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\IFC_FY2025_financial_statements.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\IFC_FY2025.pdf",
       "provenance": {
         "issuer_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
         "retrieval_method": "manual browser download from issuer IR"
@@ -238,7 +238,7 @@
       "sector": "insurance_sector",
       "validation_status": "campaign_validated",
       "fixture_path": "tests/fixtures/SLF_FY2025_sedar.json",
-      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025_financial_statements.pdf",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025.pdf",
       "provenance": {
         "issuer_url": "https://www.sunlife.com/content/dam/sunlife/regional/global-marketing/documents/com/pa-e-q425-2025-fin-stats.pdf",
         "retrieval_method": "manual browser download from issuer IR"
@@ -251,10 +251,11 @@
     }
   ],
   "registry_notes": [
-    "AEM FY2024 annualreports.com mirror PDF and extraction artifact are superseded design-evidence only (f52ca62).",
-    "CNQ has two source PDFs: the annual report is CID-unreadable, so issuer-hosted Q4 financial statements were used.",
-    "REI.UN source PDF is duplicated across C:\\Users\\riley\\.finlens\\sedar\\filings and C:\\Users\\riley\\.finlens\\pdfs.",
-    "CNR, CSU, RioCan/REI.UN, and RY source PDFs carry the legacy .pdf.pdf double extension.",
+    "2026-06-17 storage consolidation: all campaign source PDFs moved to a single canonical root (~/.finlens/pdfs/) with TICKER_FYxxxx.pdf naming; superseded files in pdfs/_superseded/, non-campaign files in pdfs/_noncampaign/.",
+    "AEM FY2024 annualreports.com mirror PDF and extraction artifact are superseded design-evidence only (f52ca62); moved to pdfs/_superseded/ on 2026-06-17.",
+    "CNQ annual-report wrapper is CID-unreadable; the issuer-hosted Q4 financial statements are canonical (CNQ_FY2024.pdf); wrapper moved to pdfs/_superseded/ on 2026-06-17.",
+    "REI.UN byte-identical duplicate removed during the 2026-06-17 consolidation; canonical is pdfs/REI_UN_FY2025.pdf.",
+    "CNR, CSU, REI.UN, and RY legacy .pdf.pdf double extensions were removed during the 2026-06-17 consolidation.",
     "cnq_fy2024_sedar.json uses lowercase fixture naming and predates the current casing convention.",
     "RY resolves through the financial_sector profile; the fixture now persists sector_inferred and its stored mapping is aligned.",
     "ATD and RY stored mappings have been realigned with the current mapper; both registry rows are campaign_validated.",

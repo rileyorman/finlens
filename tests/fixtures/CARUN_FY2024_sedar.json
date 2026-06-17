@@ -1,6 +1,7 @@
 {
   "source": "sedar_pdf",
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CAR_UN_FY2024.pdf",
     "pdf_origin_url": "https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf",
     "sedar_access_note": "SEDAR+ document search was attempted first; Radware CAPTCHA blocked programmatic access to the canonical SEDAR+ path.",
     "document_note": "Issuer-hosted FY2024 annual report PDF (CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf), retrieved 2026-06-13. This is the preferred annual-report artifact tier and was confirmed readable by pdfplumber.",

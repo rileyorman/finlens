@@ -1,10 +1,11 @@
 {
   "source": "sedar_pdf",
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024.pdf",
     "ground_truth_verified": {
       "verified_date": "2026-06-17",
       "verified_by": "Riley (hand-check vs source PDF)",
-      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024_financial_statements.pdf",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\CNQ_FY2024.pdf",
       "source_pdf_note": "25-page Q4 financial statements pack; NOT the 121-page CNQ_FY2024.pdf annual-report wrapper",
       "reporting_basis": "interim_unaudited",
       "statement_pages": "Statement of Earnings (Year Ended Dec 31 2024 column) + balance sheet",

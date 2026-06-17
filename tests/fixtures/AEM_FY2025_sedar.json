@@ -1,19 +1,20 @@
 {
   "source": "sedar_pdf",
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2025.pdf",
     "ground_truth_verified": {
       "verified_date": "2026-06-17",
       "verified_by": "Riley (hand-check vs source PDF)",
-      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\Agnico_2025-Annual-Report.pdf",
-      "source_pdf_note": "150-page FY2025 annual report; page 1 confirms '2025 Annual Report', CreationDate Mar 18 2026. Canonical. A superseded FY2024 mirror (AEM_FY2024_annual_report.pdf, 165pg) still exists on disk and is NOT canonical — flagged for the pending PDF storage consolidation, not actioned here. AEM previously had NO canonical local-path anchor in its fixture (only filing_registry.json pointed to the canonical file); this block closes that anchor gap.",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\AEM_FY2025.pdf",
+      "source_pdf_note": "150-page FY2025 annual report; page 1 confirms '2025 Annual Report', CreationDate Mar 18 2026. Canonical. A superseded FY2024 mirror (AEM_FY2024_annual_report.pdf, 165pg) was moved to pdfs/_superseded/ during the 2026-06-17 storage consolidation and is NOT canonical. AEM previously had NO canonical local-path anchor in its fixture (only filing_registry.json pointed to the canonical file); this block closes that anchor gap.",
       "statement_pages": "Consolidated Statements of Income p.112; Consolidated Balance Sheets p.111 (PDF page numbers, FY2025 / 'Year Ended December 31, 2025' column)",
       "fields_confirmed": "revenue 11907851 (Revenues from mining operations), production_costs 3340684 (Production), exploration_expense 206684 (Exploration and corporate development), mine_development_amortization 1645297 (Amortization of property, plant and mine development), interest_expense 91145 (Finance costs, Note 14), net_income 4461461 (Net income for the year), total_assets 34471291 (As at December 31, 2025)",
-      "notes": "Balance-sheet identity ties: liabilities 9728827 + equity 24742464 = assets 34471291. Income ladder ties: 6703911 before tax - 2242450 tax = 4461461 net income. BOUNDARY (1): interest_expense maps the single 'Finance costs' line - the closest available line, but 'Finance costs' may bundle non-interest financing charges (lease finance, accretion) and is NOT broken out to pure interest on the face of the statement. Value correct; do not change. Flag for any ratio that assumes pure interest. (2): Production carries footnote '(i)' = 'Exclusive of amortization, which is shown separately', so production_costs and mine_development_amortization are DISJOINT (no double-count) - confirmed clean. NOTE: existing document_note in this fixture cites 'PDF page 96' for the income statement on a different page-numbering basis than the p.112/p.111 recorded here; reconcile during storage consolidation, not changed in this pass."
+      "notes": "Balance-sheet identity ties: liabilities 9728827 + equity 24742464 = assets 34471291. Income ladder ties: 6703911 before tax - 2242450 tax = 4461461 net income. BOUNDARY (1): interest_expense maps the single 'Finance costs' line - the closest available line, but 'Finance costs' may bundle non-interest financing charges (lease finance, accretion) and is NOT broken out to pure interest on the face of the statement. Value correct; do not change. Flag for any ratio that assumes pure interest. (2): Production carries footnote '(i)' = 'Exclusive of amortization, which is shown separately', so production_costs and mine_development_amortization are DISJOINT (no double-count) - confirmed clean. NOTE: page references standardized to whole-PDF basis (income statement p.112, balance sheet p.111) during the 2026-06-17 storage consolidation; the document_note's earlier 'page 96' was a section-relative basis for the same FY2025 document."
     },
     "pdf_origin_url": "https://www.agnicoeagle.com/English/investor-relations/financial-reports/default.aspx",
     "sedar_access_note": "SEDAR+ skipped per CAPTCHA finding; issuer IR Cloudflare-blocked to automated fetch",
     "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13",
-    "document_note": "FY2025 annual report; consolidated statements of income extracted from PDF page 96, reporting Year Ended December 31, 2025.",
+    "document_note": "FY2025 annual report; consolidated statements of income on PDF page 112 (whole-PDF basis), reporting Year Ended December 31, 2025.",
     "future_pattern": "tier-3 manual issuer download is acceptable when IR is Cloudflare-blocked; mirrors are not"
   },
   "schema_version": 5,

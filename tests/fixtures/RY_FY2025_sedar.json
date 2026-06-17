@@ -1119,10 +1119,11 @@
     ]
   },
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\RY_FY2025.pdf",
     "ground_truth_verified": {
       "verified_date": "2026-06-17",
       "verified_by": "Riley (hand-check vs source PDF, prior session)",
-      "source_pdf": "C:\\Users\\riley\\.finlens\\sedar\\filings\\RY_FY2025_annual_financials.pdf.pdf",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\RY_FY2025.pdf",
       "statement_pages": "Income statement + balance sheet (FY2025 column); specific page refs not captured in prior-session check",
       "fields_confirmed": "net_interest_income 33000, revenue 66605, provision_for_credit_losses 4362, net_income 20369, total_assets 2325006",
       "notes": "Income statement + total_assets confirmed against source (see GROUND-TRUTH CHECK banner in SESSION_HANDOFF.md). Balance-sheet identity ties: liabilities 2185855 + equity 139151 = assets 2325006. Values per prior-session verification, not re-derived this pass."

@@ -1,6 +1,7 @@
 {
   "source": "sedar_pdf",
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\TECK_B_FY2025.pdf",
     "pdf_origin_url": "https://www.teck.com/investors/financial-reports/",
     "sedar_access_note": "SEDAR+ skipped per CAPTCHA finding",
     "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13",

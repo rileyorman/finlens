@@ -1398,10 +1398,11 @@
     }
   },
   "source_provenance": {
+    "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025.pdf",
     "ground_truth_verified": {
       "verified_date": "2026-06-17",
       "verified_by": "Riley (hand-check vs source PDF)",
-      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025_financial_statements.pdf",
+      "source_pdf": "C:\\Users\\riley\\.finlens\\pdfs\\SLF_FY2025.pdf",
       "statement_pages": "Statement of Operations p.10; balance sheet p.12 (2025 column); filing date on p.12",
       "fields_confirmed": "insurance_revenue 23982, insurance_service_expenses -20414, net_insurance_service_result 3474, insurance_finance_result -6787, net_investment_result 1818, net_income 3782, total_assets 398455",
       "notes": "Balance-sheet identity ties: liabilities 372963 + equity 25492 = assets 398455. Filing date Feb 11 2026 confirmed on p.12. insurance_finance_result correctly maps the GROSS 'insurance finance income (expenses) from insurance contracts issued' line (-6787); confirmed by hand that SLF has NO net insurance-finance rollup (reinsurance-held 69 and segregated-fund -1901 are separate lines). Cross-insurer gross-line decision confirmed correct against source."
