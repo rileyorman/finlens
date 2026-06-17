@@ -851,6 +851,12 @@
         "source_label": "Net income for the year",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 34471291,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -925,14 +931,142 @@
       {
         "label": "Comprehensive income for the year",
         "value": 5139067
+      },
+      {
+        "label": "Cash and cash equivalents (Note 20)",
+        "value": 2866053
+      },
+      {
+        "label": "Inventories (Note 7)",
+        "value": 1698830
+      },
+      {
+        "label": "Income taxes recoverable",
+        "value": 9435
+      },
+      {
+        "label": "Fair value of derivative financial instruments (Notes 6 and 21)",
+        "value": 34428
+      },
+      {
+        "label": "Other current assets (Note 8A)",
+        "value": 385196
+      },
+      {
+        "label": "Total current assets",
+        "value": 4993942
+      },
+      {
+        "label": "Goodwill (Notes 23 and 24)",
+        "value": 4157672
+      },
+      {
+        "label": "Property, plant and mine development (Note 9)",
+        "value": 22850540
+      },
+      {
+        "label": "Investments (Notes 6 and 10)",
+        "value": 1508252
+      },
+      {
+        "label": "Deferred income and mining tax asset (Note 25)",
+        "value": 17821
+      },
+      {
+        "label": "Other assets (Note 8B)",
+        "value": 943064
+      },
+      {
+        "label": "Accounts payable and accrued liabilities (Note 11)",
+        "value": 1033444
+      },
+      {
+        "label": "Share based liabilities (Note 17)",
+        "value": 31722
+      },
+      {
+        "label": "Income taxes payable",
+        "value": 1226347
+      },
+      {
+        "label": "Current portion of long-term debt (Note 14)",
+        "value": 0
+      },
+      {
+        "label": "Reclamation provision (Note 12)",
+        "value": 144537
+      },
+      {
+        "label": "Lease obligations (Note 13)",
+        "value": 30480
+      },
+      {
+        "label": "Fair value of derivative financial instruments (Notes 6 and 21)",
+        "value": 5676
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 2472206
+      },
+      {
+        "label": "Long-term debt (Note 14)",
+        "value": 196271
+      },
+      {
+        "label": "Reclamation provision (Note 12)",
+        "value": 1318476
+      },
+      {
+        "label": "Lease obligations (Note 13)",
+        "value": 94719
+      },
+      {
+        "label": "Share based liabilities (Note 17)",
+        "value": 23921
+      },
+      {
+        "label": "Deferred income and mining tax liabilities (Note 25)",
+        "value": 5373013
+      },
+      {
+        "label": "Other liabilities (Note 15)",
+        "value": 250221
+      },
+      {
+        "label": "Total liabilities",
+        "value": 9728827
+      },
+      {
+        "label": "Common shares \u2013 Outstanding \u2013 500,768,400 common shares issued, less 721,800 shares held in trust",
+        "value": 18699862
+      },
+      {
+        "label": "Stock options (Notes 16 and 17)",
+        "value": 166775
+      },
+      {
+        "label": "Retained earnings",
+        "value": 5463906
+      },
+      {
+        "label": "Other reserves (Note 18)",
+        "value": 411921
+      },
+      {
+        "label": "Total equity",
+        "value": 24742464
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 34471291
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "mining_sector",
-      "total": 25,
-      "mapped_count": 6,
-      "unmapped_count": 18,
+      "total": 58,
+      "mapped_count": 7,
+      "unmapped_count": 50,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

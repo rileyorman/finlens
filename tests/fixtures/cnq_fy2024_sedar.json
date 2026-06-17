@@ -874,6 +874,12 @@
         "source_label": "Net earnings",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 85359,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -960,14 +966,118 @@
       {
         "label": "Comprehensive income",
         "value": 6235
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 131
+      },
+      {
+        "label": "Accounts receivable",
+        "value": 4126
+      },
+      {
+        "label": "Inventory",
+        "value": 2793
+      },
+      {
+        "label": "Prepaids and other",
+        "value": 279
+      },
+      {
+        "label": "Investments",
+        "value": 0
+      },
+      {
+        "label": "Current portion of other long-term assets",
+        "value": 76
+      },
+      {
+        "label": "Total current assets",
+        "value": 7405
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "value": 2526
+      },
+      {
+        "label": "Property, plant and equipment",
+        "value": 73414
+      },
+      {
+        "label": "Lease assets",
+        "value": 1394
+      },
+      {
+        "label": "Other long-term assets",
+        "value": 620
+      },
+      {
+        "label": "Accounts payable",
+        "value": 1079
+      },
+      {
+        "label": "Accrued liabilities",
+        "value": 4525
+      },
+      {
+        "label": "Current income taxes payable",
+        "value": 92
+      },
+      {
+        "label": "Current portion of long-term debt",
+        "value": 2400
+      },
+      {
+        "label": "Current portion of other long-term liabilities",
+        "value": 1535
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 9631
+      },
+      {
+        "label": "Long-term debt",
+        "value": 16419
+      },
+      {
+        "label": "Other long-term liabilities",
+        "value": 9302
+      },
+      {
+        "label": "Deferred income taxes",
+        "value": 10539
+      },
+      {
+        "label": "Total liabilities",
+        "value": 45891
+      },
+      {
+        "label": "Share capital",
+        "value": 11064
+      },
+      {
+        "label": "Retained earnings",
+        "value": 28103
+      },
+      {
+        "label": "Accumulated other comprehensive income",
+        "value": 301
+      },
+      {
+        "label": "Total shareholders' equity",
+        "value": 39468
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "value": 85359
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "resource_sector",
-      "total": 27,
-      "mapped_count": 5,
-      "unmapped_count": 21,
+      "total": 54,
+      "mapped_count": 6,
+      "unmapped_count": 47,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

@@ -72,6 +72,7 @@ def normalize_financial_data(financial_data: dict) -> dict:
         "revenue",
         "net_income",
         "gross_profit",
+        "total_assets",
     ):
         v = financial_data.get(key)
         if isinstance(v, (int, float)):

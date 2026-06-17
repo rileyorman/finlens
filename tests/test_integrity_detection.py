@@ -162,6 +162,65 @@ def test_sedar_accounting_standard_recorded_as_info_only():
     assert result.to_dict()["accounting_standard"] == "IFRS"
 
 
+def test_sedar_total_assets_identity_passes_when_combined_line_matches():
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "total_assets": 2325006,
+        "mapping": {"mapped": {"total_assets": {"value": 2325006}}},
+        "balance_sheet": [
+            {"line_item": "Total liabilities and equity", "value": 2325006},
+        ],
+    }
+
+    result = validate_filing(data, "RY", "Financial Services", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_total_assets_identity")
+    assert check.severity == "warn"
+    assert check.passed
+    assert not check.skipped
+    assert check.observed_value == 0
+
+
+def test_sedar_total_assets_identity_flags_mismatch():
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "total_assets": 2325006,
+        "mapping": {"mapped": {"total_assets": {"value": 2325006}}},
+        "balance_sheet": [
+            {"line_item": "Total liabilities and shareholders' equity", "value": 2325005},
+        ],
+    }
+
+    result = validate_filing(data, "RY", "Financial Services", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_total_assets_identity")
+    assert not check.passed
+    assert not check.skipped
+    assert check.observed_value == 1
+    assert "absolute difference" in check.message
+
+
+def test_sedar_total_assets_identity_logs_skip_when_combined_line_missing():
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "total_assets": 2325006,
+        "mapping": {"mapped": {"total_assets": {"value": 2325006}}},
+        "balance_sheet": [
+            {"line_item": "Total liabilities", "value": 2185855},
+        ],
+    }
+
+    result = validate_filing(data, "RY", "Financial Services", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_total_assets_identity")
+    assert check.passed
+    assert check.skipped
+    assert check.skip_reason == "field_unavailable"
+
+
 def test_unresolved_ticker_uses_company_name_and_runs_available_rules(tmp_path):
     """Filings without a resolvable ticker log under company name with ticker_unresolved=True,
     rules fire on available fields, and two different company entries don't collide on dedup."""

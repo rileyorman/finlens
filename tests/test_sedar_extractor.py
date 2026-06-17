@@ -146,6 +146,8 @@ def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
     assert result["pages_used"]["balance_sheet"] == [1, 2]
     assert set(result["statements"].keys()) == {"balance_sheet", "income_statement", "cash_flow"}
     assert result["statements"]["income_statement"][0]["values"]["2025"] == -250
+    assert result["mapping"]["mapped"]["total_assets"]["value"] == 10000
+    assert result["mapping"]["mapped"]["total_assets"]["source_label"] == "Total assets"
     assert result["extraction_confidence"] == pytest.approx(0.88)
 
 

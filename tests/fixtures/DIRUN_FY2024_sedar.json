@@ -729,6 +729,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 8122554,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -799,14 +805,114 @@
       {
         "label": "Comprehensive income",
         "value": 291159
+      },
+      {
+        "label": "Investment properties",
+        "value": 7031713
+      },
+      {
+        "label": "Equity accounted investments",
+        "value": 879061
+      },
+      {
+        "label": "Derivatives and other non-current assets",
+        "value": 42449
+      },
+      {
+        "label": "Total non-current assets",
+        "value": 7953223
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 80277
+      },
+      {
+        "label": "Amounts receivable",
+        "value": 28816
+      },
+      {
+        "label": "Prepaid expenses and other assets",
+        "value": 46482
+      },
+      {
+        "label": "Total current assets",
+        "value": 155575
+      },
+      {
+        "label": "Asset held for sale",
+        "value": 13756
+      },
+      {
+        "label": "Non-current debt",
+        "value": 2098543
+      },
+      {
+        "label": "Deferred income tax liabilities, net",
+        "value": 53727
+      },
+      {
+        "label": "Derivatives and other non-current liabilities",
+        "value": 71202
+      },
+      {
+        "label": "Total non-current liabilities",
+        "value": 2223472
+      },
+      {
+        "label": "Current debt",
+        "value": 870407
+      },
+      {
+        "label": "Subsidiary redeemable units",
+        "value": 157623
+      },
+      {
+        "label": "Amounts payable and accrued liabilities",
+        "value": 128295
+      },
+      {
+        "label": "Deferred Unit Incentive Plan (\"DUIP\")",
+        "value": 9786
+      },
+      {
+        "label": "Current income tax liabilities",
+        "value": 1898
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 1168009
+      },
+      {
+        "label": "Total liabilities",
+        "value": 3391481
+      },
+      {
+        "label": "Unitholders' equity",
+        "value": 3399261
+      },
+      {
+        "label": "Retained earnings",
+        "value": 1256934
+      },
+      {
+        "label": "Accumulated other comprehensive income",
+        "value": 74878
+      },
+      {
+        "label": "Total equity",
+        "value": 4731073
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 8122554
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
-      "total": 22,
-      "mapped_count": 5,
-      "unmapped_count": 17,
+      "total": 48,
+      "mapped_count": 6,
+      "unmapped_count": 42,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

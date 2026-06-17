@@ -44,13 +44,14 @@ def _mapper_source_value(values: dict) -> int | float | None:
 
 def _line_items_from_fixture(fixture: dict) -> list[dict]:
     rows = []
-    for item in fixture["statements"]["income_statement"]:
-        values = item.get("values") or {}
-        rows.append({
-            "label": item["label"],
-            "value": _mapper_source_value(values),
-            "confidence": item.get("confidence"),
-        })
+    for statement_key in ("income_statement", "balance_sheet"):
+        for item in fixture["statements"][statement_key]:
+            values = item.get("values") or {}
+            rows.append({
+                "label": item["label"],
+                "value": _mapper_source_value(values),
+                "confidence": item.get("confidence"),
+            })
     return rows
 
 

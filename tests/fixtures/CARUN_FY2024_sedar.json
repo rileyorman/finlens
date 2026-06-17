@@ -886,6 +886,12 @@
         "source_label": "Net income (loss)",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 15576093,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -984,14 +990,146 @@
       {
         "label": "Comprehensive income (loss)",
         "value": 314833
+      },
+      {
+        "label": "Investment properties",
+        "value": 14868362
+      },
+      {
+        "label": "Vendor takeback mortgages receivable",
+        "value": 130161
+      },
+      {
+        "label": "Investments held at fair value through profit or loss",
+        "value": 2364
+      },
+      {
+        "label": "Derivative assets",
+        "value": 8813
+      },
+      {
+        "label": "Deferred income tax asset",
+        "value": 11793
+      },
+      {
+        "label": "Other assets",
+        "value": 27110
+      },
+      {
+        "label": "Total non-current assets",
+        "value": 15048603
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 136243
+      },
+      {
+        "label": "Amounts receivable",
+        "value": 17384
+      },
+      {
+        "label": "Derivative assets",
+        "value": 10263
+      },
+      {
+        "label": "Other assets",
+        "value": 56140
+      },
+      {
+        "label": "Assets held for sale",
+        "value": 307460
+      },
+      {
+        "label": "Total current assets",
+        "value": 527490
+      },
+      {
+        "label": "Debt",
+        "value": 5347694
+      },
+      {
+        "label": "Deferred income tax liability",
+        "value": 32076
+      },
+      {
+        "label": "Unit-based compensation financial liabilities",
+        "value": 12305
+      },
+      {
+        "label": "Other liabilities",
+        "value": 45462
+      },
+      {
+        "label": "Total non-current liabilities",
+        "value": 5437537
+      },
+      {
+        "label": "Debt",
+        "value": 644320
+      },
+      {
+        "label": "ERES units held by non-controlling unitholders",
+        "value": 170018
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 101760
+      },
+      {
+        "label": "Exchangeable LP Units",
+        "value": 70220
+      },
+      {
+        "label": "Unit-based compensation financial liabilities",
+        "value": 12326
+      },
+      {
+        "label": "Derivative liabilities",
+        "value": 3684
+      },
+      {
+        "label": "Other liabilities",
+        "value": 108916
+      },
+      {
+        "label": "Liabilities related to assets held for sale",
+        "value": 0
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 1111244
+      },
+      {
+        "label": "Total liabilities",
+        "value": 6548781
+      },
+      {
+        "label": "Unit capital",
+        "value": 4226115
+      },
+      {
+        "label": "Retained earnings",
+        "value": 4791648
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "value": 9549
+      },
+      {
+        "label": "Total unitholders' equity",
+        "value": 9027312
+      },
+      {
+        "label": "Total liabilities and unitholders' equity",
+        "value": 15576093
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
-      "total": 29,
-      "mapped_count": 5,
-      "unmapped_count": 24,
+      "total": 63,
+      "mapped_count": 6,
+      "unmapped_count": 57,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

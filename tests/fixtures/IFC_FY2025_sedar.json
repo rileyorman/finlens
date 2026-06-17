@@ -936,6 +936,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 62868,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1106,14 +1112,130 @@
       {
         "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
         "value": 0
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 1365
+      },
+      {
+        "label": "Debt securities",
+        "value": 30959
+      },
+      {
+        "label": "Preferred shares",
+        "value": 1548
+      },
+      {
+        "label": "Common shares",
+        "value": 7190
+      },
+      {
+        "label": "Investment property",
+        "value": 701
+      },
+      {
+        "label": "Loans",
+        "value": 805
+      },
+      {
+        "label": "Total investments",
+        "value": 42568
+      },
+      {
+        "label": "Reinsurance contract assets",
+        "value": 4548
+      },
+      {
+        "label": "Income taxes receivable",
+        "value": 68
+      },
+      {
+        "label": "Deferred tax assets",
+        "value": 746
+      },
+      {
+        "label": "Investments in associates and joint ventures",
+        "value": 1144
+      },
+      {
+        "label": "Property and equipment",
+        "value": 865
+      },
+      {
+        "label": "Intangible assets",
+        "value": 4901
+      },
+      {
+        "label": "Goodwill",
+        "value": 4889
+      },
+      {
+        "label": "Other assets",
+        "value": 3139
+      },
+      {
+        "label": "Insurance contract liabilities",
+        "value": 32550
+      },
+      {
+        "label": "Income taxes payable",
+        "value": 433
+      },
+      {
+        "label": "Deferred tax liabilities",
+        "value": 497
+      },
+      {
+        "label": "Debt outstanding",
+        "value": 4426
+      },
+      {
+        "label": "Other liabilities",
+        "value": 4126
+      },
+      {
+        "label": "Total liabilities",
+        "value": 42032
+      },
+      {
+        "label": "Common shares",
+        "value": 8089
+      },
+      {
+        "label": "Preferred shares and other equity",
+        "value": 1766
+      },
+      {
+        "label": "Share capital",
+        "value": 9855
+      },
+      {
+        "label": "Contributed surplus",
+        "value": 343
+      },
+      {
+        "label": "Retained earnings",
+        "value": 10316
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "value": 322
+      },
+      {
+        "label": "Total equity",
+        "value": 20836
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 62868
       }
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "insurance_sector",
-      "total": 49,
-      "mapped_count": 6,
-      "unmapped_count": 42,
+      "total": 79,
+      "mapped_count": 7,
+      "unmapped_count": 71,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

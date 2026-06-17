@@ -1073,6 +1073,12 @@
         "source_label": "Net income (loss)",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 16171,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1227,14 +1233,170 @@
       {
         "label": "Total comprehensive income (loss) attributable to: Non-controlling interests (note 28)",
         "value": 202
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 3089
+      },
+      {
+        "label": "Accounts receivable (note 21)",
+        "value": 1470
+      },
+      {
+        "label": "Unbilled revenue (note 22)",
+        "value": 450
+      },
+      {
+        "label": "Inventories (note 5)",
+        "value": 68
+      },
+      {
+        "label": "Other assets (note 7)",
+        "value": 727
+      },
+      {
+        "label": "Current assets total",
+        "value": 5803
+      },
+      {
+        "label": "Property and equipment (note 8)",
+        "value": 241
+      },
+      {
+        "label": "Right of use assets (note 9)",
+        "value": 384
+      },
+      {
+        "label": "Deferred income taxes (note 16)",
+        "value": 355
+      },
+      {
+        "label": "Investments accounted for using the equity method (note 6)",
+        "value": 655
+      },
+      {
+        "label": "Other assets (note 7)",
+        "value": 345
+      },
+      {
+        "label": "Intangible assets (note 10)",
+        "value": 8388
+      },
+      {
+        "label": "Non-current assets total",
+        "value": 10368
+      },
+      {
+        "label": "Debt with recourse to Constellation Software Inc. (note 11)",
+        "value": 0
+      },
+      {
+        "label": "Liability of CSI under the IRGA (note 11)",
+        "value": 775
+      },
+      {
+        "label": "Debt without recourse to Constellation Software Inc. (note 12)",
+        "value": 591
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 1941
+      },
+      {
+        "label": "Dividends payable (note 17)",
+        "value": 21
+      },
+      {
+        "label": "Deferred revenue (note 22)",
+        "value": 2214
+      },
+      {
+        "label": "Provisions (note 13)",
+        "value": 17
+      },
+      {
+        "label": "Acquisition holdback payables",
+        "value": 224
+      },
+      {
+        "label": "Lease obligations (note 14)",
+        "value": 141
+      },
+      {
+        "label": "Income taxes payable",
+        "value": 150
+      },
+      {
+        "label": "Current liabilities total",
+        "value": 6074
+      },
+      {
+        "label": "Debt with recourse to Constellation Software Inc. (note 11)",
+        "value": 1489
+      },
+      {
+        "label": "Liability of CSI under the IRGA (note 11)",
+        "value": 458
+      },
+      {
+        "label": "Debt without recourse to Constellation Software Inc. (note 12)",
+        "value": 2051
+      },
+      {
+        "label": "Deferred income taxes (note 16)",
+        "value": 890
+      },
+      {
+        "label": "Acquisition holdback payables",
+        "value": 208
+      },
+      {
+        "label": "Lease obligations (note 14)",
+        "value": 282
+      },
+      {
+        "label": "Other liabilities (note 7)",
+        "value": 451
+      },
+      {
+        "label": "Non-current liabilities total",
+        "value": 5830
+      },
+      {
+        "label": "Total liabilities",
+        "value": 11904
+      },
+      {
+        "label": "Capital stock",
+        "value": 99
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "value": 130
+      },
+      {
+        "label": "Retained earnings",
+        "value": 3347
+      },
+      {
+        "label": "Non-controlling interests (note 28)",
+        "value": 692
+      },
+      {
+        "label": "Shareholders' equity total",
+        "value": 4267
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "value": 16171
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": null,
-      "total": 43,
-      "mapped_count": 3,
-      "unmapped_count": 38,
+      "total": 83,
+      "mapped_count": 4,
+      "unmapped_count": 77,
       "benign_skipped_count": 2,
       "benign_duplicates": [
         {

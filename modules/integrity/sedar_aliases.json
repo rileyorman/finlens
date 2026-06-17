@@ -129,6 +129,16 @@
     "gross_margin": {
       "aliases": [],
       "patterns": []
+    },
+    "total_assets": {
+      "aliases": [
+        {
+          "label": "total assets",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "default_balance_sheet"
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {

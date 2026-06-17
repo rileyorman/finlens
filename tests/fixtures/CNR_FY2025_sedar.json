@@ -873,6 +873,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 58555,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -967,14 +973,122 @@
       {
         "label": "Comprehensive income",
         "value": 4673
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 350
+      },
+      {
+        "label": "Restricted cash and cash equivalents",
+        "value": 13
+      },
+      {
+        "label": "Accounts receivable",
+        "value": 1117
+      },
+      {
+        "label": "Material and supplies",
+        "value": 734
+      },
+      {
+        "label": "Other current assets",
+        "value": 257
+      },
+      {
+        "label": "Total current assets",
+        "value": 2471
+      },
+      {
+        "label": "Properties",
+        "value": 49148
+      },
+      {
+        "label": "Operating lease right-of-use assets",
+        "value": 440
+      },
+      {
+        "label": "Pension asset",
+        "value": 5362
+      },
+      {
+        "label": "Deferred income tax assets",
+        "value": 611
+      },
+      {
+        "label": "Intangible assets, goodwill and other",
+        "value": 523
+      },
+      {
+        "label": "Accounts payable and other",
+        "value": 2790
+      },
+      {
+        "label": "Current portion of long-term debt",
+        "value": 906
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 3696
+      },
+      {
+        "label": "Deferred income tax liabilities",
+        "value": 11223
+      },
+      {
+        "label": "Other liabilities and deferred credits",
+        "value": 999
+      },
+      {
+        "label": "Pension and other postretirement benefits",
+        "value": 453
+      },
+      {
+        "label": "Long-term debt",
+        "value": 20300
+      },
+      {
+        "label": "Operating lease liabilities",
+        "value": 316
+      },
+      {
+        "label": "Total liabilities",
+        "value": 36987
+      },
+      {
+        "label": "Common shares",
+        "value": 3454
+      },
+      {
+        "label": "Common shares in Share Trusts",
+        "value": -152
+      },
+      {
+        "label": "Additional paid-in capital",
+        "value": 415
+      },
+      {
+        "label": "Accumulated other comprehensive loss",
+        "value": -1067
+      },
+      {
+        "label": "Retained earnings",
+        "value": 18918
+      },
+      {
+        "label": "Total shareholders' equity",
+        "value": 21568
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "value": 58555
       }
     ],
     "meta": {
       "accounting_standard": "US GAAP",
       "sector_profile": null,
-      "total": 28,
-      "mapped_count": 4,
-      "unmapped_count": 23,
+      "total": 56,
+      "mapped_count": 5,
+      "unmapped_count": 50,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

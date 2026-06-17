@@ -1143,6 +1143,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 2325006,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1301,14 +1307,162 @@
       {
         "label": "Dividends per common share (in dollars)",
         "value": 6.04
+      },
+      {
+        "label": "Cash and due from banks",
+        "value": 37024
+      },
+      {
+        "label": "Interest-bearing deposits with banks",
+        "value": 50364
+      },
+      {
+        "label": "Securities \u2013 Trading",
+        "value": 219067
+      },
+      {
+        "label": "Securities \u2013 Investment, net of applicable allowance",
+        "value": 342721
+      },
+      {
+        "label": "Securities \u2013 Total",
+        "value": 561788
+      },
+      {
+        "label": "Assets purchased under reverse repurchase agreements and securities borrowed",
+        "value": 309683
+      },
+      {
+        "label": "Loans \u2013 Retail",
+        "value": 652344
+      },
+      {
+        "label": "Loans \u2013 Wholesale",
+        "value": 397171
+      },
+      {
+        "label": "Loans \u2013 Total",
+        "value": 1049515
+      },
+      {
+        "label": "Allowance for loan losses",
+        "value": -7093
+      },
+      {
+        "label": "Loans net of allowance",
+        "value": 1042422
+      },
+      {
+        "label": "Derivatives",
+        "value": 177206
+      },
+      {
+        "label": "Premises and equipment",
+        "value": 6819
+      },
+      {
+        "label": "Goodwill",
+        "value": 19405
+      },
+      {
+        "label": "Other intangibles",
+        "value": 7402
+      },
+      {
+        "label": "Other assets",
+        "value": 112893
+      },
+      {
+        "label": "Other \u2013 Total",
+        "value": 323725
+      },
+      {
+        "label": "Deposits \u2013 Personal",
+        "value": 529740
+      },
+      {
+        "label": "Deposits \u2013 Business and government",
+        "value": 946314
+      },
+      {
+        "label": "Deposits \u2013 Bank",
+        "value": 39562
+      },
+      {
+        "label": "Deposits \u2013 Total",
+        "value": 1515616
+      },
+      {
+        "label": "Obligations related to securities sold short",
+        "value": 49891
+      },
+      {
+        "label": "Obligations related to assets sold under repurchase agreements and securities loaned",
+        "value": 289516
+      },
+      {
+        "label": "Derivatives (liabilities)",
+        "value": 183953
+      },
+      {
+        "label": "Insurance contract liabilities",
+        "value": 24327
+      },
+      {
+        "label": "Other liabilities",
+        "value": 108591
+      },
+      {
+        "label": "Other liabilities \u2013 Total",
+        "value": 656278
+      },
+      {
+        "label": "Subordinated debentures",
+        "value": 13961
+      },
+      {
+        "label": "Total liabilities",
+        "value": 2185855
+      },
+      {
+        "label": "Preferred shares and other equity instruments",
+        "value": 11675
+      },
+      {
+        "label": "Common shares",
+        "value": 20753
+      },
+      {
+        "label": "Retained earnings",
+        "value": 96938
+      },
+      {
+        "label": "Other components of equity",
+        "value": 9726
+      },
+      {
+        "label": "Equity attributable to shareholders \u2013 Total",
+        "value": 139092
+      },
+      {
+        "label": "Non-controlling interests",
+        "value": 59
+      },
+      {
+        "label": "Total equity",
+        "value": 139151
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 2325006
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "financial_sector",
-      "total": 43,
-      "mapped_count": 4,
-      "unmapped_count": 39,
+      "total": 81,
+      "mapped_count": 5,
+      "unmapped_count": 76,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

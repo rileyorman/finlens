@@ -19,13 +19,14 @@ def _load_fixture(name: str) -> dict:
 
 def _line_items(data: dict) -> list[dict]:
     rows = []
-    for item in data["statements"]["income_statement"]:
-        values = item.get("values") or {}
-        rows.append({
-            "label": item["label"],
-            "value": _mapper_source_value(values),
-            "confidence": item.get("confidence"),
-        })
+    for statement_key in ("income_statement", "balance_sheet"):
+        for item in data["statements"][statement_key]:
+            values = item.get("values") or {}
+            rows.append({
+                "label": item["label"],
+                "value": _mapper_source_value(values),
+                "confidence": item.get("confidence"),
+            })
     return rows
 
 
@@ -56,6 +57,13 @@ def _source_value(data: dict, label: str) -> int | float | None:
     raise AssertionError(f"Label not found: {label}")
 
 
+def _balance_source_value(data: dict, label: str) -> int | float | None:
+    for item in data["statements"]["balance_sheet"]:
+        if item["label"] == label:
+            return _mapper_source_value(item.get("values") or {})
+    raise AssertionError(f"Balance sheet label not found: {label}")
+
+
 def _mapped_fixture(name: str, sector: str | None = None) -> tuple[dict, dict]:
     data = _load_fixture(name)
     return data, map_line_items(_line_items(data), data["accounting_standard"], sector=sector)
@@ -70,7 +78,11 @@ def _assert_conservation(result: dict) -> None:
 
 def _assert_unmapped_labels_are_verbatim(data: dict, result: dict) -> None:
     from collections import Counter
-    fixture_labels = Counter(item["label"] for item in data["statements"]["income_statement"])
+    fixture_labels = Counter(
+        item["label"]
+        for statement_key in ("income_statement", "balance_sheet")
+        for item in data["statements"][statement_key]
+    )
     unmapped_labels = Counter(item["label"] for item in result["unmapped"])
     assert unmapped_labels <= fixture_labels
 
@@ -86,7 +98,7 @@ def test_cnr_fixture_maps_required_income_statement_fields():
     assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
     assert mapped["interest_expense"]["value"] == _source_value(data, "Interest expense")
     assert mapped["net_income"]["value"] == _source_value(data, "Net income")
-    assert result["meta"]["mapped_count"] == 4
+    assert result["meta"]["mapped_count"] == 5
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -101,7 +113,7 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     assert mapped["revenue"]["value"] == _source_value(data, "Revenue total")
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == _source_value(data, "Net income (loss)")
-    assert result["meta"]["mapped_count"] == 3
+    assert result["meta"]["mapped_count"] == 4
 
     # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
     # The first occurrence maps to net_income; the second is benign-skipped.
@@ -140,6 +152,9 @@ def test_ry_fixture_override_preserves_defaults_under_financial_sector_profile()
     assert mapped["net_interest_income"]["source_label"] == "Net interest income"
     assert mapped["provision_for_credit_losses"]["value"] == 4362
     assert mapped["provision_for_credit_losses"]["source_label"] == "Provision for credit losses"
+    assert mapped["total_assets"]["value"] == 2325006
+    assert mapped["total_assets"]["source_label"] == "Total assets"
+    assert mapped["total_assets"]["value"] == _balance_source_value(data, "Total assets")
 
     # First-write-wins: default revenue claims "total revenue", so the
     # profile's same-label total_revenue_bank does not map.
@@ -172,7 +187,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
     assert ifc_mapped["net_insurance_service_result"]["source_label"] == "Insurance service result"
     assert ifc_mapped["insurance_finance_result"]["source_label"] == "Insurance finance income (expense)"
     assert ifc_mapped["net_investment_result"]["source_label"] == "Net investment return"
-    assert ifc_result["meta"]["mapped_count"] == 6
+    assert ifc_result["meta"]["mapped_count"] == 7
     _assert_conservation(ifc_result)
     _assert_unmapped_labels_are_verbatim(ifc, ifc_result)
 
@@ -193,7 +208,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
         "Insurance finance income (expenses) from insurance contracts issued"
     )
     assert slf_mapped["net_investment_result"]["source_label"] == "Net investment result"
-    assert slf_result["meta"]["mapped_count"] == 6
+    assert slf_result["meta"]["mapped_count"] == 7
     _assert_conservation(slf_result)
     _assert_unmapped_labels_are_verbatim(slf, slf_result)
 
@@ -349,8 +364,9 @@ def test_normalization_strips_trailing_empirical_footnote_markers_only():
 
 def test_shop_fixture_maps_four_fields_us_gaap():
     """
-    SHOP (Shopify, US GAAP, USD, December year-end) maps four fields after
-    alias additions (item 1, Jun 2026):
+    SHOP (Shopify, US GAAP, USD, December year-end) maps four income-statement
+    fields after alias additions (item 1, Jun 2026), plus total_assets from
+    the balance sheet:
     - "Total revenues" → revenue
     - "Gross profit" → gross_profit
     - "Income (loss) from operations" → operating_income
@@ -382,7 +398,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     assert mapped["revenue"]["source_label"] == "Total revenues"
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 4
+    assert result["meta"]["mapped_count"] == 5
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -396,7 +412,7 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     ATD (Alimentation Couche-Tard, IFRS, USD, April year-end).
 
     After alias additions (item 1) and benign-duplicate relaxation (item 13),
-    five IS line items map:
+    five IS line items map, plus total_assets from the balance sheet:
     - "Revenues" → revenue
     - "Cost of sales, excluding depreciation, amortization and impairment" → cost_of_revenue
       (semantics.excludes_da: True — D&A not included in this cost line)
@@ -440,7 +456,7 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     assert mapped["gross_profit"]["excludes_da"] is True
     assert abs(mapped["gross_profit"]["value"] - 13021.3) < 0.01
 
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["gross_profit_derived"] is True
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
@@ -501,7 +517,7 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["revenue"]["value"] == _source_value(data, "Total revenue")
 
     assert result["meta"]["sector_profile"] == "reit_sector"
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -564,7 +580,7 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert "exploration_expense" not in mapped
 
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -646,7 +662,7 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["value"] == _source_value(data, "Net income for the year")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -700,7 +716,7 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     assert mapped["gross_profit"]["value"] == _source_value(data, "Gross profit")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 1
+    assert result["meta"]["mapped_count"] == 2
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Gross profit" not in unmapped_labels
@@ -762,7 +778,7 @@ def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == 292742
 
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -831,7 +847,7 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income"
     assert mapped["net_income"]["value"] == 259611
 
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

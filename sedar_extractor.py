@@ -447,19 +447,21 @@ def _first_statement_value(item: dict) -> int | float | None:
 
 def attach_mapping(extraction_result: dict) -> dict:
     statements = extraction_result.get("statements") or {}
-    income_statement = statements.get("income_statement") if isinstance(statements, dict) else []
-    if not isinstance(income_statement, list):
-        income_statement = []
 
     line_items = []
-    for item in income_statement:
-        if not isinstance(item, dict):
-            continue
-        line_items.append({
-            "label": item.get("label"),
-            "value": _first_statement_value(item),
-            "confidence": item.get("confidence"),
-        })
+    if isinstance(statements, dict):
+        for statement_key in ("income_statement", "balance_sheet"):
+            rows = statements.get(statement_key)
+            if not isinstance(rows, list):
+                continue
+            for item in rows:
+                if not isinstance(item, dict):
+                    continue
+                line_items.append({
+                    "label": item.get("label"),
+                    "value": _first_statement_value(item),
+                    "confidence": item.get("confidence"),
+                })
 
     enriched = dict(extraction_result)
     enriched["mapping"] = map_line_items(

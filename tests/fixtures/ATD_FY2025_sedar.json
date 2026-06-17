@@ -973,6 +973,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "total_assets": {
+        "value": 38301.9,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "gross_profit": {
         "value": 13021.3,
         "source_label": "derived: revenue - cost_of_revenue",
@@ -1078,14 +1084,170 @@
       {
         "label": "Comprehensive income attributable to shareholders of the Corporation",
         "value": 2817.7
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 2263.0
+      },
+      {
+        "label": "Restricted cash",
+        "value": 5.7
+      },
+      {
+        "label": "Accounts receivable (Note 13)",
+        "value": 2667.5
+      },
+      {
+        "label": "Inventories (Note 14)",
+        "value": 2188.6
+      },
+      {
+        "label": "Prepaid expenses",
+        "value": 172.2
+      },
+      {
+        "label": "Other short-term financial assets (Notes 20, 21 and 29)",
+        "value": 50.7
+      },
+      {
+        "label": "Income taxes receivable",
+        "value": 180.1
+      },
+      {
+        "label": "Total current assets",
+        "value": 7527.8
+      },
+      {
+        "label": "Property and equipment (Note 15)",
+        "value": 14990.6
+      },
+      {
+        "label": "Right-of-use assets (Note 16)",
+        "value": 4210.7
+      },
+      {
+        "label": "Intangible assets (Note 17)",
+        "value": 1156.4
+      },
+      {
+        "label": "Goodwill (Note 17)",
+        "value": 9563.7
+      },
+      {
+        "label": "Other assets (Note 18)",
+        "value": 439.1
+      },
+      {
+        "label": "Other long-term financial assets (Note 29)",
+        "value": 99.6
+      },
+      {
+        "label": "Investments in joint ventures and associated companies (Note 6)",
+        "value": 188.4
+      },
+      {
+        "label": "Deferred income taxes (Note 10)",
+        "value": 125.6
+      },
+      {
+        "label": "Accounts payable and accrued liabilities (Note 19)",
+        "value": 5731.7
+      },
+      {
+        "label": "Short-term provisions (Note 23)",
+        "value": 183.1
+      },
+      {
+        "label": "Other short-term financial liabilities (Notes 5, 12, 22 and 29)",
+        "value": 352.8
+      },
+      {
+        "label": "Income taxes payable",
+        "value": 135.6
+      },
+      {
+        "label": "Short-term debt and current portion of long-term debt (Notes 12 and 20)",
+        "value": 690.2
+      },
+      {
+        "label": "Current portion of lease liabilities (Note 12)",
+        "value": 523.9
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 7617.3
+      },
+      {
+        "label": "Long-term debt (Notes 12 and 20)",
+        "value": 8776.8
+      },
+      {
+        "label": "Lease liabilities (Note 12)",
+        "value": 3965.4
+      },
+      {
+        "label": "Long-term provisions (Note 23)",
+        "value": 862.0
+      },
+      {
+        "label": "Pension benefit liability (Note 28)",
+        "value": 65.5
+      },
+      {
+        "label": "Other long-term financial liabilities (Notes 5, 12, 22 and 29)",
+        "value": 68.9
+      },
+      {
+        "label": "Deferred credits and other liabilities (Note 24)",
+        "value": 192.8
+      },
+      {
+        "label": "Deferred income taxes (Note 10)",
+        "value": 1659.9
+      },
+      {
+        "label": "Total liabilities",
+        "value": 23208.6
+      },
+      {
+        "label": "Capital stock (Note 25)",
+        "value": 642.5
+      },
+      {
+        "label": "Contributed surplus",
+        "value": 28.3
+      },
+      {
+        "label": "Retained earnings",
+        "value": 15134.3
+      },
+      {
+        "label": "Accumulated other comprehensive loss (Note 27)",
+        "value": -858.3
+      },
+      {
+        "label": "Equity attributable to shareholders of the Corporation",
+        "value": 14946.8
+      },
+      {
+        "label": "Non-controlling interests (Note 5)",
+        "value": 146.5
+      },
+      {
+        "label": "Total equity",
+        "value": 15093.3
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 38301.9
       }
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": null,
-      "total": 30,
-      "mapped_count": 5,
-      "unmapped_count": 24,
+      "total": 70,
+      "mapped_count": 6,
+      "unmapped_count": 63,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

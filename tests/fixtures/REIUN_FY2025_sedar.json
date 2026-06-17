@@ -850,6 +850,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 14894392,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -956,14 +962,74 @@
       {
         "label": "Comprehensive income, net of tax",
         "value": 61413
+      },
+      {
+        "label": "Investment properties",
+        "value": 13628959
+      },
+      {
+        "label": "Equity-accounted investments",
+        "value": 159596
+      },
+      {
+        "label": "Residential inventory",
+        "value": 236745
+      },
+      {
+        "label": "Mortgages and loans receivable",
+        "value": 338331
+      },
+      {
+        "label": "Assets held for sale",
+        "value": 46500
+      },
+      {
+        "label": "Receivables and other assets",
+        "value": 339221
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 145040
+      },
+      {
+        "label": "Debentures payable",
+        "value": 4338865
+      },
+      {
+        "label": "Mortgages payable",
+        "value": 2184306
+      },
+      {
+        "label": "Mortgages payable associated with assets held for sale",
+        "value": 28343
+      },
+      {
+        "label": "Lines of credit and other bank loans",
+        "value": 601194
+      },
+      {
+        "label": "Accounts payable and other liabilities",
+        "value": 584421
+      },
+      {
+        "label": "Total liabilities",
+        "value": 7737129
+      },
+      {
+        "label": "Unitholders' equity",
+        "value": 7157263
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 14894392
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
-      "total": 34,
-      "mapped_count": 7,
-      "unmapped_count": 26,
+      "total": 50,
+      "mapped_count": 8,
+      "unmapped_count": 41,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

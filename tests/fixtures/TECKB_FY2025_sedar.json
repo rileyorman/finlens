@@ -1003,6 +1003,12 @@
         "source_label": "Gross profit",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 45436,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1185,14 +1191,138 @@
       {
         "label": "Total comprehensive income attributable to shareholders of the company from: Discontinued operations",
         "value": 0
+      },
+      {
+        "label": "Cash and cash equivalents (Note 12)",
+        "value": 5012
+      },
+      {
+        "label": "Current income taxes receivable",
+        "value": 317
+      },
+      {
+        "label": "Trade and settlement receivables",
+        "value": 2564
+      },
+      {
+        "label": "Inventories (Note 13)",
+        "value": 2748
+      },
+      {
+        "label": "Prepaids and other current assets",
+        "value": 523
+      },
+      {
+        "label": "Current assets subtotal",
+        "value": 11164
+      },
+      {
+        "label": "Financial assets (Note 14)",
+        "value": 1058
+      },
+      {
+        "label": "Investment in joint venture and associate (Note 15)",
+        "value": 1231
+      },
+      {
+        "label": "Property, plant and equipment (Note 16)",
+        "value": 29721
+      },
+      {
+        "label": "Intangible assets (Note 17)",
+        "value": 169
+      },
+      {
+        "label": "Deferred income tax assets (Note 23(b))",
+        "value": 931
+      },
+      {
+        "label": "Goodwill (Note 8(b))",
+        "value": 421
+      },
+      {
+        "label": "Other assets (Note 18)",
+        "value": 741
+      },
+      {
+        "label": "Trade accounts payable and other liabilities (Note 19)",
+        "value": 3404
+      },
+      {
+        "label": "Current portion of debt (Note 20)",
+        "value": 403
+      },
+      {
+        "label": "Current portion of lease liabilities (Note 21(c))",
+        "value": 169
+      },
+      {
+        "label": "Current income taxes payable",
+        "value": 182
+      },
+      {
+        "label": "Current portion of provisions (Note 25)",
+        "value": 245
+      },
+      {
+        "label": "Current liabilities subtotal",
+        "value": 4403
+      },
+      {
+        "label": "Debt (Note 20)",
+        "value": 3501
+      },
+      {
+        "label": "Lease liabilities (Note 21(c))",
+        "value": 789
+      },
+      {
+        "label": "QB advances from SMM/SC (Note 22)",
+        "value": 4745
+      },
+      {
+        "label": "Deferred income tax liabilities (Note 23(b))",
+        "value": 2460
+      },
+      {
+        "label": "Retirement benefit liabilities (Note 24(a))",
+        "value": 351
+      },
+      {
+        "label": "Provisions (Note 25)",
+        "value": 2340
+      },
+      {
+        "label": "Financial and other liabilities (Note 26)",
+        "value": 840
+      },
+      {
+        "label": "Total liabilities",
+        "value": 19429
+      },
+      {
+        "label": "Attributable to shareholders of the company",
+        "value": 25096
+      },
+      {
+        "label": "Attributable to non-controlling interests (Note 28)",
+        "value": 911
+      },
+      {
+        "label": "Total equity",
+        "value": 26007
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 45436
       }
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "mining_sector",
-      "total": 46,
-      "mapped_count": 1,
-      "unmapped_count": 45,
+      "total": 78,
+      "mapped_count": 2,
+      "unmapped_count": 76,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

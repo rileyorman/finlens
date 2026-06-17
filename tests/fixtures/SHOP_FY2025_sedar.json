@@ -932,6 +932,12 @@
         "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 15189,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1038,14 +1044,138 @@
       {
         "label": "Comprehensive income",
         "value": 1242
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 1545
+      },
+      {
+        "label": "Marketable securities",
+        "value": 4233
+      },
+      {
+        "label": "Trade and other receivables, net",
+        "value": 500
+      },
+      {
+        "label": "Loans and merchant cash advances, net",
+        "value": 1784
+      },
+      {
+        "label": "Other current assets",
+        "value": 234
+      },
+      {
+        "label": "Total current assets",
+        "value": 8296
+      },
+      {
+        "label": "Property and equipment, net",
+        "value": 53
+      },
+      {
+        "label": "Operating lease right-of-use assets, net",
+        "value": 88
+      },
+      {
+        "label": "Intangible assets, net",
+        "value": 30
+      },
+      {
+        "label": "Deferred tax assets",
+        "value": 33
+      },
+      {
+        "label": "Other long-term assets",
+        "value": 39
+      },
+      {
+        "label": "Long-term investments",
+        "value": 975
+      },
+      {
+        "label": "Equity and other investments ($3,619 and $3,930, carried at fair value)",
+        "value": 4582
+      },
+      {
+        "label": "Equity method investment",
+        "value": 602
+      },
+      {
+        "label": "Goodwill",
+        "value": 491
+      },
+      {
+        "label": "Total long-term assets",
+        "value": 6893
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 1075
+      },
+      {
+        "label": "Deferred revenue",
+        "value": 300
+      },
+      {
+        "label": "Operating lease liabilities",
+        "value": 17
+      },
+      {
+        "label": "Convertible senior notes",
+        "value": 0
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 1392
+      },
+      {
+        "label": "Deferred revenue",
+        "value": 98
+      },
+      {
+        "label": "Operating lease liabilities",
+        "value": 171
+      },
+      {
+        "label": "Deferred tax liabilities",
+        "value": 55
+      },
+      {
+        "label": "Total long-term liabilities",
+        "value": 324
+      },
+      {
+        "label": "Common stock, unlimited Class A subordinate voting shares authorized, 1,225,830,706 and 1,215,229,233, issued and outstanding; unlimited Class B restricted voting shares authorized, 78,073,594 and 79,350,906 issued and outstanding; 1 Founder share authorized, 1 and 1 issued and outstanding",
+        "value": 10376
+      },
+      {
+        "label": "Additional paid-in capital",
+        "value": 236
+      },
+      {
+        "label": "Accumulated other comprehensive income (loss)",
+        "value": 1
+      },
+      {
+        "label": "Accumulated surplus",
+        "value": 2860
+      },
+      {
+        "label": "Total shareholders' equity",
+        "value": 13473
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "value": 15189
       }
     ],
     "meta": {
       "accounting_standard": "U.S. GAAP",
       "sector_profile": null,
-      "total": 30,
-      "mapped_count": 4,
-      "unmapped_count": 26,
+      "total": 62,
+      "mapped_count": 5,
+      "unmapped_count": 57,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

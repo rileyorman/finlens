@@ -130,6 +130,12 @@ _LINE_ITEM_ALIASES = {
     ),
 }
 
+_TOTAL_LIABILITIES_AND_EQUITY_LABELS = (
+    "Total liabilities and equity",
+    "Total liabilities and shareholders' equity",
+    "Total liabilities and unitholders' equity",
+)
+
 
 def _normalized_label(label: str) -> str:
     """Normalize statement labels for case-insensitive alias matching."""
@@ -159,6 +165,28 @@ def _line_item(rows: list[dict], label: str) -> float | None:
     return None
 
 
+def _line_item_from_labels(rows: list[dict], labels: tuple[str, ...]) -> float | None:
+    aliases = {_normalized_label(alias) for alias in labels}
+    for row in rows:
+        if _normalized_label(row.get("line_item")) in aliases:
+            value = _coerce_number(row.get("value"))
+            if value is not None:
+                return value
+    return None
+
+
+def _mapped_value(mapping: dict | None, field: str) -> float | None:
+    if not isinstance(mapping, dict):
+        return None
+    mapped = mapping.get("mapped")
+    if not isinstance(mapped, dict):
+        return None
+    item = mapped.get(field)
+    if not isinstance(item, dict):
+        return None
+    return _coerce_number(item.get("value"))
+
+
 def _line_item_prior(rows: list[dict], label: str) -> float | None:
     aliases = {_normalized_label(alias) for alias in _aliases_for(label)}
     for row in rows:
@@ -183,15 +211,19 @@ def _parse_iso_year(date_str: str) -> int | None:
 
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
+    balance = normalized_data.get("balance_sheet", [])
+    mapping = normalized_data.get("mapping")
     revenue = _line_item(income, "revenue")
     cost_of_revenue = _line_item(income, "cost_of_revenue")
     gross_profit = _line_item(income, "gross_profit")
+    total_assets = _coerce_number(normalized_data.get("total_assets"))
+    if total_assets is None:
+        total_assets = _mapped_value(mapping, "total_assets")
     gross_profit_derived = False
     cost_of_revenue_excludes_da = False
 
     # Use mapper-derived gross_profit when raw label lookup fails (e.g. IFRS retail filers
     # whose cost label is non-standard like "Cost of sales, excluding D&A").
-    mapping = normalized_data.get("mapping")
     if mapping and isinstance(mapping, dict) and gross_profit is None:
         mapper_gp = (mapping.get("mapped") or {}).get("gross_profit")
         if isinstance(mapper_gp, dict) and mapper_gp.get("derived"):
@@ -214,7 +246,12 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         "gross_profit_derived":       gross_profit_derived,
         "cost_of_revenue_excludes_da": cost_of_revenue_excludes_da,
         "net_income":                 _line_item(income, "net_income"),
-        "mapping":                    normalized_data.get("mapping"),
+        "total_assets":               total_assets,
+        "total_liabilities_and_equity": _line_item_from_labels(
+            balance,
+            _TOTAL_LIABILITIES_AND_EQUITY_LABELS,
+        ),
+        "mapping":                    mapping,
         "has_mapping":                "mapping" in normalized_data,
         "accounting_standard":        normalized_data.get("accounting_standard"),
         "fiscal_year":                normalized_data.get("fiscal_year", ""),
@@ -404,6 +441,21 @@ def _check_accounting_standard_info(rule: dict, ctx: dict) -> tuple:
     return None, {}, True, f"Accounting standard recorded: {standard or 'unknown'}"
 
 
+def _check_total_assets_identity(rule: dict, ctx: dict) -> tuple:
+    total_assets = ctx.get("total_assets")
+    combined = ctx.get("total_liabilities_and_equity")
+    absolute_tolerance = rule["params"].get("absolute_tolerance", 0.5)
+
+    diff = abs(total_assets - combined)
+    passed = diff <= absolute_tolerance
+    direction = "<=" if passed else ">"
+    return round(diff, 6), {"absolute_tolerance": absolute_tolerance}, passed, (
+        "SEDAR total_assets vs Total liabilities and equity: "
+        f"{total_assets} vs {combined}; absolute difference {diff} "
+        f"({direction} {absolute_tolerance})"
+    )
+
+
 # Registry: check_type ? handler
 _CHECKS = {
     "ratio_range":               _check_ratio_range,
@@ -413,6 +465,7 @@ _CHECKS = {
     "extraction_confidence":     _check_extraction_confidence,
     "mapping_pattern_info":      _check_mapping_pattern_info,
     "accounting_standard_info":  _check_accounting_standard_info,
+    "total_assets_identity":     _check_total_assets_identity,
 }
 
 

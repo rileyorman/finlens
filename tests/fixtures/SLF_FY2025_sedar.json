@@ -1061,6 +1061,12 @@
         "source_label": "Total net income (loss)",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_assets": {
+        "value": 398455,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1223,14 +1229,162 @@
       {
         "label": "Shareholders' comprehensive income (loss)",
         "value": 2722
+      },
+      {
+        "label": "Cash, cash equivalents and short-term securities",
+        "value": 14841
+      },
+      {
+        "label": "Debt securities",
+        "value": 85618
+      },
+      {
+        "label": "Equity securities",
+        "value": 12250
+      },
+      {
+        "label": "Mortgages and loans",
+        "value": 59433
+      },
+      {
+        "label": "Derivative assets",
+        "value": 1534
+      },
+      {
+        "label": "Other financial invested assets",
+        "value": 14374
+      },
+      {
+        "label": "Financial invested assets",
+        "value": 188050
+      },
+      {
+        "label": "Investment properties",
+        "value": 9432
+      },
+      {
+        "label": "Other non-financial invested assets",
+        "value": 1693
+      },
+      {
+        "label": "Invested assets",
+        "value": 199175
+      },
+      {
+        "label": "Other assets",
+        "value": 7753
+      },
+      {
+        "label": "Reinsurance contract held assets",
+        "value": 6138
+      },
+      {
+        "label": "Insurance contract assets",
+        "value": 335
+      },
+      {
+        "label": "Deferred tax assets",
+        "value": 3803
+      },
+      {
+        "label": "Intangible assets",
+        "value": 5155
+      },
+      {
+        "label": "Goodwill",
+        "value": 9530
+      },
+      {
+        "label": "Total general fund assets",
+        "value": 231889
+      },
+      {
+        "label": "Investments for account of segregated fund holders",
+        "value": 166566
+      },
+      {
+        "label": "Insurance contract liabilities excluding those for account of segregated fund holders",
+        "value": 155910
+      },
+      {
+        "label": "Reinsurance contract held liabilities",
+        "value": 2049
+      },
+      {
+        "label": "Investment contract liabilities",
+        "value": 11796
+      },
+      {
+        "label": "Derivative liabilities",
+        "value": 2065
+      },
+      {
+        "label": "Deferred tax liabilities",
+        "value": 301
+      },
+      {
+        "label": "Other liabilities",
+        "value": 25905
+      },
+      {
+        "label": "Senior debentures",
+        "value": 200
+      },
+      {
+        "label": "Subordinated debt",
+        "value": 8171
+      },
+      {
+        "label": "Total general fund liabilities",
+        "value": 206397
+      },
+      {
+        "label": "Insurance contract liabilities for account of segregated fund holders",
+        "value": 20108
+      },
+      {
+        "label": "Investment contract liabilities for account of segregated fund holders",
+        "value": 146458
+      },
+      {
+        "label": "Total liabilities",
+        "value": 372963
+      },
+      {
+        "label": "Issued share capital and contributed surplus",
+        "value": 10220
+      },
+      {
+        "label": "Shareholders' retained earnings and accumulated other comprehensive income",
+        "value": 14312
+      },
+      {
+        "label": "Total shareholders' equity",
+        "value": 24532
+      },
+      {
+        "label": "Equity in the participating account",
+        "value": 696
+      },
+      {
+        "label": "Non-controlling interests' equity",
+        "value": 264
+      },
+      {
+        "label": "Total equity",
+        "value": 25492
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 398455
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "insurance_sector",
-      "total": 47,
-      "mapped_count": 6,
-      "unmapped_count": 40,
+      "total": 85,
+      "mapped_count": 7,
+      "unmapped_count": 77,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

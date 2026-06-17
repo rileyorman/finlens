@@ -180,6 +180,24 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # SEDAR balance-sheet identity: canonical mapped total_assets must
+    # equal the filing's own combined liabilities-and-equity line. Missing
+    # combined lines are logged as honest field_unavailable skips.
+    # ------------------------------------------------------------------
+    {
+        "id": "sedar_total_assets_identity",
+        "description": "SEDAR total assets should equal total liabilities and equity",
+        "severity": "warn",
+        "check_type": "total_assets_identity",
+        "params": {
+            "absolute_tolerance": 0.5,
+        },
+        "sector_skip": (),
+        "requires_fields": ["total_assets", "total_liabilities_and_equity"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
     # Accounting standard is informational only. The engine records it so
     # future cross-validation thresholds can become standard-aware.
     # ------------------------------------------------------------------
