@@ -14,37 +14,70 @@ DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 OPUS_48_MODEL = "claude-opus-4-8"
 MAX_CACHED_FILING_CHARS = 450_000
 _LOGGER = logging.getLogger(__name__)
+_UNIT_SCALE_WORDS = ("thousand", "million", "billion")
 
 
 def _detect_unit_scale(currency: str) -> int:
     """Return multiplier to convert stored values to raw dollars."""
+    if not isinstance(currency, str):
+        return 1
     cur = (currency or "").lower()
-    if "thousand" in cur:
+    if _UNIT_SCALE_WORDS[0] in cur:
         return 1_000
-    if "million" in cur:
+    if _UNIT_SCALE_WORDS[1] in cur:
         return 1_000_000
-    if "billion" in cur:
+    if _UNIT_SCALE_WORDS[2] in cur:
         return 1_000_000_000
     return 1
+
+
+def _has_unit_scale_word(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.lower()
+    return any(word in text for word in _UNIT_SCALE_WORDS)
+
+
+def is_legacy_scaled_financial_data_stale(
+    financial_data: dict,
+    schema_version: object,
+    current_schema_version: int,
+) -> bool:
+    """Return True when reload cannot distinguish raw vs unscaled legacy values."""
+    if not isinstance(financial_data, dict):
+        return False
+    if financial_data.get("_normalized") is True:
+        return False
+    if not (
+        _has_unit_scale_word(financial_data.get("scale"))
+        or _has_unit_scale_word(financial_data.get("currency"))
+    ):
+        return False
+    try:
+        stored_schema = int(schema_version)
+    except (TypeError, ValueError):
+        return True
+    return stored_schema < current_schema_version
 
 
 def normalize_financial_data(financial_data: dict) -> dict:
     """Scale financial_data values to raw dollars based on the currency unit.
 
-    Returns the same dict mutated in place. Idempotent if the currency is
-    already normalized to "USD".
+    Returns the same dict mutated in place. Idempotent when _normalized is set.
+    Currency labels are preserved; this performs unit scaling only, not FX.
     """
     if not isinstance(financial_data, dict):
         return financial_data
 
-    currency = financial_data.get("currency", "")
-    if (currency or "").strip().upper() == "USD":
+    if financial_data.get("_normalized") is True:
         return financial_data
 
-    scale = _detect_unit_scale(currency)
+    currency = financial_data.get("currency", "")
+    scale_label = financial_data.get("scale") or currency
+    scale = _detect_unit_scale(scale_label)
 
     if scale == 1:
-        financial_data["currency"] = "USD"
+        financial_data["_normalized"] = True
         return financial_data
 
     for section_key in ("income_statement", "balance_sheet", "cash_flow_statement"):
@@ -78,7 +111,7 @@ def normalize_financial_data(financial_data: dict) -> dict:
         if isinstance(v, (int, float)):
             financial_data[key] = v * scale
 
-    financial_data["currency"] = "USD"
+    financial_data["_normalized"] = True
     return financial_data
 
 

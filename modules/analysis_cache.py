@@ -6,7 +6,7 @@ from config import ANALYSIS_CACHE_DIR, safe_write_bytes, safe_write_text
 
 _CACHE_DIR = ANALYSIS_CACHE_DIR
 _OLD_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 def _migrate_old_cache() -> None:

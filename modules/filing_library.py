@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import FILING_LIBRARY_PATH, LIBRARY_PDFS_DIR, safe_write_bytes, safe_write_text
+from modules.analysis_cache import CURRENT_SCHEMA_VERSION
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 _OLD_LIBRARY_PATH = _PROJECT_ROOT / "filing_library.json"
@@ -101,6 +102,7 @@ def add_entry(
 
     entry = {
         "id":              file_hash,
+        "schema_version":  CURRENT_SCHEMA_VERSION,
         "company_name":    financial_data.get("company_name", "Unknown"),
         "ticker":          ticker,
         "period":          financial_data.get("period", ""),

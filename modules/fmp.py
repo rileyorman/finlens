@@ -365,6 +365,7 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
             "period": period_label,
             "currency": profile.get("currency") or "USD",
             "scale": 1_000_000,
+            "_normalized": True,
             "revenue": _scale_money(income.get("revenue")),
             "revenue_prior": _scale_money(income_prior.get("revenue")),
             "gross_profit": _scale_money(income.get("grossProfit")),

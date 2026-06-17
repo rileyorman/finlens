@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import CACHE_DIR as _CACHE_DIR, safe_write_text
+from modules.analysis_cache import CURRENT_SCHEMA_VERSION
 
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -20,7 +21,14 @@ def load_cache(cache_key: str) -> dict | None:
         return None
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if isinstance(data, dict) and data.get("schema_version") != CURRENT_SCHEMA_VERSION:
+            data["_is_stale"] = True
+            data["_stale_reason"] = (
+                f"Schema {data.get('schema_version', 'unset')} loaded by code "
+                f"expecting {CURRENT_SCHEMA_VERSION}"
+            )
+        return data
     except Exception:
         return None
 
@@ -34,6 +42,7 @@ def save_cache(cache_key: str, filename: str,
     _CACHE_DIR.mkdir(exist_ok=True)
     path = _CACHE_DIR / f"{cache_key}.json"
     payload = {
+        "schema_version":  CURRENT_SCHEMA_VERSION,
         "filename":       filename,
         "cached_at":      datetime.now(timezone.utc).isoformat(),
         "financial_data": financial_data,

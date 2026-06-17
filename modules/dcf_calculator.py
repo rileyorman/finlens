@@ -1,6 +1,17 @@
 from modules.excel_exporter import _calc_summary_metrics
 
 
+def _label_scale(label):
+    text = (label or "").lower()
+    if "billion" in text:
+        return 1_000_000_000
+    if "million" in text:
+        return 1_000_000
+    if "thousand" in text:
+        return 1_000
+    return 1
+
+
 def _find(rows, keywords):
     """Return the first value whose line_item contains any of the keywords (case-insensitive)."""
     for row in rows:
@@ -13,14 +24,20 @@ def _find(rows, keywords):
 
 
 def _currency_scale(financial_data):
-    cur = (financial_data.get("currency") or "").lower()
-    if "billion" in cur:
-        return 1_000_000_000
-    if "million" in cur:
-        return 1_000_000
-    if "thousand" in cur:
-        return 1_000
-    return 1
+    if financial_data.get("_normalized") is True:
+        return 1
+    return _label_scale(financial_data.get("currency"))
+
+
+def _reporting_scale(financial_data):
+    if financial_data.get("_normalized") is True:
+        return 1
+    scale = financial_data.get("scale")
+    if isinstance(scale, (int, float)):
+        return scale
+    if isinstance(scale, str):
+        return _label_scale(scale)
+    return _currency_scale(financial_data)
 
 
 def calculate_dcf(financial_data: dict, inputs: dict) -> dict:
@@ -62,7 +79,7 @@ def calculate_dcf(financial_data: dict, inputs: dict) -> dict:
             result["error"] = "WACC must be greater than terminal growth rate."
             return result
 
-        scale = financial_data.get("scale", 1) or _currency_scale(financial_data)
+        scale = _reporting_scale(financial_data)
 
         # --- Base FCF (from reporting units → raw dollars) ---
         metrics = _calc_summary_metrics(financial_data)

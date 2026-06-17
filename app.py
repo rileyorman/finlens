@@ -25,6 +25,7 @@ from modules.claude_analyzer import (
     analyze_dashboard_insights,
     analyze_mda_sentiment,
     build_filing_context,
+    is_legacy_scaled_financial_data_stale,
     normalize_financial_data,
     normalize_and_validate,
 )
@@ -49,7 +50,7 @@ from modules.peer_comparison import get_peer_data, peer_map
 from modules.dcf_calculator import calculate_dcf
 from modules.economics.resource_economics import build_resource_economics_snapshot
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
-from modules.analysis_cache import load_analysis, save_analysis
+from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
 from modules.analysis.munger_inversion import generate_inversion
 from modules.analysis.inversion_store import inversion_exists, load_inversion, save_inversion
 from modules.filing_library import (
@@ -677,9 +678,19 @@ def _save_analysis_cache(
     return save_analysis(ticker, f"{period}_{_selected_model_cache_part()}", payload)
 
 
+def _legacy_scaled_stale(financial_data: dict | None, schema_version: object) -> bool:
+    return is_legacy_scaled_financial_data_stale(
+        financial_data or {},
+        schema_version,
+        CURRENT_SCHEMA_VERSION,
+    )
+
+
 def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     financial_data = cached.get("financial_data")
     if not isinstance(financial_data, dict):
+        return False
+    if _legacy_scaled_stale(financial_data, cached.get("schema_version")):
         return False
     financial_data = normalize_financial_data(financial_data)
 
@@ -785,11 +796,7 @@ def _sedar_statement_rows(items: list[dict], current_period: str, prior_period: 
 
 
 def _sedar_currency_label(extraction_result: dict) -> str:
-    currency = str(extraction_result.get("currency") or "").strip()
-    scale = str(extraction_result.get("scale") or "").strip()
-    if currency and scale and scale.lower() not in currency.lower():
-        return f"{currency}, in {scale}"
-    return currency
+    return str(extraction_result.get("currency") or "").strip()
 
 
 def _sedar_extraction_to_financial_data(
@@ -2191,6 +2198,15 @@ document.addEventListener('focusin', function(e) {
                                                 st.session_state.cached_pdf_bytes = None
                                         st.session_state.confirm_reanalyse    = None
                                         st.session_state.al_confirm_reanalyse = None
+                                        st.rerun()
+
+                                    if _legacy_scaled_stale(entry.get("financial_data"), entry.get("schema_version")):
+                                        st.session_state.confirm_reanalyse = eid
+                                        st.session_state.confirm_delete = None
+                                        st.warning(
+                                            "This stored analysis was saved with an older normalization schema. "
+                                            "Use **Re-Analyse $** to refresh it before loading."
+                                        )
                                         st.rerun()
 
                                     fd = normalize_financial_data(entry["financial_data"])
@@ -5682,6 +5698,11 @@ if uploaded_file:
         )
         cached    = load_cache(cache_key)
         raw_text  = None  # populated in non-cached path; stored in library for future re-analysis
+        if cached and _legacy_scaled_stale(cached.get("financial_data"), cached.get("schema_version")):
+            st.warning(
+                "Cached analysis was saved with an older normalization schema and will be refreshed."
+            )
+            cached = None
 
         if cached:
             financial_data = normalize_financial_data(cached["financial_data"])
@@ -6019,8 +6040,8 @@ if st.session_state.financial_data:
         )
 
     _fd_check = st.session_state.get("financial_data") or {}
-    if _fd_check.get("currency") and _fd_check["currency"] != "USD":
-        st.warning(f"⚠️ Financial data may not be normalized — currency: {_fd_check['currency']}")
+    if _fd_check and _fd_check.get("_normalized") is not True:
+        st.warning("⚠️ Financial data may not be normalized to raw reporting units.")
 
     tab_stmts, tab_dash, tab_econ = st.tabs(["📊 Statements", "📈 Dashboard", "🪨 Economics"])
 
