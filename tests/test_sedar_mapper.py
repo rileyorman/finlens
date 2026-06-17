@@ -890,6 +890,42 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_reit_noi_excludes_development_inventory_does_not_revert_to_blended():
+    reiun, reiun_result = _mapped_fixture(
+        "REIUN_FY2025_sedar.json",
+        sector="Real Estate (REIT)",
+    )
+    reiun_mapped = reiun_result["mapped"]
+    reiun_unmapped = reiun_result["unmapped"]
+
+    assert reiun_mapped["net_operating_income"]["value"] == 720404
+    assert reiun_mapped["net_operating_income"]["value"] != 798716
+    assert reiun_mapped["net_operating_income"]["value"] == (
+        _source_value(reiun, "Rental revenue")
+        - _source_value(reiun, "Recoverable under tenant leases")
+        - _source_value(reiun, "Non-recoverable costs")
+    )
+    assert {"label": "Operating income", "value": 798716} in reiun_unmapped
+
+    carun, carun_result = _mapped_fixture(
+        "CARUN_FY2024_sedar.json",
+        sector="Real Estate (REIT)",
+    )
+    assert carun_result["mapped"]["net_operating_income"]["value"] == 730654
+    assert carun_result["mapped"]["net_operating_income"]["value"] == _source_value(
+        carun, "Net operating income"
+    )
+
+    dirun, dirun_result = _mapped_fixture(
+        "DIRUN_FY2024_sedar.json",
+        sector="Real Estate (REIT)",
+    )
+    assert dirun_result["mapped"]["net_operating_income"]["value"] == 355432
+    assert dirun_result["mapped"]["net_operating_income"]["value"] == _source_value(
+        dirun, "Net rental income"
+    )
+
+
 def test_benign_duplicate_same_value_maps_first_occurrence(monkeypatch):
     """Same normalized label + same value = benign duplicate: first occurrence maps."""
     alias_table = {
