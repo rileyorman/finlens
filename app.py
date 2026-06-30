@@ -26,6 +26,7 @@ from modules.claude_analyzer import (
     analyze_mda_sentiment,
     build_filing_context,
     is_legacy_scaled_financial_data_stale,
+    is_per_share_line_item,
     normalize_financial_data,
     normalize_and_validate,
 )
@@ -6601,14 +6602,27 @@ if st.session_state.financial_data:
                         return f"{sign}${abs_value / 1_000_000:,.1f}M"
                     return f"{sign}${abs_value:,.0f}"
 
+                def _fmt_fmp_per_share(value):
+                    try:
+                        if value is None:
+                            return None
+                        return f"${float(value):,.2f}"
+                    except (TypeError, ValueError):
+                        return None
+
                 display = []
                 for r in rows:
+                    _row_fmt = (
+                        _fmt_fmp_per_share
+                        if is_per_share_line_item(r.get("line_item"))
+                        else _fmt_fmp_statement_value
+                    )
                     row = {
                         "line_item": r.get("line_item"),
-                        "value": _fmt_fmp_statement_value(r.get("value")),
+                        "value": _row_fmt(r.get("value")),
                     }
                     if _has_prior_values:
-                        row["value_prior"] = _fmt_fmp_statement_value(r.get("value_prior"))
+                        row["value_prior"] = _row_fmt(r.get("value_prior"))
                     display.append(row)
                 return display
 
@@ -6619,6 +6633,16 @@ if st.session_state.financial_data:
 
         def _display_edgar_statement(rows):
             import html as _html
+
+            def _fmt_per_share(v):
+                # Per-share values are raw dollars-per-share: show 2 decimals,
+                # never K/M/B abbreviation or unit scaling.
+                try:
+                    if v is None:
+                        return "—"
+                    return f"${float(v):,.2f}"
+                except (TypeError, ValueError):
+                    return "—"
 
             body = ""
             for row in rows:
@@ -6631,8 +6655,12 @@ if st.session_state.financial_data:
                         f'border-bottom:1px solid #334155">{line_item}</td></tr>'
                     )
                 else:
-                    prior = _fmt_edgar_value(row.get("value_prior")) or "—"
-                    current = _fmt_edgar_value(row.get("value")) or "—"
+                    if is_per_share_line_item(row.get("line_item")):
+                        prior = _fmt_per_share(row.get("value_prior"))
+                        current = _fmt_per_share(row.get("value"))
+                    else:
+                        prior = _fmt_edgar_value(row.get("value_prior")) or "—"
+                        current = _fmt_edgar_value(row.get("value")) or "—"
                     body += (
                         f'<tr>'
                         f'<td>{line_item}</td>'

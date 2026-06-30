@@ -60,6 +60,19 @@ def is_legacy_scaled_financial_data_stale(
     return stored_schema < current_schema_version
 
 
+# Per-share line items (EPS, dividends per share, book value per share) are
+# NOT expressed in the filing's unit scale: a "USD in thousands" filing still
+# reports EPS as raw dollars-per-share. They must be exempt from unit scaling,
+# and from K/M/B abbreviation on display.
+_PER_SHARE_KW = ("per share", "per-share", "earnings per", " eps")
+
+
+def is_per_share_line_item(label) -> bool:
+    """Return True when a statement line item is a per-share figure (EPS, DPS)."""
+    text = str(label or "").lower()
+    return any(kw in text for kw in _PER_SHARE_KW)
+
+
 def normalize_financial_data(financial_data: dict) -> dict:
     """Scale financial_data values to raw dollars based on the currency unit.
 
@@ -86,6 +99,10 @@ def normalize_financial_data(financial_data: dict) -> dict:
             continue
         for row in rows:
             if not isinstance(row, dict):
+                continue
+            # Per-share figures are already raw dollars-per-share, not in the
+            # filing's unit scale -- scaling them would 1000x the EPS.
+            if is_per_share_line_item(row.get("line_item")):
                 continue
             for value_key in ("value", "value_prior"):
                 v = row.get(value_key)

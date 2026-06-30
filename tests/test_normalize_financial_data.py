@@ -3,6 +3,7 @@ from copy import deepcopy
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION
 from modules.claude_analyzer import (
     is_legacy_scaled_financial_data_stale,
+    is_per_share_line_item,
     normalize_financial_data,
 )
 
@@ -91,3 +92,40 @@ def test_legacy_scaled_stored_data_is_stale_before_reload_normalization():
     reload_value = stored["income_statement"][0]["value"]
     assert reload_value == 1_176_428_000
     assert reload_value != 1_176_428_000_000
+
+
+def test_normalize_does_not_scale_per_share_line_items():
+    """Per-share figures (EPS, DPS) must NOT be multiplied by the unit scale."""
+    financial_data = {
+        "company_name": "Thousands filer with EPS",
+        "currency": "USD",
+        "scale": "thousands",
+        "income_statement": [
+            {"line_item": "Net income for the year", "value": 4_500_000, "value_prior": 1_900_000},
+            {"line_item": "Earnings per share - Basic", "value": 8.9, "value_prior": 3.8},
+            {"line_item": "Earnings per share - Diluted", "value": 8.7, "value_prior": 3.7},
+            {"line_item": "Dividends per share", "value": 1.6, "value_prior": 1.4},
+        ],
+    }
+
+    normalized = normalize_financial_data(deepcopy(financial_data))
+    rows = normalized["income_statement"]
+
+    # Regular line item is scaled by 1000.
+    assert rows[0]["value"] == 4_500_000_000
+    assert rows[0]["value_prior"] == 1_900_000_000
+    # Per-share rows are left untouched (no 1000x).
+    assert rows[1]["value"] == 8.9
+    assert rows[1]["value_prior"] == 3.8
+    assert rows[2]["value"] == 8.7
+    assert rows[3]["value"] == 1.6
+
+
+def test_is_per_share_line_item_detection():
+    assert is_per_share_line_item("Earnings per share - Basic")
+    assert is_per_share_line_item("Net income per share – diluted")
+    assert is_per_share_line_item("Dividends per share")
+    assert not is_per_share_line_item("Weighted average shares outstanding")
+    assert not is_per_share_line_item("Revenue")
+    assert not is_per_share_line_item("Total assets")
+    assert not is_per_share_line_item(None)
