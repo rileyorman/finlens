@@ -6137,6 +6137,54 @@ if st.session_state.financial_data:
             if _auto:
                 st.session_state["manual_ticker"] = _auto
 
+        # --- Find a ticker by company name OR symbol -----------------------
+        # yfinance Search resolves names to the correct symbol, including the
+        # ".TO" suffix for TSX-listed names (e.g. "Tourmaline" -> "TOU.TO"),
+        # so the user does not need to know the exact exchange symbol. This is
+        # placed above the Ticker Symbol input so a selected match flows
+        # straight into the existing Fetch Market Data button.
+        with st.expander("🔍 Search by company name or ticker", expanded=False):
+            _sr_col, _sr_btn = st.columns([3, 1])
+            with _sr_col:
+                _ticker_query = st.text_input(
+                    "Company name or ticker",
+                    placeholder="e.g. Tourmaline, Agnico Eagle, or TOU.TO",
+                    key="ticker_search_query",
+                    label_visibility="collapsed",
+                )
+            with _sr_btn:
+                if st.button("Search", width='stretch', key="ticker_search_btn"):
+                    _q = (_ticker_query or "").strip()
+                    st.session_state["ticker_search_results"] = (
+                        search_ticker_details(_q, max_results=8) if _q else []
+                    )
+
+            _results = st.session_state.get("ticker_search_results")
+            if _results is not None:
+                if not _results:
+                    st.caption("No matches — try the full company name or the exact ticker.")
+                else:
+                    def _search_label(_qt):
+                        _sym = (_qt.get("symbol") or "?").strip()
+                        _nm = _qt.get("longname") or _qt.get("shortname") or ""
+                        _exch = _qt.get("exchDisp") or _qt.get("exchange") or ""
+                        _tail = f"  ·  {_exch}" if _exch else ""
+                        return f"{_nm}  —  {_sym}{_tail}" if _nm else f"{_sym}{_tail}"
+
+                    _choice = st.radio(
+                        "Select a match",
+                        options=list(range(len(_results))),
+                        format_func=lambda i: _search_label(_results[i]),
+                        key="ticker_search_choice",
+                    )
+                    if st.button("Use this ticker", type="primary", key="ticker_search_use"):
+                        _picked = (_results[_choice].get("symbol") or "").strip().upper()
+                        if _picked:
+                            # Set before the Ticker Symbol widget below renders.
+                            st.session_state["manual_ticker"] = _picked
+                            st.session_state.pop("ticker_search_results", None)
+                            st.success(f"Selected {_picked} — click Fetch Market Data below.")
+
         tk_col, btn_col = st.columns([2, 1])
         with tk_col:
             manual_ticker = st.text_input("Ticker Symbol", placeholder="e.g. MHH, AAPL", key="manual_ticker")

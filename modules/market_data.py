@@ -64,8 +64,21 @@ _EXCHANGE_RANK = {
 }
 
 
+# Canadian listings ranked just below US (keyed on symbol suffix, which is more
+# reliable than Yahoo's exchange codes) so a TSX-primary name (e.g. Tourmaline
+# -> TOU.TO) outranks its German/Mexican cross-listings (08T.DU, etc.).
+_CA_SUFFIX_RANK = {".TO": 10, ".V": 11, ".CN": 12, ".NE": 13}
+
+
 def _exchange_rank(quote: dict) -> int:
-    return _EXCHANGE_RANK.get((quote.get("exchange") or "").upper(), 99)
+    code = (quote.get("exchange") or "").upper()
+    if code in _EXCHANGE_RANK:
+        return _EXCHANGE_RANK[code]
+    symbol = (quote.get("symbol") or "").upper()
+    for suffix, rank in _CA_SUFFIX_RANK.items():
+        if symbol.endswith(suffix):
+            return rank
+    return 99
 
 
 def _name_similarity(query: str, quote: dict) -> float:
