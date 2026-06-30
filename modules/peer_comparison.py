@@ -15,6 +15,7 @@ peer_map = {
     "Real Estate": ["AMT", "PLD", "CCI", "EQIX", "PSA"],
     "Utilities": ["NEE", "DUK", "SO", "AEP", "EXC"],
     "Materials": ["LIN", "APD", "SHW", "FCX", "NEM"],
+    "Metals & Mining": ["NEM", "GOLD", "AEM", "FNV", "WPM", "KGC", "TECK"],
     "Communications": ["GOOGL", "META", "NFLX", "DIS", "CMCSA"],
 }
 

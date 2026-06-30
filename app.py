@@ -5450,7 +5450,8 @@ st.caption("Market cap is fetched automatically from yfinance when the filing co
 sector_options = [
     "Enterprise SaaS", "Specialty Retail", "IT Services",
     "Financial Services", "Upstream Oil & Gas", "Healthcare",
-    "Consumer Staples", "Industrials", "Real Estate", "Other",
+    "Consumer Staples", "Industrials", "Metals & Mining",
+    "Real Estate", "Other",
 ]
 sector_mapping = {
     "Technology": "Enterprise SaaS",
@@ -5469,10 +5470,26 @@ sector_mapping = {
 }
 
 
-def _map_sector_to_option(raw_sector):
+# yfinance industry keywords that indicate a metals/mining company. yfinance
+# reports these under the broad "Basic Materials" sector alongside chemicals,
+# so we route on industry to avoid lumping miners in with Industrials/chemicals.
+_MINING_INDUSTRY_KW = (
+    "gold", "silver", "copper", "platinum", "palladium",
+    "precious metals", "metals & mining", "mining", "aluminum", "steel",
+)
+
+
+def _map_sector_to_option(raw_sector, raw_industry=None):
+    if not raw_sector and not raw_industry:
+        return None
+    # Resource/mining companies: route to a dedicated option so both the
+    # valuation sector label and the peer set reflect mining, not Industrials.
+    industry_lower = str(raw_industry or "").lower()
+    if industry_lower and any(kw in industry_lower for kw in _MINING_INDUSTRY_KW):
+        return "Metals & Mining"
+    raw_sector = str(raw_sector or "").strip()
     if not raw_sector:
         return None
-    raw_sector = str(raw_sector).strip()
     if raw_sector in sector_options:
         return raw_sector
     mapped = sector_mapping.get(raw_sector)
@@ -5485,18 +5502,26 @@ def _map_sector_to_option(raw_sector):
     return None
 
 
-def _lookup_yfinance_sector(ticker):
+def _lookup_yfinance_sector(ticker, return_industry=False):
+    """Look up (sector, industry) from yfinance, cached in session state.
+
+    Returns just the sector string by default; pass return_industry=True to get
+    a (sector, industry) tuple. Industry is needed to tell miners apart from
+    chemicals within yfinance's broad "Basic Materials" sector.
+    """
     ticker = (ticker or "").strip().upper()
     if not ticker:
-        return None
-    cache_key = f"yf_sector_{ticker}"
+        return (None, None) if return_industry else None
+    cache_key = f"yf_class_{ticker}"
     if cache_key not in st.session_state:
         try:
             _ensure_yfinance_cache_location()
-            st.session_state[cache_key] = yf.Ticker(ticker).info.get("sector")
+            _info = yf.Ticker(ticker).info or {}
+            st.session_state[cache_key] = (_info.get("sector"), _info.get("industry"))
         except Exception:
-            st.session_state[cache_key] = None
-    return st.session_state.get(cache_key)
+            st.session_state[cache_key] = (None, None)
+    _sector, _industry = st.session_state.get(cache_key) or (None, None)
+    return (_sector, _industry) if return_industry else _sector
 
 
 _sector_ticker = (
@@ -5506,12 +5531,18 @@ _sector_ticker = (
     or (st.session_state.get("quick_financial_data") or {}).get("ticker")
 )
 _quick_financial_data = st.session_state.get("quick_financial_data") or {}
+_yf_sector, _yf_industry = _lookup_yfinance_sector(_sector_ticker, return_industry=True)
 _raw_sector = (
     _quick_financial_data.get("sector")
-    or _lookup_yfinance_sector(_sector_ticker)
+    or _yf_sector
     or (st.session_state.get("market_data") or {}).get("sector")
 )
-_auto_sector = _map_sector_to_option(_raw_sector)
+_raw_industry = (
+    _quick_financial_data.get("industry")
+    or _yf_industry
+    or (st.session_state.get("market_data") or {}).get("industry")
+)
+_auto_sector = _map_sector_to_option(_raw_sector, _raw_industry)
 if _auto_sector:
     st.session_state["auto_sector"] = _auto_sector
     if st.session_state.get("auto_sector_ticker") != _sector_ticker:
