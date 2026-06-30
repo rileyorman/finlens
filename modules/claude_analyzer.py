@@ -64,13 +64,16 @@ def is_legacy_scaled_financial_data_stale(
 # NOT expressed in the filing's unit scale: a "USD in thousands" filing still
 # reports EPS as raw dollars-per-share. They must be exempt from unit scaling,
 # and from K/M/B abbreviation on display.
-_PER_SHARE_KW = ("per share", "per-share", "earnings per", " eps")
+# Matches per-share line items: "per share", "per common share", "per diluted
+# share", "earnings per share", "dividends per common share", and "EPS". The
+# qualifier window allows words like "common"/"diluted" between "per" and
+# "share" so variants are not missed (a missed exemption 1000x-scales the value).
+_PER_SHARE_RE = re.compile(r"\bper\b[\w\s\-,]{0,24}?\bshares?\b|\beps\b")
 
 
 def is_per_share_line_item(label) -> bool:
     """Return True when a statement line item is a per-share figure (EPS, DPS)."""
-    text = str(label or "").lower()
-    return any(kw in text for kw in _PER_SHARE_KW)
+    return bool(_PER_SHARE_RE.search(str(label or "").lower()))
 
 
 def normalize_financial_data(financial_data: dict) -> dict:

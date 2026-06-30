@@ -105,6 +105,7 @@ def test_normalize_does_not_scale_per_share_line_items():
             {"line_item": "Earnings per share - Basic", "value": 8.9, "value_prior": 3.8},
             {"line_item": "Earnings per share - Diluted", "value": 8.7, "value_prior": 3.7},
             {"line_item": "Dividends per share", "value": 1.6, "value_prior": 1.4},
+            {"line_item": "Cash dividends declared per common share", "value": 1.6, "value_prior": 1.4},
         ],
     }
 
@@ -114,18 +115,24 @@ def test_normalize_does_not_scale_per_share_line_items():
     # Regular line item is scaled by 1000.
     assert rows[0]["value"] == 4_500_000_000
     assert rows[0]["value_prior"] == 1_900_000_000
-    # Per-share rows are left untouched (no 1000x).
+    # Per-share rows are left untouched (no 1000x), including "per common share".
     assert rows[1]["value"] == 8.9
     assert rows[1]["value_prior"] == 3.8
     assert rows[2]["value"] == 8.7
     assert rows[3]["value"] == 1.6
+    assert rows[4]["value"] == 1.6
+    assert rows[4]["value_prior"] == 1.4
 
 
 def test_is_per_share_line_item_detection():
     assert is_per_share_line_item("Earnings per share - Basic")
     assert is_per_share_line_item("Net income per share – diluted")
     assert is_per_share_line_item("Dividends per share")
+    assert is_per_share_line_item("Cash dividends declared per common share")
+    assert is_per_share_line_item("Net income per diluted share")
+    assert is_per_share_line_item("Diluted EPS")
     assert not is_per_share_line_item("Weighted average shares outstanding")
+    assert not is_per_share_line_item("Share based liabilities (Note 17)")
     assert not is_per_share_line_item("Revenue")
     assert not is_per_share_line_item("Total assets")
     assert not is_per_share_line_item(None)
