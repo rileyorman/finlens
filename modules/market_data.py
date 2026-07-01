@@ -42,11 +42,8 @@ def _to_yfinance_ticker(ticker: str) -> str:
     t = (ticker or "").strip().upper()
     if not t:
         return t
-    ticker_overrides = {
-        "NFG": "NFGC",
-    }
-    if t in ticker_overrides:
-        return ticker_overrides[t]
+    if t in _TICKER_OVERRIDES:
+        return _TICKER_OVERRIDES[t]
     if any(t.endswith(sfx) for sfx in (".TO", ".V", ".CN", ".NE")):
         return t
     if "." in t:
@@ -73,6 +70,11 @@ _EXCHANGE_RANK = {
 # reliable than Yahoo's exchange codes) so a TSX-primary name (e.g. Tourmaline
 # -> TOU.TO) outranks its German/Mexican cross-listings (08T.DU, etc.).
 _CA_SUFFIX_RANK = {".TO": 10, ".V": 11, ".CN": 12, ".NE": 13}
+
+# Campaign-scoped override; intentionally shadows National Fuel Gas (NYSE: NFG).
+_TICKER_OVERRIDES = {
+    "NFG": "NFG.V",
+}
 
 
 def _exchange_rank(quote: dict) -> int:
