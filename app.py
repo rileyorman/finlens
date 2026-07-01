@@ -2202,12 +2202,11 @@ document.addEventListener('focusin', function(e) {
                                         st.rerun()
 
                                     if _legacy_scaled_stale(entry.get("financial_data"), entry.get("schema_version")):
+                                        # Route to the Re-Analyse confirmation instead of loading. The
+                                        # stale message is rendered in that confirmation block below —
+                                        # NOT here, because st.rerun() discards any st.warning shown now.
                                         st.session_state.confirm_reanalyse = eid
                                         st.session_state.confirm_delete = None
-                                        st.warning(
-                                            "This stored analysis was saved with an older normalization schema. "
-                                            "Use **Re-Analyse $** to refresh it before loading."
-                                        )
                                         st.rerun()
 
                                     fd = normalize_financial_data(entry["financial_data"])
@@ -2292,6 +2291,14 @@ document.addEventListener('focusin', function(e) {
 
                         # --- Re-analyse confirmation ---
                         if expanded and st.session_state.get("confirm_reanalyse") == eid:
+                            # Recompute staleness at render time (entry is in scope) so the
+                            # message survives the rerun that routed us here — whether the
+                            # prompt came from a stale Load or a direct Re-Analyse click.
+                            if _legacy_scaled_stale(entry.get("financial_data"), entry.get("schema_version")):
+                                st.warning(
+                                    "This stored analysis was saved with an older normalization schema, so its "
+                                    "figures may be mis-scaled. Re-analyse to refresh it before loading."
+                                )
                             st.caption(
                                 f"Re-analyse **{entry.get('company_name') or entry.get('file_name') or 'Unknown'}**? This will run 4 Claude API calls "
                                 f"(~$0.10–0.15 cost) and overwrite the existing result."
