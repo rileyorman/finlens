@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Machine-enforced pre-commit gate: py_compile on all staged .py files.
+# Machine-enforced pre-commit gate on all staged .py files:
+#   1. py_compile — syntax must be valid.
+#   2. ruff check — no unused imports, dead code, or bare 'except:' (lenient
+#      ruleset in pyproject.toml).
 # Part of the Minimize Human Error principle — do not remove or bypass.
 
 set -e
@@ -16,6 +19,7 @@ if [ ! -f "$PYTHON" ]; then
     PYTHON=python
 fi
 
+# ── 1. Syntax gate (py_compile) ─────────────────────────────────────────────
 failed=0
 for f in $staged_py; do
     if ! "$PYTHON" -m py_compile "$f" 2>&1; then
@@ -28,4 +32,20 @@ if [ "$failed" -eq 1 ]; then
     echo ""
     echo "Pre-commit blocked: fix syntax errors above before committing."
     exit 1
+fi
+
+# ── 2. Lint gate (ruff) ─────────────────────────────────────────────────────
+# Config lives in pyproject.toml. Only staged files are checked, so a commit
+# is never blocked by pre-existing issues in files you did not touch.
+if "$PYTHON" -m ruff --version >/dev/null 2>&1; then
+    if ! "$PYTHON" -m ruff check $staged_py; then
+        echo ""
+        echo "Pre-commit blocked: fix the lint errors above before committing."
+        echo "Many are auto-fixable with:  $PYTHON -m ruff check --fix <file>"
+        exit 1
+    fi
+else
+    # Don't silently pass — a missing linter should be loud, not invisible.
+    echo "  WARNING: ruff not installed — lint gate skipped for this commit."
+    echo "  Install it with:  $PYTHON -m pip install -r requirements.txt"
 fi

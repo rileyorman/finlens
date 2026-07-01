@@ -4,7 +4,7 @@ Run the full FinLens Sunday audit in order. Complete every step before moving to
 
 **Step 1 — Data Integrity Engine audit (CC report card)**
 
-**Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Do not block the rest of the audit, but include the finding in the Step 6 summary.
+**Hook portability check (run first):** run `git config core.hooksPath`. If the output is not `.githooks`, flag it: "Pre-commit hook is inactive on this clone. Run `git config core.hooksPath .githooks` to re-enable." Also confirm ruff is installed (`.\venv\Scripts\python.exe -m ruff --version`); if it is missing the pre-commit lint gate silently skips, so flag: "ruff not installed — lint gate inactive. Run `.\venv\Scripts\python.exe -m pip install -r requirements.txt`." Do not block the rest of the audit, but include any finding in the Step 6 summary.
 
 If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` first. Then run `/audit-run`. The audit writes a dated report to `docs/audits/integrity_audit_YYYYMMDD.md` with a PASS/FAIL header and a prioritized findings list. That report is the CC report card — save the file path; Step 6 and Step 8 reference it.
 
@@ -17,6 +17,14 @@ If `docs/audits/INTEGRITY_AUDIT_PROMPT.md` does not exist, run `/audit-create` f
 ```
 
 Report: number of tests collected, pass/fail counts, and any failing test names with their error message. Never accept a cached or previously pasted result — live run only.
+
+**Lint (sub-check):** Run the linter across the whole repo (backstop to the per-commit hook, which only sees staged files):
+
+```
+.\venv\Scripts\python.exe -m ruff check .
+```
+
+Report: "All checks passed!" or the total finding count broken down by rule code. Any finding here means something reached the tree that the pre-commit gate should have caught — note it and check whether the hook was inactive (see the hook portability check above). Live run only.
 
 ---
 
@@ -77,7 +85,7 @@ Read `docs/FinLens_Roadmap_Addendum.md`. State the item currently at the top of 
 
 **Weekly summary (sub-check):** Compile a weekly summary section and append it to the Step 1 report file (`docs/audits/integrity_audit_YYYYMMDD.md`). The section should include:
 
-- Step 1 verdict (PASS / FAIL), schema version status, test pass rate (e.g., "12/12 passed"), hook portability status
+- Step 1 verdict (PASS / FAIL), schema version status, test pass rate (e.g., "12/12 passed"), lint status (clean / N findings), hook portability status
 - Step 2: list of CODEX_MEMORY.md items synced (or "No drift found")
 - Step 3: release radar findings (or "No actionable changes")
 - Step 4: cost audit summary
