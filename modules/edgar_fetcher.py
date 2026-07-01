@@ -48,7 +48,7 @@ def _fmt(value):
             return f"${v/1_000:.1f}K"
         else:
             return f"${v:.0f}"
-    except:
+    except Exception:
         return None
 
 

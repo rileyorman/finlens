@@ -6066,9 +6066,9 @@ if st.session_state.financial_data:
         and st.session_state.get("analysis_cache_is_stale")
     ):
         st.warning(
-            f"⚠️ This analysis was saved with an older version of FinLens "
-            f"and may display incorrect numbers or be missing fields. "
-            f"Click **Re-Analyse $** above to refresh it with the current pipeline."
+            "⚠️ This analysis was saved with an older version of FinLens "
+            "and may display incorrect numbers or be missing fields. "
+            "Click **Re-Analyse $** above to refresh it with the current pipeline."
         )
 
     _fd_check = st.session_state.get("financial_data") or {}
@@ -6839,7 +6839,6 @@ if st.session_state.financial_data:
                 "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
                 "Use this to diagnose — / N/A values in the Summary tab."
             )
-            import json as _json
 
             _dbg_metrics = _calc_summary_metrics(financial_data)
 
@@ -6964,11 +6963,11 @@ if st.session_state.financial_data:
                 )
             else:
                 st.markdown(
-                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                    f'<div style="font-size:28px;font-weight:700">—</div>'
-                    f'<div style="font-size:10px;color:#aaa">DCF required</div>'
-                    f'</div>',
+                    '<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
+                    '<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    '<div style="font-size:28px;font-weight:700">—</div>'
+                    '<div style="font-size:10px;color:#aaa">DCF required</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             _learn_more("margin_of_safety", "Margin of Safety")

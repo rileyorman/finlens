@@ -2,7 +2,6 @@
 - _escape_md_dollars (app.py)
 - _to_yfinance_ticker (modules/market_data.py)
 """
-import importlib
 import sys
 import types
 

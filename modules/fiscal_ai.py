@@ -29,7 +29,7 @@ def _get_json(url):
 def _test_url(label, url):
     try:
         session = _make_session()
-        response = session.get(url, timeout=10)
+        session.get(url, timeout=10)
     except Exception as e:
         print(f"{label}: Exception: {e}")
 

@@ -6,7 +6,6 @@ import re
 import anthropic
 import httpx
 
-from config import EXTRACTION_MODEL
 from modules.mda_sentiment import analyze_mda_sentiment
 
 _SYNTHESIS_CHARS = 40_000
@@ -19,7 +18,6 @@ def _text_content(response) -> str:
 
 
 def _safe_json(raw: str) -> dict:
-    import re
     text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     try:

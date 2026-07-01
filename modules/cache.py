@@ -1,7 +1,6 @@
 import hashlib
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 from config import CACHE_DIR as _CACHE_DIR, safe_write_text
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION

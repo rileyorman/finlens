@@ -335,7 +335,6 @@ def build_financial_data_from_fmp(ticker, period="annual", limit=1):
         current_liabilities = balance.get("totalCurrentLiabilities") or 1
         current_ratio = _ratio(current_assets, current_liabilities)
         company_name = profile.get("companyName") or ticker
-        fiscal_year = income.get("fiscalYear")
         fiscal_year_prior = income_prior.get("fiscalYear")
         period_label = "TTM" if is_ttm else _period_label(income_raw, period)
 

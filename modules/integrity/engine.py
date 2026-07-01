@@ -557,7 +557,7 @@ def validate_filing(
             checks.append(CheckResult(
                 rule_id=rule_id, severity=severity,
                 passed=False, skipped=True,
-                skip_reason=f"check_error",
+                skip_reason="check_error",
                 observed_value=None, threshold={},
                 message=f"Check raised an exception: {exc}",
             ))
