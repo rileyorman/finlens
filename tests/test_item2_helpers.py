@@ -18,6 +18,7 @@ from modules.market_data import _to_yfinance_ticker
 @pytest.mark.parametrize("ticker, expected", [
     ("REI.UN",  "REI-UN.TO"),
     ("rei.un",  "REI-UN.TO"),   # case-insensitive normalisation
+    ("NFG",     "NFGC"),        # New Found Gold, not National Fuel Gas
     ("BCE.PR.A", "BCE-PR-A.TO"),
     ("AAPL",   "AAPL"),         # plain US ticker unchanged
     ("SHOP.TO", "SHOP.TO"),     # already has .TO suffix

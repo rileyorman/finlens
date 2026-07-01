@@ -42,6 +42,11 @@ def _to_yfinance_ticker(ticker: str) -> str:
     t = (ticker or "").strip().upper()
     if not t:
         return t
+    ticker_overrides = {
+        "NFG": "NFGC",
+    }
+    if t in ticker_overrides:
+        return ticker_overrides[t]
     if any(t.endswith(sfx) for sfx in (".TO", ".V", ".CN", ".NE")):
         return t
     if "." in t:
