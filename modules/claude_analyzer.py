@@ -76,6 +76,69 @@ def is_per_share_line_item(label) -> bool:
     return bool(_PER_SHARE_RE.search(str(label or "").lower()))
 
 
+# Top-level scalar fields that carry the filing's unit scale and must be scaled
+# to raw dollars at this boundary (see the "Normalize at the Boundary" principle
+# in CLAUDE.md). app.py promotes EVERY mapped SEDAR canonical field to a
+# top-level financial_data key, so the canonical portion below MUST stay in sync
+# with the canonical fields in modules/integrity/sedar_aliases.json. That sync is
+# machine-enforced by tests/test_sedar_scaling_whitelist.py -- do not hand-manage
+# this from memory when adding a sector field.
+
+# Market/derived scalars -- not SEDAR canonical fields (sourced from FMP/yfinance).
+_MARKET_DERIVED_SCALE_FIELDS = frozenset({
+    "free_cash_flow",
+    "fcf",
+    "market_cap",
+    "shares_outstanding",
+    "total_debt",
+})
+
+# SEDAR canonical fields that are dollar magnitudes -- scaled by the unit factor.
+_CANONICAL_SCALE_FIELDS = frozenset({
+    "cash",
+    "cost_of_revenue",
+    "depletion_depreciation_amortization",
+    "ebitda",
+    "exploration_expense",
+    "gross_profit",
+    "insurance_finance_result",
+    "insurance_revenue",
+    "insurance_service_expenses",
+    "interest_expense",
+    "investment_property_fair_value_delta",
+    "mine_development_amortization",
+    "net_cash_used_in_operating_activities",
+    "net_income",
+    "net_insurance_service_result",
+    "net_interest_income",
+    "net_investment_result",
+    "net_loss",
+    "net_operating_income",
+    "operating_expense",
+    "operating_income",
+    "operating_loss",
+    "production_costs",
+    "property_operating_costs",
+    "provision_for_credit_losses",
+    "rd_expense",
+    "rental_revenue",
+    "revenue",
+    "royalties",
+    "total_assets",
+    "total_revenue",
+    "total_revenue_bank",
+})
+
+# SEDAR canonical fields that are NOT dollar magnitudes (ratios/margins) and must
+# never be unit-scaled. Kept explicit so the sync test forces a deliberate
+# scale/no-scale decision for every canonical field rather than defaulting.
+_NON_SCALED_CANONICAL_FIELDS = frozenset({
+    "gross_margin",  # ratio, not a currency magnitude
+})
+
+_TOP_LEVEL_SCALE_FIELDS = _MARKET_DERIVED_SCALE_FIELDS | _CANONICAL_SCALE_FIELDS
+
+
 def normalize_financial_data(financial_data: dict) -> dict:
     """Scale financial_data values to raw dollars based on the currency unit.
 
@@ -112,21 +175,11 @@ def normalize_financial_data(financial_data: dict) -> dict:
                 if isinstance(v, (int, float)):
                     row[value_key] = v * scale
 
-    # Exporters consume financial_data directly, so normalizing here keeps
-    # Excel/memo/scenario outputs on the same raw-dollar basis without touching
-    # their modules.
-    for key in (
-        "free_cash_flow",
-        "fcf",
-        "market_cap",
-        "shares_outstanding",
-        "total_debt",
-        "cash",
-        "revenue",
-        "net_income",
-        "gross_profit",
-        "total_assets",
-    ):
+    # Exporters and downstream consumers read these top-level scalars directly,
+    # so scaling them here keeps Excel/memo/scenario/DCF outputs and every
+    # promoted SEDAR canonical field on the same raw-dollar basis without
+    # per-consumer scaling logic.
+    for key in _TOP_LEVEL_SCALE_FIELDS:
         v = financial_data.get(key)
         if isinstance(v, (int, float)):
             financial_data[key] = v * scale
