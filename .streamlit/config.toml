@@ -8,3 +8,6 @@ font = "sans serif"
 
 [server]
 headless = true
+# Bind to localhost only. Without this, Streamlit listens on 0.0.0.0 and the
+# app is reachable by any device on the same network (security sweep 2026-07-02).
+address = "localhost"
