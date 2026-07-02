@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 from modules.economics import resource_economics
+from modules.economics.resource_display import build_commodity_display_text
 from modules.economics.resource_economics import build_resource_economics_snapshot
 
 
@@ -118,6 +119,44 @@ class NoListingCurrencyTicker(FakeTicker):
         super().__init__(symbol)
         if hasattr(self.fast_info, "currency"):
             del self.fast_info.currency
+
+
+def test_infer_commodity_sector_keyword_precedence():
+    cases = [
+        ("Upstream Oil & Gas / Integrated Energy", "crude oil"),
+        ("Integrated Oil & Gas", "crude oil"),
+        ("Upstream Oil & Gas", "crude oil"),
+        ("Natural Gas Production", "natural gas"),
+        ("Gas Gathering and Processing", None),
+        ("Gold Mining", "gold"),
+        ("Mineral Exploration", None),
+    ]
+
+    for sector, expected in cases:
+        assert resource_economics.infer_commodity(sector) == expected
+
+
+def test_commodity_display_keeps_inferred_qualifier_out_of_spot_title():
+    display = build_commodity_display_text("crude oil", "CL=F")
+
+    assert display["header_label"] == "Crude Oil (inferred from sector description)"
+    assert display["spot_title"] == "Crude Oil Spot"
+    assert "inferred" not in display["spot_title"].lower()
+
+
+def test_crude_proxy_caveat_names_resolved_proxy():
+    wti = build_commodity_display_text("crude oil", "CL=F")
+    fallback = build_commodity_display_text("crude oil", "USO")
+
+    assert wti["crude_caveat"] == (
+        "Proxy is WTI futures (CL=F); "
+        "Canadian producers may realize WCS-differential pricing."
+    )
+    assert fallback["crude_caveat"] == (
+        "Proxy is USO; Canadian producers may realize WCS-differential pricing."
+    )
+    assert "WTI" not in fallback["crude_caveat"]
+    assert "CL=F" not in fallback["crude_caveat"]
 
 
 def test_resource_economics_computes_core_metrics_with_mocked_yfinance(monkeypatch):

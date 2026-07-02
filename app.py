@@ -49,6 +49,7 @@ from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
 from modules.peer_comparison import get_peer_data, peer_map
 from modules.dcf_calculator import calculate_dcf
+from modules.economics.resource_display import build_commodity_display_text
 from modules.economics.resource_economics import build_resource_economics_snapshot
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
@@ -7633,16 +7634,25 @@ if st.session_state.financial_data:
                 _econ_fetch_errs = _econ_metadata.get("fetch_errors") or {}
 
                 # --- Header line ---
-                _econ_cmdt_label = (_econ_cmdt_mkt.get("commodity") or "—").title()
-                _econ_proxy = _econ_cmdt_mkt.get("proxy_used") or "—"
+                _econ_cmdt_key = _econ_cmdt_mkt.get("commodity")
+                _econ_proxy_symbol = _econ_cmdt_mkt.get("proxy_used")
+                _econ_proxy = _econ_proxy_symbol or "—"
                 _econ_proxy_role = _econ_cmdt_mkt.get("proxy_role") or "—"
+                _econ_cmdt_display = build_commodity_display_text(
+                    _econ_cmdt_key,
+                    _econ_proxy_symbol,
+                )
+                _econ_cmdt_header_label = _econ_cmdt_display["header_label"]
+                _econ_cmdt_spot_title = _econ_cmdt_display["spot_title"]
+                _econ_cmdt_caveat = _econ_cmdt_display["crude_caveat"]
                 st.markdown(
                     f'<div style="font-size:20px;font-weight:700;color:#F1F5F9;margin:0 0 4px 0">'
                     f'Resource Economics Snapshot — Tier 1</div>'
                     f'<div style="font-size:12px;color:#64748B;margin:0 0 16px 0">'
                     f'Filing fundamentals × yfinance commodity overlay. '
-                    f'Commodity: {escape(_econ_cmdt_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
-                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.</div>',
+                    f'Commodity: {escape(_econ_cmdt_header_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
+                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.'
+                    f'{"<br>" + escape(_econ_cmdt_caveat) if _econ_cmdt_caveat else ""}</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -7736,7 +7746,7 @@ if st.session_state.financial_data:
                         if _econ_cmdt_mkt.get("proxy_used") else None
                     )
                     _econ_metric_card(
-                        f"{_econ_cmdt_label} Spot",
+                        _econ_cmdt_spot_title,
                         _econ_fmt_price(_econ_spot.get("value")),
                         _spot_reason,
                     )

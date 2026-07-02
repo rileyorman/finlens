@@ -115,9 +115,10 @@ def infer_commodity(sector_inferred: str | None, commodity_hint: str | None = No
         return "gold"
     if "copper" in sector:
         return "copper"
-    if "natural gas" in sector or "gas" in sector:
+    has_oil_keyword = any(keyword in sector for keyword in ("oil", "crude", "petroleum"))
+    if "natural gas" in sector and not has_oil_keyword:
         return "natural gas"
-    if "oil" in sector or "crude" in sector or "petroleum" in sector:
+    if has_oil_keyword:
         return "crude oil"
     return None
 
