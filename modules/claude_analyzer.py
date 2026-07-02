@@ -5,6 +5,7 @@ import httpx
 import json
 import logging
 import re
+import unicodedata
 
 from config import ANALYSIS_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
 
@@ -233,10 +234,34 @@ def _text_content(response) -> str:
     return next((b.text for b in response.content if b.type == "text"), "")
 
 
+# Typography that Claude emits in prose, mapped to readable ASCII equivalents.
+# Do not revert _sanitize to a blanket '?' replace: em-dashes in analyst text
+# were stored as "?" and displayed that way permanently (cache holds the result).
+_TYPOGRAPHY_ASCII = str.maketrans({
+    "—": "--",   # em dash
+    "–": "-",    # en dash
+    "−": "-",    # unicode minus
+    "‘": "'",    # left single quote
+    "’": "'",    # right single quote / apostrophe
+    "“": '"',    # left double quote
+    "”": '"',    # right double quote
+    "…": "...",  # ellipsis
+    " ": " ",    # non-breaking space
+})
+
+
 def _sanitize(text: str) -> str:
-    """Replace non-ASCII characters with '?' — prevents charmap errors on Windows."""
+    """Convert model text to readable ASCII — keeps the Windows charmap-safety
+    guarantee (output is pure ASCII) without destroying typography: em dashes
+    become '--', curly quotes straighten, accents drop (é -> e). '?' remains
+    only for genuinely unmappable symbols."""
     if not text:
         return text
+    text = text.translate(_TYPOGRAPHY_ASCII)
+    # NFKD splits accented letters into base + combining mark; drop the marks
+    # so "é" becomes "e" (not "e?").
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
     return text.encode("ascii", "replace").decode("ascii")
 
 
