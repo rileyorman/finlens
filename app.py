@@ -3936,10 +3936,10 @@ if page == "Stock Tracker":
         desc = comp["description"]
         if desc:
             short_desc = desc[:200] + "..."
-            st.markdown(short_desc)
+            st.markdown(_escape_md_dollars(short_desc))
             if len(desc) > 200:
                 with st.expander("Read more"):
-                    st.markdown(desc)
+                    st.markdown(_escape_md_dollars(desc))
     with header_analyst_col:
         analyst = sd["analyst"]
         rec = (analyst["recommendation"] or "").upper()
@@ -6487,7 +6487,7 @@ if st.session_state.financial_data:
                             f'<blockquote style="border-left:3px solid #374B6B;'
                             f'margin:4px 0;padding:6px 12px;'
                             f'color:#94A3B8;font-size:13px;font-style:italic">'
-                            f'{_escape_md_dollars(phrase)}</blockquote>',
+                            f'{escape(phrase)}</blockquote>',
                             unsafe_allow_html=True,
                         )
         elif mda_sentiment and mda_sentiment.get("error"):
@@ -6918,10 +6918,11 @@ if st.session_state.financial_data:
                 )
             thesis = summary_data.get("thesis") or ""
             if thesis:
-                import html as _html
+                # Raw HTML block: markdown/KaTeX never runs here, so html-escape only —
+                # \$-escaping would show a literal backslash on screen.
                 st.markdown(
                     f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
-                    f'{_html.escape(_escape_md_dollars(thesis))}</p>',
+                    f'{escape(thesis)}</p>',
                     unsafe_allow_html=True,
                 )
 
@@ -7222,7 +7223,8 @@ if st.session_state.financial_data:
         fw_dalio, fw_lynch, fw_marks = st.columns(3)
 
         with fw_dalio:
-            dalio_text = _escape_md_dollars(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
+            # HTML container: html-escape only (no \$-escaping — see thesis note above).
+            dalio_text = escape(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
             st.markdown(
                 f'<div style="background:#EEEDFE;border-radius:8px;padding:16px 18px">'
                 f'<div style="font-size:12px;font-weight:700;color:#5B4FCF;margin-bottom:8px;'
@@ -7234,8 +7236,8 @@ if st.session_state.financial_data:
 
         with fw_lynch:
             lynch_cat  = dd.get("lynch_category") or ""
-            lynch_text = _escape_md_dollars(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
-            cat_suffix = f" ({lynch_cat})" if lynch_cat else ""
+            lynch_text = escape(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
+            cat_suffix = f" ({escape(lynch_cat)})" if lynch_cat else ""
             st.markdown(
                 f'<div style="background:#E1F5EE;border-radius:8px;padding:16px 18px">'
                 f'<div style="font-size:12px;font-weight:700;color:#217A4B;margin-bottom:8px;'
@@ -7246,7 +7248,7 @@ if st.session_state.financial_data:
             )
 
         with fw_marks:
-            marks_text = _escape_md_dollars(dd.get("marks_view") or "Re-analyse to generate Marks view.")
+            marks_text = escape(dd.get("marks_view") or "Re-analyse to generate Marks view.")
             st.markdown(
                 f'<div style="background:#FAEEDA;border-radius:8px;padding:16px 18px">'
                 f'<div style="font-size:12px;font-weight:700;color:#B06000;margin-bottom:8px;'
@@ -7345,9 +7347,9 @@ if st.session_state.financial_data:
                             detail = item.get("value") or item.get("detail", "")
                         else:
                             title, detail = str(item), ""
-                        st.markdown(f"**{title}**")
+                        st.markdown(f"**{_escape_md_dollars(title)}**")
                         if detail:
-                            st.caption(detail)
+                            st.caption(_escape_md_dollars(detail))
                 else:
                     st.caption("Re-analyse to generate capital allocation insights.")
 
@@ -7378,7 +7380,7 @@ if st.session_state.financial_data:
             with st.container(border=True):
                 st.markdown("##### Lynch Story")
                 story = dd.get("lynch_story") or "Re-analyse to generate Lynch story."
-                st.write(story)
+                st.write(_escape_md_dollars(story))
 
         st.divider()
 
@@ -7530,8 +7532,9 @@ if st.session_state.financial_data:
             st.markdown("**Bull Case**")
             for i, pt in enumerate(bull_cases[:3]):
                 fw     = _BULL_FW[i] if i < len(_BULL_FW) else ""
-                title  = _escape_md_dollars(pt.get("title", ""))
-                detail = _escape_md_dollars(pt.get("detail", ""))
+                # HTML cards: html-escape only (no \$-escaping — markdown never runs in raw HTML).
+                title  = escape(pt.get("title", ""))
+                detail = escape(pt.get("detail", ""))
                 st.markdown(
                     f'<div style="background:#F0F7EC;border-left:4px solid #70AD47;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
@@ -7549,8 +7552,8 @@ if st.session_state.financial_data:
             st.markdown("**Bear Case**")
             for i, pt in enumerate(bear_cases[:3]):
                 fw     = _BEAR_FW[i] if i < len(_BEAR_FW) else ""
-                title  = _escape_md_dollars(pt.get("title", ""))
-                detail = _escape_md_dollars(pt.get("detail", ""))
+                title  = escape(pt.get("title", ""))
+                detail = escape(pt.get("detail", ""))
                 st.markdown(
                     f'<div style="background:#FDF2F2;border-left:4px solid #C00000;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
