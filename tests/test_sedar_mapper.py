@@ -589,10 +589,12 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     canonical fields. CNQ maps sector-native fields from its primary income
     statement while preserving default net_income via "Net earnings".
 
-    Important CNQ semantics: `total_revenue` is gross Product sales before
-    royalties. The statement also contains a net "Revenue" line after royalties;
-    that line deliberately remains unmapped so the gross and royalty components
-    do not collapse into one generic revenue value.
+    Important CNQ semantics: canonical `revenue` is gross Product sales before
+    royalties (Task A rename, 2026-07-03 — resource_sector fills the DEFAULT
+    revenue slot like mining_sector does; audit 551aaae §8). The statement also
+    contains a net "Revenue" line after royalties; that line deliberately
+    remains unmapped so the gross and royalty components do not collapse into
+    one generic revenue value.
     """
     data = _load_fixture("cnq_fy2024_sedar.json")
     assert data["accounting_standard"] == "IFRS"
@@ -611,8 +613,9 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     )
     mapped = result["mapped"]
 
-    assert mapped["total_revenue"]["source_label"] == "Product sales"
-    assert mapped["total_revenue"]["value"] == 41509
+    assert mapped["revenue"]["source_label"] == "Product sales"
+    assert mapped["revenue"]["value"] == 41509
+    assert "total_revenue" not in mapped  # Task A: sector-minted name retired
 
     assert mapped["royalties"]["source_label"] == "Less: royalties"
     assert mapped["royalties"]["value"] == -5853

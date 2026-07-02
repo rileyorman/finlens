@@ -252,7 +252,7 @@
     },
     "resource_sector": {
       "canonical_fields": {
-        "total_revenue": {
+        "revenue": {
           "aliases": [
             {
               "label": "product sales",

@@ -125,6 +125,30 @@ When designing any new feature that writes files: ask "does this need to
 persist across a reboot?" If yes, NOT temp. "Will this be written frequently
 during normal use?" If yes, NOT a cloud sync folder.
 
+## SEDAR Canonical Revenue Semantics (per-sector)
+
+The mapper's canonical `revenue` and its sector-specific revenue names carry
+deliberate, distinct meanings. Do not "unify" the distinct ones, and do not
+re-mint sector names for the same concept (that was the Task A bug, fixed
+2026-07-03 — audit: docs/audits/2026-07-02-economics-contract-audit.md).
+
+- `revenue` (default; resource_sector and mining_sector fill THIS slot):
+  the filer's top line as canonically chosen. For resource/O&G filers this is
+  GROSS product sales BEFORE royalty deductions (CNQ "Product sales" 41,509,
+  not the net "Revenue" 35,656) — per the 2026-06-17 ground-truth decision.
+  Display surfaces label it "gross of royalties" for resource filers.
+- `rental_revenue` (reit_sector): rental-only revenue per the NOI rule —
+  DELIBERATELY a different concept from a REIT's blended total (which, where
+  a "Total revenue" line exists, maps to default `revenue` separately).
+- `insurance_revenue` (insurance_sector): IFRS 17 insurance revenue —
+  DELIBERATELY distinct; not comparable to a corporate top line.
+- `royalties` is stored NEGATIVE (as-presented deduction, e.g. "Less:
+  royalties" −5,853). Consumers wanting a positive cost must negate it.
+
+When adding a sector profile: if the concept already has a default canonical
+name, AUGMENT that name with new aliases (mining_sector pattern). Mint a new
+canonical name only for a genuinely different concept, and record why.
+
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
 External data sources (Claude analyses, FMP, yfinance, EDGAR) return data

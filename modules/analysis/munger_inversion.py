@@ -188,9 +188,9 @@ def _dcf_instruction(dcf_snapshot: dict | None) -> str:
 
 
 def _fundamentals(financial_data: dict, mapping: dict) -> dict:
-    revenue = _field_value(financial_data, ("revenue", "total_revenue"))
+    revenue = _field_value(financial_data, ("revenue",))
     if revenue is None:
-        revenue = _mapped_value(mapping, "revenue") or _mapped_value(mapping, "total_revenue")
+        revenue = _mapped_value(mapping, "revenue")
 
     net_income = _field_value(financial_data, ("net_income", "netIncome"))
     if net_income is None:

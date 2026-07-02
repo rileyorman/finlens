@@ -7692,6 +7692,16 @@ if st.session_state.financial_data:
                     )
 
                 # --- Row 1: three metric cards ---
+                # resource_sector canonical revenue is GROSS of royalties (product
+                # sales / gross revenues per the 2026-06-17 ground-truth decision) —
+                # label it so a user reconciling against the filing's net "Revenue"
+                # line isn't hit by an unexplained discrepancy.
+                _econ_is_gross_revenue = _econ_sector_profile == "resource_sector"
+                _econ_revenue_label = (
+                    "Revenue (gross of royalties) / Market Cap"
+                    if _econ_is_gross_revenue
+                    else "Revenue / Market Cap"
+                )
                 _ec1, _ec2, _ec3 = st.columns(3)
                 with _ec1:
                     _econ_metric_card(
@@ -7701,7 +7711,7 @@ if st.session_state.financial_data:
                     )
                 with _ec2:
                     _econ_metric_card(
-                        "Revenue / Market Cap",
+                        _econ_revenue_label,
                         _econ_fmt_mult(_econ_metrics.get("revenue_to_market_cap")),
                         _econ_reasons.get("revenue_to_market_cap"),
                     )
@@ -7710,6 +7720,12 @@ if st.session_state.financial_data:
                         "Net Margin",
                         _econ_fmt_pct(_econ_metrics.get("net_margin")),
                         _econ_reasons.get("net_margin"),
+                    )
+                if _econ_is_gross_revenue:
+                    st.caption(
+                        "Revenue basis: gross of royalties — the canonical resource-sector "
+                        "top line (e.g. product sales / gross revenues), before royalty "
+                        "deductions. Net margin uses the same gross revenue denominator."
                     )
 
                 # --- Row 2: commodity spot + cheap company/sector flag ---

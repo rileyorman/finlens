@@ -48,10 +48,12 @@ FIELD_DESCRIPTIONS = {
     "property_operating_costs": "REIT property operating costs or investment property operating expenses.",
     "provision_for_credit_losses": "Banking provision for credit losses.",
     "rental_revenue": "REIT rental revenue, investment property revenue, or equivalent.",
-    "revenue": "Total revenue, revenues, sales, or equivalent top-line revenue.",
+    "revenue": (
+        "Total revenue, revenues, sales, or equivalent top-line revenue. "
+        "For resource-sector filers: GROSS product sales before royalty deductions."
+    ),
     "royalties": "Resource-sector royalties.",
     "total_assets": "Total assets from the consolidated balance sheet or statement of financial position.",
-    "total_revenue": "Resource-sector gross total revenue or product sales before deductions.",
 }
 
 
