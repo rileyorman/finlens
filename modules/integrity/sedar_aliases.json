@@ -258,6 +258,11 @@
               "label": "product sales",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            },
+            {
+              "label": "gross revenues",
+              "standards": ["IFRS"],
+              "source": "SU_FY2025_dry_run"
             }
           ],
           "patterns": []

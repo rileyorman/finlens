@@ -135,8 +135,13 @@ re-mint sector names for the same concept (that was the Task A bug, fixed
 - `revenue` (default; resource_sector and mining_sector fill THIS slot):
   the filer's top line as canonically chosen. For resource/O&G filers this is
   GROSS product sales BEFORE royalty deductions (CNQ "Product sales" 41,509,
-  not the net "Revenue" 35,656) — per the 2026-06-17 ground-truth decision.
-  Display surfaces label it "gross of royalties" for resource filers.
+  not the net "Revenue" 35,656; Suncor "Gross revenues" 52,377) — per the
+  2026-06-17 ground-truth decision. Display surfaces label it "gross of
+  royalties" for resource filers.
+  NEGATIVE RULE: on royalty-reporting resource filers, bare "Revenue" /
+  net-of-royalties lines stay UNMAPPED BY DESIGN — canonical revenue = gross.
+  Bare "revenue" is never a safe alias in this sector (it would capture the
+  net line and collapse the gross/royalty split). Pinned by test.
 - `rental_revenue` (reit_sector): rental-only revenue per the NOI rule —
   DELIBERATELY a different concept from a REIT's blended total (which, where
   a "Total revenue" line exists, maps to default `revenue` separately).

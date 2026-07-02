@@ -581,6 +581,52 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_resource_sector_maps_suncor_class_gross_revenues():
+    """Task B (Suncor-scoped, decision (a) 2026-07-03): integrated-producer
+    labels map through resource_sector. "Gross revenues" fills canonical
+    `revenue` (gross-of-royalties convention); the net-of-royalties line
+    stays unmapped BY DESIGN (CLAUDE.md per-sector revenue semantics)."""
+    items = [
+        {"label": "Gross revenues", "value": 52377, "confidence": 0.99},
+        {"label": "Less: royalties", "value": -3469, "confidence": 0.99},
+        {"label": "Revenues and Other Income (net)", "value": 49310, "confidence": 0.99},
+        {"label": "Net Earnings", "value": 5918, "confidence": 0.99},
+        {"label": "Total assets", "value": 89913, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Integrated Oil & Gas")
+    mapped = result["mapped"]
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
+    assert mapped["revenue"]["source_label"] == "Gross revenues"
+    assert mapped["revenue"]["value"] == 52377
+    assert mapped["royalties"]["source_label"] == "Less: royalties"
+    assert mapped["royalties"]["value"] == -3469
+    assert mapped["net_income"]["source_label"] == "Net Earnings"
+    assert mapped["net_income"]["value"] == 5918
+    assert mapped["total_assets"]["value"] == 89913
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenues and Other Income (net)" in unmapped_labels
+
+
+def test_resource_sector_bare_net_revenue_stays_unmapped_by_design():
+    """Negative guard for Task B: a bare net-of-royalties "Revenue" line must
+    NOT map in resource_sector — canonical revenue = GROSS (2026-06-17 ground
+    truth). No bare "revenue" alias may exist in any profile; this test fails
+    if one is ever added."""
+    items = [
+        {"label": "Product sales", "value": 41509, "confidence": 0.99},
+        {"label": "Less: royalties", "value": -5853, "confidence": 0.99},
+        {"label": "Revenue", "value": 35656, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Upstream Oil & Gas")
+
+    assert result["mapped"]["revenue"]["source_label"] == "Product sales"
+    assert result["mapped"]["revenue"]["value"] == 41509
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenue" in unmapped_labels
+
+
 def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     """
     CNQ (Canadian Natural Resources, IFRS, CAD, December year-end).
