@@ -7646,6 +7646,14 @@ if st.session_state.financial_data:
                     unsafe_allow_html=True,
                 )
 
+                # Currency guard — the module suppresses market-cap ratios when the
+                # filing currency and the listing currency differ or can't be
+                # determined (honest skip beats a wrong cross-currency number).
+                # Code-generated text, no dollars — safe for the markdown pipeline.
+                _econ_guard = _econ_metadata.get("currency_guard") or {}
+                if _econ_guard.get("suppressed") and _econ_guard.get("note"):
+                    st.warning(_econ_guard["note"])
+
                 # --- Helpers (local; reused across cards) ---
                 def _econ_fmt_pct(v):
                     return f"{v*100:.1f}%" if isinstance(v, (int, float)) else "—"

@@ -7,6 +7,7 @@ reruns or other repeated calls.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import yfinance as yf
@@ -142,6 +143,7 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
         "share_price": None,
         "market_cap": None,
         "shares_outstanding": None,
+        "currency": None,
         "ticker_used": _to_yfinance_ticker(ticker),
         "error": None,
     }
@@ -159,20 +161,26 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
         )
         market_cap = getattr(fast_info, "market_cap", None)
         shares = getattr(fast_info, "shares", None)
+        # Listing currency — the currency market_cap is quoted in. Needed by the
+        # filing-vs-listing currency guard on the market-cap ratios.
+        listing_currency = getattr(fast_info, "currency", None)
 
-        if market_cap is None or shares is None:
+        if market_cap is None or shares is None or listing_currency is None:
             try:
                 info = yt.info or {}
                 market_cap = market_cap if market_cap is not None else info.get("marketCap")
                 shares = shares if shares is not None else info.get("sharesOutstanding")
                 share_price = share_price or info.get("currentPrice") or info.get("regularMarketPrice")
+                listing_currency = listing_currency or info.get("currency")
             except Exception:
                 pass
 
+        currency_text = str(listing_currency).strip().upper() if listing_currency else ""
         result = {
             "share_price": _to_number(share_price),
             "market_cap": _to_number(market_cap),
             "shares_outstanding": _to_number(shares),
+            "currency": currency_text or None,
             "ticker_used": ticker_used,
             "error": None,
         }
@@ -279,6 +287,60 @@ def _reason(metric_name: str, required: list[str], missing: list[str]) -> str | 
     return None
 
 
+def _currency_code(text: str | None) -> str | None:
+    """Extract an ISO-style 3-letter currency code from a currency label.
+
+    Filing currency labels can carry a scale suffix (e.g. "CAD, in ones",
+    "USD, in thousands"), while yfinance listing currency is a bare code
+    ("USD"). Compare codes, not raw labels. Returns None when no 3-letter
+    code is present — the guard then skips honestly rather than guessing.
+    """
+    if not text:
+        return None
+    match = re.search(r"\b[A-Z]{3}\b", str(text).upper())
+    return match.group(0) if match else None
+
+
+def _market_cap_currency_check(
+    filing_currency: str | None,
+    listing_currency: str | None,
+    ticker_used: str | None,
+) -> tuple[str, str | None]:
+    """Check that filing and listing currencies match before market-cap ratios.
+
+    Market-cap ratios divide filing-currency figures by yfinance market_cap,
+    which is quoted in the LISTING currency. If the two differ (e.g. a CAD
+    filer resolved to a USD listing) the ratio is silently wrong. No FX
+    conversion here — an honest skip beats a wrong number (integrity-first).
+
+    Returns (status, note): status is "match" / "mismatch" / "unknown";
+    note explains the skip (None on match).
+    """
+    if filing_currency and listing_currency:
+        if filing_currency == listing_currency:
+            return "match", None
+        return "mismatch", (
+            f"Market-cap ratios not shown: filing currency {filing_currency} vs "
+            f"listing currency {listing_currency} — a cross-currency ratio would "
+            f"be incorrect."
+        )
+    if not filing_currency and not listing_currency:
+        return "unknown", (
+            "Market-cap ratios not shown: filing and listing currencies could "
+            "not be determined — cannot confirm they match."
+        )
+    if not filing_currency:
+        return "unknown", (
+            f"Market-cap ratios not shown: filing currency unknown — cannot "
+            f"confirm it matches the listing currency ({listing_currency})."
+        )
+    return "unknown", (
+        f"Market-cap ratios not shown: listing currency for "
+        f"{ticker_used or 'the resolved ticker'} unknown — cannot confirm it "
+        f"matches the filing currency ({filing_currency})."
+    )
+
+
 def build_resource_economics_snapshot(
     fundamentals: dict[str, Any],
     ticker: str,
@@ -338,6 +400,26 @@ def build_resource_economics_snapshot(
         ),
     }
 
+    # Currency guard on the market-cap ratios (earnings_yield, revenue_to_market_cap).
+    # net_margin is intra-filing (currency cancels) and is deliberately untouched.
+    # Only overrides ratios that would otherwise compute — if inputs are missing,
+    # the missing-inputs reason above is the true cause and stands.
+    filing_currency = _currency_code(currency)
+    listing_currency = _currency_code(company_market.get("currency"))
+    currency_status, currency_note = _market_cap_currency_check(
+        filing_currency, listing_currency, company_market.get("ticker_used")
+    )
+    currency_suppressed = False
+    if currency_status != "match":
+        if earnings_yield is not None:
+            earnings_yield = None
+            reasons["earnings_yield"] = currency_note
+            currency_suppressed = True
+        if revenue_to_market_cap is not None:
+            revenue_to_market_cap = None
+            reasons["revenue_to_market_cap"] = currency_note
+            currency_suppressed = True
+
     cheap_company_or_cheap_sector = {
         "company_earnings_yield": earnings_yield,
         "commodity": commodity,
@@ -392,6 +474,13 @@ def build_resource_economics_snapshot(
             "proxy_used": commodity_market.get("proxy_used"),
             "fiscal_year_end": fiscal_year_end,
             "currency": currency,
+            "currency_guard": {
+                "filing_currency": filing_currency,
+                "listing_currency": listing_currency,
+                "status": currency_status,
+                "suppressed": currency_suppressed,
+                "note": currency_note,
+            },
             "scale": scale,
             "scale_factor_applied": factor,
             "missing_inputs": missing_inputs,
