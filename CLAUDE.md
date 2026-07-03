@@ -424,8 +424,8 @@ Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moa
 - `rules.py` - detection rules (sanity checks, identity checks, recency).
 - `sedar_mapper.py` - SEDAR statement-label-to-canonical-field mapping and sector-profile routing.
 - `sedar_aliases.json` - canonical field aliases and sector profiles consumed by the mapper.
-- `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`).
-- `analyze.py` - integrity analysis entry points.
+- `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`) and cross-extractor disposition appends.
+- `analyze.py` - integrity analysis entry points, including `/integrity-log` cross-extractor review output.
 - `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
 - `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records.
 

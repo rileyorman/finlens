@@ -18,11 +18,11 @@ Programmatic
 from __future__ import annotations
 
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .log import read_log, _DEFAULT_LOG
+from .log import read_log, _DEFAULT_LOG, get_last_read_log_diagnostics
 from .cross_validate import FMP_PREMIUM_BLOCKED
 
 
@@ -37,6 +37,7 @@ DISTRIBUTION_RULES = [
     "revenue_growth_sanity",
 ]
 FLAG_SEVERITIES = ("hard", "soft", "unclassified")
+CX_TRIAGE_STATUSES = ("CONFLICT", "GEMINI_MISSING")
 
 
 # ---------------------------------------------------------------------------
@@ -477,6 +478,10 @@ def _section_divergence(cv_records: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _cx_checker_version_label(record: dict) -> str:
+    return str(record.get("checker_version") or "1")
+
+
 def _cx_checker_version(record: dict) -> int:
     raw = record.get("checker_version")
     if raw in (None, ""):
@@ -537,27 +542,132 @@ def _cx_flagged_label(record: dict) -> str:
     return f"{ticker} {fiscal_year} ({_cx_record_flagged_severity(record)})"
 
 
-def _section_cross_extractor(records: list[dict]) -> str:
-    if not records:
-        return (
-            "  No Gemini second-extractor runs recorded yet.\n"
-            "  Run scripts/run_cross_extractor.py manually for campaign filers ($)."
-        )
+def _cx_disposition_key(record: dict, field: dict | None = None) -> tuple[str, str, str]:
+    field_name = (
+        str(field.get("canonical_field") or "")
+        if field is not None
+        else str(record.get("field") or "")
+    )
+    return (
+        str(record.get("filing_accession") or ""),
+        field_name,
+        _cx_checker_version_label(record),
+    )
 
-    records = _cx_latest_records(records)
+
+def _cx_latest_dispositions(dispositions: list[dict]) -> dict[tuple[str, str, str], dict]:
+    latest: dict[tuple[str, str, str], dict] = {}
+    for record in dispositions:
+        key = _cx_disposition_key(record)
+        if not all(key):
+            continue
+        current = latest.get(key)
+        if current is None or str(record.get("timestamp") or "") > str(current.get("timestamp") or ""):
+            latest[key] = record
+    return latest
+
+
+def _cx_triage_targets(records: list[dict]) -> list[tuple[dict, dict]]:
+    targets: list[tuple[dict, dict]] = []
+    for record in records:
+        if record.get("state") not in ("FLAGGED", "PARTIAL"):
+            continue
+        for field in record.get("cross_extractor_fields", []):
+            if field.get("status") in CX_TRIAGE_STATUSES:
+                targets.append((record, field))
+    return targets
+
+
+def _cx_fmt_value(value: object) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
+
+
+def _cx_clip(value: object, cap: int = 64) -> str:
+    text = str(value if value is not None else "")
+    return text if len(text) <= cap else text[: cap - 4] + " ..."
+
+
+def _cx_disposition_text(disposition: dict | None) -> str:
+    if not disposition:
+        return "OPEN"
+    return f"DISPOSITIONED {disposition.get('disposition', '?')} - {_cx_clip(disposition.get('rationale'), 72)}"
+
+
+def _cx_version_sort(version: str) -> tuple[int, str]:
+    try:
+        return (int(version), version)
+    except ValueError:
+        return (1, version)
+
+
+def _cx_version_summary(records: list[dict]) -> list[str]:
+    version_states: dict[str, Counter] = defaultdict(Counter)
+    version_models: dict[str, Counter] = defaultdict(Counter)
+    legacy_without_key = 0
+    for record in records:
+        version = _cx_checker_version_label(record)
+        version_states[version][record.get("state", "UNKNOWN")] += 1
+        version_models[version][record.get("model") or "unknown"] += 1
+        if record.get("checker_version") in (None, ""):
+            legacy_without_key += 1
+
+    lines = ["  Agreement records by checker_version:"]
+    if not version_states:
+        lines.append("    (none)")
+        return lines
+
+    for version in sorted(version_states, key=_cx_version_sort):
+        state_text = ", ".join(
+            f"{state}={count}" for state, count in sorted(version_states[version].items())
+        )
+        model_text = ", ".join(
+            f"{model}={count}" for model, count in sorted(version_models[version].items())
+        )
+        lines.append(f"    v{version}: {sum(version_states[version].values())} record(s); {state_text}; models: {model_text}")
+    lines.append(f"  Legacy agreements without checker_version: {legacy_without_key}")
+    return lines
+
+
+def _section_cross_extractor(
+    records: list[dict],
+    dispositions: list[dict],
+    total_records_parsed: int,
+    unparseable_lines: int,
+) -> str:
+    lines = [
+        "  Log parse check:",
+        f"    Parsed records          : {total_records_parsed}",
+        f"    Unparseable JSON lines  : {unparseable_lines}",
+    ]
+
+    if not records:
+        lines += [
+            "",
+            "  No Gemini second-extractor runs recorded yet.",
+            "  Run scripts/run_cross_extractor.py manually for campaign filers ($).",
+        ]
+        return "\n".join(lines)
+
+    lines += [""] + _cx_version_summary(records)
+    latest_records = _cx_latest_records(records)
+    latest_dispositions = _cx_latest_dispositions(dispositions)
 
     state_counts: dict[str, int] = defaultdict(int)
-    for rec in records:
+    for rec in latest_records:
         state = rec.get("state", "UNKNOWN")
         state_counts[state] += 1
 
     flagged_severity_counts: dict[str, int] = defaultdict(int)
-    for rec in records:
+    for rec in latest_records:
         if rec.get("state") == "FLAGGED":
             flagged_severity_counts[_cx_record_flagged_severity(rec)] += 1
 
-    lines = ["  By state:"]
-    total = len(records)
+    lines += ["", "  Latest definitive/accession view by state:"]
+    total = len(latest_records)
     for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
         cnt = state_counts.get(state, 0)
         line = (
@@ -573,11 +683,11 @@ def _section_cross_extractor(records: list[dict]) -> str:
 
     flagged = [
         _cx_flagged_label(r)
-        for r in records
+        for r in latest_records
         if r.get("state") == "FLAGGED"
     ]
     unchecked_reasons: dict[str, int] = defaultdict(int)
-    for rec in records:
+    for rec in latest_records:
         if rec.get("state") == "UNCHECKED":
             unchecked_reasons[rec.get("reason") or "unknown"] += 1
 
@@ -590,6 +700,60 @@ def _section_cross_extractor(records: list[dict]) -> str:
             f"{reason}={count}" for reason, count in sorted(unchecked_reasons.items())
         )
         lines.append(f"  Unchecked reasons       : {reason_text}")
+
+    triage_targets = _cx_triage_targets(latest_records)
+    open_targets = [
+        (record, field)
+        for record, field in triage_targets
+        if _cx_disposition_key(record, field) not in latest_dispositions
+    ]
+    lines += [
+        "",
+        "  Triage status:",
+        f"    Disposition records    : {len(dispositions)}",
+        f"    Triage target fields   : {len(triage_targets)}",
+        f"    Open triage targets    : {len(open_targets)}",
+    ]
+
+    if triage_targets:
+        lines += [
+            "",
+            f"  {'ticker':<6}  {'year':<8}  {'ver':<4}  {'field':<26}  {'status':<14}  triage",
+            f"  {'-'*6}  {'-'*8}  {'-'*4}  {'-'*26}  {'-'*14}  {'-'*48}",
+        ]
+        for record, field in triage_targets:
+            disposition = latest_dispositions.get(_cx_disposition_key(record, field))
+            lines.append(
+                f"  {record.get('ticker', '?'):<6}  "
+                f"{str(record.get('fiscal_year', '?')):<8}  "
+                f"v{_cx_checker_version_label(record):<3}  "
+                f"{_cx_clip(field.get('canonical_field'), 26):<26}  "
+                f"{field.get('status', '?'):<14}  "
+                f"{_cx_disposition_text(disposition)}"
+            )
+
+    conflict_targets = [
+        (record, field)
+        for record, field in triage_targets
+        if field.get("status") == "CONFLICT"
+    ]
+    if conflict_targets:
+        lines += ["", "  Per-CONFLICT details:"]
+        for record, field in conflict_targets:
+            disposition = latest_dispositions.get(_cx_disposition_key(record, field))
+            lines.append(
+                f"    {record.get('ticker', '?')} {record.get('fiscal_year', '?')} "
+                f"v{_cx_checker_version_label(record)} "
+                f"{field.get('canonical_field', '?')} "
+                f"severity={_cx_field_severity(field)} "
+                f"triage={_cx_disposition_text(disposition)}"
+            )
+            lines.append(
+                f"      values: FinLens={_cx_fmt_value(field.get('finlens_value'))} "
+                f"Gemini={_cx_fmt_value(field.get('gemini_value'))}"
+            )
+            lines.append(f"      FinLens label: {_cx_clip(field.get('finlens_label'), 96)}")
+            lines.append(f"      Gemini label : {_cx_clip(field.get('gemini_label'), 96)}")
     return "\n".join(lines)
 
 
@@ -606,6 +770,7 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     log_path  Override the default log path.  None uses ~/.finlens/integrity_log.jsonl.
     """
     all_records = read_log(log_path)
+    diagnostics = get_last_read_log_diagnostics()
 
     # Split by record type.  Existing integrity records have no record_type field;
     # cross-validation and cross-extractor records are tagged explicitly.
@@ -620,6 +785,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     cx_records = [
         r for r in all_records
         if r.get("record_type") == "cross_extractor_agreement"
+    ]
+    cx_disposition_records = [
+        r for r in all_records
+        if r.get("record_type") == "cross_extractor_disposition"
     ]
 
     n = len(integrity_records)
@@ -638,6 +807,9 @@ def analyze_log(log_path: Path | str | None = None) -> str:
         "  FINLENS DATA INTEGRITY LOG REPORT",
         f"  Generated : {now_utc}",
         f"  Log file  : {path_label}",
+        f"  Log lines : {diagnostics.physical_lines}",
+        f"  Parsed    : {diagnostics.records_parsed} record(s)",
+        f"  Unparseable JSON lines: {diagnostics.unparseable_lines}",
         SEP,
     ]
 
@@ -681,7 +853,14 @@ def analyze_log(log_path: Path | str | None = None) -> str:
 
     # 6. Gemini second-extractor signal
     out += [THIN, "  6. GEMINI SECOND-EXTRACTOR SIGNAL", THIN, ""]
-    out.append(_section_cross_extractor(cx_records))
+    out.append(
+        _section_cross_extractor(
+            cx_records,
+            cx_disposition_records,
+            diagnostics.records_parsed,
+            diagnostics.unparseable_lines,
+        )
+    )
 
     # Footer
     out += ["", SEP, "  END OF REPORT", SEP]

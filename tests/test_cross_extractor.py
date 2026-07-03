@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from modules.integrity import cross_extractor as ce
 from modules.integrity import analyze as integrity_analyze
 from modules.integrity.analyze import analyze_log
@@ -436,6 +438,218 @@ def test_cross_extractor_report_prefers_latest_definitive_version(tmp_path):
     assert "FLAGGED     :    0" in report
     assert "VERIFIED    :    1" in report
     assert "Flagged filings       : (none)" in report
+
+
+def test_integrity_log_reader_parses_bom_and_reports_bad_lines(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    valid = {
+        "timestamp": "2026-07-04T00:00:00+00:00",
+        "ticker": "BOM",
+        "fiscal_year": "FY2026",
+        "overall_status": "clean",
+        "filing_accession": "BOM_FY2026",
+        "checks": [],
+    }
+    path.write_bytes(
+        b"\xef\xbb\xbf"
+        + json.dumps(valid).encode("utf-8")
+        + b"\n"
+        + b"{not-json}\n"
+    )
+
+    records = integrity_log.read_log(path)
+    diagnostics = integrity_log.get_last_read_log_diagnostics()
+    report = analyze_log(path)
+
+    assert records == [valid]
+    assert diagnostics.physical_lines == 2
+    assert diagnostics.records_parsed == 1
+    assert diagnostics.unparseable_lines == 1
+    assert diagnostics.unparseable_line_numbers == (2,)
+    assert "Parsed    : 1 record(s)" in report
+    assert "Unparseable JSON lines: 1" in report
+
+
+def test_cross_extractor_disposition_appears_joined_in_report(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    agreement = ce.CrossCheckResult(
+        state="FLAGGED",
+        fields=[
+            ce.CrossExtractorField(
+                canonical_field="interest_expense",
+                finlens_value=690.8,
+                gemini_value=159.3,
+                status="CONFLICT",
+                finlens_label="Financial expenses (Note 9)",
+                gemini_label="Interest on lease liabilities",
+                severity="soft",
+            )
+        ],
+        timestamp="2026-07-04T00:00:00+00:00",
+        ticker="ATD",
+        fiscal_year="FY2025",
+        filing_accession="ATD_FY2025_sedar.json",
+        model="gemini-test",
+    )
+    path.write_text(json.dumps(agreement.to_dict()) + "\n", encoding="utf-8")
+
+    integrity_log.append_cross_extractor_disposition_to_log(
+        filing_accession="ATD_FY2025_sedar.json",
+        ticker="ATD",
+        fiscal_year="FY2025",
+        field="interest_expense",
+        checker_version="2",
+        disposition="checker_error",
+        rationale="Gemini used a note component instead of the statement total.",
+        timestamp="2026-07-04T00:01:00+00:00",
+        log_path=path,
+    )
+
+    report = analyze_log(path)
+
+    assert "Open triage targets    : 0" in report
+    assert "DISPOSITIONED checker_error" in report
+    assert "Gemini used a note component" in report
+    assert "ATD FY2025 v2 interest_expense severity=soft" in report
+
+
+def test_cross_extractor_disposition_does_not_attach_across_version_bump(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    v1 = {
+        "record_type": "cross_extractor_agreement",
+        "timestamp": "2026-07-03T00:00:00+00:00",
+        "ticker": "ATD",
+        "fiscal_year": "FY2025",
+        "filing_accession": "ATD_FY2025_sedar.json",
+        "state": "FLAGGED",
+        "reason": None,
+        "model": "gemini-test",
+        "cross_extractor_fields": [
+            {
+                "canonical_field": "interest_expense",
+                "finlens_value": 690.8,
+                "gemini_value": 159.3,
+                "status": "CONFLICT",
+                "finlens_label": "Financial expenses (Note 9)",
+                "gemini_label": "Interest on lease liabilities",
+            }
+        ],
+    }
+    v2 = ce.CrossCheckResult(
+        state="FLAGGED",
+        fields=[
+            ce.CrossExtractorField(
+                canonical_field="interest_expense",
+                finlens_value=690.8,
+                gemini_value=159.3,
+                status="CONFLICT",
+                finlens_label="Financial expenses (Note 9)",
+                gemini_label="Interest on lease liabilities",
+                severity="soft",
+            )
+        ],
+        timestamp="2026-07-04T00:00:00+00:00",
+        ticker="ATD",
+        fiscal_year="FY2025",
+        filing_accession="ATD_FY2025_sedar.json",
+        model="gemini-test",
+    )
+    path.write_text(
+        "\n".join([json.dumps(v1), json.dumps(v2.to_dict())]) + "\n",
+        encoding="utf-8",
+    )
+    integrity_log.append_cross_extractor_disposition_to_log(
+        filing_accession="ATD_FY2025_sedar.json",
+        ticker="ATD",
+        fiscal_year="FY2025",
+        field="interest_expense",
+        checker_version="1",
+        disposition="checker_error",
+        rationale="Legacy v1 adjudication.",
+        timestamp="2026-07-03T00:01:00+00:00",
+        log_path=path,
+    )
+
+    report = analyze_log(path)
+
+    assert "v2" in report
+    assert "interest_expense" in report
+    assert "OPEN" in report
+    assert "Open triage targets    : 1" in report
+    assert "Legacy v1 adjudication" not in report
+
+
+def test_cross_extractor_disposition_rejects_invalid_target(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="No matching cross_extractor_agreement"):
+        integrity_log.append_cross_extractor_disposition_to_log(
+            filing_accession="MISSING",
+            ticker="MISS",
+            fiscal_year="FY2025",
+            field="interest_expense",
+            checker_version="2",
+            disposition="checker_error",
+            rationale="No matching agreement exists.",
+            log_path=path,
+        )
+
+
+def test_cross_extractor_duplicate_dispositions_append_and_latest_wins(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    agreement = ce.CrossCheckResult(
+        state="PARTIAL",
+        fields=[
+            ce.CrossExtractorField(
+                canonical_field="insurance_finance_result",
+                finlens_value=-6787.0,
+                gemini_value=None,
+                status="GEMINI_MISSING",
+                finlens_label="Insurance finance expenses from contracts issued",
+                gemini_label="",
+            )
+        ],
+        timestamp="2026-07-04T00:00:00+00:00",
+        ticker="SLF",
+        fiscal_year="FY2025",
+        filing_accession="SLF_FY2025_sedar.json",
+        model="gemini-test",
+    )
+    path.write_text(json.dumps(agreement.to_dict()) + "\n", encoding="utf-8")
+
+    for disposition, rationale, timestamp in [
+        ("structural_absence", "First disposition.", "2026-07-04T00:01:00+00:00"),
+        ("gemini_miss_field_present", "Latest disposition.", "2026-07-04T00:02:00+00:00"),
+    ]:
+        integrity_log.append_cross_extractor_disposition_to_log(
+            filing_accession="SLF_FY2025_sedar.json",
+            ticker="SLF",
+            fiscal_year="FY2025",
+            field="insurance_finance_result",
+            checker_version="2",
+            disposition=disposition,
+            rationale=rationale,
+            timestamp=timestamp,
+            log_path=path,
+        )
+
+    records = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    disposition_records = [
+        record
+        for record in records
+        if record.get("record_type") == "cross_extractor_disposition"
+    ]
+    report = analyze_log(path)
+
+    assert len(disposition_records) == 2
+    assert "Open triage targets    : 0" in report
+    assert "DISPOSITIONED gemini_miss_field_present" in report
+    assert "Latest disposition." in report
+    assert "First disposition." not in report
 
 
 def test_cross_extractor_compares_native_units_without_fx_or_scale(monkeypatch, tmp_path):

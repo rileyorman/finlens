@@ -10,6 +10,11 @@ and writes a typed record to the integrity log.
 It is a signal only. It never gates analysis and never auto-corrects FinLens
 values.
 
+Decision 1 implementation correction: human triage dispositions are written via
+the `/integrity-log` tooling built around this record type. The review command is
+read-only by default; disposition writes are explicit append-only actions through
+`scripts/write_cross_disposition.py`.
+
 ## Scope
 
 V1 covers campaign/library filers only. It does not run on user uploads, and it
@@ -133,6 +138,37 @@ Each field contains `canonical_field`, `finlens_value`, `gemini_value`,
 written `FLAGGED` records also contain `severity` (`hard` or `soft`). Legacy
 `FLAGGED` records without `severity` are valid historical records and must be
 rendered as `unclassified`, never defaulted to `hard` or `soft`.
+
+Human triage is recorded as `record_type="cross_extractor_disposition"`.
+Disposition records are append-only and include:
+
+- `timestamp`
+- `filing_accession`
+- `ticker`
+- `fiscal_year`
+- `field`
+- `checker_version`
+- `disposition`
+- `rationale`
+- `author`
+
+Allowed `disposition` values are:
+
+- `finlens_correct`
+- `checker_error`
+- `deliberate_mapping_decision`
+- `structural_absence`
+- `gemini_miss_field_present`
+- `other`
+
+Disposition linkage is exactly `filing_accession + field + checker_version`.
+Dispositions do not carry across `checker_version` bumps; each new checker
+version's `FLAGGED` conflicts and `PARTIAL` missing fields require fresh triage.
+This is deliberate because a checker behavior change can alter both the evidence
+and the meaning of the flag. Duplicate dispositions for the same key are
+retained in the log, and readers display the latest timestamped disposition.
+Writers must reject a disposition whose target agreement field does not exist
+for the same `filing_accession`, `field`, and `checker_version`.
 
 ## SSL Hardening Finding
 

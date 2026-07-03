@@ -38,6 +38,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -53,6 +55,39 @@ _DEFAULT_LOG = LIBRARY_DIR / "integrity_log.jsonl"
 # How many trailing lines to reverse-scan for the idempotency check.
 # Covers typical batch sizes without reading the entire log on every append.
 _SCAN_WINDOW = 50
+
+CROSS_EXTRACTOR_DISPOSITIONS = {
+    "finlens_correct",
+    "checker_error",
+    "deliberate_mapping_decision",
+    "structural_absence",
+    "gemini_miss_field_present",
+    "other",
+}
+CROSS_EXTRACTOR_TRIAGE_STATUSES = {"CONFLICT", "GEMINI_MISSING"}
+
+
+@dataclass(frozen=True)
+class LogReadDiagnostics:
+    path: str
+    physical_lines: int = 0
+    records_parsed: int = 0
+    records_returned: int = 0
+    unparseable_lines: int = 0
+    unparseable_line_numbers: tuple[int, ...] = ()
+
+
+_LAST_READ_LOG_DIAGNOSTICS = LogReadDiagnostics(path=str(_DEFAULT_LOG))
+
+
+def get_last_read_log_diagnostics() -> LogReadDiagnostics:
+    """Return diagnostics for the most recent read_log() call in this process."""
+    return _LAST_READ_LOG_DIAGNOSTICS
+
+
+def _set_last_read_log_diagnostics(diagnostics: LogReadDiagnostics) -> None:
+    global _LAST_READ_LOG_DIAGNOSTICS
+    _LAST_READ_LOG_DIAGNOSTICS = diagnostics
 
 
 def _result_key(result: "ValidationResult") -> str:
@@ -94,7 +129,7 @@ def _already_logged(path: Path, key: str) -> bool:
     if not path.exists():
         return False
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             lines = fh.readlines()
         for line in reversed(lines[-_SCAN_WINDOW:]):
             line = line.strip()
@@ -143,7 +178,7 @@ def _cv_already_logged(path: Path, key: str) -> bool:
     if not path.exists():
         return False
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             lines = fh.readlines()
         for line in reversed(lines[-_SCAN_WINDOW:]):
             line = line.strip()
@@ -211,7 +246,7 @@ def _cross_extractor_definitive_logged(
     if not path.exists():
         return False
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             lines = fh.readlines()
         for line in reversed(lines[-_SCAN_WINDOW:]):
             line = line.strip()
@@ -263,6 +298,98 @@ def append_cross_extractor_to_log(
     return path
 
 
+def _cross_extractor_target_exists(
+    path: Path,
+    filing_accession: str,
+    field: str,
+    checker_version: str,
+) -> bool:
+    for record in read_log(path):
+        if record.get("record_type") != "cross_extractor_agreement":
+            continue
+        if str(record.get("filing_accession") or "") != filing_accession:
+            continue
+        if _cross_extractor_checker_version(record) != checker_version:
+            continue
+        if record.get("state") not in ("FLAGGED", "PARTIAL"):
+            continue
+        for item in record.get("cross_extractor_fields", []):
+            if (
+                str(item.get("canonical_field") or "") == field
+                and item.get("status") in CROSS_EXTRACTOR_TRIAGE_STATUSES
+            ):
+                return True
+    return False
+
+
+def append_cross_extractor_disposition_to_log(
+    *,
+    filing_accession: str,
+    ticker: str,
+    fiscal_year: str,
+    field: str,
+    checker_version: str,
+    disposition: str,
+    rationale: str,
+    author: str = "riley",
+    timestamp: str | None = None,
+    log_path: Path | str | None = None,
+) -> Path:
+    """
+    Append a human triage disposition for a cross-extractor field.
+
+    Linkage is by filing_accession + field + checker_version. Dispositions are
+    append-only: duplicates are retained, and readers use the latest timestamp.
+    """
+    path = Path(log_path) if log_path else _DEFAULT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    accession = str(filing_accession or "").strip()
+    target_field = str(field or "").strip()
+    version = str(checker_version or "").strip()
+    disposition_value = str(disposition or "").strip()
+    rationale_text = str(rationale or "").strip()
+    required = {
+        "filing_accession": accession,
+        "ticker": str(ticker or "").strip(),
+        "fiscal_year": str(fiscal_year or "").strip(),
+        "field": target_field,
+        "checker_version": version,
+        "rationale": rationale_text,
+        "author": str(author or "").strip(),
+    }
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ValueError(f"Missing required disposition field(s): {', '.join(missing)}")
+    if disposition_value not in CROSS_EXTRACTOR_DISPOSITIONS:
+        allowed = ", ".join(sorted(CROSS_EXTRACTOR_DISPOSITIONS))
+        raise ValueError(f"Invalid disposition {disposition_value!r}; expected one of: {allowed}")
+    if not _cross_extractor_target_exists(path, accession, target_field, version):
+        raise ValueError(
+            "No matching cross_extractor_agreement triage target for "
+            f"{accession} field={target_field} checker_version={version}"
+        )
+
+    record = {
+        "record_type": "cross_extractor_disposition",
+        "filing_accession": accession,
+        "ticker": required["ticker"],
+        "fiscal_year": required["fiscal_year"],
+        "field": target_field,
+        "checker_version": version,
+        "disposition": disposition_value,
+        "rationale": rationale_text,
+        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+        "author": required["author"],
+    }
+
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+    return path
+
+
 def read_log(
     log_path: Path | str | None = None,
     ticker: str | None = None,
@@ -274,20 +401,37 @@ def read_log(
     """
     path = Path(log_path) if log_path else _DEFAULT_LOG
     if not path.exists():
+        _set_last_read_log_diagnostics(LogReadDiagnostics(path=str(path)))
         return []
 
     records: list[dict] = []
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
+    physical_lines = 0
+    records_parsed = 0
+    unparseable_line_numbers: list[int] = []
+    with open(path, encoding="utf-8-sig") as fh:
+        for line_number, line in enumerate(fh, start=1):
+            physical_lines += 1
             line = line.strip()
             if not line:
                 continue
             try:
                 record = json.loads(line)
+                records_parsed += 1
                 if ticker is None or record.get("ticker") == ticker:
                     records.append(record)
             except json.JSONDecodeError:
-                continue
+                unparseable_line_numbers.append(line_number)
 
     records.reverse()
-    return records[:limit] if limit else records
+    returned = records[:limit] if limit else records
+    _set_last_read_log_diagnostics(
+        LogReadDiagnostics(
+            path=str(path),
+            physical_lines=physical_lines,
+            records_parsed=records_parsed,
+            records_returned=len(returned),
+            unparseable_lines=len(unparseable_line_numbers),
+            unparseable_line_numbers=tuple(unparseable_line_numbers),
+        )
+    )
+    return returned
