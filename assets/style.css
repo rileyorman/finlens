@@ -303,13 +303,21 @@ hr {
     letter-spacing: 0;
 }
 
+/* The sidebar-wide `* { font-size: 12px !important }` rule also hits the
+   wordmark spans; this later rule restores the brand size. */
+.finlens-sidebar-wordmark span {
+    font-size: 18px !important;
+}
+
 .finlens-sidebar-wordmark-fin {
     color: #F1F5F9;
     font-weight: 600;
 }
 
 .finlens-sidebar-wordmark-lens {
-    color: #185FA5;
+    /* Match the header wordmark. The previous #185FA5 was near-invisible
+       against the dark sidebar background. */
+    color: #378ADD;
     font-weight: 300;
 }
 

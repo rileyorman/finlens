@@ -13,6 +13,18 @@ from pathlib import Path
 from urllib.parse import quote_plus
 import streamlit as st
 import yfinance as yf
+
+# streamlit-cookies-manager still decorates a helper with the deprecated
+# st.cache at import time, which paints a deprecation banner into the app on
+# every boot. Point st.cache at st.cache_data (ignoring legacy kwargs) before
+# the import runs. The decorated helper lives in EncryptedCookieManager,
+# which FinLens does not use.
+def _quiet_cache(func=None, **_legacy_kwargs):
+    if func is None:
+        return st.cache_data
+    return st.cache_data(func)
+
+st.cache = _quiet_cache
 from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
@@ -1246,7 +1258,7 @@ if not st.session_state.get("authenticated"):
               <circle cx="56" cy="32" r="4" fill="#FFB454"/>
             </svg>
             <h2 style="margin-top:0.75rem;margin-bottom:0.25rem;">FinLens</h2>
-            <p style="color:#94A3B8;margin-bottom:2rem;">Financial Statement Analyzer</p>
+            <p style="color:#94A3B8;margin-bottom:2rem;">Source-Traced Fundamental Analysis</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1454,7 +1466,7 @@ st.markdown("""
             Fin<span style="color:#378ADD;font-weight:300">Lens</span>
         </div>
         <div style="font-size:11px;color:#64748B;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px">
-            AI Financial Analysis
+            Source-Traced Fundamental Analysis
         </div>
     </div>
 </div>
@@ -1686,7 +1698,7 @@ with st.sidebar:
             <div class="finlens-sidebar-wordmark">
                 <span class="finlens-sidebar-wordmark-fin">Fin</span><span class="finlens-sidebar-wordmark-lens">Lens</span>
             </div>
-            <div class="finlens-sidebar-tagline">AI INVESTMENT ANALYSIS PLATFORM</div>
+            <div class="finlens-sidebar-tagline">SOURCE-TRACED FUNDAMENTAL ANALYSIS</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -6842,41 +6854,44 @@ if st.session_state.financial_data:
                 )
 
         # --- Debug: Raw Extraction -----------------------------------------------
-        with st.expander("🔬 Debug: Raw Extraction Output", expanded=False):
-            st.caption(
-                "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
-                "Use this to diagnose — / N/A values in the Summary tab."
-            )
+        # Dev-only diagnostic: hidden unless FINLENS_DEBUG=1 is set in .env,
+        # so end users never see internal extraction plumbing.
+        if os.getenv("FINLENS_DEBUG") == "1":
+            with st.expander("🔬 Debug: Raw Extraction Output", expanded=False):
+                st.caption(
+                    "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
+                    "Use this to diagnose — / N/A values in the Summary tab."
+                )
 
-            _dbg_metrics = _calc_summary_metrics(financial_data)
+                _dbg_metrics = _calc_summary_metrics(financial_data)
 
-            # Resolved metrics — what the Summary sheet actually uses
-            st.markdown("**Resolved Metrics** (what the Summary tab renders)")
-            _resolved_rows = [
-                {"Metric": k, "Value": v}
-                for k, v in _dbg_metrics.items()
-            ]
-            st.dataframe(_resolved_rows, width='stretch', hide_index=True)
+                # Resolved metrics — what the Summary sheet actually uses
+                st.markdown("**Resolved Metrics** (what the Summary tab renders)")
+                _resolved_rows = [
+                    {"Metric": k, "Value": v}
+                    for k, v in _dbg_metrics.items()
+                ]
+                st.dataframe(_resolved_rows, width='stretch', hide_index=True)
 
-            st.divider()
+                st.divider()
 
-            # Raw line items — what Claude extracted from the PDF
-            for _section_key, _section_label in [
-                ("income_statement",    "Income Statement"),
-                ("balance_sheet",       "Balance Sheet"),
-                ("cash_flow_statement", "Cash Flow Statement"),
-            ]:
-                _rows = financial_data.get(_section_key, [])
-                st.markdown(f"**{_section_label}** — {len(_rows)} line items extracted")
-                if _rows:
-                    st.dataframe(
-                        [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
-                        width='stretch',
-                        hide_index=True,
-                    )
-                else:
-                    st.caption("No rows found.")
-                st.write("")
+                # Raw line items — what Claude extracted from the PDF
+                for _section_key, _section_label in [
+                    ("income_statement",    "Income Statement"),
+                    ("balance_sheet",       "Balance Sheet"),
+                    ("cash_flow_statement", "Cash Flow Statement"),
+                ]:
+                    _rows = financial_data.get(_section_key, [])
+                    st.markdown(f"**{_section_label}** — {len(_rows)} line items extracted")
+                    if _rows:
+                        st.dataframe(
+                            [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
+                            width='stretch',
+                            hide_index=True,
+                        )
+                    else:
+                        st.caption("No rows found.")
+                    st.write("")
 
     # =====================================================================
     with tab_dash:
