@@ -193,6 +193,53 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
     return result
 
 
+def _resolve_company_market_data(
+    ticker: str,
+    filing_currency: str | None,
+    cache: dict | None = None,
+) -> dict[str, Any]:
+    """Fetch company market data, preferring the listing whose currency
+    matches the filing currency.
+
+    Dual-listed filers (SU on NYSE in USD vs SU.TO in CAD) otherwise resolve
+    to a listing whose market cap is in the wrong currency, and the currency
+    guard then suppresses every market-cap ratio. Trying the sibling listing
+    first keeps the guard honest AND the ratios alive.
+
+    Falls back to the primary resolution when no candidate matches.
+    """
+    primary = _fetch_company_market_data(ticker, cache)
+    if not filing_currency:
+        return primary
+    if _currency_code(primary.get("currency")) == filing_currency:
+        return primary
+
+    primary_symbol = str(primary.get("ticker_used") or "").strip().upper()
+    if not primary_symbol:
+        return primary
+
+    if primary_symbol.endswith((".TO", ".V")):
+        # Toronto listing mismatched (e.g. USD filer like Agnico): try the
+        # bare US-style symbol.
+        alternates = [primary_symbol.rsplit(".", 1)[0]]
+    else:
+        # US listing mismatched (e.g. CAD filer like Suncor): try Toronto,
+        # then TSX Venture.
+        alternates = [f"{primary_symbol}.TO", f"{primary_symbol}.V"]
+
+    for alternate in alternates:
+        if not alternate or alternate == primary_symbol:
+            continue
+        candidate = _fetch_company_market_data(alternate, cache)
+        if (
+            candidate.get("market_cap") is not None
+            and _currency_code(candidate.get("currency")) == filing_currency
+        ):
+            return candidate
+
+    return primary
+
+
 def _history_to_points(history: Any) -> list[dict[str, Any]]:
     if history is None or getattr(history, "empty", True):
         return []
@@ -370,7 +417,10 @@ def build_resource_economics_snapshot(
     fiscal_year_end = _extract_text(fundamentals, "fiscal_year_end")
 
     commodity = infer_commodity(sector_inferred, commodity_hint)
-    company_market = _fetch_company_market_data(ticker, cache)
+    # Resolve the filing currency first so the company lookup can prefer the
+    # listing quoted in the same currency (see _resolve_company_market_data).
+    filing_currency = _currency_code(currency)
+    company_market = _resolve_company_market_data(ticker, filing_currency, cache)
     commodity_market = _fetch_commodity_market_data(commodity, cache)
 
     market_cap = company_market.get("market_cap")
@@ -405,7 +455,7 @@ def build_resource_economics_snapshot(
     # net_margin is intra-filing (currency cancels) and is deliberately untouched.
     # Only overrides ratios that would otherwise compute — if inputs are missing,
     # the missing-inputs reason above is the true cause and stands.
-    filing_currency = _currency_code(currency)
+    # (filing_currency was resolved above, before the company lookup.)
     listing_currency = _currency_code(company_market.get("currency"))
     currency_status, currency_note = _market_cap_currency_check(
         filing_currency, listing_currency, company_market.get("ticker_used")

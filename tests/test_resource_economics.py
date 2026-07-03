@@ -383,6 +383,135 @@ def test_resource_economics_missing_net_income_returns_none_with_reason(monkeypa
     )
 
 
+class DualListingTicker:
+    """Suncor-class dual listing: SU (NYSE, USD) and SU.TO (TSX, CAD)."""
+
+    def __init__(self, symbol: str):
+        self.symbol = symbol
+        if symbol == "SU":
+            self.fast_info = SimpleNamespace(
+                last_price=40.0, regular_market_price=None,
+                market_cap=50_000_000_000, shares=1_250_000_000,
+                currency="USD",
+            )
+        elif symbol == "SU.TO":
+            self.fast_info = SimpleNamespace(
+                last_price=55.0, regular_market_price=None,
+                market_cap=68_000_000_000, shares=1_250_000_000,
+                currency="CAD",
+            )
+        elif symbol == "CL=F":
+            self.fast_info = SimpleNamespace(
+                last_price=68.0, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+        else:
+            self.fast_info = SimpleNamespace(
+                last_price=None, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+        self.info = {}
+
+    def history(self, period: str = "1y"):
+        if self.symbol == "CL=F":
+            return pd.DataFrame(
+                {"Close": [60.0, 68.0]},
+                index=pd.to_datetime(["2025-01-01", "2025-12-31"]),
+            )
+        return pd.DataFrame()
+
+
+def test_cad_filer_prefers_toronto_listing_over_us_primary(monkeypatch):
+    # The Suncor case: ticker "SU" resolves to the NYSE listing (USD), which
+    # mismatches the CAD filing and suppresses every market-cap ratio. The
+    # resolver must try SU.TO and use its CAD market cap instead.
+    monkeypatch.setattr(resource_economics.yf, "Ticker", DualListingTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 52_375,
+            "net_income": 5_920,
+            "sector_inferred": "Integrated Oil & Gas",
+            "currency": "CAD",
+            "scale": "millions",
+            "fiscal_year_end": "2025-12-31",
+        },
+        "SU",
+        cache={},
+    )
+
+    company = result["market_data"]["company"]
+    assert company["ticker_used"] == "SU.TO"
+    assert company["currency"] == "CAD"
+    guard = result["metadata"]["currency_guard"]
+    assert guard["status"] == "match"
+    assert guard["suppressed"] is False
+    assert result["metrics"]["earnings_yield"] == 5_920_000_000 / 68_000_000_000
+    assert result["metrics"]["revenue_to_market_cap"] == 52_375_000_000 / 68_000_000_000
+
+
+class UsdFilerTorontoPrimaryTicker:
+    """Agnico-class: files in USD; AEM.TO listing is CAD; bare AEM is USD."""
+
+    def __init__(self, symbol: str):
+        self.symbol = symbol
+        if symbol == "AEM.TO":
+            self.fast_info = SimpleNamespace(
+                last_price=160.0, regular_market_price=None,
+                market_cap=82_000_000_000, shares=500_000_000,
+                currency="CAD",
+            )
+        elif symbol == "AEM":
+            self.fast_info = SimpleNamespace(
+                last_price=120.0, regular_market_price=None,
+                market_cap=60_000_000_000, shares=500_000_000,
+                currency="USD",
+            )
+        elif symbol == "GC=F":
+            self.fast_info = SimpleNamespace(
+                last_price=2400.0, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+        else:
+            self.fast_info = SimpleNamespace(
+                last_price=None, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+        self.info = {}
+
+    def history(self, period: str = "1y"):
+        if self.symbol == "GC=F":
+            return pd.DataFrame(
+                {"Close": [2100.0, 2400.0]},
+                index=pd.to_datetime(["2025-01-01", "2025-12-31"]),
+            )
+        return pd.DataFrame()
+
+
+def test_usd_filer_with_toronto_primary_falls_back_to_us_listing(monkeypatch):
+    monkeypatch.setattr(
+        resource_economics.yf, "Ticker", UsdFilerTorontoPrimaryTicker
+    )
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 11_907_851,
+            "net_income": 4_461_461,
+            "sector_inferred": "Gold Mining",
+            "currency": "USD",
+            "scale": "thousands",
+        },
+        "AEM.TO",
+        cache={},
+    )
+
+    company = result["market_data"]["company"]
+    assert company["ticker_used"] == "AEM"
+    assert company["currency"] == "USD"
+    assert result["metadata"]["currency_guard"]["status"] == "match"
+    assert result["metrics"]["earnings_yield"] == 4_461_461_000 / 60_000_000_000
+
+
 def test_gold_mining_selects_gold_primary_proxy(monkeypatch):
     monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
 
