@@ -423,6 +423,14 @@ def build_resource_economics_snapshot(
     company_market = _resolve_company_market_data(ticker, filing_currency, cache)
     commodity_market = _fetch_commodity_market_data(commodity, cache)
 
+    # Company share-price history for the indexed company-vs-commodity chart.
+    # Reuses the proxy fetcher (same 1y window and point shape as the
+    # commodity trend). Empty on failure — the chart simply doesn't render.
+    company_symbol = company_market.get("ticker_used")
+    company_trend_points: list[dict[str, Any]] = []
+    if company_symbol:
+        company_trend_points = _fetch_proxy_data(company_symbol, cache).get("trend", [])
+
     market_cap = company_market.get("market_cap")
     missing_inputs = [
         field
@@ -516,6 +524,10 @@ def build_resource_economics_snapshot(
         "commodity_trend": {
             "proxy_used": commodity_market.get("proxy_used"),
             "points": commodity_market.get("trend", []),
+        },
+        "company_trend": {
+            "ticker_used": company_symbol,
+            "points": company_trend_points,
         },
         "cheap_company_or_cheap_sector": cheap_company_or_cheap_sector,
         "metadata": {

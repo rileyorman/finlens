@@ -7946,6 +7946,15 @@ if st.session_state.financial_data:
                     )
 
                 # --- Commodity price trend chart ---
+                # Trend dates arrive as ISO strings; parse to datetime so the
+                # x-axis is a true date axis. Shared by the trend chart and the
+                # indexed company-vs-commodity chart below.
+                def _econ_parse_date(value):
+                    try:
+                        return datetime.fromisoformat(str(value))
+                    except (ValueError, TypeError):
+                        return None
+
                 _trend_points = _econ_trend.get("points") or []
                 if _trend_points:
                     st.markdown(
@@ -7956,16 +7965,8 @@ if st.session_state.financial_data:
                         f'Filing fiscal year end overlaid in dotted gray.</div>',
                         unsafe_allow_html=True,
                     )
-                    # Trend dates arrive as ISO strings; parse to datetime so the
-                    # x-axis is a true date axis and the FYE overlay positions
-                    # correctly. Fall back to raw strings only if any point fails
-                    # to parse (so the x list never mixes types).
-                    def _econ_parse_date(value):
-                        try:
-                            return datetime.fromisoformat(str(value))
-                        except (ValueError, TypeError):
-                            return None
-
+                    # Fall back to raw strings only if any point fails to
+                    # parse (so the x list never mixes types).
                     _raw_xs = [p["date"] for p in _trend_points]
                     _parsed_xs = [_econ_parse_date(x) for x in _raw_xs]
                     _trend_xs = _parsed_xs if all(d is not None for d in _parsed_xs) else _raw_xs
@@ -8014,6 +8015,78 @@ if st.session_state.financial_data:
                     st.plotly_chart(_trend_fig, width='stretch', config={"displayModeBar": False})
                 else:
                     st.caption("Commodity price trend unavailable — proxy returned no points.")
+
+                # --- Company vs commodity — indexed relative performance ---
+                # Both series rebased to 100 one year back, on ONE axis: shows
+                # whether the equity tracked the commodity or diverged from it.
+                _company_trend = _econ_snapshot.get("company_trend") or {}
+                _company_points = _company_trend.get("points") or []
+                _company_symbol = _company_trend.get("ticker_used") or "Company"
+                if _company_points and _trend_points:
+
+                    def _econ_indexed(points):
+                        base = points[0]["close"]
+                        if not base:
+                            return None, None
+                        xs = [_econ_parse_date(p["date"]) for p in points]
+                        if any(x is None for x in xs):
+                            xs = [p["date"] for p in points]
+                        ys = [p["close"] / base * 100 for p in points]
+                        return xs, ys
+
+                    _cmd_xs, _cmd_ys = _econ_indexed(_trend_points)
+                    _cmp_xs, _cmp_ys = _econ_indexed(_company_points)
+                    if _cmd_ys and _cmp_ys:
+                        _cmd_name = _econ_trend.get("proxy_used") or "Commodity"
+                        st.markdown(
+                            '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                            'Company vs Commodity — indexed to 100, last 1 year</div>'
+                            '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                            'Is the equity tracking the commodity or diverging from it? '
+                            'Both series rebased to 100 at the start of the window.</div>',
+                            unsafe_allow_html=True,
+                        )
+                        # Colorblind-validated pair on the dark surface:
+                        # commodity amber #B8821F, company blue #3574C6.
+                        _idx_fig = go.Figure()
+                        _idx_fig.add_trace(go.Scatter(
+                            x=_cmd_xs, y=_cmd_ys, mode='lines',
+                            name=_cmd_name,
+                            line=dict(color='#B8821F', width=2),
+                            hovertemplate=_cmd_name + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+                        ))
+                        _idx_fig.add_trace(go.Scatter(
+                            x=_cmp_xs, y=_cmp_ys, mode='lines',
+                            name=_company_symbol,
+                            line=dict(color='#3574C6', width=2),
+                            hovertemplate=_company_symbol + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+                        ))
+                        _idx_fig.add_hline(
+                            y=100, line_dash='dot',
+                            line_color='rgba(148,163,184,0.4)',
+                        )
+                        # Direct labels at the line ends: final index values.
+                        for _xs, _ys, _color in (
+                            (_cmd_xs, _cmd_ys, '#B8821F'),
+                            (_cmp_xs, _cmp_ys, '#3574C6'),
+                        ):
+                            _idx_fig.add_annotation(
+                                x=_xs[-1], y=_ys[-1],
+                                text=f"{_ys[-1]:.0f}",
+                                showarrow=False, xanchor='left',
+                                font=dict(color=_color, size=10),
+                            )
+                        _idx_fig.update_layout(
+                            paper_bgcolor='#1E2433',
+                            plot_bgcolor='#1E2433',
+                            font=dict(color='#94A3B8', size=11),
+                            margin=dict(l=40, r=40, t=20, b=40),
+                            height=280,
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                        )
+                        _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                        _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
+                        st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
 
                 # --- Tier 2 placeholder slot (clearly upcoming, no fake data) ---
                 _econ_tier2_style = (
