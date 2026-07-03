@@ -358,6 +358,7 @@ Main entry point:
 Important project files:
 
 - `config.py` - Claude model names, input limits, and cache directory.
+- `sedar_extractor.py` - SEDAR+ PDF extraction; owns Option A cover-page selection (`_ordered_unique_pages`) and `attach_mapping()` (feeds statements to the canonical mapper).
 - `.env` - local secrets such as API keys. Do not commit.
 - `.env.example` - example environment variables.
 - `requirements.txt` - Python dependencies.
@@ -374,27 +375,54 @@ Important project files:
 Current files in `modules/`:
 
 - `__init__.py`
+- `analysis_cache.py` - schema-versioned analysis JSON cache (owns `CURRENT_SCHEMA_VERSION`).
 - `cache.py` - response caching helpers.
+- `campaign_pdf.py` - deterministic campaign-PDF resolution by recorded canonical filename (spec: `docs/CAMPAIGN_PDF_RESOLVER_SPEC.md`).
 - `claude_analyzer.py` - Claude prompts and Anthropic API calls.
 - `dcf_calculator.py` - discounted cash flow calculations.
+- `document_converter.py` - docx-to-markdown conversion (markitdown) for non-PDF uploads.
 - `edgar_fetcher.py` - SEC EDGAR filing lookup/fetch helpers.
 - `education_content.py` - educational UI content.
 - `excel_exporter.py` - Excel workbook generation and summary metric helpers.
 - `filing_comparison.py` - year-over-year filing comparison.
 - `filing_library.py` - local filing library persistence.
+- `fiscal_ai.py` - Fiscal.ai API helpers (company profile, shares outstanding, logo).
+- `fmp.py` - Financial Modeling Prep statement fetch and quick-financials helpers.
 - `market_data.py` - market data and ticker lookup helpers.
 - `market_ticker.py` - ticker/market display helpers.
 - `mda_sentiment.py` - MD&A sentiment analysis.
 - `memo_exporter.py` - Word investment memo generation.
 - `pdf_extractor.py` - PDF text extraction with `pdfplumber`.
 - `peer_comparison.py` - peer group and competitor comparison data.
+- `polymarket.py` - Polymarket macro-event probability helpers (experimental).
 - `portfolio_manager.py` - portfolio-level analysis display data.
 - `portfolio_registry.py` - local portfolio/ticker registry.
+- `position_tracker.py` - lot-level position persistence (portfolios, lots, cost basis).
 - `red_flag_detector.py` - red/yellow flag detection logic.
 - `scenario_simulator.py` - scenario and sensitivity analysis.
 - `stock_tracker.py` - stock data helper used by watchlist and portfolio views.
 - `supabase_storage.py` - optional Supabase persistence for filings and PDFs.
 - `watchlist.py` - local watchlist persistence.
+
+Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moat):
+
+- `engine.py` - detection orchestration; runs rules over an analysis and logs results.
+- `rules.py` - detection rules (sanity checks, identity checks, recency).
+- `sedar_mapper.py` - SEDAR statement-label-to-canonical-field mapping and sector-profile routing.
+- `sedar_aliases.json` - canonical field aliases and sector profiles consumed by the mapper.
+- `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`).
+- `analyze.py` - integrity analysis entry points.
+- `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
+
+Subpackage `modules/economics/`:
+
+- `resource_economics.py` - Resource Economics Snapshot calculations (filing fundamentals x yfinance market/commodity data).
+- `resource_display.py` - display-text helpers for the economics panel (labels, captions, caveats).
+
+Subpackage `modules/analysis/`:
+
+- `munger_inversion.py` - Munger inversion pre-mortem engine.
+- `inversion_store.py` - persistent store for inversion results.
 
 ## Current Tech Stack
 
