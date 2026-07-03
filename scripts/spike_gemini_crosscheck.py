@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,11 @@ MODEL = "gemini-3.5-flash"
 SLEEP_SECONDS = 2
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from modules.campaign_pdf import campaign_pdf_candidate, resolve_campaign_pdf
+
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
 REGISTRY_PATH = FIXTURES_DIR / "filing_registry.json"
 SEDAR_FIXTURE_PATHS = tuple(
@@ -72,53 +78,13 @@ def _registry_by_fixture() -> dict[str, dict[str, Any]]:
     }
 
 
-def _dedupe_paths(paths: list[Path]) -> list[Path]:
-    seen: set[str] = set()
-    unique_paths: list[Path] = []
-    for path in paths:
-        key = str(path).casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        unique_paths.append(path)
-    return unique_paths
-
-
-def _checked_pdf_paths(fixture_path: Path, fixture: dict[str, Any], registry_entry: dict[str, Any] | None) -> list[Path]:
-    home = Path.home()
-    paths: list[Path] = []
-
-    source_pdf_path = (registry_entry or {}).get("source_pdf_path")
-    if source_pdf_path:
-        source_path = Path(source_pdf_path)
-        paths.append(source_path)
-        paths.append(home / ".finlens" / "sedar" / "filings" / source_path.name)
-        paths.append(home / ".finlens" / "pdfs" / source_path.name)
-
-    provenance = fixture.get("source_provenance") or {}
-    origin_url = provenance.get("pdf_origin_url") or (registry_entry or {}).get("provenance", {}).get("issuer_url")
-    if origin_url:
-        origin_name = origin_url.rstrip("/").split("/")[-1]
-        if origin_name.lower().endswith(".pdf"):
-            paths.append(home / ".finlens" / "pdfs" / origin_name)
-            paths.append(home / ".finlens" / "sedar" / "filings" / origin_name)
-
-    stem = fixture_path.stem
-    paths.extend([
-        home / ".finlens" / "sedar" / "filings" / f"{stem}.pdf",
-        home / ".finlens" / "sedar" / "filings" / f"{stem}.pdf.pdf",
-        home / ".finlens" / "pdfs" / f"{stem}.pdf",
-        home / ".finlens" / "pdfs" / f"{stem}.pdf.pdf",
-    ])
-    return _dedupe_paths(paths)
-
-
 def _locate_pdf(fixture_path: Path, fixture: dict[str, Any], registry_entry: dict[str, Any] | None) -> tuple[Path | None, list[Path]]:
-    checked = _checked_pdf_paths(fixture_path, fixture, registry_entry)
-    for path in checked:
-        if path.exists():
-            return path, checked
-    return None, checked
+    pdf_path = resolve_campaign_pdf(registry_entry)
+    checked: list[Path] = []
+    candidate = campaign_pdf_candidate(registry_entry)
+    if candidate:
+        checked.append(candidate)
+    return pdf_path, checked
 
 
 def _filer_name(fixture_path: Path, registry_entry: dict[str, Any] | None) -> str:
