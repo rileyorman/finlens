@@ -63,6 +63,31 @@ def test_classify_flag_severity_collapses_case_and_whitespace():
     assert ce.classify_flag_severity("Total  Revenue", "total revenue") == "hard"
 
 
+def test_normalize_source_label_strips_benign_total_and_footnote_noise():
+    assert ce.normalize_source_label("Total revenue") == ce.normalize_source_label("Revenue")
+    assert ce.normalize_source_label("Revenue total") == ce.normalize_source_label("Revenue")
+    assert ce.normalize_source_label("Total revenues") == ce.normalize_source_label("Revenues")
+    assert ce.normalize_source_label("Production (i)") == ce.normalize_source_label("Production")
+
+
+def test_normalize_source_label_keeps_atd_net_income_scope_difference():
+    assert ce.normalize_source_label("Net earnings") != ce.normalize_source_label(
+        "Net earnings attributable to shareholders of the Corporation"
+    )
+    assert ce.normalize_source_label("Net income") != ce.normalize_source_label(
+        "Net income attributable to shareholders"
+    )
+
+
+def test_normalize_source_label_keeps_known_non_strippable_diagnostic_cases_distinct():
+    assert ce.normalize_source_label(
+        "derived: revenue - cost_of_revenue"
+    ) != ce.normalize_source_label(
+        "Derived from Revenues less Cost of sales, excluding depreciation, amortization and impairment"
+    )
+    assert ce.normalize_source_label("Total assets") != ce.normalize_source_label("$")
+
+
 def test_cross_extractor_verified_when_all_fields_agree(monkeypatch, tmp_path):
     _patch_pdf_and_log(monkeypatch, tmp_path)
     monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([

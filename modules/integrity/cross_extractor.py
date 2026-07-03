@@ -31,6 +31,12 @@ UNCHECKED_PARSE_ERROR = "parse_error"
 FlagSeverity = Literal["hard", "soft"]
 
 _NOTE_REFERENCE_RE = re.compile(r"\(\s*note\s*\d+\s*\)", flags=re.IGNORECASE)
+_TRAILING_FOOTNOTE_REFERENCE_RE = re.compile(
+    r"\s*\(\s*(?:[ivxlcdm]{1,6}|[a-z]|\d{1,2})\s*\)\s*$",
+    flags=re.IGNORECASE,
+)
+_LEADING_TOTAL_RE = re.compile(r"^total\s+")
+_TRAILING_TOTAL_RE = re.compile(r"\s+total$")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 FIELD_DESCRIPTIONS = {
@@ -68,6 +74,10 @@ def normalize_source_label(label: str | None) -> str:
     text = "" if label is None else str(label)
     text = text.casefold()
     text = _NOTE_REFERENCE_RE.sub(" ", text)
+    text = _TRAILING_FOOTNOTE_REFERENCE_RE.sub(" ", text)
+    text = _WHITESPACE_RE.sub(" ", text).strip()
+    text = _LEADING_TOTAL_RE.sub("", text)
+    text = _TRAILING_TOTAL_RE.sub("", text)
     return _WHITESPACE_RE.sub(" ", text).strip()
 
 
