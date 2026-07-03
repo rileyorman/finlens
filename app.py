@@ -278,7 +278,6 @@ SEDAR_QUICK_LINKS = [
     ("Interim Financial Statements", "Interim Financial Statements"),
 ]
 CANADIAN_EXCHANGES = {"TOR", "TSX", "CNQ", "VAN"}
-US_EXCHANGES = {"NMS", "NYQ", "NGM", "NCM", "ASE", "AMEX", "PCX", "NASDAQ", "NYSE"}
 
 
 def _ensure_yfinance_cache_location():
@@ -349,45 +348,6 @@ def _is_canadian_quote(quote: dict) -> bool:
     symbol = (quote.get("symbol") or "").upper()
     exchange = (quote.get("exchange") or "").upper()
     return symbol.endswith(".TO") or exchange in CANADIAN_EXCHANGES
-
-
-def _is_us_quote(quote: dict) -> bool:
-    symbol = (quote.get("symbol") or "").upper()
-    exchange = (quote.get("exchange") or "").upper()
-    return "." not in symbol and exchange in US_EXCHANGES
-
-
-def _resolve_sedar_company_from_yfinance(ticker: str) -> dict | None:
-    symbol = (ticker or "").strip().upper()
-    if not symbol:
-        return None
-
-    _ensure_yfinance_cache_location()
-
-    candidates = [symbol]
-    if "." not in symbol:
-        candidates.extend([f"{symbol}.TO", f"{symbol}.V"])
-
-    seen = set()
-    for candidate in candidates:
-        if candidate in seen:
-            continue
-        seen.add(candidate)
-        try:
-            info = yf.Ticker(candidate).info or {}
-        except Exception:
-            continue
-
-        company_name = (
-            info.get("longName")
-            or info.get("shortName")
-            or info.get("displayName")
-            or info.get("name")
-        )
-        quote_type = (info.get("quoteType") or "").upper()
-        if company_name and quote_type in {"EQUITY", "ETF", ""}:
-            return {"symbol": candidate, "company_name": company_name}
-    return None
 
 
 def _quality_score(m: dict) -> int:
@@ -1448,11 +1408,6 @@ if not st.session_state["onboarding_complete"]:
             st.rerun()
     st.stop()
 
-def _svg_b64(path: str) -> str:
-    import base64
-    return base64.b64encode(open(path, "rb").read()).decode()
-
-
 st.markdown("""
 <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:0.5px solid #2D3650;">
     <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinLens">
@@ -1627,13 +1582,6 @@ if _education_topic:
     st.session_state["nav_mode"] = "Education"
 
 _NAV_SLUG_BY_LABEL = {label: slug for label, slug, _ in _NAV_ITEMS}
-
-
-def _query_param_value(name: str) -> str | None:
-    value = st.query_params.get(name)
-    if isinstance(value, list):
-        return value[0] if value else None
-    return value
 
 
 def _filing_key(entry: dict) -> str:
@@ -6666,78 +6614,6 @@ if st.session_state.financial_data:
                         st.info(_escape_md_dollars(_sr["narrative"]))
 
         # --- Financial statement tables ---
-        _is_fmp_source = financial_data.get("source") == "fmp"
-        _has_prior_values = any(
-            row.get("value_prior") is not None
-            for section in ("income_statement", "balance_sheet", "cash_flow_statement")
-            for row in financial_data.get(section, [])
-            if row.get("row_type") != "section_header"
-        )
-        col_cfg = {
-            "line_item":   st.column_config.TextColumn("Line Item"),
-            "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
-            "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
-        }
-        if _is_fmp_source and not _has_prior_values:
-            col_cfg = {
-                "line_item": st.column_config.TextColumn("Line Item"),
-                "value":     st.column_config.TextColumn(fy),
-            }
-        elif _is_fmp_source:
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.TextColumn(fy_prior),
-                "value":       st.column_config.TextColumn(fy),
-            }
-
-        def _display_rows(rows):
-            if _is_fmp_source:
-                def _fmt_fmp_statement_value(value):
-                    if value is None:
-                        return None
-                    try:
-                        raw_value = float(value) * (financial_data.get("scale") or 1)
-                    except (TypeError, ValueError):
-                        return None
-                    sign = "-" if raw_value < 0 else ""
-                    abs_value = abs(raw_value)
-                    if abs_value >= 1_000_000_000_000:
-                        return f"{sign}${abs_value / 1_000_000_000_000:,.2f}T"
-                    if abs_value >= 1_000_000_000:
-                        return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
-                    if abs_value >= 1_000_000:
-                        return f"{sign}${abs_value / 1_000_000:,.1f}M"
-                    return f"{sign}${abs_value:,.0f}"
-
-                def _fmt_fmp_per_share(value):
-                    try:
-                        if value is None:
-                            return None
-                        return f"${float(value):,.2f}"
-                    except (TypeError, ValueError):
-                        return None
-
-                display = []
-                for r in rows:
-                    _row_fmt = (
-                        _fmt_fmp_per_share
-                        if is_per_share_line_item(r.get("line_item"))
-                        else _fmt_fmp_statement_value
-                    )
-                    row = {
-                        "line_item": r.get("line_item"),
-                        "value": _row_fmt(r.get("value")),
-                    }
-                    if _has_prior_values:
-                        row["value_prior"] = _row_fmt(r.get("value_prior"))
-                    display.append(row)
-                return display
-
-            return [
-                {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
-                for r in rows
-            ]
-
         def _display_edgar_statement(rows):
             import html as _html
 
