@@ -1409,6 +1409,6 @@
     },
     "retrieval_method": "manual browser download from issuer IR",
     "pdf_origin_url": "https://www.sunlife.com/content/dam/sunlife/regional/global-marketing/documents/com/pa-e-q425-2025-fin-stats.pdf",
-    "document_note": "Q4 2025 Consolidated Financial Statements"
+    "document_note": "Q4 2025 Consolidated Financial Statements. Canonical field-definition cross-ref: see CLAUDE.md section 'Canonical Field Definitions (judgment-class fields)'."
   }
 }

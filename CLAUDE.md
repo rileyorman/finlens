@@ -154,6 +154,104 @@ When adding a sector profile: if the concept already has a default canonical
 name, AUGMENT that name with new aliases (mining_sector pattern). Mint a new
 canonical name only for a genuinely different concept, and record why.
 
+## Canonical Field Definitions (judgment-class fields)
+
+These fields carry documented judgment-class definitions. When mapping a new
+filer in the same sector, conform to these definitions instead of re-deriving
+the concept from the filer's subtotal labels.
+
+### `insurance_finance_result`
+
+DEFINITION: insurance finance income/(expense) from insurance contracts ISSUED
+- gross, EXCLUDING reinsurance finance income/(expense).
+
+RULE: take the "insurance finance income (expense) from contracts issued" line.
+Do NOT net in reinsurance finance. If the filer prints a combined "Net
+insurance financial result" subtotal, do NOT take it; take the issued-gross
+component. Rationale: cross-insurer consistency. SLF has no net rollup, so
+issued-gross is the only line common to both insurers.
+
+CURRENT FILERS:
+- IFC: `insurance_finance_result` = -1,041 from "Insurance finance income
+  (expense)" (issued line). IFC also prints "Reinsurance finance income
+  (expense)" +162 and "Net insurance financial result" -879; the -879 subtotal
+  is deliberately NOT taken.
+- SLF: `insurance_finance_result` = -6,787 from "Insurance finance income
+  (expenses) from insurance contracts issued". SLF prints no net rollup;
+  hand-confirmed 2026-06-17. Its reinsurance-held +69 and segregated-fund
+  -1,901 lines are separate and are not netted into this field.
+
+KNOWN TENSION: this reports a number that disagrees with IFC's own printed "Net
+insurance financial result" subtotal. That is deliberate for comparability, not
+an error. Any future insurer whose statement presents ONLY a net result and no
+issued-gross line breaks this rule and needs a design decision, not a silent
+map.
+
+### `net_operating_income` (REIT sector, conditional lift/derive field)
+
+DEFINITION: rental-only NOI - rental property operations only, EXCLUDING
+residential/development revenue and cost.
+
+RULE: conditional on filer shape:
+- PURE REIT: if the filer reports a clean rental-only NOI/net-rental-income
+  line with no development blended in, LIFT the printed line exactly.
+  Precedents: CAR.UN "Net operating income" 730,654; DIR.UN "Net rental
+  income" 355,432. Both are exact lifts, not derived.
+- BLENDED REIT: if the operating subtotal mixes development margin and/or
+  service-fee income into property results, DERIVE rental-only NOI as
+  rental_revenue - rental operating costs (recoverable + non-recoverable),
+  excluding residential inventory sales/cost AND property-management/service-fee
+  income. Do NOT lift the filer's blended "Operating income" subtotal.
+
+This matches the shipped implementation: derivation fires only where a
+development/inventory line exists; pure REITs lift the clean printed line.
+
+CURRENT FILER:
+- REI.UN: `net_operating_income` = 720,404, derived as 1,176,428 "Rental
+  revenue" - 414,386 "Recoverable under tenant leases" - 41,638
+  "Non-recoverable costs". RioCan's printed blended "Operating income" 798,716
+  is deliberately NOT used; it is preserved in `mapping.unmapped[]`.
+
+REI.UN RECONCILIATION:
+- RioCan printed blended "Operating income" = 798,716.
+- Derived rental-only NOI = 720,404.
+- Difference = 78,312, composed of 62,358 residential development margin
+  (244,189 "Residential inventory sales" - 181,831 "Residential inventory cost
+  of sales") plus 15,954 "Property management and other service fees".
+- 62,358 + 15,954 = 78,312; closes exactly.
+
+Rental-only NOI excludes BOTH the residential margin AND the service-fee income.
+That is why it will not match RioCan's printed operating-income line by design.
+
+### `property_operating_costs` (REIT sector, OPEN definition question)
+
+CURRENT STATE / INCONSISTENCY: `property_operating_costs` currently maps
+REI.UN's "Total operating costs" 637,855, which INCLUDES "Residential inventory
+cost of sales" 181,831. In the same fixture, `net_operating_income` EXCLUDES
+that same residential cost. Same filer, same line family, opposite treatment
+across two fields.
+
+OPEN HUMAN DECISION: should `property_operating_costs` be:
+- (i) blended total including residential inventory cost of sales: 637,855
+  (current REI.UN value; strongest comparability to the filing's printed
+  subtotal), or
+- (ii) rental-only operating costs: 456,024 = 414,386 "Recoverable under tenant
+  leases" + 41,638 "Non-recoverable costs" (strongest internal consistency with
+  the rental-only NOI derivation)?
+
+Tradeoff: comparability-to-filing vs internal-consistency-with-NOI. This is a
+definition gap, not a wrong number. Leave the current value untouched until
+Riley decides the canonical definition.
+
+CURRENT FILERS:
+- REI.UN: `property_operating_costs` = 637,855 from "Total operating costs";
+  OPEN as described above because the line includes residential inventory cost
+  of sales.
+- CAR.UN: `property_operating_costs` = -281,431 from "Property operating
+  costs".
+- DIR.UN: `property_operating_costs` = -110,786 from "Investment properties
+  operating expenses".
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped
