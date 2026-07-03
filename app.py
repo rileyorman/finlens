@@ -2507,10 +2507,12 @@ if page == "Portfolio Manager":
     with s5:
         qs_str = f"{avg_qs:.0f}" if avg_qs is not None else "—"
         st.markdown(
-            f'<div style="border:1px solid #ddd;border-radius:6px;padding:8px 12px;text-align:center;margin-top:4px">'
-            f'<div style="font-size:11px;color:#888">Avg Quality</div>'
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;'
+            f'padding:8px 12px;text-align:center;margin-top:4px">'
+            f'<div style="font-size:11px;color:#64748B">Avg Quality</div>'
             f'<div style="font-size:22px;font-weight:700;color:{qs_color}">{qs_str}</div>'
-            f'<div style="font-size:10px;color:#aaa">/ 100</div>'
+            f'<div style="font-size:10px;color:#64748B">/ 100</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -3232,6 +3234,9 @@ if page == "Portfolio Manager":
     st.divider()
 
     # --- Section 5: Framework Scores ---
+    # Scores stay in a scannable table; the Dalio/Marks narratives are
+    # Claude-written analysis and render in full below (never truncated
+    # into table cells — see CLAUDE.md truncation principle).
     st.markdown("##### Framework Scores")
     st.dataframe(
         [
@@ -3239,8 +3244,6 @@ if page == "Portfolio Manager":
                 "Ticker":        r["ticker"],
                 "Company":       r["company_name"],
                 "Quality Score": r["quality_score"],
-                "Dalio View":    (r["dalio_view"] or "—"),
-                "Marks View":    (r["marks_view"] or "—"),
             }
             for r in analysed
         ],
@@ -3250,10 +3253,18 @@ if page == "Portfolio Manager":
             "Quality Score": st.column_config.ProgressColumn(
                 "Quality Score", min_value=0, max_value=100, format="%d",
             ),
-            "Dalio View": st.column_config.TextColumn("Dalio View", width="large"),
-            "Marks View": st.column_config.TextColumn("Marks View", width="large"),
         },
     )
+    for r in analysed:
+        if not (r["dalio_view"] or r["marks_view"]):
+            continue
+        with st.expander(f"{r['ticker']} — Dalio & Marks framework views"):
+            if r["dalio_view"]:
+                st.markdown("**Dalio — cycle view**")
+                st.markdown(_escape_md_dollars(r["dalio_view"]))
+            if r["marks_view"]:
+                st.markdown("**Marks — second-level view**")
+                st.markdown(_escape_md_dollars(r["marks_view"]))
 
     st.stop()
 
@@ -4019,7 +4030,9 @@ if page == "Stock Tracker":
     price_metrics_col, price_chart_col = st.columns([1, 1])
     with price_metrics_col:
         st.markdown("#### Price & Momentum")
-        c1, c2, c3, c4 = st.columns(4)
+        # 2x2 grid: this block lives in a half-width column, and four
+        # metrics across were so narrow that prices wrapped mid-number.
+        c1, c2 = st.columns(2)
         with c1:
             st.metric(
                 "Current Price",
@@ -4035,6 +4048,7 @@ if page == "Stock Tracker":
                 delta=f"{pct_hi:.1f}% from high" if pct_hi is not None else None,
                 delta_color="inverse",
             )
+        c3, c4 = st.columns(2)
         with c3:
             lo52 = price["week_52_low"]
             pct_lo = price["pct_from_52_low"]
