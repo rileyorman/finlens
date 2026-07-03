@@ -413,7 +413,7 @@ def _quality_score(m: dict) -> int:
 def _dash_rag(metric: str, value) -> tuple:
     """Return (bg_hex, label) for dashboard RAG cells — mirrors excel_exporter thresholds."""
     if value is None:
-        return "#D9D9D9", "N/A"
+        return "rgba(148,163,184,0.25)", "N/A"
     if metric == "liquidity":  c = "G" if value >= 2.0 else ("A" if value >= 1.0 else "R")
     elif metric == "leverage": c = "G" if value <= 1.5 else ("A" if value <= 3.0 else "R")
     elif metric == "rev_growth": c = "G" if value >= 5.0 else ("A" if value >= 0.0 else "R")
@@ -1786,7 +1786,7 @@ with st.sidebar:
 
                 if cur_tickers:
                     st.markdown(
-                        "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        "<hr style='margin:4px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                         unsafe_allow_html=True,
                     )
 
@@ -1879,7 +1879,7 @@ document.addEventListener('focusin', function(e) {
                         st.warning("No tickers found in CSV.")
 
                 st.markdown(
-                    "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                    "<hr style='margin:4px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                     unsafe_allow_html=True,
                 )
                 if st.session_state.get("pm_confirm_delete") == sel_pf:
@@ -1905,7 +1905,7 @@ document.addEventListener('focusin', function(e) {
 
             # --- Analysis Library (read-only, re-analyse only) ----------------
             st.markdown(
-                "<hr style='margin:6px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                "<hr style='margin:6px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                 unsafe_allow_html=True,
             )
             st.markdown("""
@@ -2045,7 +2045,7 @@ document.addEventListener('focusin', function(e) {
                                 st.session_state.al_confirm_reanalyse = None
                                 st.rerun()
                     st.markdown(
-                        "<hr style='margin:2px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        "<hr style='margin:2px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                         unsafe_allow_html=True,
                     )
 
@@ -3760,14 +3760,15 @@ if page == "Stock Tracker":
     mom   = sd["momentum"]
     comp  = sd["company"]
 
-    # Helper: coloured pill badge
+    # Helper: coloured pill badge (dark-theme tints, same palette as the
+    # PASS / INVESTIGATE / DECLINE signal badges)
     def _pill(label, ok):
         if ok is None:
-            color, bg, sym = "#888", "#f5f5f5", "—"
+            color, bg, sym = "#94A3B8", "rgba(148,163,184,0.12)", "—"
         elif ok:
-            color, bg, sym = "#2d7a2d", "#e8f5e9", "✓"
+            color, bg, sym = "#4ADE80", "rgba(74,222,128,0.12)", "✓"
         else:
-            color, bg, sym = "#c0392b", "#fdecea", "✗"
+            color, bg, sym = "#F87171", "rgba(248,113,113,0.12)", "✗"
         return (
             f'<span style="background:{bg};color:{color};padding:5px 12px;'
             f'border-radius:20px;font-size:13px;font-weight:600;'
@@ -3875,11 +3876,11 @@ if page == "Stock Tracker":
         except Exception:
             return '<span style="color:#94A3B8;font-size:12px">—</span>'
         if actual > estimated:
-            label, color, bg = "Beat", "#2d7a2d", "#e8f5e9"
+            label, color, bg = "Beat", "#4ADE80", "rgba(74,222,128,0.12)"
         elif actual < estimated:
-            label, color, bg = "Miss", "#c0392b", "#fdecea"
+            label, color, bg = "Miss", "#F87171", "rgba(248,113,113,0.12)"
         else:
-            label, color, bg = "In Line", "#7d5a00", "#fffbea"
+            label, color, bg = "In Line", "#FCD34D", "rgba(252,211,77,0.12)"
         return (
             f'<span style="background:{bg};color:{color};padding:2px 8px;'
             f'border-radius:999px;font-size:11px;font-weight:700">{label}</span>'
@@ -3899,13 +3900,13 @@ if page == "Stock Tracker":
 
     def _short_interest_badge(short_pct):
         if short_pct is None:
-            return ("—", "#888", "#f5f5f5")
+            return ("—", "#94A3B8", "rgba(148,163,184,0.12)")
         short_pct = float(short_pct)
         if short_pct < 0.05:
-            return ("LOW", "#2d7a2d", "#e8f5e9")
+            return ("LOW", "#4ADE80", "rgba(74,222,128,0.12)")
         if short_pct <= 0.15:
-            return ("ELEVATED", "#7d5a00", "#fffbea")
-        return ("HIGH", "#c0392b", "#fdecea")
+            return ("ELEVATED", "#FCD34D", "rgba(252,211,77,0.12)")
+        return ("HIGH", "#F87171", "rgba(248,113,113,0.12)")
 
     @st.cache_data(ttl=900, show_spinner=False)
     def _get_short_interest(ticker: str) -> dict:
@@ -3972,11 +3973,11 @@ if page == "Stock Tracker":
         num_an = analyst["num_analysts"]
 
         if rec in ("BUY", "STRONG_BUY", "STRONG BUY"):
-            rec_color, rec_bg = "#2d7a2d", "#e8f5e9"
+            rec_color, rec_bg = "#4ADE80", "rgba(74,222,128,0.15)"
         elif rec in ("SELL", "STRONG_SELL", "STRONG SELL", "UNDERPERFORM"):
-            rec_color, rec_bg = "#c0392b", "#fdecea"
+            rec_color, rec_bg = "#F87171", "rgba(248,113,113,0.15)"
         else:
-            rec_color, rec_bg = "#7d5a00", "#fffbea"
+            rec_color, rec_bg = "#FCD34D", "rgba(252,211,77,0.15)"
 
         if rec:
             st.markdown(
@@ -4010,17 +4011,17 @@ if page == "Stock Tracker":
             fill_width = abs(t_pct - c_pct)
             st.markdown(
                 f'<div style="margin:10px 0 4px">'
-                f'<div style="background:#e8e8e8;border-radius:6px;height:10px;position:relative">'
+                f'<div style="background:rgba(255,255,255,0.10);border-radius:6px;height:10px;position:relative">'
                 f'<div style="position:absolute;left:{fill_left:.0f}%;width:{fill_width:.0f}%;'
-                f'height:100%;background:#7cb9e8;border-radius:6px"></div>'
+                f'height:100%;background:rgba(77,159,255,0.45);border-radius:6px"></div>'
                 f'<div style="position:absolute;left:{c_pct:.0f}%;transform:translateX(-50%);'
-                f'width:3px;height:100%;background:#333;border-radius:2px" title="Current"></div>'
+                f'width:3px;height:100%;background:#F1F5F9;border-radius:2px" title="Current"></div>'
                 f'<div style="position:absolute;left:{t_pct:.0f}%;transform:translateX(-50%);'
-                f'width:3px;height:100%;background:#2d7a2d;border-radius:2px" title="Target"></div>'
+                f'width:3px;height:100%;background:#4ADE80;border-radius:2px" title="Target"></div>'
                 f'</div>'
-                f'<div style="font-size:11px;color:#888;margin-top:4px">'
-                f'&#9632; Current: ${cur:,.2f} &nbsp;&nbsp; '
-                f'<span style="color:#2d7a2d">&#9632;</span> Target: ${target:,.2f}</div>'
+                f'<div style="font-size:11px;color:#64748B;margin-top:4px">'
+                f'<span style="color:#F1F5F9">&#9632;</span> Current: ${cur:,.2f} &nbsp;&nbsp; '
+                f'<span style="color:#4ADE80">&#9632;</span> Target: ${target:,.2f}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -4075,14 +4076,14 @@ if page == "Stock Tracker":
         rsi = mom["rsi_14"]
         if rsi is not None:
             if rsi < 30:
-                rsi_label, rsi_color = "Oversold", "#2d7a2d"
-                rsi_bg = "#e8f5e9"
+                rsi_label, rsi_color = "Oversold", "#4ADE80"
+                rsi_bg = "rgba(74,222,128,0.12)"
             elif rsi < 70:
-                rsi_label, rsi_color = "Neutral", "#555"
-                rsi_bg = "#f5f5f5"
+                rsi_label, rsi_color = "Neutral", "#94A3B8"
+                rsi_bg = "rgba(148,163,184,0.12)"
             else:
-                rsi_label, rsi_color = "Overbought", "#c0392b"
-                rsi_bg = "#fdecea"
+                rsi_label, rsi_color = "Overbought", "#F87171"
+                rsi_bg = "rgba(248,113,113,0.12)"
             st.markdown(
                 f'<div style="margin:8px 0 0 0">'
                 f'<span style="font-weight:600">RSI (14):</span> {rsi:.1f} &nbsp;'
@@ -4279,8 +4280,8 @@ if page == "Stock Tracker":
             if surp is not None:
                 s_sign = "+" if surp >= 0 else ""
                 s_label = "Beat" if surp >= 0 else "Miss"
-                s_color = "#2d7a2d" if surp >= 0 else "#c0392b"
-                s_bg = "#e8f5e9" if surp >= 0 else "#fdecea"
+                s_color = "#4ADE80" if surp >= 0 else "#F87171"
+                s_bg = "rgba(74,222,128,0.12)" if surp >= 0 else "rgba(248,113,113,0.12)"
                 st.markdown(
                     f'Last Quarter: <span style="background:{s_bg};color:{s_color};'
                     f'padding:2px 8px;border-radius:10px;font-size:13px;font-weight:600">'
@@ -6959,12 +6960,19 @@ if st.session_state.financial_data:
         qs = _quality_score(metrics)
         qs_color = "#70AD47" if qs >= 70 else ("#FFC000" if qs >= 40 else "#C00000")
 
+        # Shared dark-card shell for the three header stat cards.
+        _stat_card_style = (
+            "background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);"
+            "border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;"
+            "padding:12px 16px;text-align:center"
+        )
+
         with qs_col:
             st.markdown(
-                f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
+                f'<div style="{_stat_card_style}">'
+                f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
                 f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs}</div>'
-                f'<div style="font-size:10px;color:#aaa">/ 100</div>'
+                f'<div style="font-size:10px;color:#64748B">/ 100</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -6974,10 +6982,10 @@ if st.session_state.financial_data:
             beta_val = market_data.get("beta")
             beta_str = f"{beta_val:.2f}" if beta_val else "—"
             st.markdown(
-                f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Beta</div>'
-                f'<div style="font-size:28px;font-weight:700">{beta_str}</div>'
-                f'<div style="font-size:10px;color:#aaa">market sensitivity</div>'
+                f'<div style="{_stat_card_style}">'
+                f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Beta</div>'
+                f'<div style="font-size:28px;font-weight:700;color:#F1F5F9">{beta_str}</div>'
+                f'<div style="font-size:10px;color:#64748B">market sensitivity</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -6991,20 +6999,20 @@ if st.session_state.financial_data:
                 _mc = "#70AD47" if _mos_hdr > 20 else ("#FFC000" if _mos_hdr >= 0 else "#C00000")
                 _lbl = "undervalued" if _mos_hdr > 0 else "overvalued"
                 st.markdown(
-                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                    f'<div style="font-size:22px;font-weight:700">${_iv_hdr:,.2f}</div>'
+                    f'<div style="{_stat_card_style}">'
+                    f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    f'<div style="font-size:22px;font-weight:700;color:#F1F5F9">${_iv_hdr:,.2f}</div>'
                     f'<div style="font-size:16px;font-weight:700;color:{_mc}">{_mos_hdr:+.1f}%</div>'
-                    f'<div style="font-size:10px;color:#aaa">{_lbl}</div>'
+                    f'<div style="font-size:10px;color:#64748B">{_lbl}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
-                    '<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                    '<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                    '<div style="font-size:28px;font-weight:700">—</div>'
-                    '<div style="font-size:10px;color:#aaa">DCF required</div>'
+                    f'<div style="{_stat_card_style}">'
+                    '<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    '<div style="font-size:28px;font-weight:700;color:#F1F5F9">—</div>'
+                    '<div style="font-size:10px;color:#64748B">DCF required</div>'
                     '</div>',
                     unsafe_allow_html=True,
                 )
@@ -7256,10 +7264,11 @@ if st.session_state.financial_data:
             # HTML container: html-escape only (no \$-escaping — see thesis note above).
             dalio_text = escape(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
             st.markdown(
-                f'<div style="background:#EEEDFE;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#5B4FCF;margin-bottom:8px;'
+                f'<div style="background:rgba(139,127,232,0.10);border:0.5px solid rgba(139,127,232,0.30);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#A79DF5;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Dalio — All Weather</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{dalio_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{dalio_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -7269,10 +7278,11 @@ if st.session_state.financial_data:
             lynch_text = escape(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
             cat_suffix = f" ({escape(lynch_cat)})" if lynch_cat else ""
             st.markdown(
-                f'<div style="background:#E1F5EE;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#217A4B;margin-bottom:8px;'
+                f'<div style="background:rgba(78,206,139,0.08);border:0.5px solid rgba(78,206,139,0.28);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#5FD69A;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Lynch — One Up{cat_suffix}</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{lynch_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{lynch_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -7280,10 +7290,11 @@ if st.session_state.financial_data:
         with fw_marks:
             marks_text = escape(dd.get("marks_view") or "Re-analyse to generate Marks view.")
             st.markdown(
-                f'<div style="background:#FAEEDA;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#B06000;margin-bottom:8px;'
+                f'<div style="background:rgba(255,180,84,0.08);border:0.5px solid rgba(255,180,84,0.28);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#FFB454;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Marks — Second Level</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{marks_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{marks_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -7352,13 +7363,18 @@ if st.session_state.financial_data:
                         val_str = f"{val:.1f}%"
                     else:
                         val_str = f"{val:.2f}"
-                    lbl_color = "#fff" if rag_lbl == "RED" else "#333"
+                    if rag_lbl == "RED":
+                        lbl_color = "#fff"
+                    elif rag_lbl == "N/A":
+                        lbl_color = "#CBD5E1"
+                    else:
+                        lbl_color = "#333"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                        f'padding:7px 4px;border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px">{lbl}</span>'
+                        f'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#CBD5E1">{lbl}</span>'
                         f'<span>'
-                        f'<span style="font-size:13px;margin-right:10px;color:#555">{val_str}</span>'
+                        f'<span style="font-size:13px;margin-right:10px;color:#94A3B8">{val_str}</span>'
                         f'<span style="background:{bg};color:{lbl_color};padding:2px 10px;'
                         f'border-radius:3px;font-size:11px;font-weight:700">{rag_lbl}</span>'
                         f'</span></div>',
@@ -7379,7 +7395,13 @@ if st.session_state.financial_data:
                             title, detail = str(item), ""
                         st.markdown(f"**{_escape_md_dollars(title)}**")
                         if detail:
-                            st.caption(_escape_md_dollars(detail))
+                            # Claude-written analysis: render at readable size,
+                            # not st.caption's faint 11px gray.
+                            st.markdown(
+                                f'<p style="font-size:13px;color:#94A3B8;'
+                                f'margin:0 0 10px 0;line-height:1.55">{escape(detail)}</p>',
+                                unsafe_allow_html=True,
+                            )
                 else:
                     st.caption("Re-analyse to generate capital allocation insights.")
 
@@ -7457,7 +7479,7 @@ if st.session_state.financial_data:
                 ]
                 for scen_name, stressed_ic in scenarios:
                     if stressed_ic is None:
-                        status, bg, lbl_c = "N/A", "#D9D9D9", "#333"
+                        status, bg, lbl_c = "N/A", "rgba(148,163,184,0.25)", "#CBD5E1"
                     elif stressed_ic >= 3.0:
                         status, bg, lbl_c = "SAFE", "#70AD47", "#fff"
                     elif stressed_ic >= 1.5:
@@ -7469,10 +7491,10 @@ if st.session_state.financial_data:
                     ic_str = f"{stressed_ic:.1f}x" if stressed_ic is not None else "—"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                        f'padding:7px 4px;border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px">{scen_name}</span>'
+                        f'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#CBD5E1">{scen_name}</span>'
                         f'<span>'
-                        f'<span style="font-size:13px;margin-right:10px;color:#555">{ic_str}</span>'
+                        f'<span style="font-size:13px;margin-right:10px;color:#94A3B8">{ic_str}</span>'
                         f'<span style="background:{bg};color:{lbl_c};padding:2px 10px;'
                         f'border-radius:3px;font-size:11px;font-weight:700">{status}</span>'
                         f'</span></div>',
@@ -7540,9 +7562,9 @@ if st.session_state.financial_data:
                 ]:
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;padding:5px 4px;'
-                        f'border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px;color:#555">{vname}</span>'
-                        f'<span style="font-size:14px;font-weight:700">{vval}</span>'
+                        f'border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#94A3B8">{vname}</span>'
+                        f'<span style="font-size:14px;font-weight:700;color:#F1F5F9">{vval}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
@@ -7566,12 +7588,12 @@ if st.session_state.financial_data:
                 title  = escape(pt.get("title", ""))
                 detail = escape(pt.get("detail", ""))
                 st.markdown(
-                    f'<div style="background:#F0F7EC;border-left:4px solid #70AD47;'
+                    f'<div style="background:rgba(112,173,71,0.10);border-left:4px solid #70AD47;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
-                    f'<div style="font-size:11px;color:#4A7C35;font-weight:700;text-transform:uppercase;'
+                    f'<div style="font-size:11px;color:#8FCE6B;font-weight:700;text-transform:uppercase;'
                     f'letter-spacing:0.5px;margin-bottom:4px">{fw}</div>'
-                    f'<div style="font-size:14px;font-weight:600;margin-bottom:4px">{title}</div>'
-                    f'<div style="font-size:13px;color:#555">{detail}</div>'
+                    f'<div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">{title}</div>'
+                    f'<div style="font-size:13px;color:#94A3B8">{detail}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
@@ -7585,12 +7607,12 @@ if st.session_state.financial_data:
                 title  = escape(pt.get("title", ""))
                 detail = escape(pt.get("detail", ""))
                 st.markdown(
-                    f'<div style="background:#FDF2F2;border-left:4px solid #C00000;'
+                    f'<div style="background:rgba(217,83,79,0.10);border-left:4px solid #D9534F;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
-                    f'<div style="font-size:11px;color:#8B0000;font-weight:700;text-transform:uppercase;'
+                    f'<div style="font-size:11px;color:#F08A8A;font-weight:700;text-transform:uppercase;'
                     f'letter-spacing:0.5px;margin-bottom:4px">{fw}</div>'
-                    f'<div style="font-size:14px;font-weight:600;margin-bottom:4px">{title}</div>'
-                    f'<div style="font-size:13px;color:#555">{detail}</div>'
+                    f'<div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">{title}</div>'
+                    f'<div style="font-size:13px;color:#94A3B8">{detail}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
