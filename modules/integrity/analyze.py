@@ -23,7 +23,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .log import read_log, _DEFAULT_LOG, get_last_read_log_diagnostics
-from .cross_validate import FMP_PREMIUM_BLOCKED
+from .cross_validate import (
+    CV_ABSTAIN_CURRENCY_MISMATCH,
+    CV_ABSTAIN_CURRENCY_UNKNOWN,
+    CV_SEVERITY_ADVISORY,
+    FMP_PREMIUM_BLOCKED,
+)
 
 
 LOW_SAMPLE_THRESHOLD = 10
@@ -366,7 +371,7 @@ def _section_distributions(records: list[dict]) -> str:
 
 
 def _fmt_bn(v: float | None) -> str:
-    """Format a raw-USD value as T/B/M/K for the report."""
+    """Format a raw filing/FMP value as T/B/M/K for the report."""
     if v is None:
         return "n/a"
     if abs(v) >= 1e12:
@@ -380,10 +385,30 @@ def _fmt_bn(v: float | None) -> str:
 
 def _fmt_cv_fmp_status(rec: dict) -> str:
     if rec.get("fmp_fetch_success"):
+        if rec.get("abstention_reason"):
+            return f"available; abstained: {rec.get('abstention_reason')}"
         return "available"
     if rec.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED:
         return "unavailable at current FMP tier"
     return "transient failure"
+
+
+def _cv_field_severity(field: dict) -> str:
+    if field.get("status") in ("DISAGREE", "MINOR_DIVERGENCE"):
+        return CV_SEVERITY_ADVISORY
+    return ""
+
+
+def _cv_field_abstention_reason(record: dict, field: dict) -> str:
+    reason = field.get("abstention_reason") or record.get("abstention_reason")
+    return str(reason or "")
+
+
+def _cv_is_currency_abstention(record: dict, field: dict) -> bool:
+    return _cv_field_abstention_reason(record, field) in {
+        CV_ABSTAIN_CURRENCY_MISMATCH,
+        CV_ABSTAIN_CURRENCY_UNKNOWN,
+    }
 
 
 def _section_divergence(cv_records: list[dict]) -> str:
@@ -398,16 +423,18 @@ def _section_divergence(cv_records: list[dict]) -> str:
 
     # --- Summary table ---
     lines += [
-        f"  {'ticker':<6}  {'fiscal_year':<11}  {'overall_status':<22}  {'fmp_status':<32}",
-        f"  {'-'*6}  {'-'*11}  {'-'*22}  {'-'*32}",
+        f"  {'ticker':<6}  {'fiscal_year':<11}  {'ver':<4}  {'overall_status':<22}  {'fmp_status':<42}",
+        f"  {'-'*6}  {'-'*11}  {'-'*4}  {'-'*22}  {'-'*42}",
     ]
     for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
         fmp_status = _fmt_cv_fmp_status(rec)
+        version = str(rec.get("checker_version") or "1")
         lines.append(
             f"  {rec.get('ticker', '?'):<6}  "
             f"{rec.get('fiscal_year', '?'):<11}  "
+            f"v{version:<3}  "
             f"{rec.get('overall_status', '?'):<22}  "
-            f"{fmp_status:<32}"
+            f"{fmp_status:<42}"
         )
 
     # --- Per-field breakdown ---
@@ -415,9 +442,9 @@ def _section_divergence(cv_records: list[dict]) -> str:
         "",
         "  Per-field breakdown:",
         f"  {'ticker':<5}  {'year':<6}  {'field':<22}  "
-        f"{'finlens':>14}  {'fmp':>14}  {'diff%':>7}  status",
+        f"{'finlens':>14}  {'fmp':>14}  {'diff%':>7}  {'severity':<9}  {'status':<17}  reason",
         f"  {'-'*5}  {'-'*6}  {'-'*22}  "
-        f"{'-'*14}  {'-'*14}  {'-'*7}  {'-'*18}",
+        f"{'-'*14}  {'-'*14}  {'-'*7}  {'-'*9}  {'-'*17}  {'-'*18}",
     ]
     for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
         ticker = rec.get("ticker", "?")
@@ -430,14 +457,16 @@ def _section_divergence(cv_records: list[dict]) -> str:
             fm_str  = _fmt_bn(fm_v)
             pct_str = f"{pct:.1f}%" if pct is not None else "n/a"
             status  = fld.get("status", "?")
-            flag    = " [!]" if status in ("DISAGREE", "MINOR_DIVERGENCE") else "    "
+            severity = _cv_field_severity(fld)
+            reason = _cv_field_abstention_reason(rec, fld)
             lines.append(
                 f"  {ticker:<5}  {fy:<6}  {fld.get('field', '?'):<22}  "
-                f"{fl_str:>14}  {fm_str:>14}  {pct_str:>7}  {status}{flag}"
+                f"{fl_str:>14}  {fm_str:>14}  {pct_str:>7}  "
+                f"{severity:<9}  {status:<17}  {reason}"
             )
 
     # --- Flags ---
-    disagree = [
+    advisory_disagree = [
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
         for fld in r.get("cv_fields", [])
@@ -449,6 +478,12 @@ def _section_divergence(cv_records: list[dict]) -> str:
         for fld in r.get("cv_fields", [])
         if fld.get("status") == "MINOR_DIVERGENCE"
     ]
+    currency_abstentions = [
+        f"{r.get('ticker')} {fld.get('field')} ({_cv_field_abstention_reason(r, fld)})"
+        for r in cv_records
+        for fld in r.get("cv_fields", [])
+        if _cv_is_currency_abstention(r, fld)
+    ]
     premium_blocked = [
         f"{r.get('ticker')} {r.get('fiscal_year')}"
         for r in cv_records
@@ -458,21 +493,25 @@ def _section_divergence(cv_records: list[dict]) -> str:
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
         for fld in r.get("cv_fields", [])
-        if fld.get("status") == "UNMATCHED"
+        if fld.get("status") == "UNMATCHED" and not _cv_field_abstention_reason(r, fld)
     ]
 
     lines.append("")
-    if disagree:
-        lines.append(f"  [!] Disagreements (>10%)    : {_trunc(disagree)}")
+    if advisory_disagree:
+        lines.append(
+            f"  Advisory divergences (>10%, needs triage): {_trunc(advisory_disagree)}"
+        )
     if minor:
-        lines.append(f"  Minor divergences (2-10%)   : {_trunc(minor)}")
+        lines.append(f"  Minor advisory divergences (2-10%)      : {_trunc(minor)}")
+    if currency_abstentions:
+        lines.append(f"  Abstained by currency gate              : {_trunc(currency_abstentions)}")
     if premium_blocked:
         lines.append(
             f"  Corroboration unavailable at current FMP tier: {_trunc(premium_blocked)}"
         )
     if unmatched:
         lines.append(f"  Unmatched (no FMP period)   : {_trunc(unmatched)}")
-    if not disagree and not minor and not unmatched:
+    if not advisory_disagree and not minor and not currency_abstentions and not unmatched:
         lines.append("  All compared fields agree (<2% divergence).")
 
     return "\n".join(lines)

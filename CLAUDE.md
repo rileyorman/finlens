@@ -273,11 +273,10 @@ STANDING CONSEQUENCES: internal-consistency checks (accounting identities)
 are the preferred validation; the #7 second-extractor cross-check uses Gemini
 (an independent extraction of the same source PDF), NOT FMP — Gemini is the
 scalable correctness path; an FMP result must NEVER adjudicate a discrepancy
-alone. KNOWN GAP (flagged 2026-07-03): cross_validate.py currently runs
-FMP comparison on every filing with a ticker + fiscal year, including CAD/SEDAR
-filers, with no filing-vs-FMP currency check — this may produce false flags on
-Canadian filers. See queue item — the CROSS_VALIDATE CURRENCY GATE is a
-prerequisite before any FMP tier/coverage upgrade.
+alone. CROSS_VALIDATE GUARD (v2, 2026-07-03): cross_validate.py requires filing
+currency == FMP reportedCurrency before comparing, writes currency_mismatch /
+currency_unknown abstentions without FX conversion, and records FMP value
+mismatches as advisory-only triage signals.
 
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 

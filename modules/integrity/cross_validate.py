@@ -38,10 +38,15 @@ from config import LIBRARY_DIR
 # Configuration
 # ---------------------------------------------------------------------------
 
+CROSS_VALIDATE_VERSION = "2"
 _CV_CACHE_FILE = LIBRARY_DIR / "cv_cache.json"
 FMP_FETCH_SUCCESS = "success"
 FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
 FMP_TRANSIENT_FAILURE = "transient_failure"
+FMP_REPORTED_CURRENCY_KEY = "_reported_currency"
+CV_SEVERITY_ADVISORY = "advisory"
+CV_ABSTAIN_CURRENCY_MISMATCH = "currency_mismatch"
+CV_ABSTAIN_CURRENCY_UNKNOWN = "currency_unknown"
 
 # Divergence thresholds (absolute percentage of FMP value)
 _AGREE_THRESHOLD  = 0.02   # < 2%  -> AGREE
@@ -120,13 +125,20 @@ _FINLENS_LABELS: dict[str, list[str]] = {
 class FieldResult:
     """Outcome of comparing one field between FinLens and FMP."""
     field: str
-    finlens_value: float | None    # raw USD
-    fmp_value: float | None        # raw USD
+    finlens_value: float | None    # raw filing currency
+    fmp_value: float | None        # raw FMP reported currency
     pct_diff: float | None         # percentage, e.g. 1.5 = 1.5%; None if either value missing
     status: str                    # AGREE | MINOR_DIVERGENCE | DISAGREE | UNMATCHED
+    severity: str | None = None    # advisory for FMP value mismatches; omitted otherwise
+    abstention_reason: str | None = None
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        if self.severity is None:
+            data.pop("severity")
+        if self.abstention_reason is None:
+            data.pop("abstention_reason")
+        return data
 
 
 @dataclass
@@ -140,11 +152,16 @@ class CrossValidationResult:
     filing_accession: str | None
     fmp_fetch_success: bool
     fmp_fetch_reason: str
+    filing_currency: str | None = None
+    fmp_reported_currency: str | None = None
+    abstention_reason: str | None = None
+    checker_version: str = CROSS_VALIDATE_VERSION
 
     def to_dict(self) -> dict:
         """Serialize to a log-ready dict (Supabase-friendly schema)."""
         return {
             "record_type":       "cross_validation",
+            "checker_version":   self.checker_version,
             "timestamp":         self.timestamp,
             "ticker":            self.ticker,
             "fiscal_year":       self.fiscal_year,
@@ -152,6 +169,9 @@ class CrossValidationResult:
             "overall_status":    self.overall_status,
             "fmp_fetch_success": self.fmp_fetch_success,
             "fmp_fetch_reason":  self.fmp_fetch_reason,
+            "filing_currency":   self.filing_currency,
+            "fmp_reported_currency": self.fmp_reported_currency,
+            "abstention_reason": self.abstention_reason,
             "cv_fields":         [f.to_dict() for f in self.fields],
         }
 
@@ -166,6 +186,14 @@ def _parse_year(s: Any) -> int | None:
         return None
     m = re.search(r"(\d{4})", str(s))
     return int(m.group(1)) if m else None
+
+
+def _currency_code(text: Any) -> str | None:
+    """Extract a 3-letter filing/reporting currency code from a label."""
+    if not text:
+        return None
+    m = re.search(r"\b[A-Z]{3}\b", str(text).upper())
+    return m.group(0) if m else None
 
 
 def _line_item_value(rows: list[dict], *labels: str) -> float | None:
@@ -186,7 +214,8 @@ def _top_level_value(data: dict, field: str) -> float | None:
 def _extract_finlens_values(normalized_data: dict) -> dict[str, float | None]:
     """
     Pull the 4 headline values out of FinLens normalized_data.
-    All values returned are in raw USD (normalize_financial_data() has already scaled them).
+    All values returned are in raw filing currency (normalize_financial_data()
+    has already scaled them to raw units, not FX-converted them).
     """
     income   = normalized_data.get("income_statement",    [])
     balance  = normalized_data.get("balance_sheet",        [])
@@ -215,15 +244,32 @@ def _find_year_entry(data: list[dict], target_year: int) -> dict | None:
     return None
 
 
-def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, float | None] | None, bool, str]:
+def _common_reported_currency(*entries: dict | None) -> str | None:
+    """Return a single FMP reportedCurrency code, or None when unknown/conflicting."""
+    codes: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or not entry:
+            continue
+        code = _currency_code(entry.get("reportedCurrency"))
+        if code is None:
+            return None
+        codes.append(code)
+    if not codes:
+        return None
+    unique_codes = set(codes)
+    return codes[0] if len(unique_codes) == 1 else None
+
+
+def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | None, bool, str]:
     """
     Call FMP for the 4 headline values for ticker + target_year.
 
     Returns
     -------
     (values_dict, success_bool, reason)
-        values_dict   keys: revenue, net_income, total_assets, operating_cash_flow
-                      All values in raw USD (FMP stable API returns USD by default).
+        values_dict   keys: revenue, net_income, total_assets, operating_cash_flow,
+                      plus _reported_currency when FMP reports one consistently.
+                      Values are raw FMP reported-currency values.
                       None for a field if FMP has no matching entry.
         success_bool  False only if FMP is unreachable or returns a non-200 response.
                       True even if the period is not found -- that is "not in FMP",
@@ -261,7 +307,14 @@ def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, float | Non
         if income_entry is None:
             return None, True, FMP_FETCH_SUCCESS
 
+        fmp_reported_currency = _common_reported_currency(
+            income_entry,
+            balance_entry,
+            cashflow_entry,
+        )
+
         return {
+            FMP_REPORTED_CURRENCY_KEY: fmp_reported_currency,
             "revenue":             income_entry.get("revenue"),
             "net_income":          income_entry.get("netIncome"),
             "total_assets":        balance_entry.get("totalAssets"),
@@ -295,6 +348,13 @@ def _field_status(pct_raw: float | None) -> str:
     return "DISAGREE"
 
 
+def _field_severity(status: str) -> str | None:
+    """FMP mismatches are advisory only: triage-needed, never FinLens-wrong."""
+    if status in {"MINOR_DIVERGENCE", "DISAGREE"}:
+        return CV_SEVERITY_ADVISORY
+    return None
+
+
 def _overall_status(field_results: list[FieldResult], fmp_success: bool) -> str:
     if not fmp_success:
         return "partial_unmatched"
@@ -306,6 +366,32 @@ def _overall_status(field_results: list[FieldResult], fmp_success: bool) -> str:
     if "MINOR_DIVERGENCE" in statuses:
         return "minor_divergence"
     return "all_agree"
+
+
+def _fmp_reported_currency(fmp_vals: dict | None, cached_entry: dict | None = None) -> str | None:
+    if isinstance(cached_entry, dict):
+        cached_currency = _currency_code(cached_entry.get("fmp_reported_currency"))
+        if cached_currency:
+            return cached_currency
+    if isinstance(fmp_vals, dict):
+        return _currency_code(fmp_vals.get(FMP_REPORTED_CURRENCY_KEY))
+    return None
+
+
+def _currency_abstention_reason(
+    filing_currency: str | None,
+    fmp_reported_currency: str | None,
+    fmp_vals: dict | None,
+    fmp_success: bool,
+) -> str | None:
+    """Return a currency-gate abstention reason before any value comparison."""
+    if not fmp_success or not fmp_vals:
+        return None
+    if not filing_currency or not fmp_reported_currency:
+        return CV_ABSTAIN_CURRENCY_UNKNOWN
+    if filing_currency != fmp_reported_currency:
+        return CV_ABSTAIN_CURRENCY_MISMATCH
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -353,6 +439,22 @@ def _repair_cv_cache(cache: dict) -> dict:
         success = bool(entry.get("fmp_fetch_success"))
         if success:
             entry.setdefault("fmp_fetch_reason", FMP_FETCH_SUCCESS)
+            vals = entry.get("fmp_vals")
+            if vals is None:
+                repaired[key] = entry
+                continue
+            if "fmp_reported_currency" in entry:
+                reported_currency = _fmp_reported_currency(vals, entry)
+                if reported_currency and isinstance(vals, dict):
+                    vals[FMP_REPORTED_CURRENCY_KEY] = reported_currency
+                repaired[key] = entry
+                continue
+            reported_currency = _fmp_reported_currency(vals, entry)
+            if not reported_currency:
+                continue
+            entry["fmp_reported_currency"] = reported_currency
+            if isinstance(vals, dict):
+                vals[FMP_REPORTED_CURRENCY_KEY] = reported_currency
             repaired[key] = entry
         elif reason == FMP_PREMIUM_BLOCKED:
             repaired[key] = entry
@@ -380,7 +482,7 @@ def cross_validate_filing(
 
     Parameters
     ----------
-    normalized_data   Output of normalize_financial_data() -- values in raw USD.
+    normalized_data   Output of normalize_financial_data() -- raw filing-currency values.
     ticker            Ticker symbol (case-insensitive, will be uppercased).
     fiscal_year       FinLens fiscal year string, e.g. "FY2025".
     filing_metadata   Optional dict.  Keys used: 'accession', 'filing_date'.
@@ -410,6 +512,7 @@ def cross_validate_filing(
     # --- FMP values (cached or fetched) ---
     ck    = _cache_key(ticker, fiscal_year)
     cache = _load_cv_cache()
+    fmp_reported_currency = None
 
     if ck in cache:
         cached       = cache[ck]
@@ -418,32 +521,57 @@ def cross_validate_filing(
         fmp_reason   = cached.get("fmp_fetch_reason") or (
             FMP_FETCH_SUCCESS if fmp_success else FMP_TRANSIENT_FAILURE
         )
+        fmp_reported_currency = _fmp_reported_currency(fmp_vals, cached)
     else:
         if target_year is None:
             fmp_vals, fmp_success, fmp_reason = None, False, FMP_TRANSIENT_FAILURE
         else:
             fmp_vals, fmp_success, fmp_reason = _fetch_fmp_raw(ticker, target_year)
+        fmp_reported_currency = _fmp_reported_currency(fmp_vals)
         if _cacheable_fmp_reason(fmp_reason):
             cache[ck] = {
                 "fmp_vals": fmp_vals,
                 "fmp_fetch_success": fmp_success,
                 "fmp_fetch_reason": fmp_reason,
+                "fmp_reported_currency": fmp_reported_currency,
             }
             _save_cv_cache(cache)
+
+    filing_currency = _currency_code(
+        normalized_data.get("currency")
+        or filing_metadata.get("currency")
+        or filing_metadata.get("reported_currency")
+    )
+    abstention_reason = _currency_abstention_reason(
+        filing_currency,
+        fmp_reported_currency,
+        fmp_vals,
+        bool(fmp_success),
+    )
 
     # --- Build per-field results ---
     field_results: list[FieldResult] = []
     for field_name in ("revenue", "net_income", "total_assets", "operating_cash_flow"):
         fl_val  = finlens_vals.get(field_name)
         fmp_val = (fmp_vals or {}).get(field_name) if fmp_vals else None
-        pct_raw = _pct_diff_raw(fl_val, fmp_val)
-        status  = _field_status(pct_raw)
+        if abstention_reason:
+            pct_raw = None
+            status = "UNMATCHED"
+            severity = None
+            field_abstention_reason = abstention_reason
+        else:
+            pct_raw = _pct_diff_raw(fl_val, fmp_val)
+            status  = _field_status(pct_raw)
+            severity = _field_severity(status)
+            field_abstention_reason = None
         field_results.append(FieldResult(
             field=field_name,
             finlens_value=fl_val,
             fmp_value=fmp_val,
             pct_diff=round(pct_raw * 100, 2) if pct_raw is not None else None,
             status=status,
+            severity=severity,
+            abstention_reason=field_abstention_reason,
         ))
 
     result = CrossValidationResult(
@@ -455,6 +583,9 @@ def cross_validate_filing(
         filing_accession =filing_accession,
         fmp_fetch_success=fmp_success,
         fmp_fetch_reason =fmp_reason,
+        filing_currency=filing_currency,
+        fmp_reported_currency=fmp_reported_currency,
+        abstention_reason=abstention_reason,
     )
 
     # --- Append to integrity log (idempotent) ---

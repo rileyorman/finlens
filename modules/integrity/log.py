@@ -173,6 +173,11 @@ def append_to_log(
     return path
 
 
+def _cv_checker_version(record: dict) -> str:
+    """Return the cross-validation checker version; legacy records are v1."""
+    return str(record.get("checker_version") or "1")
+
+
 def _cv_already_logged(path: Path, key: str) -> bool:
     """Return True if a cross-validation record with the given cv| key already exists."""
     if not path.exists():
@@ -190,7 +195,10 @@ def _cv_already_logged(path: Path, key: str) -> bool:
                     continue
                 yr_m = re.search(r"(\d{4})", str(record.get("fiscal_year", "")))
                 yr_s = yr_m.group(1) if yr_m else str(record.get("fiscal_year", ""))
-                rkey = f"cv|{record.get('ticker', '')}|{yr_s}"
+                rkey = (
+                    f"cv|{record.get('ticker', '')}|{yr_s}"
+                    f"|v{_cv_checker_version(record)}"
+                )
                 if rkey == key:
                     return bool(record.get("fmp_fetch_reason"))
             except json.JSONDecodeError:
@@ -208,7 +216,7 @@ def append_cv_to_log(
     Append a CrossValidationResult record to the integrity log.
 
     Idempotent: skips the write silently if a cross-validation record for the
-    same ticker + fiscal year already exists in the log.
+    same ticker + fiscal year + checker_version already exists in the log.
 
     Returns the path the record was written to (or would have been written to).
     """
@@ -217,7 +225,8 @@ def append_cv_to_log(
 
     yr_m = re.search(r"(\d{4})", str(result.fiscal_year or ""))
     yr_s = yr_m.group(1) if yr_m else str(result.fiscal_year or "")
-    key  = f"cv|{result.ticker}|{yr_s}"
+    checker_version = str(getattr(result, "checker_version", None) or "1")
+    key  = f"cv|{result.ticker}|{yr_s}|v{checker_version}"
 
     if _cv_already_logged(path, key):
         return path
