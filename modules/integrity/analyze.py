@@ -562,6 +562,10 @@ def _cx_field_severity(field: dict) -> str:
     return severity if severity in ("hard", "soft") else "unclassified"
 
 
+def _cx_field_reason(field: dict) -> str:
+    return str(field.get("reason") or "")
+
+
 def _cx_record_flagged_severity(record: dict) -> str:
     severities = [
         _cx_field_severity(field)
@@ -757,8 +761,8 @@ def _section_cross_extractor(
     if triage_targets:
         lines += [
             "",
-            f"  {'ticker':<6}  {'year':<8}  {'ver':<4}  {'field':<26}  {'status':<14}  triage",
-            f"  {'-'*6}  {'-'*8}  {'-'*4}  {'-'*26}  {'-'*14}  {'-'*48}",
+            f"  {'ticker':<6}  {'year':<8}  {'ver':<4}  {'field':<26}  {'status':<14}  {'reason':<22}  triage",
+            f"  {'-'*6}  {'-'*8}  {'-'*4}  {'-'*26}  {'-'*14}  {'-'*22}  {'-'*48}",
         ]
         for record, field in triage_targets:
             disposition = latest_dispositions.get(_cx_disposition_key(record, field))
@@ -768,6 +772,7 @@ def _section_cross_extractor(
                 f"v{_cx_checker_version_label(record):<3}  "
                 f"{_cx_clip(field.get('canonical_field'), 26):<26}  "
                 f"{field.get('status', '?'):<14}  "
+                f"{_cx_clip(_cx_field_reason(field), 22):<22}  "
                 f"{_cx_disposition_text(disposition)}"
             )
 
@@ -780,11 +785,14 @@ def _section_cross_extractor(
         lines += ["", "  Per-CONFLICT details:"]
         for record, field in conflict_targets:
             disposition = latest_dispositions.get(_cx_disposition_key(record, field))
+            reason = _cx_field_reason(field)
+            reason_text = f" reason={reason}" if reason else ""
             lines.append(
                 f"    {record.get('ticker', '?')} {record.get('fiscal_year', '?')} "
                 f"v{_cx_checker_version_label(record)} "
                 f"{field.get('canonical_field', '?')} "
-                f"severity={_cx_field_severity(field)} "
+                f"severity={_cx_field_severity(field)}"
+                f"{reason_text} "
                 f"triage={_cx_disposition_text(disposition)}"
             )
             lines.append(

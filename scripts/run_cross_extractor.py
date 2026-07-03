@@ -90,6 +90,7 @@ def _result_rows(filer: str, result) -> list[dict[str, str]]:
             "finlens_label": "",
             "gemini_label": "",
             "severity": "",
+            "reason": "",
             "STATUS": result.state if not result.reason else f"{result.state}:{result.reason}",
         }]
     rows = []
@@ -102,6 +103,7 @@ def _result_rows(filer: str, result) -> list[dict[str, str]]:
             "finlens_label": field.finlens_label,
             "gemini_label": field.gemini_label,
             "severity": getattr(field, "severity", None) or "",
+            "reason": getattr(field, "reason", None) or "",
             "STATUS": field.status,
         })
     return rows
@@ -116,6 +118,7 @@ def _print_table(rows: list[dict[str, str]]) -> None:
         "finlens_label",
         "gemini_label",
         "severity",
+        "reason",
         "STATUS",
     ]
     if not rows:

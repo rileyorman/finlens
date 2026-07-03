@@ -277,6 +277,10 @@ alone. CROSS_VALIDATE GUARD (v2, 2026-07-03): cross_validate.py requires filing
 currency == FMP reportedCurrency before comparing, writes currency_mismatch /
 currency_unknown abstentions without FX conversion, and records FMP value
 mismatches as advisory-only triage signals.
+CROSS_EXTRACTOR GUARD (v3, 2026-07-03): cross_extractor.py requires both
+value-within-tolerance and matching normalized source labels for AGREE;
+value-in-tolerance with differing labels becomes a soft FLAGGED field with a
+reason such as scope_masked_agree.
 
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
@@ -538,7 +542,7 @@ Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moa
 - `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`) and cross-extractor disposition appends.
 - `analyze.py` - integrity analysis entry points, including `/integrity-log` cross-extractor review output.
 - `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
-- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records.
+- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records; v3 AGREE requires value and normalized-label agreement.
 
 Subpackage `modules/economics/`:
 

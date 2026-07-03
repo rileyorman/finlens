@@ -21,12 +21,15 @@ from modules.campaign_pdf import resolve_campaign_pdf
 
 
 DEFAULT_MODEL = "gemini-3.5-flash"
-CROSS_EXTRACTOR_VERSION = "2"
+CROSS_EXTRACTOR_VERSION = "3"
 UNCHECKED_PDF_UNRESOLVABLE = "pdf_unresolvable"
 UNCHECKED_NO_KEY = "no_key"
 UNCHECKED_NO_MAPPED_FIELDS = "no_mapped_fields"
 UNCHECKED_GEMINI_ERROR = "gemini_error"
 UNCHECKED_PARSE_ERROR = "parse_error"
+FIELD_REASON_SCOPE_MASKED_AGREE = "scope_masked_agree"
+FIELD_REASON_DERIVED_LABEL_MISMATCH = "derived_label_mismatch"
+FIELD_REASON_UNUSABLE_PEER_LABEL = "unusable_peer_label"
 
 FlagSeverity = Literal["hard", "soft"]
 
@@ -89,6 +92,19 @@ def classify_flag_severity(finlens_label: str, gemini_label: str) -> FlagSeverit
     return "soft"
 
 
+def _labels_match(finlens_label: str, gemini_label: str) -> bool:
+    return normalize_source_label(finlens_label) == normalize_source_label(gemini_label)
+
+
+def _derived_label(label: str) -> bool:
+    return normalize_source_label(label).startswith("derived")
+
+
+def _unusable_peer_label(label: str) -> bool:
+    normalized = normalize_source_label(label)
+    return not bool(re.search(r"[a-z0-9]", normalized))
+
+
 @dataclass
 class CrossExtractorField:
     canonical_field: str
@@ -98,11 +114,14 @@ class CrossExtractorField:
     finlens_label: str
     gemini_label: str
     severity: FlagSeverity | None = None
+    reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         if self.severity is None:
             data.pop("severity")
+        if self.reason is None:
+            data.pop("reason")
         return data
 
 
@@ -288,16 +307,54 @@ def _same_sign(left: float, right: float) -> bool:
     return (left >= 0 and right >= 0) or (left < 0 and right < 0)
 
 
-def _status(claude_value: float | None, gemini_value: float | None) -> str:
+def _values_within_tolerance(finlens_value: float | None, gemini_value: float | None) -> bool:
+    if finlens_value is None or gemini_value is None:
+        return False
+    denominator = max(abs(finlens_value), 1.0)
+    relative_diff = abs(finlens_value - gemini_value) / denominator
+    return relative_diff <= 0.005 and _same_sign(finlens_value, gemini_value)
+
+
+def _status(
+    finlens_value: float | None,
+    gemini_value: float | None,
+    finlens_label: str,
+    gemini_label: str,
+) -> str:
     if gemini_value is None:
         return "GEMINI_MISSING"
-    if claude_value is None:
+    if finlens_value is None:
         return "CONFLICT"
-    denominator = max(abs(claude_value), 1.0)
-    relative_diff = abs(claude_value - gemini_value) / denominator
-    if relative_diff <= 0.005 and _same_sign(claude_value, gemini_value):
+    if _values_within_tolerance(finlens_value, gemini_value) and _labels_match(
+        finlens_label,
+        gemini_label,
+    ):
         return "AGREE"
     return "CONFLICT"
+
+
+def _masked_agree_reason(finlens_label: str, gemini_label: str) -> str:
+    if _unusable_peer_label(gemini_label):
+        return FIELD_REASON_UNUSABLE_PEER_LABEL
+    if _derived_label(finlens_label) and _derived_label(gemini_label):
+        return FIELD_REASON_DERIVED_LABEL_MISMATCH
+    return FIELD_REASON_SCOPE_MASKED_AGREE
+
+
+def _field_reason(
+    status: str,
+    finlens_value: float | None,
+    gemini_value: float | None,
+    finlens_label: str,
+    gemini_label: str,
+) -> str | None:
+    if status != "CONFLICT":
+        return None
+    if not _values_within_tolerance(finlens_value, gemini_value):
+        return None
+    if _labels_match(finlens_label, gemini_label):
+        return None
+    return _masked_agree_reason(finlens_label, gemini_label)
 
 
 def _gemini_fields_by_name(parsed: dict[str, Any], expected_fields: set[str]) -> dict[str, dict[str, Any]]:
@@ -322,12 +379,13 @@ def _field_results(
         gemini_label = str(gemini.get("source_label", "")) if gemini else ""
         finlens_value = _normalize_number(claude.get("value"))
         gemini_value = _normalize_number(gemini.get("value")) if gemini else None
-        status = _status(finlens_value, gemini_value)
+        status = _status(finlens_value, gemini_value, finlens_label, gemini_label)
         severity = (
             classify_flag_severity(finlens_label, gemini_label)
             if status == "CONFLICT"
             else None
         )
+        reason = _field_reason(status, finlens_value, gemini_value, finlens_label, gemini_label)
         results.append(
             CrossExtractorField(
                 canonical_field=field,
@@ -337,6 +395,7 @@ def _field_results(
                 finlens_label=finlens_label,
                 gemini_label=gemini_label,
                 severity=severity,
+                reason=reason,
             )
         )
     return results

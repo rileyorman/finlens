@@ -41,11 +41,14 @@ source PDF.
 
 ## Field Status
 
-Per-field status reuses the spike tolerance:
+Per-field status reuses the spike tolerance plus the v3 normalized-label gate:
 
-- `AGREE`: values are same-sign and within 0.5% relative difference.
+- `AGREE`: values are same-sign, within 0.5% relative difference, and have
+  matching normalized source labels.
 - `CONFLICT`: values differ beyond tolerance, signs differ, or FinLens has no
-  value while Gemini returned one.
+  value while Gemini returned one. As of v3, value-within-tolerance with
+  differing normalized labels is also a `CONFLICT` so scope disagreements
+  cannot be absorbed by numeric tolerance.
 - `GEMINI_MISSING`: Gemini omitted the field.
 
 Each field record captures both raw labels:
@@ -90,6 +93,14 @@ For each `CONFLICT` field in a `FLAGGED` record, `severity` is:
 - `soft`: value mismatch across differing normalized source labels, or a
   missing/empty Gemini label where same-line reading cannot be confirmed.
 
+Amendment, 2026-07-03: v3 closes the label-blind AGREE path. A field cannot
+be `AGREE` on tolerance alone; normalized source labels must also match.
+Value-within-tolerance plus differing normalized labels becomes a soft
+`CONFLICT` with a field-level `reason`. Default reason is
+`scope_masked_agree`. Cheaply distinguishable non-scope cases may use
+`derived_label_mismatch` for both-derived formula labels or
+`unusable_peer_label` for empty/degenerate Gemini labels such as `$`.
+
 `UNCHECKED` reasons are:
 
 - `pdf_unresolvable`
@@ -115,11 +126,14 @@ append-only: later records never replace earlier records.
 scoping. Version `1` is the implicit legacy version for the 2026-07-03 corpus
 run and for any historical record without a `checker_version` key. Version `2`
 comprises the severity classifier and tightened consolidated-statement prompt.
-Bump `checker_version` on any future checker behavior change. Readers collapse
-multiple definitive records for the same `filing_accession` to the highest
+Version `3` adds the normalized-label gate to AGREE and field-level reasons for
+soft masked-AGREE downgrades. Bump `checker_version` on any future checker
+behavior change. Readers collapse multiple definitive records for the same
+`filing_accession` to the highest
 `checker_version`, with record `timestamp` as the tie-breaker. Pre-version-2
 corpus results (10 VERIFIED / 0 PARTIAL / 4 FLAGGED / 0 UNCHECKED) are not
-comparable baselines for version-2 runs.
+comparable baselines for version-2 runs; pre-version-3 records are not
+rewritten when v3 re-evaluates label-blind AGREEs.
 
 Each record includes:
 
@@ -135,9 +149,10 @@ Each record includes:
 
 Each field contains `canonical_field`, `finlens_value`, `gemini_value`,
 `status`, `finlens_label`, and `gemini_label`. `CONFLICT` fields in newly
-written `FLAGGED` records also contain `severity` (`hard` or `soft`). Legacy
-`FLAGGED` records without `severity` are valid historical records and must be
-rendered as `unclassified`, never defaulted to `hard` or `soft`.
+written `FLAGGED` records also contain `severity` (`hard` or `soft`). v3
+soft masked-AGREE downgrades may also contain field-level `reason`. Legacy
+`FLAGGED` records without `severity` or `reason` are valid historical records
+and must render as `unclassified` or blank reason respectively, never defaulted.
 
 Human triage is recorded as `record_type="cross_extractor_disposition"`.
 Disposition records are append-only and include:
