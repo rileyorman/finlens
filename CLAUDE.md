@@ -154,6 +154,19 @@ When adding a sector profile: if the concept already has a default canonical
 name, AUGMENT that name with new aliases (mining_sector pattern). Mint a new
 canonical name only for a genuinely different concept, and record why.
 
+## Engineering Principle: Cross-Check Source (SEDAR vs FMP)
+
+CROSS-CHECK SOURCE PRINCIPLE: FMP is NOT a valid correctness witness for SEDAR
+(Canadian IFRS) filers — FMP has currency mismatches (reports USD or a
+different currency than the CAD filing) and coverage gaps for Canadian issuers.
+Internal-consistency checks (accounting identities) are the preferred
+validation for Canadian filers. The #7 second-extractor cross-check uses Gemini
+(an independent extraction of the same source PDF), NOT FMP, for exactly this
+reason. KNOWN GAP (flagged 2026-07-03): cross_validate.py currently runs
+FMP comparison on every filing with a ticker + fiscal year, including CAD/SEDAR
+filers, with no filing-vs-FMP currency check — this may produce false flags on
+Canadian filers. See queue item.
+
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
 External data sources (Claude analyses, FMP, yfinance, EDGAR) return data
