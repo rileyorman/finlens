@@ -1659,14 +1659,32 @@ def _library_period_sort_key(entry: dict):
     return (1, label.lower())
 
 
+def _looks_like_filename(name: str) -> bool:
+    """True when a stored company name is really an uploaded filename,
+    e.g. 'RIOCAN_FY2025_ANNUAL_FINANCIALS.PDF.PDF' or 'SU_FY2025.PDF'."""
+    return bool(re.search(r"(?i)\.(pdf|docx?)\b", name)) or "_" in name
+
+
+def _clean_filename_label(name: str) -> str:
+    """Make a filename presentable: strip (repeated) extensions, turn
+    underscores into spaces. Last-resort label when no company name exists."""
+    base = re.sub(r"(?i)(\.(pdf|docx?))+$", "", name.strip())
+    return re.sub(r"[_\s]+", " ", base).strip()
+
+
 def _library_company_header(ticker: str, entries: list[dict]) -> str:
-    company_name = ""
+    raw_name = ""
     for entry in entries:
-        company_name = str(entry.get("company_name") or "").strip()
-        if company_name:
+        raw_name = str(entry.get("company_name") or "").strip()
+        if raw_name:
             break
 
-    if not company_name and ticker and ticker != "N/A":
+    company_name = raw_name
+    raw_is_filename = _looks_like_filename(raw_name) if raw_name else False
+
+    # A filename is not a company name: prefer a yfinance lookup, and only
+    # fall back to the cleaned-up filename when the lookup finds nothing.
+    if (not company_name or raw_is_filename) and ticker and ticker != "N/A":
         cache_key = f"company_name_{ticker}"
         if cache_key not in st.session_state:
             try:
@@ -1676,7 +1694,13 @@ def _library_company_header(ticker: str, entries: list[dict]) -> str:
                 ).get("longName", "") or ""
             except Exception:
                 st.session_state[cache_key] = ""
-        company_name = str(st.session_state.get(cache_key) or "").strip()
+        looked_up = str(st.session_state.get(cache_key) or "").strip()
+        if looked_up:
+            company_name = looked_up
+        elif raw_is_filename:
+            company_name = _clean_filename_label(raw_name)
+    elif raw_is_filename:
+        company_name = _clean_filename_label(raw_name)
 
     if company_name and ticker and ticker != "N/A":
         return f"{company_name.upper()} ({ticker})"
@@ -3096,7 +3120,7 @@ if page == "Portfolio Manager":
                 )
                 _dark(fig1)
                 fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
-                st.plotly_chart(fig1, width='stretch')
+                st.plotly_chart(fig1, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 2: Valuation Dashboard ───────────────────────────────────
     with row1_right:
@@ -3128,7 +3152,7 @@ if page == "Portfolio Manager":
                 _dark(fig2)
                 fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
                 fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
-                st.plotly_chart(fig2, width='stretch')
+                st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
     with row2_left:
@@ -3181,7 +3205,7 @@ if page == "Portfolio Manager":
                 _dark(fig3)
                 fig3.update_xaxes(title_text='Distress Score', range=[0, 100])
                 fig3.update_yaxes(title_text='Momentum Score', range=[0, 100])
-                st.plotly_chart(fig3, width='stretch')
+                st.plotly_chart(fig3, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 4: Earnings Quality Scorecard ────────────────────────────
     with row2_right:
@@ -4124,7 +4148,7 @@ if page == "Stock Tracker":
                 xaxis_rangeslider_visible=False,
                 yaxis_tickprefix="$",
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
             # Volume bar chart
             if "Volume" in hist_df.columns:
@@ -4138,7 +4162,7 @@ if page == "Stock Tracker":
                     showlegend=False,
                     yaxis=dict(tickformat=".2s"),
                 )
-                st.plotly_chart(vol_fig, width='stretch')
+                st.plotly_chart(vol_fig, width='stretch', config={"displayModeBar": False})
 
     st.divider()
 
@@ -6790,26 +6814,28 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
-        col1, col2, col3 = st.columns(3)
+        # Full-width statement tabs. Three side-by-side columns forced long
+        # line items ("Selling, General and Administrative Expense") to wrap
+        # over four lines; one statement at full width reads like a filing.
+        _stmt_is, _stmt_bs, _stmt_cf = st.tabs(
+            ["Income Statement", "Balance Sheet", "Cash Flow Statement"]
+        )
 
-        with col1:
-            st.markdown("**Income Statement**")
+        with _stmt_is:
             rows = financial_data.get("income_statement", [])
             if rows:
                 _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
-        with col2:
-            st.markdown("**Balance Sheet**")
+        with _stmt_bs:
             rows = financial_data.get("balance_sheet", [])
             if rows:
                 _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
-        with col3:
-            st.markdown("**Cash Flow Statement**")
+        with _stmt_cf:
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
                 _display_edgar_statement(rows)
