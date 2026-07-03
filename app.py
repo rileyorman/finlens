@@ -45,7 +45,7 @@ from modules.claude_analyzer import (
 from modules.integrity import cross_validate_filing
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
-from modules.excel_exporter import create_excel_file, _calc_summary_metrics
+from modules.excel_exporter import create_excel_file, _calc_summary_metrics, two_year_statement_pairs
 from modules.memo_exporter import create_memo
 from modules.edgar_fetcher import (
     get_cik,
@@ -7365,6 +7365,191 @@ if st.session_state.financial_data:
             st.metric("Net Income", _fmt_num(ni_c), _fmt_pct(ni_m))
         with m5:
             st.metric("Free Cash Flow", _fmt_num(fcf_c))
+
+        st.divider()
+
+        # --- Section 3b: Two-Year Performance charts ---
+        # The statements carry two fiscal years side by side; these charts
+        # make the comparison visible instead of leaving it as table rows.
+        _pairs = two_year_statement_pairs(financial_data)
+
+        def _chart_dark(fig, height=300, **extra):
+            """Shared dark theme for dashboard charts."""
+            fig.update_layout(
+                paper_bgcolor="#1E2433",
+                plot_bgcolor="#1E2433",
+                font=dict(color="#94A3B8", size=11),
+                margin=dict(l=40, r=20, t=30, b=40),
+                height=height,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                **extra,
+            )
+            fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)",
+                             zerolinecolor="rgba(255,255,255,0.1)")
+            fig.update_yaxes(gridcolor="rgba(255,255,255,0.06)",
+                             zerolinecolor="rgba(255,255,255,0.1)")
+            return fig
+
+        # Colorblind-validated pair (dataviz six-checks, dark surface):
+        # prior year teal, current year blue.
+        _PRIOR_COLOR, _CURRENT_COLOR = "#26A69A", "#3574C6"
+        _fy_prior_name = str(fy_prior or "Prior year")
+        _fy_name = str(fy or "Current year")
+
+        _UNIT_WORDS = {"T": "trillions", "B": "billions", "M": "millions",
+                       "K": "thousands", "": ""}
+
+        def _money_scale(values):
+            """Pick one divisor + unit for a chart so all bars share a scale."""
+            peak = max((abs(v) for v in values if v is not None), default=0)
+            if peak >= 1_000_000_000_000:
+                return 1_000_000_000_000, "T"
+            if peak >= 1_000_000_000:
+                return 1_000_000_000, "B"
+            if peak >= 1_000_000:
+                return 1_000_000, "M"
+            if peak >= 1_000:
+                return 1_000, "K"
+            return 1, ""
+
+        _bar_items = [
+            name for name in ("Revenue", "Gross Profit", "Operating Income",
+                              "Net Income", "Operating Cash Flow")
+            if _pairs[name]["current"] is not None
+            and _pairs[name]["prior"] is not None
+        ]
+        if len(_bar_items) >= 2:
+            st.markdown("##### Two-Year Performance")
+            perf_col, margin_col = st.columns([3, 2])
+
+            with perf_col:
+                _cur_vals = [_pairs[n]["current"] for n in _bar_items]
+                _pri_vals = [_pairs[n]["prior"] for n in _bar_items]
+                _div, _sfx = _money_scale(_cur_vals + _pri_vals)
+                fig_perf = go.Figure()
+                fig_perf.add_trace(go.Bar(
+                    name=_fy_prior_name, x=_bar_items,
+                    y=[v / _div for v in _pri_vals],
+                    marker_color=_PRIOR_COLOR,
+                    customdata=[_fmt_num(v) for v in _pri_vals],
+                    hovertemplate="%{x} · " + _fy_prior_name + ": %{customdata}<extra></extra>",
+                ))
+                fig_perf.add_trace(go.Bar(
+                    name=_fy_name, x=_bar_items,
+                    y=[v / _div for v in _cur_vals],
+                    marker_color=_CURRENT_COLOR,
+                    text=[_fmt_num(v) for v in _cur_vals],
+                    textposition="outside",
+                    textfont=dict(size=10, color="#CBD5E1"),
+                    cliponaxis=False,
+                    customdata=[_fmt_num(v) for v in _cur_vals],
+                    hovertemplate="%{x} · " + _fy_name + ": %{customdata}<extra></extra>",
+                ))
+                _chart_dark(fig_perf, barmode="group", bargap=0.3, bargroupgap=0.08)
+                fig_perf.update_yaxes(title_text=_UNIT_WORDS[_sfx] or None)
+                st.plotly_chart(fig_perf, width='stretch',
+                                config={"displayModeBar": False})
+
+            with margin_col:
+                _rev_cur = _pairs["Revenue"]["current"]
+                _rev_pri = _pairs["Revenue"]["prior"]
+                _margin_rows = []
+                for _name, _label in (("Gross Profit", "Gross"),
+                                      ("Operating Income", "Operating"),
+                                      ("Net Income", "Net")):
+                    _c = _pairs[_name]["current"]
+                    _p = _pairs[_name]["prior"]
+                    if None not in (_c, _p) and _rev_cur and _rev_pri:
+                        _margin_rows.append(
+                            (_label, _p / _rev_pri * 100, _c / _rev_cur * 100)
+                        )
+                if _margin_rows:
+                    fig_marg = go.Figure()
+                    fig_marg.add_trace(go.Bar(
+                        name=_fy_prior_name,
+                        x=[r[0] for r in _margin_rows],
+                        y=[r[1] for r in _margin_rows],
+                        marker_color=_PRIOR_COLOR,
+                        hovertemplate="%{x} margin · " + _fy_prior_name + ": %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_marg.add_trace(go.Bar(
+                        name=_fy_name,
+                        x=[r[0] for r in _margin_rows],
+                        y=[r[2] for r in _margin_rows],
+                        marker_color=_CURRENT_COLOR,
+                        text=[f"{r[2]:.1f}%" for r in _margin_rows],
+                        textposition="outside",
+                        textfont=dict(size=10, color="#CBD5E1"),
+                        cliponaxis=False,
+                        hovertemplate="%{x} margin · " + _fy_name + ": %{y:.1f}%<extra></extra>",
+                    ))
+                    _chart_dark(fig_marg, barmode="group", bargap=0.3, bargroupgap=0.08)
+                    fig_marg.update_yaxes(ticksuffix="%", title_text="margin")
+                    st.plotly_chart(fig_marg, width='stretch',
+                                    config={"displayModeBar": False})
+
+        # Cash flow waterfall. Preferred: where operating cash flow went
+        # (capex / buybacks / dividends). If the extraction lacks those
+        # detail lines, or they are immaterial next to OCF, fall back to the
+        # always-present section totals: Operating -> Investing -> Financing
+        # -> Net Change (this closes exactly for any filing).
+        _ocf_cur = _pairs["Operating Cash Flow"]["current"]
+        _detail_flows = []
+        for _name in ("Capital Expenditures", "Buybacks", "Dividends"):
+            _v = _pairs[_name]["current"]
+            if _v is not None and _v != 0:
+                _detail_flows.append((_name, -abs(_v)))
+        _detail_total = sum(abs(f[1]) for f in _detail_flows)
+        _icf_cur = _pairs["Investing Cash Flow"]["current"]
+        _fin_cur = _pairs["Financing Cash Flow"]["current"]
+
+        _wf_steps = None  # (title, caption, [(label, value)...], end_label)
+        if (_ocf_cur is not None and len(_detail_flows) >= 2
+                and _detail_total >= 0.10 * abs(_ocf_cur)):
+            _wf_steps = (
+                "Cash Flow Allocation",
+                f"Where {_fy_name} operating cash flow went — the remainder "
+                f"stays on the balance sheet.",
+                _detail_flows,
+                "Retained Cash",
+            )
+        elif _ocf_cur is not None and _icf_cur is not None and _fin_cur is not None:
+            _wf_steps = (
+                "Cash Flow Bridge",
+                f"{_fy_name} cash movement by statement section — operating, "
+                f"investing, and financing activities.",
+                [("Investing Activities", _icf_cur),
+                 ("Financing Activities", _fin_cur)],
+                "Net Change in Cash",
+            )
+
+        if _wf_steps:
+            _wf_title, _wf_caption, _wf_flows, _wf_end = _wf_steps
+            st.markdown(f"##### {_wf_title}")
+            st.caption(_wf_caption)
+            _wf_total = _ocf_cur + sum(f[1] for f in _wf_flows)
+            _div_wf, _ = _money_scale([_ocf_cur] + [f[1] for f in _wf_flows])
+            fig_wf = go.Figure(go.Waterfall(
+                x=(["Operating Cash Flow"] + [f[0] for f in _wf_flows]
+                   + [_wf_end]),
+                y=([_ocf_cur / _div_wf] + [f[1] / _div_wf for f in _wf_flows]
+                   + [0]),
+                measure=(["absolute"] + ["relative"] * len(_wf_flows)
+                         + ["total"]),
+                decreasing=dict(marker=dict(color="#F87171")),
+                increasing=dict(marker=dict(color="#4ADE80")),
+                totals=dict(marker=dict(color="#3574C6")),
+                connector=dict(line=dict(color="rgba(255,255,255,0.2)", width=1)),
+                text=([_fmt_num(_ocf_cur)] + [_fmt_num(f[1]) for f in _wf_flows]
+                      + [_fmt_num(_wf_total)]),
+                textposition="outside",
+                textfont=dict(size=10, color="#CBD5E1"),
+                cliponaxis=False,
+                hoverinfo="skip",
+            ))
+            _chart_dark(fig_wf, height=320, showlegend=False)
+            st.plotly_chart(fig_wf, width='stretch',
+                            config={"displayModeBar": False})
 
         st.divider()
 
