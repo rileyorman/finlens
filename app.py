@@ -59,7 +59,7 @@ from modules.edgar_fetcher import (
 from modules.education_content import EDUCATION
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
-from modules.peer_comparison import get_peer_data, peer_map
+from modules.peer_comparison import get_peer_data, peer_map, suggest_sector
 from modules.dcf_calculator import calculate_dcf
 from modules.economics.resource_display import build_commodity_display_text
 from modules.economics.resource_economics import build_resource_economics_snapshot
@@ -6057,12 +6057,21 @@ if st.session_state.financial_data:
             )
             st.session_state.dashboard_data = dashboard_data
 
-    company  = financial_data.get("company_name") or "Untitled Document"
     period   = financial_data.get("period") or ""
     currency = financial_data.get("currency") or ""
     fy       = financial_data.get("fiscal_year") or "Current Year"
     fy_prior = financial_data.get("fiscal_year_prior") or "Prior Year"
     ticker   = st.session_state.get("resolved_ticker") or summary_data.get("ticker")
+
+    company = financial_data.get("company_name") or "Untitled Document"
+    if _looks_like_filename(company):
+        # Uploaded-file analyses store the raw filename (SU_FY2025.pdf) as
+        # company_name. Show a real name instead — same resolution as the
+        # library sidebar: yfinance longName, else the cleaned filename.
+        company = _library_company_header(
+            _library_ticker({"ticker": ticker}),
+            [{"company_name": company}],
+        )
 
     st.subheader(company)
     _period_str = period or "Unknown period"
@@ -7008,15 +7017,17 @@ if st.session_state.financial_data:
                 or ""
             )
             _sector_idx = 0
+            _auto_pick_note = None
             _auto_s = st.session_state.get("auto_sector")
+            _suggested = suggest_sector(_sector_hint)
             if _auto_s and _auto_s in _sector_options:
                 _sector_idx = _sector_options.index(_auto_s)
-            elif _sector_hint:
-                _hint_l = _sector_hint.lower()
-                for _i, _sector_name in enumerate(_sector_options):
-                    if _sector_name.lower() in _hint_l or _hint_l in _sector_name.lower():
-                        _sector_idx = _i
-                        break
+            elif _suggested:
+                _sector_idx = _sector_options.index(_suggested)
+                _auto_pick_note = (
+                    f'Auto-picked from the filing sector "{_sector_hint}" — '
+                    f'change it if wrong.'
+                )
 
             _pc_sector_col, _pc_btn_col = st.columns([2, 1])
             with _pc_sector_col:
@@ -7026,11 +7037,27 @@ if st.session_state.financial_data:
                     index=_sector_idx,
                     key="peer_sector",
                 )
+                if _auto_pick_note and _peer_sector == _suggested:
+                    st.caption(_auto_pick_note)
+                elif not _suggested and _sector_hint:
+                    st.caption(
+                        f'No peer bucket matched the filing sector "{_sector_hint}" — '
+                        f'pick one, or edit the ticker list below.'
+                    )
+            _default_peers = ", ".join(peer_map.get(_peer_sector, []))
+            _peer_tickers_text = st.text_input(
+                "Peer tickers (comma-separated — edit to compare against your own set)",
+                value=_default_peers,
+                key=f"peer_tickers_{_peer_sector}",
+            )
             with _pc_btn_col:
                 st.write("")
                 if st.button("Load Peer Comparison", width='stretch', key="peer_load_btn"):
+                    _peer_list = [t.strip() for t in _peer_tickers_text.split(",") if t.strip()]
                     with st.spinner("Fetching peer data from yfinance..."):
-                        st.session_state["peer_data"] = get_peer_data(_peer_ticker, _peer_sector)
+                        st.session_state["peer_data"] = get_peer_data(
+                            _peer_ticker, _peer_sector, tickers=_peer_list
+                        )
 
             _peer_data = st.session_state.get("peer_data")
             if _peer_data:
@@ -7086,7 +7113,13 @@ if st.session_state.financial_data:
                             return f'<td style="font-weight:700;color:#F1F5F9">{text}</td>'
                         value = _pc_num(value)
                         median_value = _pc_num(_med.get(metric))
-                        if value is None or median_value is None:
+                        # Neutral band: within ±10% of the median stays gray.
+                        # A P/E a hair under the median is not meaningfully
+                        # "better" — binary red/green overstated precision.
+                        if value is None or median_value is None or (
+                            median_value != 0
+                            and abs(value - median_value) <= 0.10 * abs(median_value)
+                        ):
                             color = "#94A3B8"
                         else:
                             lower_better = metric in ("pe", "ev_ebitda", "pb", "ps")
@@ -7154,6 +7187,12 @@ if st.session_state.financial_data:
                         </table>
                         """,
                         unsafe_allow_html=True,
+                    )
+                    st.caption(
+                        "Peer figures are trailing-twelve-month market data via "
+                        "yfinance; your company's row uses the same market data, "
+                        "not filing-period figures. Gray = within 10% of the "
+                        "sector median."
                     )
 
         st.divider()
