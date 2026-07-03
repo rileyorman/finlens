@@ -30,6 +30,16 @@ If that exact candidate exists as a file, the resolver returns the candidate.
 Otherwise it returns `None`. Missing `source_pdf_path`, an empty string, or
 `None` returns `None` from both functions. `None` is the honest error channel.
 
+KNOWN EDGE (for future consumers): campaign_pdf_candidate() returns a candidate
+path with NO existence check and NO empty-filename guard. A pathological
+recorded path with a trailing separator yields name == '', making the candidate
+the pdfs root directory itself. resolve_campaign_pdf() is safe (its is_file()
+gate rejects a directory → honest None), but any NEW consumer that calls
+campaign_pdf_candidate() directly must not assume the returned path is a file.
+The #7 cross-check module is the first likely second consumer — if it uses the
+candidate for reporting before checking existence, guard against the empty-name
+case there.
+
 ## Rationale
 
 This resolver deliberately does not glob, does not use first-match ladders, and
