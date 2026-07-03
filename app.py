@@ -7866,13 +7866,19 @@ if st.session_state.financial_data:
                     "font-size:11px;color:#94A3B8;margin-top:6px;font-style:italic;"
                 )
 
-                def _econ_metric_card(label, value, reason=None):
+                def _econ_metric_card(label, value, reason=None, extra_html=""):
+                    # The currency-guard note renders once in the banner above;
+                    # cards affected by it carry a short pointer instead of
+                    # repeating the full sentence.
+                    if reason and reason == _econ_guard.get("note"):
+                        reason = "Suppressed — see currency note above."
                     body = (
                         f'<div style="{_econ_label_style}">{escape(label)}</div>'
                         f'<div style="{_econ_value_style}">{escape(value)}</div>'
                     )
                     if reason:
                         body += f'<div style="{_econ_reason_style}">{escape(reason)}</div>'
+                    body += extra_html
                     st.markdown(
                         f'<div style="{_econ_card_style}">{body}</div>',
                         unsafe_allow_html=True,
@@ -7939,10 +7945,30 @@ if st.session_state.financial_data:
                         f"vs 8% threshold. See trend below for sector context."
                         if _flag else None
                     )
+                    # Show the verdict as a position on a scale, not just a
+                    # phrase: bar = earnings yield on a 0-16% scale, with the
+                    # 8% threshold as the amber mid-tick.
+                    _flag_bar = ""
+                    _ey_val = _econ_metrics.get("earnings_yield")
+                    if isinstance(_ey_val, (int, float)):
+                        _ey_fill = max(0.0, min(_ey_val / 0.16, 1.0)) * 100
+                        _ey_color = "#4ADE80" if _ey_val >= 0.08 else "#94A3B8"
+                        _flag_bar = (
+                            f'<div style="margin-top:8px;background:rgba(255,255,255,0.10);'
+                            f'border-radius:4px;height:8px;position:relative">'
+                            f'<div style="width:{_ey_fill:.0f}%;height:100%;'
+                            f'background:{_ey_color};border-radius:4px"></div>'
+                            f'<div style="position:absolute;left:50%;top:-2px;width:2px;'
+                            f'height:12px;background:#FCD34D" title="8% threshold"></div>'
+                            f'</div>'
+                            f'<div style="font-size:10px;color:#64748B;margin-top:3px">'
+                            f'earnings yield on a 0–16% scale · amber tick = 8% threshold</div>'
+                        )
                     _econ_metric_card(
                         "Cheap company / cheap sector?",
                         _flag_label,
                         _flag_reason,
+                        extra_html=_flag_bar,
                     )
 
                 # --- Commodity price trend chart ---
@@ -8010,8 +8036,26 @@ if st.session_state.financial_data:
                         showlegend=False,
                         height=280,
                     )
+                    # Mark the latest close so the spot card above ties
+                    # visually to the end of the line.
+                    _trend_fig.add_trace(go.Scatter(
+                        x=[_trend_xs[-1]], y=[_trend_ys[-1]],
+                        mode='markers',
+                        marker=dict(size=8, color='#F4B942'),
+                        showlegend=False, hoverinfo='skip',
+                    ))
+                    _trend_fig.add_annotation(
+                        x=_trend_xs[-1], y=_trend_ys[-1],
+                        text=f"${_trend_ys[-1]:,.2f}",
+                        showarrow=False, xanchor='left', xshift=6,
+                        font=dict(color='#F4B942', size=10),
+                    )
                     _trend_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
-                    _trend_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Close')
+                    _trend_fig.update_yaxes(
+                        gridcolor='rgba(255,255,255,0.06)',
+                        zerolinecolor='rgba(255,255,255,0.1)',
+                        title_text=_econ_cmdt_display.get("unit_label") or "US$",
+                    )
                     st.plotly_chart(_trend_fig, width='stretch', config={"displayModeBar": False})
                 else:
                     st.caption("Commodity price trend unavailable — proxy returned no points.")

@@ -5,6 +5,19 @@ from __future__ import annotations
 NO_VALUE_LABEL = "\u2014"
 CRUDE_WCS_CAVEAT = "Canadian producers may realize WCS-differential pricing."
 
+# Price units per proxy symbol, for chart axes and spot labels.
+PROXY_UNITS = {
+    "CL=F": "US$/bbl",
+    "GC=F": "US$/oz",
+    "HG=F": "US$/lb",
+    "NG=F": "US$/MMBtu",
+    # ETF fallbacks trade as shares, not the underlying unit.
+    "GLD": "US$/share",
+    "USO": "US$/share",
+    "COPX": "US$/share",
+    "UNG": "US$/share",
+}
+
 
 def build_commodity_display_text(
     commodity: str | None,
@@ -20,6 +33,7 @@ def build_commodity_display_text(
         "commodity_label": commodity_label,
         "header_label": header_label,
         "spot_title": f"{commodity_label} Spot",
+        "unit_label": PROXY_UNITS.get(proxy_used or "", "US$"),
         "crude_caveat": _crude_proxy_caveat(commodity, proxy_used),
     }
 
