@@ -476,6 +476,47 @@ def _section_divergence(cv_records: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _section_cross_extractor(records: list[dict]) -> str:
+    if not records:
+        return (
+            "  No Gemini second-extractor runs recorded yet.\n"
+            "  Run scripts/run_cross_extractor.py manually for campaign filers ($)."
+        )
+
+    state_counts: dict[str, int] = defaultdict(int)
+    for rec in records:
+        state_counts[rec.get("state", "UNKNOWN")] += 1
+
+    lines = ["  By state:"]
+    total = len(records)
+    for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
+        cnt = state_counts.get(state, 0)
+        lines.append(
+            f"    {state:<10}  :  {cnt:3d}  ({_pct(cnt, total)})  {_bar(cnt, total)}"
+        )
+
+    flagged = [
+        f"{r.get('ticker', '?')} {r.get('fiscal_year', '?')}"
+        for r in records
+        if r.get("state") == "FLAGGED"
+    ]
+    unchecked_reasons: dict[str, int] = defaultdict(int)
+    for rec in records:
+        if rec.get("state") == "UNCHECKED":
+            unchecked_reasons[rec.get("reason") or "unknown"] += 1
+
+    lines.append("")
+    lines.append(
+        f"  [!] Flagged filings       : {_trunc(flagged) if flagged else '(none)'}"
+    )
+    if unchecked_reasons:
+        reason_text = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(unchecked_reasons.items())
+        )
+        lines.append(f"  Unchecked reasons       : {reason_text}")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -491,7 +532,7 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     all_records = read_log(log_path)
 
     # Split by record type.  Existing integrity records have no record_type field;
-    # cross-validation records are tagged with record_type="cross_validation".
+    # cross-validation and cross-extractor records are tagged explicitly.
     integrity_records = [
         r for r in all_records
         if r.get("record_type", "integrity") == "integrity"
@@ -499,6 +540,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     cv_records = [
         r for r in all_records
         if r.get("record_type") == "cross_validation"
+    ]
+    cx_records = [
+        r for r in all_records
+        if r.get("record_type") == "cross_extractor_agreement"
     ]
 
     n = len(integrity_records)
@@ -557,6 +602,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     # 5. Cross-validation divergences
     out += [THIN, "  5. CROSS-VALIDATION DIVERGENCES", THIN, ""]
     out.append(_section_divergence(cv_records))
+
+    # 6. Gemini second-extractor signal
+    out += [THIN, "  6. GEMINI SECOND-EXTRACTOR SIGNAL", THIN, ""]
+    out.append(_section_cross_extractor(cx_records))
 
     # Footer
     out += ["", SEP, "  END OF REPORT", SEP]

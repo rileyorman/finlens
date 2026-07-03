@@ -372,6 +372,7 @@ Important project files:
 
 - `config.py` - Claude model names, input limits, and cache directory.
 - `sedar_extractor.py` - SEDAR+ PDF extraction; owns Option A cover-page selection (`_ordered_unique_pages`) and `attach_mapping()` (feeds statements to the canonical mapper).
+- `scripts/run_cross_extractor.py` - manual Sunday-audit runner for the Gemini second-extractor integrity signal.
 - `.env` - local secrets such as API keys. Do not commit.
 - `.env.example` - example environment variables.
 - `requirements.txt` - Python dependencies.
@@ -426,6 +427,7 @@ Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moa
 - `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`).
 - `analyze.py` - integrity analysis entry points.
 - `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
+- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records.
 
 Subpackage `modules/economics/`:
 
