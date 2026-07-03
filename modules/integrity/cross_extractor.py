@@ -13,7 +13,7 @@ import ssl
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -21,11 +21,17 @@ from modules.campaign_pdf import resolve_campaign_pdf
 
 
 DEFAULT_MODEL = "gemini-3.5-flash"
+CROSS_EXTRACTOR_VERSION = "2"
 UNCHECKED_PDF_UNRESOLVABLE = "pdf_unresolvable"
 UNCHECKED_NO_KEY = "no_key"
 UNCHECKED_NO_MAPPED_FIELDS = "no_mapped_fields"
 UNCHECKED_GEMINI_ERROR = "gemini_error"
 UNCHECKED_PARSE_ERROR = "parse_error"
+
+FlagSeverity = Literal["hard", "soft"]
+
+_NOTE_REFERENCE_RE = re.compile(r"\(\s*note\s*\d+\s*\)", flags=re.IGNORECASE)
+_WHITESPACE_RE = re.compile(r"\s+")
 
 FIELD_DESCRIPTIONS = {
     "cost_of_revenue": "Costs directly attributable to revenue, cost of sales, or equivalent.",
@@ -58,6 +64,21 @@ FIELD_DESCRIPTIONS = {
 }
 
 
+def normalize_source_label(label: str | None) -> str:
+    text = "" if label is None else str(label)
+    text = text.casefold()
+    text = _NOTE_REFERENCE_RE.sub(" ", text)
+    return _WHITESPACE_RE.sub(" ", text).strip()
+
+
+def classify_flag_severity(finlens_label: str, gemini_label: str) -> FlagSeverity:
+    if not str(gemini_label or "").strip():
+        return "soft"
+    if normalize_source_label(finlens_label) == normalize_source_label(gemini_label):
+        return "hard"
+    return "soft"
+
+
 @dataclass
 class CrossExtractorField:
     canonical_field: str
@@ -66,9 +87,13 @@ class CrossExtractorField:
     status: str
     finlens_label: str
     gemini_label: str
+    severity: FlagSeverity | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        if self.severity is None:
+            data.pop("severity")
+        return data
 
 
 @dataclass
@@ -80,6 +105,7 @@ class CrossCheckResult:
     fiscal_year: str
     filing_accession: str
     model: str
+    checker_version: str = CROSS_EXTRACTOR_VERSION
     reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -92,6 +118,7 @@ class CrossCheckResult:
             "state": self.state,
             "reason": self.reason,
             "model": self.model,
+            "checker_version": self.checker_version,
             "cross_extractor_fields": [field.to_dict() for field in self.fields],
         }
 
@@ -118,6 +145,7 @@ def _result_base(registry_entry: dict[str, Any] | None, model: str) -> dict[str,
         "fiscal_year": str(entry.get("fiscal_year") or entry.get("period") or ""),
         "filing_accession": _filing_accession(entry),
         "model": model,
+        "checker_version": CROSS_EXTRACTOR_VERSION,
     }
 
 
@@ -165,8 +193,12 @@ def _prompt(
     return f"""
 You are independently validating FinLens extraction for {company} {fiscal_year}.
 
-Read the whole attached PDF and extract values from the consolidated financial
-statements only. Return JSON ONLY, with no prose and no markdown fences, in
+Read the whole attached PDF and extract values only from primary consolidated
+financial statement lines. Consolidated-statement-level lines are acceptable;
+note-only components, note breakdown rows, roll-forwards, and component
+subtotals from the notes are never acceptable substitutes. If a canonical field
+is available only in the notes, or only as a note component, omit that field.
+Return JSON ONLY, with no prose and no markdown fences, in
 this exact shape:
 {{"fields": [{{"canonical_field": "...", "value": <number>, "source_label": "...", "page": <int>}}]}}
 
@@ -276,16 +308,27 @@ def _field_results(
     results: list[CrossExtractorField] = []
     for field, claude in claude_fields.items():
         gemini = gemini_fields.get(field)
+        finlens_label = str(claude.get("source_label", ""))
+        gemini_label = str(gemini.get("source_label", "")) if gemini else ""
         finlens_value = _normalize_number(claude.get("value"))
         gemini_value = _normalize_number(gemini.get("value")) if gemini else None
-        results.append(CrossExtractorField(
-            canonical_field=field,
-            finlens_value=finlens_value,
-            gemini_value=gemini_value,
-            status=_status(finlens_value, gemini_value),
-            finlens_label=str(claude.get("source_label", "")),
-            gemini_label=str(gemini.get("source_label", "")) if gemini else "",
-        ))
+        status = _status(finlens_value, gemini_value)
+        severity = (
+            classify_flag_severity(finlens_label, gemini_label)
+            if status == "CONFLICT"
+            else None
+        )
+        results.append(
+            CrossExtractorField(
+                canonical_field=field,
+                finlens_value=finlens_value,
+                gemini_value=gemini_value,
+                status=status,
+                finlens_label=finlens_label,
+                gemini_label=gemini_label,
+                severity=severity,
+            )
+        )
     return results
 
 

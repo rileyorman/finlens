@@ -194,8 +194,20 @@ def append_cv_to_log(
     return path
 
 
-def _cross_extractor_definitive_logged(path: Path, key: str) -> bool:
-    """Return True if a definitive cross-extractor record with this filing key exists."""
+def _cross_extractor_checker_version(record: dict) -> str:
+    """Return the checker version for a cross-extractor record; legacy is v1."""
+    return str(record.get("checker_version") or "1")
+
+
+def _cross_extractor_definitive_logged(
+    path: Path,
+    key: str,
+    checker_version: str,
+) -> bool:
+    """
+    Return True if a definitive cross-extractor record exists for this filing
+    key and checker behavior version.
+    """
     if not path.exists():
         return False
     try:
@@ -211,6 +223,7 @@ def _cross_extractor_definitive_logged(path: Path, key: str) -> bool:
                     continue
                 if (
                     str(record.get("filing_accession") or "") == key
+                    and _cross_extractor_checker_version(record) == checker_version
                     and record.get("state") != "UNCHECKED"
                 ):
                     return True
@@ -229,9 +242,9 @@ def append_cross_extractor_to_log(
     Append a Gemini second-extractor agreement record to the integrity log.
 
     Idempotent: skips the write silently if a definitive cross-extractor record
-    for the same filing_accession already exists in the log. UNCHECKED records
-    are re-runnable so a later fixed key/transport can append a definitive
-    outcome.
+    for the same filing_accession and checker_version already exists in the log.
+    UNCHECKED records are re-runnable so a later fixed key/transport can append
+    a definitive outcome. Different checker versions append a new record.
 
     Returns the path the record was written to (or would have been written to).
     """
@@ -239,7 +252,8 @@ def append_cross_extractor_to_log(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     key = str(result.filing_accession or "")
-    if _cross_extractor_definitive_logged(path, key):
+    checker_version = str(getattr(result, "checker_version", None) or "1")
+    if _cross_extractor_definitive_logged(path, key, checker_version):
         return path
 
     line = json.dumps(result.to_dict(), ensure_ascii=False, default=str)

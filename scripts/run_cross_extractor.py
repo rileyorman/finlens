@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 MODEL = "gemini-3.5-flash"
 SLEEP_SECONDS = 2
+FLAG_SEVERITIES = ("hard", "soft", "unclassified")
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -61,6 +62,24 @@ def _filer_name(entry: dict[str, Any]) -> str:
     return f"{ticker} {fiscal_year}" if fiscal_year else str(ticker)
 
 
+def _field_severity(field: Any) -> str:
+    severity = getattr(field, "severity", None)
+    return severity if severity in ("hard", "soft") else "unclassified"
+
+
+def _flagged_result_severity(result: Any) -> str:
+    severities = [
+        _field_severity(field)
+        for field in result.fields
+        if getattr(field, "status", None) == "CONFLICT"
+    ]
+    if "hard" in severities:
+        return "hard"
+    if "soft" in severities:
+        return "soft"
+    return "unclassified"
+
+
 def _result_rows(filer: str, result) -> list[dict[str, str]]:
     if not result.fields:
         return [{
@@ -70,6 +89,7 @@ def _result_rows(filer: str, result) -> list[dict[str, str]]:
             "gemini_value": "",
             "finlens_label": "",
             "gemini_label": "",
+            "severity": "",
             "STATUS": result.state if not result.reason else f"{result.state}:{result.reason}",
         }]
     rows = []
@@ -81,6 +101,7 @@ def _result_rows(filer: str, result) -> list[dict[str, str]]:
             "gemini_value": "" if field.gemini_value is None else str(field.gemini_value),
             "finlens_label": field.finlens_label,
             "gemini_label": field.gemini_label,
+            "severity": getattr(field, "severity", None) or "",
             "STATUS": field.status,
         })
     return rows
@@ -94,6 +115,7 @@ def _print_table(rows: list[dict[str, str]]) -> None:
         "gemini_value",
         "finlens_label",
         "gemini_label",
+        "severity",
         "STATUS",
     ]
     if not rows:
@@ -121,6 +143,7 @@ def main() -> int:
     entries = _campaign_entries()
     rows: list[dict[str, str]] = []
     counts = {"VERIFIED": 0, "PARTIAL": 0, "FLAGGED": 0, "UNCHECKED": 0}
+    flagged_severity_counts = {severity: 0 for severity in FLAG_SEVERITIES}
 
     print("Gemini cross-extractor corpus run")
     print("Cost note: Gemini calls cost money; spike estimate was roughly $0.50 per filing.")
@@ -145,7 +168,12 @@ def main() -> int:
         )
         counts[result.state] = counts.get(result.state, 0) + 1
         rows.extend(_result_rows(filer, result))
-        print(f"  State: {result.state}{f' ({result.reason})' if result.reason else ''}")
+        state_suffix = f" ({result.reason})" if result.reason else ""
+        if result.state == "FLAGGED":
+            severity = _flagged_result_severity(result)
+            flagged_severity_counts[severity] += 1
+            state_suffix = f" ({severity})"
+        print(f"  State: {result.state}{state_suffix}")
 
         if idx < len(entries):
             time.sleep(SLEEP_SECONDS)
@@ -154,8 +182,14 @@ def main() -> int:
     _print_table(rows)
     print()
     print("Summary")
-    for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
-        print(f"{state}: {counts.get(state, 0)}")
+    print(
+        f"{counts.get('VERIFIED', 0)} VERIFIED / {counts.get('PARTIAL', 0)} PARTIAL / "
+        f"{counts.get('FLAGGED', 0)} FLAGGED "
+        f"({flagged_severity_counts.get('hard', 0)} hard / "
+        f"{flagged_severity_counts.get('soft', 0)} soft / "
+        f"{flagged_severity_counts.get('unclassified', 0)} unclassified) / "
+        f"{counts.get('UNCHECKED', 0)} UNCHECKED"
+    )
     return 0
 
 

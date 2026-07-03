@@ -1,6 +1,7 @@
 import json
 
 from modules.integrity import cross_extractor as ce
+from modules.integrity import analyze as integrity_analyze
 from modules.integrity.analyze import analyze_log
 from modules.integrity import log as integrity_log
 
@@ -42,6 +43,24 @@ def _patch_pdf_and_log(monkeypatch, tmp_path):
     return pdf_path
 
 
+def test_classify_flag_severity_atd_component_label_is_soft():
+    assert ce.classify_flag_severity(
+        "Financial expenses (Note 9)",
+        "Interest on lease liabilities",
+    ) == "soft"
+
+
+def test_classify_flag_severity_strips_note_reference():
+    assert ce.classify_flag_severity(
+        "Financial expenses (Note 9)",
+        "financial expenses",
+    ) == "hard"
+
+
+def test_classify_flag_severity_collapses_case_and_whitespace():
+    assert ce.classify_flag_severity("Total  Revenue", "total revenue") == "hard"
+
+
 def test_cross_extractor_verified_when_all_fields_agree(monkeypatch, tmp_path):
     _patch_pdf_and_log(monkeypatch, tmp_path)
     monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
@@ -53,6 +72,8 @@ def test_cross_extractor_verified_when_all_fields_agree(monkeypatch, tmp_path):
 
     assert result.state == "VERIFIED"
     assert [field.status for field in result.fields] == ["AGREE", "AGREE"]
+    assert "severity" not in result.fields[0].to_dict()
+    assert result.checker_version == "2"
 
 
 def test_cross_extractor_flagged_when_any_field_conflicts(monkeypatch, tmp_path):
@@ -66,6 +87,40 @@ def test_cross_extractor_flagged_when_any_field_conflicts(monkeypatch, tmp_path)
 
     assert result.state == "FLAGGED"
     assert {field.canonical_field: field.status for field in result.fields}["revenue"] == "CONFLICT"
+    assert {field.canonical_field: field.severity for field in result.fields}["revenue"] == "soft"
+
+
+def test_cross_extractor_same_label_value_mismatch_is_hard(monkeypatch, tmp_path):
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
+        {"canonical_field": "revenue", "value": 101.0, "source_label": "Total revenue"},
+    ]))
+
+    result = ce.cross_check_filing(
+        _entry(),
+        {"revenue": {"value": 100.0, "source_label": "Total revenue"}},
+        api_key="key",
+        model="gemini-test",
+    )
+    field = result.fields[0]
+
+    assert result.state == "FLAGGED"
+    assert field.status == "CONFLICT"
+    assert field.severity == "hard"
+    assert field.to_dict()["severity"] == "hard"
+
+
+def test_cross_extractor_empty_gemini_label_conflict_is_soft(monkeypatch, tmp_path):
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
+        {"canonical_field": "revenue", "value": 101.0},
+    ]))
+
+    result = ce.cross_check_filing(_entry(), _mapped(revenue=100.0), api_key="key", model="gemini-test")
+
+    assert result.state == "FLAGGED"
+    assert result.fields[0].gemini_label == ""
+    assert result.fields[0].severity == "soft"
 
 
 def test_cross_extractor_partial_when_gemini_abstains_without_conflict(monkeypatch, tmp_path):
@@ -150,7 +205,7 @@ def test_cross_extractor_captures_finlens_and_gemini_labels(monkeypatch, tmp_pat
     assert first.gemini_label == "Gemini revenue line"
 
 
-def test_cross_extractor_log_writer_is_idempotent_by_filing_accession(tmp_path):
+def test_cross_extractor_log_writer_is_idempotent_by_filing_accession_and_version(tmp_path):
     result = ce.CrossCheckResult(
         state="VERIFIED",
         fields=[],
@@ -167,7 +222,45 @@ def test_cross_extractor_log_writer_is_idempotent_by_filing_accession(tmp_path):
 
     lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
-    assert json.loads(lines[0])["record_type"] == "cross_extractor_agreement"
+    record = json.loads(lines[0])
+    assert record["record_type"] == "cross_extractor_agreement"
+    assert record["checker_version"] == "2"
+
+
+def test_cross_extractor_log_allows_new_version_after_legacy_definitive(tmp_path):
+    legacy_v1 = {
+        "record_type": "cross_extractor_agreement",
+        "timestamp": "2026-07-03T00:00:00+00:00",
+        "ticker": "AEM",
+        "fiscal_year": "FY2025",
+        "filing_accession": "AEM_FY2025_sedar.json",
+        "state": "VERIFIED",
+        "reason": None,
+        "model": "gemini-test",
+        "cross_extractor_fields": [],
+    }
+    result_v2 = ce.CrossCheckResult(
+        state="VERIFIED",
+        fields=[],
+        timestamp="2026-07-04T00:00:00+00:00",
+        ticker="AEM",
+        fiscal_year="FY2025",
+        filing_accession="AEM_FY2025_sedar.json",
+        model="gemini-test",
+    )
+    path = tmp_path / "integrity_log.jsonl"
+    path.write_text(json.dumps(legacy_v1) + "\n", encoding="utf-8")
+
+    integrity_log.append_cross_extractor_to_log(result_v2, path)
+    integrity_log.append_cross_extractor_to_log(result_v2, path)
+
+    records = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(records) == 2
+    assert records[0].get("checker_version") is None
+    assert records[1]["checker_version"] == "2"
 
 
 def test_cross_extractor_log_allows_unchecked_then_definitive_same_filing(tmp_path):
@@ -226,7 +319,17 @@ def test_cross_extractor_records_surface_in_integrity_log_report(tmp_path):
         ),
         ce.CrossCheckResult(
             state="FLAGGED",
-            fields=[],
+            fields=[
+                ce.CrossExtractorField(
+                    canonical_field="revenue",
+                    finlens_value=100.0,
+                    gemini_value=101.0,
+                    status="CONFLICT",
+                    finlens_label="Revenue",
+                    gemini_label="Revenue",
+                    severity="hard",
+                )
+            ],
             timestamp="2026-07-03T00:02:00+00:00",
             ticker="CNQ",
             fiscal_year="FY2024",
@@ -255,9 +358,84 @@ def test_cross_extractor_records_surface_in_integrity_log_report(tmp_path):
     assert "VERIFIED" in report
     assert "PARTIAL" in report
     assert "FLAGGED" in report
+    assert "1 hard / 0 soft / 0 unclassified" in report
     assert "UNCHECKED" in report
-    assert "CNQ FY2024" in report
+    assert "CNQ FY2024 (hard)" in report
     assert "pdf_unresolvable=1" in report
+
+
+def test_cross_extractor_report_tolerates_legacy_flagged_without_severity(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    legacy_record = {
+        "record_type": "cross_extractor_agreement",
+        "timestamp": "2026-07-03T00:02:00+00:00",
+        "ticker": "CNQ",
+        "fiscal_year": "FY2024",
+        "filing_accession": "CNQ_FY2024_sedar.json",
+        "state": "FLAGGED",
+        "reason": None,
+        "model": "gemini-test",
+        "cross_extractor_fields": [
+            {
+                "canonical_field": "revenue",
+                "finlens_value": 100.0,
+                "gemini_value": 101.0,
+                "status": "CONFLICT",
+                "finlens_label": "Revenue",
+                "gemini_label": "Sales",
+            }
+        ],
+    }
+    path.write_text(json.dumps(legacy_record) + "\n", encoding="utf-8")
+
+    report = analyze_log(path)
+
+    assert integrity_analyze._cx_checker_version(legacy_record) == 1
+    assert "0 hard / 0 soft / 1 unclassified" in report
+    assert "CNQ FY2024 (unclassified)" in report
+
+
+def test_cross_extractor_report_prefers_latest_definitive_version(tmp_path):
+    path = tmp_path / "integrity_log.jsonl"
+    legacy_v1 = {
+        "record_type": "cross_extractor_agreement",
+        "timestamp": "2026-07-03T00:02:00+00:00",
+        "ticker": "ATD",
+        "fiscal_year": "FY2025",
+        "filing_accession": "ATD_FY2025_sedar.json",
+        "state": "FLAGGED",
+        "reason": None,
+        "model": "gemini-test",
+        "cross_extractor_fields": [
+            {
+                "canonical_field": "interest_expense",
+                "finlens_value": 690.8,
+                "gemini_value": 159.3,
+                "status": "CONFLICT",
+                "finlens_label": "Financial expenses (Note 9)",
+                "gemini_label": "Interest on lease liabilities",
+            }
+        ],
+    }
+    v2 = ce.CrossCheckResult(
+        state="VERIFIED",
+        fields=[],
+        timestamp="2026-07-04T00:02:00+00:00",
+        ticker="ATD",
+        fiscal_year="FY2025",
+        filing_accession="ATD_FY2025_sedar.json",
+        model="gemini-test",
+    )
+    path.write_text(
+        "\n".join([json.dumps(legacy_v1), json.dumps(v2.to_dict())]) + "\n",
+        encoding="utf-8",
+    )
+
+    report = analyze_log(path)
+
+    assert "FLAGGED     :    0" in report
+    assert "VERIFIED    :    1" in report
+    assert "Flagged filings       : (none)" in report
 
 
 def test_cross_extractor_compares_native_units_without_fx_or_scale(monkeypatch, tmp_path):

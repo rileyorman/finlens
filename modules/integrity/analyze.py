@@ -36,6 +36,7 @@ DISTRIBUTION_RULES = [
     "net_margin_ceiling",
     "revenue_growth_sanity",
 ]
+FLAG_SEVERITIES = ("hard", "soft", "unclassified")
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +477,66 @@ def _section_divergence(cv_records: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _cx_checker_version(record: dict) -> int:
+    raw = record.get("checker_version")
+    if raw in (None, ""):
+        return 1
+    try:
+        return int(str(raw))
+    except ValueError:
+        return 1
+
+
+def _cx_is_definitive(record: dict) -> bool:
+    return record.get("state") != "UNCHECKED"
+
+
+def _cx_latest_sort_key(record: dict) -> tuple[int, str]:
+    return (_cx_checker_version(record), str(record.get("timestamp") or ""))
+
+
+def _cx_latest_records(records: list[dict]) -> list[dict]:
+    latest_definitive: dict[str, dict] = {}
+    retained: list[dict] = []
+    for idx, record in enumerate(records):
+        if not _cx_is_definitive(record):
+            retained.append(record)
+            continue
+
+        accession = str(record.get("filing_accession") or "")
+        key = accession if accession else f"__missing_accession_{idx}"
+        current = latest_definitive.get(key)
+        if current is None or _cx_latest_sort_key(record) > _cx_latest_sort_key(current):
+            latest_definitive[key] = record
+
+    selected = retained + list(latest_definitive.values())
+    return sorted(selected, key=lambda r: str(r.get("timestamp") or ""), reverse=True)
+
+
+def _cx_field_severity(field: dict) -> str:
+    severity = field.get("severity")
+    return severity if severity in ("hard", "soft") else "unclassified"
+
+
+def _cx_record_flagged_severity(record: dict) -> str:
+    severities = [
+        _cx_field_severity(field)
+        for field in record.get("cross_extractor_fields", [])
+        if field.get("status") == "CONFLICT"
+    ]
+    if "hard" in severities:
+        return "hard"
+    if "soft" in severities:
+        return "soft"
+    return "unclassified"
+
+
+def _cx_flagged_label(record: dict) -> str:
+    ticker = record.get("ticker", "?")
+    fiscal_year = record.get("fiscal_year", "?")
+    return f"{ticker} {fiscal_year} ({_cx_record_flagged_severity(record)})"
+
+
 def _section_cross_extractor(records: list[dict]) -> str:
     if not records:
         return (
@@ -483,20 +544,35 @@ def _section_cross_extractor(records: list[dict]) -> str:
             "  Run scripts/run_cross_extractor.py manually for campaign filers ($)."
         )
 
+    records = _cx_latest_records(records)
+
     state_counts: dict[str, int] = defaultdict(int)
     for rec in records:
-        state_counts[rec.get("state", "UNKNOWN")] += 1
+        state = rec.get("state", "UNKNOWN")
+        state_counts[state] += 1
+
+    flagged_severity_counts: dict[str, int] = defaultdict(int)
+    for rec in records:
+        if rec.get("state") == "FLAGGED":
+            flagged_severity_counts[_cx_record_flagged_severity(rec)] += 1
 
     lines = ["  By state:"]
     total = len(records)
     for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
         cnt = state_counts.get(state, 0)
-        lines.append(
+        line = (
             f"    {state:<10}  :  {cnt:3d}  ({_pct(cnt, total)})  {_bar(cnt, total)}"
         )
+        if state == "FLAGGED":
+            severity_text = " / ".join(
+                f"{flagged_severity_counts.get(severity, 0)} {severity}"
+                for severity in FLAG_SEVERITIES
+            )
+            line += f"  ({severity_text})"
+        lines.append(line)
 
     flagged = [
-        f"{r.get('ticker', '?')} {r.get('fiscal_year', '?')}"
+        _cx_flagged_label(r)
         for r in records
         if r.get("state") == "FLAGGED"
     ]
