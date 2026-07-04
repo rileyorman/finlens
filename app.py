@@ -6144,7 +6144,9 @@ if st.session_state.financial_data:
         _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
         _hero_qs, _hero_qs_n = _quality_score(_calc_summary_metrics(financial_data))
         _hero_qs_chip = (
-            f'<span style="background:rgba(255,255,255,0.06);color:#F1F5F9;'
+            f'<span title="Scored from the five Financial Health checks (Dashboard tab): '
+            f'Liquidity · Leverage · Revenue growth · FCF conversion · Interest coverage" '
+            f'style="background:rgba(255,255,255,0.06);color:#F1F5F9;cursor:help;'
             f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
             f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
             f'/ 100 · {_hero_qs_n} of 5 metrics</span></span>'
@@ -6984,7 +6986,7 @@ if st.session_state.financial_data:
                 f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
                 f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs if qs is not None else "—"}</div>'
                 f'<div style="font-size:10px;color:#64748B">'
-                f'{f"/ 100 · based on {qs_n} of 5 metrics" if qs is not None else "no health metrics available"}</div>'
+                f'{f"/ 100 · {qs_n} of 5 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
