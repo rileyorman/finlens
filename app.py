@@ -7921,8 +7921,8 @@ if st.session_state.financial_data:
                         "deductions. Net margin uses the same gross revenue denominator."
                     )
 
-                # --- Row 2: commodity spot + cheap company/sector flag ---
-                _ecA, _ecB = st.columns([1, 1])
+                # --- Row 2: spot + commodity linkage + cheap flag ---
+                _ecA, _ecB, _ecC = st.columns(3)
                 with _ecA:
                     _spot_reason = _econ_spot.get("reason") or (
                         f"via {_econ_proxy} ({_econ_proxy_role})"
@@ -7934,6 +7934,25 @@ if st.session_state.financial_data:
                         _spot_reason,
                     )
                 with _ecB:
+                    # Is the equity a commodity proxy or an operating story?
+                    _econ_corr = _econ_snapshot.get("commodity_correlation") or {}
+                    _corr_val = _econ_corr.get("correlation")
+                    _corr_beta = _econ_corr.get("beta")
+                    if _corr_val is not None and _corr_beta is not None:
+                        _corr_value_text = f"r = {_corr_val:.2f}"
+                        _corr_reason = (
+                            f"β {_corr_beta:.2f}× vs {_econ_corr.get('proxy_used') or 'proxy'} "
+                            f"daily moves · {_econ_corr.get('points_used')} trading days"
+                        )
+                    else:
+                        _corr_value_text = "—"
+                        _corr_reason = _econ_corr.get("reason")
+                    _econ_metric_card(
+                        "Commodity Linkage (1y daily returns)",
+                        _corr_value_text,
+                        _corr_reason,
+                    )
+                with _ecC:
                     _flag = _econ_cheap.get("company_flag")
                     _flag_label_map = {
                         "high_earnings_yield": "Cheap company signal",
@@ -8131,6 +8150,75 @@ if st.session_state.financial_data:
                         _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
                         _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
                         st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
+
+                # --- Cost structure waterfall (statement-level) ---
+                # Where the top line goes, using the sector profile's mapped
+                # cost fields. Ends in "margin after these costs" — G&A,
+                # finance, and other items are deliberately out of scope, so
+                # the end bar is NOT the filer's printed operating income.
+                _cs = _econ_snapshot.get("cost_structure") or {}
+                _cs_rev = _cs.get("revenue")
+                _CS_ITEMS = [
+                    ("royalties", "Royalties"),
+                    ("production_costs", "Production Costs"),
+                    ("operating_expense", "Operating Expense"),
+                    ("exploration_expense", "Exploration"),
+                    ("mine_development_amortization", "Mine D&A"),
+                    ("depletion_depreciation_amortization", "DD&A"),
+                ]
+                # -abs() normalizes both storage conventions: royalties are
+                # stored negative (as-presented deduction), most costs positive.
+                _cs_flows = [
+                    (label, -abs(_cs[key]))
+                    for key, label in _CS_ITEMS
+                    if _cs.get(key)
+                ]
+                if _cs_rev and _cs_flows:
+                    st.markdown(
+                        '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                        'Cost Structure — where the top line goes</div>'
+                        '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                        'Statement-level mining costs only. The end bar is the margin '
+                        'after these costs — before G&amp;A, finance, and other items, '
+                        'so it will not equal the filer\'s printed operating income.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    _cs_margin = _cs_rev + sum(f[1] for f in _cs_flows)
+                    _cs_div, _ = _money_scale([_cs_rev] + [f[1] for f in _cs_flows])
+                    _cs_fig = go.Figure(go.Waterfall(
+                        x=(["Revenue"] + [f[0] for f in _cs_flows]
+                           + ["Margin After These Costs"]),
+                        y=([_cs_rev / _cs_div] + [f[1] / _cs_div for f in _cs_flows]
+                           + [0]),
+                        measure=(["absolute"] + ["relative"] * len(_cs_flows)
+                                 + ["total"]),
+                        decreasing=dict(marker=dict(color="#F87171")),
+                        increasing=dict(marker=dict(color="#4ADE80")),
+                        totals=dict(marker=dict(color="#3574C6")),
+                        connector=dict(line=dict(color="rgba(255,255,255,0.2)", width=1)),
+                        text=([_fmt_num(_cs_rev)] + [_fmt_num(f[1]) for f in _cs_flows]
+                              + [_fmt_num(_cs_margin)]),
+                        textposition="outside",
+                        textfont=dict(size=10, color="#CBD5E1"),
+                        cliponaxis=False,
+                        hoverinfo="skip",
+                    ))
+                    _cs_fig.update_layout(
+                        paper_bgcolor='#1E2433',
+                        plot_bgcolor='#1E2433',
+                        font=dict(color='#94A3B8', size=11),
+                        margin=dict(l=40, r=20, t=30, b=40),
+                        height=300,
+                        showlegend=False,
+                    )
+                    _cs_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                    _cs_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                    st.plotly_chart(_cs_fig, width='stretch', config={"displayModeBar": False})
+                    _cs_margin_pct = _cs_margin / _cs_rev * 100 if _cs_rev else None
+                    if _cs_margin_pct is not None:
+                        st.caption(
+                            f"Margin after these costs: {_cs_margin_pct:.1f}% of the top line."
+                        )
 
                 # --- Tier 2 placeholder slot (clearly upcoming, no fake data) ---
                 _econ_tier2_style = (

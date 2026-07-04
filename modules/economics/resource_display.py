@@ -11,11 +11,15 @@ PROXY_UNITS = {
     "GC=F": "US$/oz",
     "HG=F": "US$/lb",
     "NG=F": "US$/MMBtu",
-    # ETF fallbacks trade as shares, not the underlying unit.
+    "SI=F": "US$/oz",
+    # ETF proxies trade as shares, not the underlying unit.
     "GLD": "US$/share",
     "USO": "US$/share",
     "COPX": "US$/share",
     "UNG": "US$/share",
+    "SLV": "US$/share",
+    "URA": "US$/share",
+    "URNM": "US$/share",
 }
 
 

@@ -36,7 +36,23 @@ COMMODITY_PROXIES = {
         "fallback": "UNG",
         "label": "Henry Hub natural gas futures; UNG ETF fallback",
     },
+    "silver": {
+        "primary": "SI=F",
+        "fallback": "SLV",
+        "label": "Silver futures; SLV ETF fallback",
+    },
+    "uranium": {
+        # No liquid uranium futures on the free tier — both proxies are
+        # uranium-sector ETFs, honestly labeled as such in the UI.
+        "primary": "URA",
+        "fallback": "URNM",
+        "label": "Uranium sector ETFs (no liquid uranium futures on the free tier)",
+    },
 }
+
+# Minimum overlapping daily returns before correlation/beta are reported.
+# Below this the numbers are noise, so the card shows an honest skip instead.
+MIN_CORRELATION_POINTS = 20
 
 _SCALE_FACTORS = {
     "ones": 1,
@@ -111,10 +127,15 @@ def infer_commodity(sector_inferred: str | None, commodity_hint: str | None = No
             return hint
 
     sector = str(sector_inferred or "").lower()
+    # Gold before silver: a "gold-silver" miner prices primarily off gold.
     if "gold" in sector:
         return "gold"
+    if "silver" in sector:
+        return "silver"
     if "copper" in sector:
         return "copper"
+    if "uranium" in sector:
+        return "uranium"
     has_oil_keyword = any(keyword in sector for keyword in ("oil", "crude", "petroleum"))
     if "natural gas" in sector and not has_oil_keyword:
         return "natural gas"
@@ -322,6 +343,68 @@ def _fetch_commodity_market_data(commodity: str | None, cache: dict | None = Non
     }
 
 
+def _daily_return_stats(
+    company_points: list[dict[str, Any]],
+    commodity_points: list[dict[str, Any]],
+    min_points: int = MIN_CORRELATION_POINTS,
+) -> dict[str, Any]:
+    """Correlation and beta of daily returns: company vs commodity proxy.
+
+    Answers "is this equity a commodity proxy or an operating story?" using
+    the two 1y price series the snapshot already fetches. Pure python —
+    aligned by shared dates, Pearson correlation, beta = cov / var(commodity).
+    """
+    insufficient = {
+        "correlation": None,
+        "beta": None,
+        "points_used": 0,
+        "reason": "insufficient overlapping price history",
+    }
+    company = {p["date"]: p["close"] for p in company_points or []}
+    commodity = {p["date"]: p["close"] for p in commodity_points or []}
+    common_dates = sorted(set(company) & set(commodity))
+    if len(common_dates) < min_points + 1:
+        insufficient["points_used"] = max(len(common_dates) - 1, 0)
+        return insufficient
+
+    company_returns: list[float] = []
+    commodity_returns: list[float] = []
+    for prev_date, cur_date in zip(common_dates, common_dates[1:]):
+        prev_co, cur_co = company[prev_date], company[cur_date]
+        prev_cm, cur_cm = commodity[prev_date], commodity[cur_date]
+        if prev_co and prev_cm:
+            company_returns.append(cur_co / prev_co - 1)
+            commodity_returns.append(cur_cm / prev_cm - 1)
+
+    n = len(company_returns)
+    if n < min_points:
+        insufficient["points_used"] = n
+        return insufficient
+
+    mean_co = sum(company_returns) / n
+    mean_cm = sum(commodity_returns) / n
+    cov = sum(
+        (a - mean_co) * (b - mean_cm)
+        for a, b in zip(company_returns, commodity_returns)
+    ) / n
+    var_cm = sum((b - mean_cm) ** 2 for b in commodity_returns) / n
+    var_co = sum((a - mean_co) ** 2 for a in company_returns) / n
+    if var_cm == 0 or var_co == 0:
+        return {
+            "correlation": None,
+            "beta": None,
+            "points_used": n,
+            "reason": "zero variance in one of the return series",
+        }
+
+    return {
+        "correlation": cov / (var_cm ** 0.5 * var_co ** 0.5),
+        "beta": cov / var_cm,
+        "points_used": n,
+        "reason": None,
+    }
+
+
 def _ratio(numerator: float | None, denominator: float | None) -> float | None:
     if numerator is None or denominator is None or denominator == 0:
         return None
@@ -416,6 +499,26 @@ def build_resource_economics_snapshot(
     currency = _extract_text(fundamentals, "currency")
     fiscal_year_end = _extract_text(fundamentals, "fiscal_year_end")
 
+    # Statement-level cost fields for the cost-structure waterfall. The
+    # mining and resource sector profiles map different canonical names;
+    # extract them all and let the UI render whichever are present.
+    # Kept separate from raw_values so missing_inputs semantics stay
+    # scoped to the Tier 1 ratio inputs.
+    _extra_cost_fields = (
+        "exploration_expense",
+        "royalties",
+        "operating_expense",
+        "depletion_depreciation_amortization",
+    )
+    cost_structure = {
+        "revenue": None,  # filled after scaling below
+        "production_costs": None,
+        "mine_development_amortization": None,
+    }
+    for field in _extra_cost_fields:
+        value = _extract_field(fundamentals, field)
+        cost_structure[field] = value * factor if value is not None else None
+
     commodity = infer_commodity(sector_inferred, commodity_hint)
     # Resolve the filing currency first so the company lookup can prefer the
     # listing quoted in the same currency (see _resolve_company_market_data).
@@ -430,6 +533,16 @@ def build_resource_economics_snapshot(
     company_trend_points: list[dict[str, Any]] = []
     if company_symbol:
         company_trend_points = _fetch_proxy_data(company_symbol, cache).get("trend", [])
+
+    # Fill the scaled statement values shared with the Tier 1 ratios.
+    cost_structure["revenue"] = values["revenue"]
+    cost_structure["production_costs"] = values["production_costs"]
+    cost_structure["mine_development_amortization"] = values["mine_development_amortization"]
+
+    correlation_stats = _daily_return_stats(
+        company_trend_points, commodity_market.get("trend", [])
+    )
+    correlation_stats["proxy_used"] = commodity_market.get("proxy_used")
 
     market_cap = company_market.get("market_cap")
     missing_inputs = [
@@ -529,6 +642,8 @@ def build_resource_economics_snapshot(
             "ticker_used": company_symbol,
             "points": company_trend_points,
         },
+        "commodity_correlation": correlation_stats,
+        "cost_structure": cost_structure,
         "cheap_company_or_cheap_sector": cheap_company_or_cheap_sector,
         "metadata": {
             "ticker": ticker,

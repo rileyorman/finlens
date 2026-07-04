@@ -129,6 +129,9 @@ def test_infer_commodity_sector_keyword_precedence():
         ("Natural Gas Production", "natural gas"),
         ("Gas Gathering and Processing", None),
         ("Gold Mining", "gold"),
+        ("Gold-Silver Mining", "gold"),  # gold precedence over silver
+        ("Silver Mining", "silver"),
+        ("Uranium Mining", "uranium"),
         ("Mineral Exploration", None),
     ]
 
@@ -510,6 +513,103 @@ def test_usd_filer_with_toronto_primary_falls_back_to_us_listing(monkeypatch):
     assert company["currency"] == "USD"
     assert result["metadata"]["currency_guard"]["status"] == "match"
     assert result["metrics"]["earnings_yield"] == 4_461_461_000 / 60_000_000_000
+
+
+class CorrelatedHistoryTicker(DualListingTicker):
+    """DualListingTicker whose SU.TO and CL=F share 30 trading days where
+    the company's daily return is exactly 2x the commodity's return."""
+
+    _DATES = pd.bdate_range("2026-01-05", periods=30)
+    # Commodity closes: alternating +1% / -0.5% daily moves.
+    _CMD_CLOSES = [100.0]
+    for _i in range(29):
+        _CMD_CLOSES.append(_CMD_CLOSES[-1] * (1.01 if _i % 2 == 0 else 0.995))
+    # Company closes: exactly double each commodity return.
+    _CO_CLOSES = [50.0]
+    for _prev, _cur in zip(_CMD_CLOSES, _CMD_CLOSES[1:]):
+        _CO_CLOSES.append(_CO_CLOSES[-1] * (1 + 2 * (_cur / _prev - 1)))
+
+    def history(self, period: str = "1y"):
+        if self.symbol == "CL=F":
+            return pd.DataFrame({"Close": self._CMD_CLOSES}, index=self._DATES)
+        if self.symbol == "SU.TO":
+            return pd.DataFrame({"Close": self._CO_CLOSES}, index=self._DATES)
+        return pd.DataFrame()
+
+
+def test_commodity_correlation_and_beta_from_shared_history(monkeypatch):
+    monkeypatch.setattr(resource_economics.yf, "Ticker", CorrelatedHistoryTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 52_375,
+            "net_income": 5_920,
+            "sector_inferred": "Integrated Oil & Gas",
+            "currency": "CAD",
+            "scale": "millions",
+        },
+        "SU",
+        cache={},
+    )
+
+    stats = result["commodity_correlation"]
+    # Company returns are exactly 2x commodity returns -> perfect
+    # correlation, beta of 2.
+    assert stats["reason"] is None
+    assert stats["points_used"] == 29
+    assert abs(stats["correlation"] - 1.0) < 1e-9
+    assert abs(stats["beta"] - 2.0) < 1e-9
+    assert stats["proxy_used"] == "CL=F"
+
+
+def test_commodity_correlation_insufficient_history_skips_honestly(monkeypatch):
+    # FakeTicker gives the company no history at all -> honest skip.
+    monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 11_907_851,
+            "net_income": 4_461_461,
+            "sector_inferred": "Gold Mining",
+            "currency": "USD",
+            "scale": "thousands",
+        },
+        "AEM.TO",
+        cache={},
+    )
+
+    stats = result["commodity_correlation"]
+    assert stats["correlation"] is None
+    assert stats["beta"] is None
+    assert stats["reason"] == "insufficient overlapping price history"
+
+
+def test_cost_structure_scales_mapped_sector_fields(monkeypatch):
+    monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 11_907_851,
+            "net_income": 4_461_461,
+            "production_costs": 3_340_684,
+            "mine_development_amortization": 1_645_297,
+            "exploration_expense": 250_000,
+            "sector_inferred": "Gold Mining",
+            "currency": "USD",
+            "scale": "thousands",
+        },
+        "AEM.TO",
+        cache={},
+    )
+
+    cs = result["cost_structure"]
+    assert cs["revenue"] == 11_907_851_000
+    assert cs["production_costs"] == 3_340_684_000
+    assert cs["mine_development_amortization"] == 1_645_297_000
+    assert cs["exploration_expense"] == 250_000_000
+    # Fields the mining profile does not map stay None (UI skips them).
+    assert cs["royalties"] is None
+    assert cs["operating_expense"] is None
 
 
 def test_gold_mining_selects_gold_primary_proxy(monkeypatch):
