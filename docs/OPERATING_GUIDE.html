@@ -232,11 +232,24 @@
   </table></div>
 
   <h3>The Quality score</h3>
-  <p>A 0–100 score built from five financial-health checks (the same ones in the Dashboard's Financial Health panel).
-  Each <em>available</em> metric earns <strong>Green&nbsp;=&nbsp;20, Amber&nbsp;=&nbsp;10, Red&nbsp;=&nbsp;0</strong> points, and the total is rescaled to
+  <p>A 0–100 score built from <strong>five financial-health checks</strong> — the same five graded Green/Amber/Red in the
+  Dashboard's Financial Health panel:</p>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Metric</th><th>What it measures</th><th>The question it answers</th></tr>
+    <tr><td class="num">1</td><td><strong>Liquidity</strong></td><td>Current ratio (current assets ÷ current liabilities)</td><td>Can it pay its bills this year?</td></tr>
+    <tr><td class="num">2</td><td><strong>Leverage</strong></td><td>Net debt ÷ EBITDA</td><td>How many years of earnings to clear the debt?</td></tr>
+    <tr><td class="num">3</td><td><strong>Revenue growth</strong></td><td>Year-over-year revenue change</td><td>Is the top line growing?</td></tr>
+    <tr><td class="num">4</td><td><strong>FCF conversion</strong></td><td>Free cash flow ÷ net income</td><td>Do reported profits become real cash?</td></tr>
+    <tr><td class="num">5</td><td><strong>Interest coverage</strong></td><td>Operating income ÷ interest expense</td><td>How comfortably does it service its debt?</td></tr>
+  </table></div>
+  <p>Each <em>available</em> metric earns <strong>Green&nbsp;=&nbsp;20, Amber&nbsp;=&nbsp;10, Red&nbsp;=&nbsp;0</strong> points, and the total is rescaled to
   what was actually measurable — the chip always states its basis ("3 of 5 metrics"). <strong>Missing data is not poor
   quality</strong>: a sparse quarterly filing scores over what it shows, not against what it lacks. If nothing is
   available the chip simply doesn't appear.</p>
+  <p class="kbd-note">Worked example: a filing with one Green (20), one Amber (10), one Red (0) and two metrics
+  unavailable earns 30 of a possible 60 → <strong>Quality 50 / 100 · 3 of 5 metrics</strong>. The exact Green/Amber/Red
+  cutoffs for each metric are in the <a href="#reference">reference tables</a>, and the Financial Health panel on the
+  Dashboard shows you exactly which grade each metric received.</p>
 
   <h3>Integrity &amp; mapping chips</h3>
   <div class="demo">
