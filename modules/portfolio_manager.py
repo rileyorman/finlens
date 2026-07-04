@@ -30,24 +30,37 @@ def _clean(text: str) -> str:
     return text
 
 
-def _quality_score(m: dict) -> int:
-    """0–100 from 5 RAG metrics. Green=20, Amber=10, Red/None=0."""
+def _quality_score(m: dict):
+    """0–100 quality score over the AVAILABLE RAG metrics only (Green=20,
+    Amber=10, Red=0, rescaled to the available maximum). Missing data is
+    not poor quality. Returns None when no metrics are available.
+
+    Mirrors app.py _quality_score — keep the two in sync."""
     def pts(metric, value):
-        if value is None:
-            return 0
         if metric == "liquidity":  return 20 if value >= 2.0 else (10 if value >= 1.0 else 0)
         if metric == "leverage":   return 20 if value <= 1.5 else (10 if value <= 3.0 else 0)
         if metric == "rev_growth": return 20 if value >= 5.0 else (10 if value >= 0.0 else 0)
         if metric == "fcf_conv":   return 20 if value >= 100.0 else (10 if value >= 50.0 else 0)
         if metric == "int_cover":  return 20 if value >= 3.0 else (10 if value >= 1.5 else 0)
         return 0
-    return sum([
-        pts("liquidity",  m.get("current_ratio")),
-        pts("leverage",   m.get("nd_ebitda")),
-        pts("rev_growth", m.get("rev_growth")),
-        pts("fcf_conv",   m.get("fcf_conv")),
-        pts("int_cover",  m.get("int_cover")),
-    ])
+
+    checks = [
+        ("liquidity",  m.get("current_ratio")),
+        ("leverage",   m.get("nd_ebitda")),
+        ("rev_growth", m.get("rev_growth")),
+        ("fcf_conv",   m.get("fcf_conv")),
+        ("int_cover",  m.get("int_cover")),
+    ]
+    earned = 0
+    available = 0
+    for metric, value in checks:
+        if value is None:
+            continue
+        available += 1
+        earned += pts(metric, value)
+    if available == 0:
+        return None
+    return round(earned / (available * 20) * 100)
 
 
 def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -> list:

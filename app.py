@@ -350,24 +350,37 @@ def _is_canadian_quote(quote: dict) -> bool:
     return symbol.endswith(".TO") or exchange in CANADIAN_EXCHANGES
 
 
-def _quality_score(m: dict) -> int:
-    """0–100 quality score from 5 RAG health metrics. Green=20, Amber=10, Red/None=0."""
+def _quality_score(m: dict) -> tuple[int | None, int]:
+    """(score, metrics_available): 0–100 quality score over the AVAILABLE
+    RAG health metrics only (Green=20, Amber=10, Red=0, rescaled to the
+    available maximum). Missing data is not poor quality — a sparse
+    extraction must not score like a distressed company. Returns (None, 0)
+    when no metrics are available."""
     def pts(metric, value):
-        if value is None:
-            return 0
         if metric == "liquidity":  return 20 if value >= 2.0 else (10 if value >= 1.0 else 0)
         if metric == "leverage":   return 20 if value <= 1.5 else (10 if value <= 3.0 else 0)
         if metric == "rev_growth": return 20 if value >= 5.0 else (10 if value >= 0.0 else 0)
         if metric == "fcf_conv":   return 20 if value >= 100.0 else (10 if value >= 50.0 else 0)
         if metric == "int_cover":  return 20 if value >= 3.0 else (10 if value >= 1.5 else 0)
         return 0
-    return sum([
-        pts("liquidity",  m.get("current_ratio")),
-        pts("leverage",   m.get("nd_ebitda")),
-        pts("rev_growth", m.get("rev_growth")),
-        pts("fcf_conv",   m.get("fcf_conv")),
-        pts("int_cover",  m.get("int_cover")),
-    ])
+
+    checks = [
+        ("liquidity",  m.get("current_ratio")),
+        ("leverage",   m.get("nd_ebitda")),
+        ("rev_growth", m.get("rev_growth")),
+        ("fcf_conv",   m.get("fcf_conv")),
+        ("int_cover",  m.get("int_cover")),
+    ]
+    earned = 0
+    available = 0
+    for metric, value in checks:
+        if value is None:
+            continue
+        available += 1
+        earned += pts(metric, value)
+    if available == 0:
+        return None, 0
+    return round(earned / (available * 20) * 100), available
 
 
 def _dash_rag(metric: str, value) -> tuple:
@@ -2023,14 +2036,17 @@ document.addEventListener('focusin', function(e) {
 
         st.divider()
 
-    _default_model_index = list(MODEL_OPTIONS).index(DEFAULT_MODEL_LABEL)
-    st.sidebar.selectbox(
-        "Dev mode model",
-        list(MODEL_OPTIONS),
-        index=_default_model_index,
-        key="analysis_model_label",
-    )
-    st.sidebar.caption(f"{get_model_label()} — {get_model()}")
+    # Dev tooling only: model override + raw model IDs stay out of the
+    # user-facing sidebar (get_model falls back to the config default).
+    if os.getenv("FINLENS_DEBUG") == "1":
+        _default_model_index = list(MODEL_OPTIONS).index(DEFAULT_MODEL_LABEL)
+        st.sidebar.selectbox(
+            "Dev mode model",
+            list(MODEL_OPTIONS),
+            index=_default_model_index,
+            key="analysis_model_label",
+        )
+        st.sidebar.caption(f"{get_model_label()} — {get_model()}")
 
     # --- Filing Library (Single Analysis mode only) --------------------
     if page == "Single Analysis":
@@ -2336,15 +2352,17 @@ document.addEventListener('focusin', function(e) {
                                              width='stretch'):
                                     st.session_state.confirm_reanalyse = None
                                     st.rerun()
-        st.divider()
-        n = cache_count()
-        st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
-        if n:
-            if st.button("Clear Cache", width='stretch'):
-                cleared = clear_cache()
-                st.session_state.uploader_key += 1  # force file uploader to reset
-                st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
-                st.rerun()
+        # Response-cache plumbing is dev tooling — hidden from end users.
+        if os.getenv("FINLENS_DEBUG") == "1":
+            st.divider()
+            n = cache_count()
+            st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
+            if n:
+                if st.button("Clear Cache", width='stretch'):
+                    cleared = clear_cache()
+                    st.session_state.uploader_key += 1  # force file uploader to reset
+                    st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
+                    st.rerun()
 
 # --- Portfolio Manager page --------------------------------------------
 if page == "Portfolio Manager":
@@ -2472,7 +2490,8 @@ if page == "Portfolio Manager":
     pass_n   = sum(1 for r in analysed if r["signal"] == "PASS")
     inv_n    = sum(1 for r in analysed if r["signal"] == "INVESTIGATE")
     dec_n    = sum(1 for r in analysed if r["signal"] == "DECLINE")
-    avg_qs   = (sum(r["quality_score"] for r in analysed) / len(analysed)) if analysed else None
+    _qs_vals = [r["quality_score"] for r in analysed if r["quality_score"] is not None]
+    avg_qs   = (sum(_qs_vals) / len(_qs_vals)) if _qs_vals else None
 
     # --- Section 1: Portfolio Summary ---
     st.markdown("##### Portfolio Summary")
@@ -2481,7 +2500,7 @@ if page == "Portfolio Manager":
     s2.metric("🟢 PASS", pass_n)
     s3.metric("🟡 INVESTIGATE", inv_n)
     s4.metric("🔴 DECLINE", dec_n)
-    qs_color = "#70AD47" if (avg_qs or 0) >= 70 else ("#FFC000" if (avg_qs or 0) >= 40 else "#C00000")
+    qs_color = "#4ADE80" if (avg_qs or 0) >= 70 else ("#FCD34D" if (avg_qs or 0) >= 40 else "#F87171")
     with s5:
         qs_str = f"{avg_qs:.0f}" if avg_qs is not None else "—"
         st.markdown(
@@ -6045,7 +6064,21 @@ if st.session_state.financial_data:
     mda_sentiment   = st.session_state.get("mda_sentiment")
     _integrity_flags = _integrity_flag_names(financial_data)
     if _integrity_flags:
-        st.warning("Data integrity flags: " + ", ".join(_integrity_flags))
+        # Chip row, not a warning slab: flags are the audit trail (the
+        # product's moat), not an error state.
+        _flag_pills = "".join(
+            f'<span style="background:rgba(252,211,77,0.12);color:#FCD34D;'
+            f'border:1px solid rgba(252,211,77,0.30);padding:2px 10px;'
+            f'border-radius:999px;font-size:11px;font-weight:600;'
+            f'margin-right:6px">⚑ {escape(str(f))}</span>'
+            for f in _integrity_flags
+        )
+        st.markdown(
+            f'<div style="margin:2px 0 8px"><span style="color:#64748B;'
+            f'font-size:11px;margin-right:8px">INTEGRITY FLAGS</span>'
+            f'{_flag_pills}</div>',
+            unsafe_allow_html=True,
+        )
 
     # If dashboard insights are missing (old library entry or failed Call 4 in the
     # upload pipeline), generate them now from the structured data we do have.
@@ -6109,7 +6142,14 @@ if st.session_state.financial_data:
             "DECLINE":     ("248,113,113", "#F87171"),
         }
         _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
-        _hero_qs = _quality_score(_calc_summary_metrics(financial_data))
+        _hero_qs, _hero_qs_n = _quality_score(_calc_summary_metrics(financial_data))
+        _hero_qs_chip = (
+            f'<span style="background:rgba(255,255,255,0.06);color:#F1F5F9;'
+            f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
+            f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
+            f'/ 100 · {_hero_qs_n} of 5 metrics</span></span>'
+            if _hero_qs is not None else ""
+        )
         _hero_badge = (
             f'<span style="background:rgba({_hero_rgb},0.15);color:{_hero_hex};'
             f'border:1px solid rgba({_hero_rgb},0.45);padding:5px 16px;'
@@ -6126,9 +6166,7 @@ if st.session_state.financial_data:
             f'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;'
             f'margin-bottom:{"10px" if _hero_thesis else "0"}">'
             f'{_hero_badge}'
-            f'<span style="background:rgba(255,255,255,0.06);color:#F1F5F9;'
-            f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
-            f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">/ 100</span></span>'
+            f'{_hero_qs_chip}'
             f'<span style="color:#64748B;font-size:12px">{escape(_hero_meta)}</span>'
             f'</div>'
             + (
@@ -6204,11 +6242,17 @@ if st.session_state.financial_data:
         _mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
         if isinstance(_mapping, dict):
             _mapping_meta = _mapping.get("meta") or {}
-            st.info(
-                "SEDAR+ mapping: "
-                f"{_mapping_meta.get('mapped_count', 0)} mapped, "
-                f"{_mapping_meta.get('unmapped_count', 0)} unmapped, "
-                f"{_mapping_meta.get('total', 0)} total."
+            # Compact chip instead of a full-width info slab — the mapping
+            # census is provenance, not a problem to fix.
+            st.markdown(
+                f'<div style="margin:2px 0 8px">'
+                f'<span style="background:rgba(148,163,184,0.10);color:#94A3B8;'
+                f'border:1px solid rgba(148,163,184,0.25);padding:2px 10px;'
+                f'border-radius:999px;font-size:11px;font-weight:600">'
+                f'SEDAR+ mapping · {_mapping_meta.get("mapped_count", 0)} of '
+                f'{_mapping_meta.get("total", 0)} lines mapped to canonical fields'
+                f'</span></div>',
+                unsafe_allow_html=True,
             )
             with st.expander("SEDAR+ unmapped line items", expanded=False):
                 _unmapped = _mapping.get("unmapped") or []
@@ -6916,37 +6960,16 @@ if st.session_state.financial_data:
                 "Re-analyse to run Call 4 (Dalio / Lynch / Marks frameworks)."
             )
 
-        # --- Section 1: Header — Signal badge, thesis, Quality Score, Beta, MoS ---
-        sig_col, qs_col, beta_col, mos_col = st.columns([3, 2, 2, 2])
+        # --- Section 1: Header — Quality Score, Beta, MoS ---
+        # (The signal badge + thesis moved to the verdict hero strip above
+        # the tabs; the old in-tab copy was redundant.)
+        qs_col, beta_col, mos_col = st.columns(3)
 
-        with sig_col:
-            _BADGE_STYLE_D = {
-                "PASS":        {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
-                "INVESTIGATE": {"bg": "#1C0F00", "color": "#FCD34D", "border": "#92400E"},
-                "DECLINE":     {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
-            }
-            signal_d = (summary_data.get("signal") or "").upper()
-            if signal_d in _BADGE_STYLE_D:
-                s = _BADGE_STYLE_D[signal_d]
-                st.markdown(
-                    f'<div style="display:inline-block;background:{s["bg"]};color:{s["color"]};'
-                    f'border:1px solid {s["border"]};'
-                    f'padding:6px 22px;border-radius:4px;font-size:16px;font-weight:700;'
-                    f'letter-spacing:1.5px;margin:4px 0 6px 0">{signal_d}</div>',
-                    unsafe_allow_html=True,
-                )
-            thesis = summary_data.get("thesis") or ""
-            if thesis:
-                # Raw HTML block: markdown/KaTeX never runs here, so html-escape only —
-                # \$-escaping would show a literal backslash on screen.
-                st.markdown(
-                    f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
-                    f'{escape(thesis)}</p>',
-                    unsafe_allow_html=True,
-                )
-
-        qs = _quality_score(metrics)
-        qs_color = "#70AD47" if qs >= 70 else ("#FFC000" if qs >= 40 else "#C00000")
+        qs, qs_n = _quality_score(metrics)
+        if qs is None:
+            qs_color = "#94A3B8"
+        else:
+            qs_color = "#4ADE80" if qs >= 70 else ("#FCD34D" if qs >= 40 else "#F87171")
 
         # Shared dark-card shell for the three header stat cards.
         _stat_card_style = (
@@ -6959,8 +6982,9 @@ if st.session_state.financial_data:
             st.markdown(
                 f'<div style="{_stat_card_style}">'
                 f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
-                f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs}</div>'
-                f'<div style="font-size:10px;color:#64748B">/ 100</div>'
+                f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs if qs is not None else "—"}</div>'
+                f'<div style="font-size:10px;color:#64748B">'
+                f'{f"/ 100 · based on {qs_n} of 5 metrics" if qs is not None else "no health metrics available"}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -6984,7 +7008,7 @@ if st.session_state.financial_data:
             _iv_hdr  = _dcf_hdr.get("intrinsic_value_per_share")
             _mos_hdr = _dcf_hdr.get("margin_of_safety_pct")
             if _iv_hdr is not None and _mos_hdr is not None:
-                _mc = "#70AD47" if _mos_hdr > 20 else ("#FFC000" if _mos_hdr >= 0 else "#C00000")
+                _mc = "#4ADE80" if _mos_hdr > 20 else ("#FCD34D" if _mos_hdr >= 0 else "#F87171")
                 _lbl = "undervalued" if _mos_hdr > 0 else "overvalued"
                 st.markdown(
                     f'<div style="{_stat_card_style}">'
@@ -7655,7 +7679,7 @@ if st.session_state.financial_data:
                 st.write(_escape_md_dollars(mq))
                 _mos_marks = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 if _mos_marks is not None:
-                    _mos_mc = "#70AD47" if _mos_marks > 20 else ("#FFC000" if _mos_marks >= 0 else "#C00000")
+                    _mos_mc = "#4ADE80" if _mos_marks > 20 else ("#FCD34D" if _mos_marks >= 0 else "#F87171")
                     st.markdown(
                         f'Margin of Safety: <span style="color:{_mos_mc};font-weight:700">'
                         f'{_mos_marks:+.1f}%</span>',
