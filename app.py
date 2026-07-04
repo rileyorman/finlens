@@ -8178,9 +8178,10 @@ if st.session_state.financial_data:
                         '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
                         'Cost Structure — where the top line goes</div>'
                         '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
-                        'Statement-level mining costs only. The end bar is the margin '
-                        'after these costs — before G&amp;A, finance, and other items, '
-                        'so it will not equal the filer\'s printed operating income.</div>',
+                        'Statement-level costs from the sector profile\'s mapped fields '
+                        'only. The end bar is the margin after these costs — before '
+                        'G&amp;A, finance, and other items, so it will not equal the '
+                        'filer\'s printed operating income.</div>',
                         unsafe_allow_html=True,
                     )
                     _cs_margin = _cs_rev + sum(f[1] for f in _cs_flows)
@@ -8216,8 +8217,20 @@ if st.session_state.financial_data:
                     st.plotly_chart(_cs_fig, width='stretch', config={"displayModeBar": False})
                     _cs_margin_pct = _cs_margin / _cs_rev * 100 if _cs_rev else None
                     if _cs_margin_pct is not None:
+                        # Royalty burden — the O&G-specific number: what share
+                        # of the GROSS top line the crown/royalty holders took
+                        # (canonical resource revenue is gross of royalties).
+                        _royalty_note = ""
+                        _cs_royalties = _cs.get("royalties")
+                        if _cs_royalties and _cs_rev:
+                            _royalty_pct = abs(_cs_royalties) / _cs_rev * 100
+                            _royalty_note = (
+                                f" Royalties took {_royalty_pct:.1f}% of the "
+                                f"gross top line."
+                            )
                         st.caption(
-                            f"Margin after these costs: {_cs_margin_pct:.1f}% of the top line."
+                            f"Margin after these costs: {_cs_margin_pct:.1f}% "
+                            f"of the top line.{_royalty_note}"
                         )
 
                 # --- Tier 2 placeholder slot (clearly upcoming, no fake data) ---
