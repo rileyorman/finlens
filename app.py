@@ -31,6 +31,7 @@ from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
 from sedar_extractor import SedarExtractionError, extract_sedar_filing
 from modules.claude_analyzer import (
+    FabricatedExtractionError,
     analyze_financials,
     analyze_summary,
     analyze_bear_bull,
@@ -2398,7 +2399,11 @@ if page == "Portfolio Manager":
                 )
         else:
             with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
-                _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+                try:
+                    _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+                except FabricatedExtractionError as _fab_err:
+                    st.error(f"🛑 {_fab_err}")
+                    st.stop()
         with st.spinner("Call 2: Generating investment signal..."):
             _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 3: Generating bull/bear case..."):
@@ -5640,7 +5645,11 @@ if st.session_state.get("pending_reanalyse"):
             )
     else:
         with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
-            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+            try:
+                _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+            except FabricatedExtractionError as _fab_err:
+                st.error(f"🛑 {_fab_err}")
+                st.stop()
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):

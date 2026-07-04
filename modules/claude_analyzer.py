@@ -436,6 +436,96 @@ Additional rules:
 """
 
 
+# ---------------------------------------------------------------------------
+# Figure-presence guard.
+# A number that appears NOWHERE in the source text cannot have been read from
+# it — it was recalled from training or invented. Reference incident
+# (2026-07-03): re-analysing NVDA from text truncated before the statements
+# produced a complete fabricated extraction that passed every downstream
+# check (Quality 100/100, zero integrity flags). This guard makes that
+# failure loud instead of silent.
+# ---------------------------------------------------------------------------
+
+FIGURE_PRESENCE_MIN_ROWS = 5     # below this, too few rows to judge
+FIGURE_PRESENCE_MIN_RATIO = 0.2  # reject when fewer than 20% of values appear
+
+
+class FabricatedExtractionError(ValueError):
+    """Extracted figures do not appear in the source text."""
+
+
+def _number_in_text(number: float, text: str) -> bool:
+    """True if the number appears in the text in any common filing format."""
+    candidates = set()
+    if float(number) == int(number):
+        whole = int(number)
+        candidates.add(f"{whole:,}")   # 130,497
+        candidates.add(str(whole))     # 130497
+    else:
+        candidates.add(f"{number:,.2f}")  # 1,234.56
+        candidates.add(f"{number:.2f}")   # 1234.56
+        candidates.add(f"{number:g}")     # 2.5 (no trailing zero)
+    return any(candidate in text for candidate in candidates)
+
+
+def _figure_presence(financial_data: dict, source_text: str) -> dict:
+    """Share of extracted statement values that literally appear in the text."""
+    checked = 0
+    found = 0
+    for section in ("income_statement", "balance_sheet", "cash_flow_statement"):
+        for row in financial_data.get(section, []) or []:
+            value = row.get("value")
+            if value is None:
+                continue
+            try:
+                number = abs(float(value))
+            except (TypeError, ValueError):
+                continue
+            checked += 1
+            if _number_in_text(number, source_text):
+                found += 1
+    ratio = (found / checked) if checked else None
+    return {"checked": checked, "found": found, "ratio": ratio}
+
+
+def _check_figure_presence(financial_data: dict, source_text: str, model: str) -> dict:
+    """Run the guard, append its verdict to the integrity log, and raise on
+    fabrication. Returns the presence dict so callers can attach it."""
+    presence = _figure_presence(financial_data, source_text)
+    fabricated = (
+        presence["checked"] >= FIGURE_PRESENCE_MIN_ROWS
+        and presence["ratio"] is not None
+        and presence["ratio"] < FIGURE_PRESENCE_MIN_RATIO
+    )
+    presence["verdict"] = "FABRICATED" if fabricated else "PASS"
+
+    try:
+        # Lazy import: the integrity package must never depend on this module.
+        from modules.integrity.log import append_figure_presence_to_log
+        append_figure_presence_to_log(
+            company=str(financial_data.get("company_name") or "Unknown"),
+            model=model,
+            checked=presence["checked"],
+            found=presence["found"],
+            ratio=presence["ratio"],
+            verdict=presence["verdict"],
+            source_chars=len(source_text),
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("figure-presence log append failed")
+
+    if fabricated:
+        raise FabricatedExtractionError(
+            f"Extraction rejected: only {presence['found']} of "
+            f"{presence['checked']} extracted figures appear in the source "
+            f"text ({len(source_text):,} characters). The text likely does "
+            f"not contain the financial statements (truncated or wrong "
+            f"document) and the model filled in numbers from memory. "
+            f"No analysis was saved."
+        )
+    return presence
+
+
 def analyze_financials(
     document_text: str,
     api_key: str,
@@ -455,12 +545,20 @@ def analyze_financials(
                 ),
             },
         ]
+        # The text Claude actually sees lives in the context blocks — the
+        # figure-presence guard must check against exactly that.
+        guard_text = "".join(
+            block.get("text", "")
+            for block in filing_context
+            if isinstance(block, dict)
+        )
     else:
         # Front+back slice: captures business context at the top and financial
         # statements at the end, which large filings (e.g. Walgreens 10-K) place
         # well past the 150K character mark if front-only truncation is used.
         document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
         user_message = _render_template(USER_PROMPT_TEMPLATE, document_text=document_text)
+        guard_text = document_text
 
     response = client.messages.create(
         model=model,
@@ -483,6 +581,14 @@ def analyze_financials(
         raw = match.group(1)
 
     financial_data = json.loads(raw)
+
+    # Figure-presence guard: values are still in filing units here (before
+    # normalization), which is exactly how they appear in the source text.
+    # Raises FabricatedExtractionError when the numbers aren't in the text.
+    financial_data["figure_presence"] = _check_figure_presence(
+        financial_data, guard_text, model
+    )
+
     return normalize_financial_data(financial_data)
 
 

@@ -173,6 +173,47 @@ def append_to_log(
     return path
 
 
+def append_figure_presence_to_log(
+    *,
+    company: str,
+    model: str,
+    checked: int,
+    found: int,
+    ratio: float | None,
+    verdict: str,
+    source_chars: int,
+    timestamp: str | None = None,
+    log_path: Path | str | None = None,
+) -> Path:
+    """
+    Append an extraction figure-presence record to the integrity log.
+
+    Written by the extraction guard in claude_analyzer on EVERY extraction —
+    PASS records document that the guard ran; FABRICATED records document a
+    rejected extraction whose figures did not appear in the source text.
+    Not idempotent by design: each extraction run is a distinct event.
+    """
+    path = Path(log_path) if log_path else _DEFAULT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    record = {
+        "record_type": "extraction_figure_presence",
+        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+        "company": company,
+        "model": model,
+        "checked": checked,
+        "found": found,
+        "ratio": ratio,
+        "verdict": verdict,
+        "source_chars": source_chars,
+    }
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+    return path
+
+
 def _cv_checker_version(record: dict) -> str:
     """Return the cross-validation checker version; legacy records are v1."""
     return str(record.get("checker_version") or "1")
