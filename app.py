@@ -2164,6 +2164,12 @@ document.addEventListener('focusin', function(e) {
                                 if st.button("Load", key=f"lib_load_{eid}", width='stretch'):
                                     _entry_period = entry.get("fiscal_year") or entry.get("period", "")
                                     _entry_ticker = ticker if ticker != "—" else None
+                                    # Toast fires after the rerun (a toast shown
+                                    # now would be discarded by st.rerun).
+                                    st.session_state["_just_loaded_label"] = (
+                                        f"{_library_company_header(ticker, [entry])}"
+                                        f"{' — ' + _entry_period if _entry_period else ''}"
+                                    )
                                     _entry_text = _library_text_for_entry(entry)
                                     st.session_state.cached_filing_text = _entry_text
                                     _cached_analysis = (
@@ -5312,18 +5318,27 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
             st.rerun()
 
-uploaded_file = st.file_uploader(
-    "Upload Financial Statements (PDF or Word)",
-    type=["pdf", "docx"],
-    help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
-    key=f"pdf_uploader_{st.session_state.uploader_key}",
-)
-canadian_filing = st.checkbox(
-    "Canadian filing (SEDAR+ / IFRS)",
-    value=False,
-    help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
-    key="canadian_sedar_upload",
-)
+# Once an analysis is on screen the upload zone collapses out of the way,
+# so the loaded company — not the intake plumbing — owns the page. A
+# collapsed expander still renders its widgets, so upload state survives.
+_has_loaded_analysis = bool(st.session_state.get("financial_data"))
+with st.expander(
+    "📄 Upload Financial Statements (PDF or Word)",
+    expanded=not _has_loaded_analysis,
+):
+    uploaded_file = st.file_uploader(
+        "Upload Financial Statements (PDF or Word)",
+        type=["pdf", "docx"],
+        help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
+        key=f"pdf_uploader_{st.session_state.uploader_key}",
+        label_visibility="collapsed",
+    )
+    canadian_filing = st.checkbox(
+        "Canadian filing (SEDAR+ / IFRS)",
+        value=False,
+        help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
+        key="canadian_sedar_upload",
+    )
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
@@ -6073,9 +6088,71 @@ if st.session_state.financial_data:
             [{"company_name": company}],
         )
 
+    # Toast confirming what just loaded (set by the library Load handler
+    # before its rerun — a toast shown pre-rerun would be discarded).
+    _just_loaded = st.session_state.pop("_just_loaded_label", None)
+    if _just_loaded:
+        st.toast(f"Loaded {_just_loaded}", icon="📂")
+
     st.subheader(company)
     _period_str = period or "Unknown period"
-    st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
+
+    # --- Verdict hero strip -------------------------------------------
+    # The moment of arrival: signal, quality, and the thesis in one
+    # signal-colored banner, so the verdict greets you before the tabs.
+    _hero_signal = (summary_data.get("signal") or "").upper()
+    _hero_thesis = summary_data.get("thesis") or ""
+    if _hero_signal or _hero_thesis:
+        _HERO_RGB = {
+            "PASS":        ("74,222,128", "#4ADE80"),
+            "INVESTIGATE": ("252,211,77", "#FCD34D"),
+            "DECLINE":     ("248,113,113", "#F87171"),
+        }
+        _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
+        _hero_qs = _quality_score(_calc_summary_metrics(financial_data))
+        _hero_badge = (
+            f'<span style="background:rgba({_hero_rgb},0.15);color:{_hero_hex};'
+            f'border:1px solid rgba({_hero_rgb},0.45);padding:5px 16px;'
+            f'border-radius:6px;font-size:14px;font-weight:700;'
+            f'letter-spacing:1.2px">{escape(_hero_signal)}</span>'
+            if _hero_signal else ""
+        )
+        _hero_meta = f"{_period_str}  ·  {currency}" if currency else _period_str
+        st.markdown(
+            f'<div style="border-radius:14px;padding:16px 20px;margin:2px 0 14px;'
+            f'background:linear-gradient(135deg,rgba({_hero_rgb},0.10) 0%,#1E2840 60%);'
+            f'border:1px solid rgba({_hero_rgb},0.30);'
+            f'box-shadow:0 0 30px rgba({_hero_rgb},0.12), 0 4px 24px rgba(0,0,0,0.3)">'
+            f'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;'
+            f'margin-bottom:{"10px" if _hero_thesis else "0"}">'
+            f'{_hero_badge}'
+            f'<span style="background:rgba(255,255,255,0.06);color:#F1F5F9;'
+            f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
+            f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">/ 100</span></span>'
+            f'<span style="color:#64748B;font-size:12px">{escape(_hero_meta)}</span>'
+            f'</div>'
+            + (
+                f'<div style="color:#CBD5E1;font-size:14px;line-height:1.55">'
+                f'{escape(_hero_thesis)}</div>'
+                if _hero_thesis else ""
+            )
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+        # Cross-page hop: hand the ticker to Stock Tracker already tracked.
+        if ticker:
+            _hero_track_col, _ = st.columns([1, 4])
+            with _hero_track_col:
+                if st.button("📈 Track live in Stock Tracker", key="hero_track_btn"):
+                    from modules.stock_tracker import get_stock_data as _hero_gsd
+                    with st.spinner(f"Fetching live data for {ticker}…"):
+                        st.session_state.stock_data = _hero_gsd(ticker)
+                        st.session_state.st_current_ticker = str(ticker).upper()
+                    st.session_state["nav_mode"] = "Stock Tracker"
+                    st.query_params["page"] = "stocks"
+                    st.rerun()
+    else:
+        st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
 
     if (
         st.session_state.get("analysis_loaded_from_cache")
