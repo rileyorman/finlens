@@ -1203,6 +1203,11 @@ _NAV_ITEMS = [
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
     ),
     (
+        "Commodities",
+        "commodities",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 18 3 22 9 12 21 2 9 6 3"/><path d="M2 9h20"/><path d="M12 21 8 9l3-6"/><path d="m12 21 4-12-3-6"/></svg>',
+    ),
+    (
         "Education",
         "education",
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
@@ -3575,6 +3580,260 @@ if page == "Filing Comparison":
                             f'</div>',
                             unsafe_allow_html=True,
                         )
+
+    st.stop()
+
+
+# --- Commodities page ---------------------------------------------------
+if page == "Commodities":
+    from modules.economics.resource_economics import (
+        COMMODITY_PROXIES,
+        _fetch_proxy_data,
+        infer_commodity,
+    )
+    from modules.economics.resource_display import PROXY_UNITS
+
+    st.markdown("## Commodities")
+    st.caption(
+        "Oil & gas and minerals — spot prices, relative performance, and "
+        "one-year trends. Same free yfinance proxy feeds that power the "
+        "Economics tab; ETF-proxied commodities are labeled as such."
+    )
+
+    # One identity color per commodity, used everywhere on this page
+    # (colorblind-validated as a set on the dark surface).
+    _CMD_ORDER = ["gold", "silver", "copper", "crude oil", "natural gas", "uranium"]
+    _CMD_LABEL = {
+        "gold": "Gold", "silver": "Silver", "copper": "Copper",
+        "crude oil": "WTI Crude", "natural gas": "Natural Gas",
+        "uranium": "Uranium (ETF proxy)",
+    }
+    _CMD_COLOR = {
+        "gold": "#B8821F", "silver": "#3574C6", "copper": "#C2554F",
+        "crude oil": "#26A69A", "natural gas": "#8B5CF6", "uranium": "#B565A8",
+    }
+
+    @st.cache_data(ttl=900, show_spinner=False)
+    def _cmd_fetch(symbol: str) -> dict:
+        return _fetch_proxy_data(symbol)
+
+    def _cmd_load(commodity_key: str) -> dict:
+        cfg = COMMODITY_PROXIES[commodity_key]
+        for role in ("primary", "fallback"):
+            data = _cmd_fetch(cfg[role])
+            if data.get("spot_price") is not None or data.get("trend"):
+                return {"symbol": cfg[role], "role": role, **data}
+        return {"symbol": cfg["primary"], "role": "primary",
+                "spot_price": None, "trend": []}
+
+    with st.spinner("Fetching commodity data…"):
+        _cmd = {key: _cmd_load(key) for key in _CMD_ORDER}
+
+    def _cmd_pct(new_value, old_value):
+        if not new_value or not old_value:
+            return None
+        return (new_value / old_value - 1) * 100
+
+    def _cmd_pill(pct_value, label):
+        if pct_value is None:
+            return (f'<span style="color:#64748B;font-size:11px;'
+                    f'margin-right:8px">{label} —</span>')
+        color = "#4ADE80" if pct_value >= 0 else "#F87171"
+        return (f'<span style="color:{color};font-size:11px;font-weight:650;'
+                f'margin-right:8px">{label} {pct_value:+.1f}%</span>')
+
+    # --- Spot cards -----------------------------------------------------
+    _cmd_cols = st.columns(3)
+    for _i, _key in enumerate(_CMD_ORDER):
+        _d = _cmd[_key]
+        _trend = _d.get("trend") or []
+        _spot = _d.get("spot_price")
+        _day = _cmd_pct(_trend[-1]["close"], _trend[-2]["close"]) if len(_trend) >= 2 else None
+        _year = _cmd_pct(_trend[-1]["close"], _trend[0]["close"]) if len(_trend) >= 2 else None
+        _unit = PROXY_UNITS.get(_d["symbol"], "US$")
+        _spot_str = f"${_spot:,.2f}" if _spot is not None else "—"
+        with _cmd_cols[_i % 3]:
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+                f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;'
+                f'padding:14px 16px;margin-bottom:12px">'
+                f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+                f'text-transform:uppercase;color:#64748B">'
+                f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
+                f'background:{_CMD_COLOR[_key]};margin-right:7px"></span>{_CMD_LABEL[_key]}</div>'
+                f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+                f'{_spot_str} <span style="font-size:11px;color:#64748B;font-weight:400">{_unit}</span></div>'
+                f'<div>{_cmd_pill(_day, "1d")}{_cmd_pill(_year, "1y")}'
+                f'<span style="color:#64748B;font-size:10px">via {_d["symbol"]}</span></div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # --- Classic ratios ---------------------------------------------------
+    _gold_spot = _cmd["gold"].get("spot_price")
+    _silver_spot = _cmd["silver"].get("spot_price")
+    _wti_spot = _cmd["crude oil"].get("spot_price")
+    _gas_spot = _cmd["natural gas"].get("spot_price")
+    _r1, _r2 = st.columns(2)
+    with _r1:
+        _gs = (_gold_spot / _silver_spot) if (_gold_spot and _silver_spot) else None
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px">'
+            f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+            f'text-transform:uppercase;color:#64748B">Gold / Silver ratio</div>'
+            f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+            f'{f"{_gs:,.1f}" if _gs else "—"}</div>'
+            f'<div style="font-size:11px;color:#64748B">ounces of silver per ounce of gold — '
+            f'higher means silver is cheap relative to gold</div></div>',
+            unsafe_allow_html=True,
+        )
+    with _r2:
+        _og = (_wti_spot / _gas_spot) if (_wti_spot and _gas_spot) else None
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px">'
+            f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+            f'text-transform:uppercase;color:#64748B">Oil / Gas ratio</div>'
+            f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+            f'{f"{_og:,.1f}" if _og else "—"}</div>'
+            f'<div style="font-size:11px;color:#64748B">WTI $/bbl ÷ Henry Hub $/MMBtu — '
+            f'energy-equivalent parity is ≈ 6; higher favors gas-weighted producers</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # --- Relative performance (indexed) -----------------------------------
+    st.markdown("##### Relative Performance — indexed to 100, last 1 year")
+    st.caption("Pick commodities to compare. Each series is rebased to 100 at the start of its window.")
+    _picked = st.multiselect(
+        "Commodities to compare",
+        [_CMD_LABEL[k] for k in _CMD_ORDER],
+        default=["Gold", "WTI Crude", "Copper"],
+        label_visibility="collapsed",
+    )
+    _label_to_key = {v: k for k, v in _CMD_LABEL.items()}
+
+    def _cmd_parse_date(value):
+        try:
+            return datetime.fromisoformat(str(value))
+        except (ValueError, TypeError):
+            return None
+
+    _idx_fig = go.Figure()
+    for _label in _picked:
+        _key = _label_to_key[_label]
+        _points = _cmd[_key].get("trend") or []
+        if len(_points) < 2 or not _points[0]["close"]:
+            continue
+        _base = _points[0]["close"]
+        _xs = [_cmd_parse_date(p["date"]) for p in _points]
+        if any(x is None for x in _xs):
+            _xs = [p["date"] for p in _points]
+        _ys = [p["close"] / _base * 100 for p in _points]
+        _idx_fig.add_trace(go.Scatter(
+            x=_xs, y=_ys, mode='lines', name=_label,
+            line=dict(color=_CMD_COLOR[_key], width=2),
+            hovertemplate=_label + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+        ))
+        _idx_fig.add_annotation(
+            x=_xs[-1], y=_ys[-1], text=f"{_ys[-1]:.0f}",
+            showarrow=False, xanchor='left',
+            font=dict(color=_CMD_COLOR[_key], size=10),
+        )
+    if _idx_fig.data:
+        _idx_fig.add_hline(y=100, line_dash='dot', line_color='rgba(148,163,184,0.4)')
+        _idx_fig.update_layout(
+            paper_bgcolor='#1E2433', plot_bgcolor='#1E2433',
+            font=dict(color='#94A3B8', size=11),
+            margin=dict(l=40, r=40, t=20, b=40), height=320,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        )
+        _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+        _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
+        st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
+    else:
+        st.caption("No trend data available for the selected commodities.")
+
+    st.divider()
+
+    # --- Small multiples: one-year trend per commodity ---------------------
+    st.markdown("##### One-Year Trends")
+    _sm_cols = st.columns(3)
+    for _i, _key in enumerate(_CMD_ORDER):
+        _points = _cmd[_key].get("trend") or []
+        with _sm_cols[_i % 3]:
+            st.markdown(
+                f'<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;'
+                f'text-transform:uppercase;color:#94A3B8;margin:4px 0 2px">'
+                f'{_CMD_LABEL[_key]} <span style="color:#64748B;font-weight:400">'
+                f'{PROXY_UNITS.get(_cmd[_key]["symbol"], "US$")}</span></div>',
+                unsafe_allow_html=True,
+            )
+            if len(_points) < 2:
+                st.caption("No data.")
+                continue
+            _xs = [_cmd_parse_date(p["date"]) for p in _points]
+            if any(x is None for x in _xs):
+                _xs = [p["date"] for p in _points]
+            _ys = [p["close"] for p in _points]
+            _sm_fig = go.Figure(go.Scatter(
+                x=_xs, y=_ys, mode='lines',
+                line=dict(color=_CMD_COLOR[_key], width=1.8),
+                hovertemplate="%{x|%b %d}: %{y:,.2f}<extra></extra>",
+            ))
+            _sm_fig.add_annotation(
+                x=_xs[-1], y=_ys[-1], text=f"{_ys[-1]:,.2f}",
+                showarrow=False, xanchor='left',
+                font=dict(color=_CMD_COLOR[_key], size=10),
+            )
+            _sm_fig.update_layout(
+                paper_bgcolor='#1E2433', plot_bgcolor='#1E2433',
+                font=dict(color='#64748B', size=10),
+                margin=dict(l=35, r=35, t=8, b=25), height=150,
+                showlegend=False,
+            )
+            _sm_fig.update_xaxes(gridcolor='rgba(255,255,255,0.05)', zerolinecolor='rgba(255,255,255,0.08)')
+            _sm_fig.update_yaxes(gridcolor='rgba(255,255,255,0.05)', zerolinecolor='rgba(255,255,255,0.08)')
+            st.plotly_chart(_sm_fig, width='stretch', config={"displayModeBar": False})
+
+    st.divider()
+
+    # --- Your resource filers ---------------------------------------------
+    st.markdown("##### Your Resource Filers")
+    _resource_profiles = {"mining_sector", "resource_sector", "mining_exploration_sector"}
+    _res_rows = []
+    for _entry in lib_get():
+        _efd = _entry.get("financial_data") or {}
+        _emeta = ((_efd.get("mapping") or {}).get("meta") or {})
+        if _emeta.get("sector_profile") not in _resource_profiles:
+            continue
+        _sector_text = (
+            _efd.get("sector_inferred")
+            or (_entry.get("summary_data") or {}).get("sector_inferred")
+            or ""
+        )
+        _linked = infer_commodity(_sector_text)
+        _res_rows.append({
+            "Company": _library_company_header(_library_ticker(_entry), [_entry]),
+            "Sector": _sector_text or "—",
+            "Linked Commodity": _CMD_LABEL.get(_linked, (_linked or "—").title()),
+            "Period": _library_period_label(_entry) or "—",
+        })
+    if _res_rows:
+        st.dataframe(_res_rows, width='stretch', hide_index=True)
+        st.caption(
+            "Load any of these in Single Analysis for the full Economics tab — "
+            "commodity linkage (r/β), the indexed company-vs-commodity chart, "
+            "and the cost-structure waterfall."
+        )
+    else:
+        st.caption(
+            "No resource-sector filings in your library yet. Load a miner or "
+            "oil & gas producer (e.g. AEM, CNQ, SU from the registry) to link "
+            "filings to these commodities."
+        )
 
     st.stop()
 
