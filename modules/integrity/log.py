@@ -184,6 +184,8 @@ def append_figure_presence_to_log(
     source_chars: int,
     timestamp: str | None = None,
     log_path: Path | str | None = None,
+    missing_rows: list[str] | None = None,
+    missing_count: int | None = None,
 ) -> Path:
     """
     Append an extraction figure-presence record to the integrity log.
@@ -207,6 +209,10 @@ def append_figure_presence_to_log(
         "verdict": verdict,
         "source_chars": source_chars,
     }
+    if missing_rows is not None:
+        record["missing_rows"] = missing_rows
+    if missing_count is not None:
+        record["missing_count"] = missing_count
     line = json.dumps(record, ensure_ascii=False, default=str)
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(line + "\n")

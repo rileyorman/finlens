@@ -117,3 +117,76 @@ def test_figure_presence_log_record_written(tmp_path):
     assert record["verdict"] == "FABRICATED"
     assert record["checked"] == 5
     assert record["source_chars"] == 80_000
+
+
+# ---------------------------------------------------------------------------
+# Per-row detail tests (Part B)
+# ---------------------------------------------------------------------------
+
+def test_figure_presence_per_row_detail():
+    """_figure_presence returns a rows list with correct per-row found flags."""
+    rows = [
+        {"line_item": "Revenue", "value": 100},
+        {"line_item": "Net income", "value": 200},
+        {"line_item": "EBITDA", "value": 300},
+    ]
+    fd = {"company_name": "TestCo", "income_statement": rows}
+    presence = _figure_presence(fd, "Revenue was 100 and EBITDA was 300")
+    assert len(presence["rows"]) == 3
+    by_item = {r["line_item"]: r for r in presence["rows"]}
+    assert by_item["Revenue"]["found"] is True
+    assert by_item["Revenue"]["section"] == "income_statement"
+    assert by_item["Net income"]["found"] is False
+    assert by_item["EBITDA"]["found"] is True
+
+
+def test_missing_rows_cap(tmp_path):
+    """missing_rows in log record is capped at 20; missing_count is total."""
+    rows = [{"line_item": "Item" + str(i), "value": 100000 + i} for i in range(25)]
+    fd = {"company_name": "TestCo", "income_statement": rows}
+    presence = _figure_presence(fd, "no numbers here")
+    missing_all = [
+        r["section"] + ":" + r["line_item"]
+        for r in presence["rows"]
+        if not r["found"]
+    ]
+    missing_count = len(missing_all)
+    missing_rows = missing_all[:20]
+    log_path = tmp_path / "integrity_log.jsonl"
+    append_figure_presence_to_log(
+        company="TestCo",
+        model="test-model",
+        checked=presence["checked"],
+        found=presence["found"],
+        ratio=presence["ratio"],
+        verdict="FABRICATED",
+        source_chars=100,
+        missing_rows=missing_rows,
+        missing_count=missing_count,
+        log_path=log_path,
+    )
+    record = json.loads(log_path.read_text(encoding="utf-8").strip())
+    assert len(record["missing_rows"]) == 20
+    assert record["missing_count"] == 25
+
+
+def test_aggregate_behavior_unchanged():
+    """checked/found/ratio are identical before and after the per-row change."""
+    rows = [
+        {"line_item": "Revenue", "value": 130497},
+        {"line_item": "Cost of revenue", "value": 37132},
+        {"line_item": "Gross profit", "value": 93365},
+        {"line_item": "R&D", "value": 14880},
+        {"line_item": "Net income", "value": 68054},
+    ]
+    text = (
+        "Revenue 130,497 Cost of revenue 37,132 Gross profit 93,365 "
+        "Research and development 14,880 Net income 68,054"
+    )
+    presence = _figure_presence(_fd(rows), text)
+    assert presence["checked"] == 5
+    assert presence["found"] == 5
+    assert presence["ratio"] == 1.0
+    # rows list is additional output; aggregate fields are untouched
+    assert "rows" in presence
+    assert len(presence["rows"]) == 5

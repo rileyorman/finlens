@@ -472,6 +472,7 @@ def _figure_presence(financial_data: dict, source_text: str) -> dict:
     """Share of extracted statement values that literally appear in the text."""
     checked = 0
     found = 0
+    rows: list[dict] = []
     for section in ("income_statement", "balance_sheet", "cash_flow_statement"):
         for row in financial_data.get(section, []) or []:
             value = row.get("value")
@@ -482,10 +483,16 @@ def _figure_presence(financial_data: dict, source_text: str) -> dict:
             except (TypeError, ValueError):
                 continue
             checked += 1
-            if _number_in_text(number, source_text):
+            row_found = _number_in_text(number, source_text)
+            if row_found:
                 found += 1
+            rows.append({
+                "section": section,
+                "line_item": row.get("line_item", ""),
+                "found": row_found,
+            })
     ratio = (found / checked) if checked else None
-    return {"checked": checked, "found": found, "ratio": ratio}
+    return {"checked": checked, "found": found, "ratio": ratio, "rows": rows}
 
 
 def _check_figure_presence(financial_data: dict, source_text: str, model: str) -> dict:
@@ -502,6 +509,13 @@ def _check_figure_presence(financial_data: dict, source_text: str, model: str) -
     try:
         # Lazy import: the integrity package must never depend on this module.
         from modules.integrity.log import append_figure_presence_to_log
+        missing_all = [
+            r["section"] + ":" + r["line_item"]
+            for r in presence["rows"]
+            if not r["found"]
+        ]
+        missing_count = len(missing_all)
+        missing_rows = missing_all[:20]
         append_figure_presence_to_log(
             company=str(financial_data.get("company_name") or "Unknown"),
             model=model,
@@ -510,6 +524,8 @@ def _check_figure_presence(financial_data: dict, source_text: str, model: str) -
             ratio=presence["ratio"],
             verdict=presence["verdict"],
             source_chars=len(source_text),
+            missing_rows=missing_rows,
+            missing_count=missing_count,
         )
     except Exception:
         logging.getLogger(__name__).exception("figure-presence log append failed")
