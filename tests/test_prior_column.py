@@ -422,6 +422,95 @@ def test_disposition_round_trip(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# 10. Degenerate prior year guard (fiscal_year_prior == fiscal_year)
+# ---------------------------------------------------------------------------
+
+def test_unchecked_degenerate_prior_year(tmp_path):
+    """When fiscal_year_prior == fiscal_year, return UNCHECKED/degenerate_prior_year."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    # Payload where both fiscal years are identical (bad stored data).
+    payload = _make_payload(
+        ticker="MSFT",
+        fiscal_year="FY2010",
+        fiscal_year_prior="FY2010",  # degenerate: same as current year
+        income=[_row("Revenues", 62_484_000_000, 62_484_000_000)],
+    )
+
+    record = check_prior_column(payload, analysis_dir=analysis_dir, log_path=log_path)
+
+    assert record["state"] == "UNCHECKED"
+    assert record["reason"] == "degenerate_prior_year"
+
+
+# ---------------------------------------------------------------------------
+# 11. Self-exclusion via source_basename
+# ---------------------------------------------------------------------------
+
+def test_self_exclusion_via_source_basename(tmp_path):
+    """A filing must not match itself even if fiscal_year values happen to allow it."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    # Write the filing to disk so it appears as a candidate.
+    payload = _make_payload(
+        ticker="PLD",
+        fiscal_year="FY2025",
+        fiscal_year_prior="FY2025",  # degenerate AND in the analysis dir
+        income=[_row("Revenues", 5_000_000_000)],
+    )
+    basename = "PLD_FY2025.json"
+    _write_payload(analysis_dir, basename, payload)
+
+    record = check_prior_column(
+        payload,
+        analysis_dir=analysis_dir,
+        log_path=log_path,
+        source_basename=basename,
+    )
+
+    # Degenerate year guard fires before the lookup, so reason is degenerate_prior_year.
+    # (If somehow the degenerate guard were absent, self-exclusion prevents self-match.)
+    assert record["state"] == "UNCHECKED"
+    # Either guard is acceptable; the important invariant is no FLAGGED self-comparison.
+    assert record["reason"] in ("degenerate_prior_year", "no_prior_filing")
+
+
+# ---------------------------------------------------------------------------
+# 12. All fields FIELD_MISSING -> UNCHECKED with reason no_comparable_fields
+# ---------------------------------------------------------------------------
+
+def test_unchecked_no_comparable_fields(tmp_path):
+    """When both filings exist but share no resolvable v1 fields, state is UNCHECKED
+    with reason 'no_comparable_fields' (not missing or unknown)."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    # Prior filing: has only an unrecognised line item.
+    n1 = _make_payload(
+        ticker="NOFLD",
+        fiscal_year="FY2023",
+        fiscal_year_prior="FY2022",
+        income=[_row("Some Other Metric", 999_000)],
+    )
+    _write_payload(analysis_dir, "NOFLD_FY2023.json", n1)
+
+    # Current filing: also only unrecognised line items, and no value_prior for v1 fields.
+    n = _make_payload(
+        ticker="NOFLD",
+        fiscal_year="FY2024",
+        fiscal_year_prior="FY2023",
+        income=[_row("Some Other Metric", 1_100_000, 999_000)],
+    )
+
+    record = check_prior_column(n, analysis_dir=analysis_dir, log_path=log_path)
+
+    assert record["state"] == "UNCHECKED"
+    assert record.get("reason") == "no_comparable_fields"
+
+
+# ---------------------------------------------------------------------------
 # 9. Fabrication regression -- synthetic NVDA-incident pair
 # ---------------------------------------------------------------------------
 

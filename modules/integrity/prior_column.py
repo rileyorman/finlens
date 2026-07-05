@@ -190,12 +190,19 @@ def _find_prior_filing(
     ticker: str,
     fiscal_year_prior: str,
     analysis_dir: Path,
+    exclude_basename: str | None = None,
 ) -> tuple[dict | None, str | None]:
     """Scan analysis_dir for a payload whose ticker matches and
     financial_data.fiscal_year == fiscal_year_prior.
 
     When multiple candidates match, prefers the most recent timestamp
     (later-corrected extractions win).
+
+    Parameters
+    ----------
+    exclude_basename  Basename of the current payload's own file.  Prevents
+                      a filing from matching itself as its own prior even
+                      when stored fiscal_year values are degenerate.
 
     Returns (payload_dict, basename) or (None, None).
     Corrupt/unreadable files are skipped; they do not count as candidates.
@@ -207,6 +214,9 @@ def _find_prior_filing(
     candidates: list[tuple[str, dict, str]] = []
 
     for path in analysis_dir.glob("*.json"):
+        # Never let a filing be its own prior.
+        if exclude_basename and path.name == exclude_basename:
+            continue
         try:
             with open(path, encoding="utf-8") as fh:
                 candidate = json.load(fh)
@@ -312,18 +322,23 @@ def check_prior_column(
     payload: dict,
     analysis_dir: Path | str | None = None,
     log_path: Path | str | None = None,
+    source_basename: str | None = None,
 ) -> dict:
     """Run the prior-column continuity check for one analysis-cache payload.
 
     Parameters
     ----------
-    payload       Loaded analysis-cache JSON dict (shape written to
-                  ~/.finlens/analysis/ by modules/analysis_cache.py).
-    analysis_dir  Directory scanned for the prior filing.  None uses the
-                  production ANALYSIS_CACHE_DIR from config.  Pass a
-                  tmp_path in tests.
-    log_path      Integrity log path.  None uses the production default.
-                  Pass a tmp_path for tests to avoid writing real logs.
+    payload          Loaded analysis-cache JSON dict (shape written to
+                     ~/.finlens/analysis/ by modules/analysis_cache.py).
+    analysis_dir     Directory scanned for the prior filing.  None uses the
+                     production ANALYSIS_CACHE_DIR from config.  Pass a
+                     tmp_path in tests.
+    log_path         Integrity log path.  None uses the production default.
+                     Pass a tmp_path for tests to avoid writing real logs.
+    source_basename  Basename of the file this payload was loaded from.
+                     Passed to _find_prior_filing to prevent a filing from
+                     being matched as its own prior.  Optional; callers that
+                     do not know the filename may omit it.
 
     Returns
     -------
@@ -379,9 +394,24 @@ def check_prior_column(
         _safe_append(record, log_path, append_prior_column_to_log)
         return record
 
+    # --- Guard: degenerate stored data where both years are the same ---
+    # A filing cannot be its own prior; comparing it to itself yields
+    # spurious MATCH results that mask real divergences.
+    if fiscal_year_prior == fiscal_year:
+        record = _unchecked_record(
+            timestamp=timestamp,
+            ticker=ticker,
+            fiscal_year=fiscal_year,
+            prior_fiscal_year=fiscal_year_prior,
+            reason="degenerate_prior_year",
+        )
+        _safe_append(record, log_path, append_prior_column_to_log)
+        return record
+
     # --- Locate prior filing ---
     prior_payload, prior_basename = _find_prior_filing(
-        ticker, fiscal_year_prior, analysis_dir
+        ticker, fiscal_year_prior, analysis_dir,
+        exclude_basename=source_basename,
     )
 
     if prior_payload is None:
@@ -454,6 +484,13 @@ def check_prior_column(
 
     state = _filing_state(field_records)
 
+    # When all fields are FIELD_MISSING the state machine returns UNCHECKED
+    # but the record has no 'reason' key.  Add one so the reader can bucket
+    # it correctly instead of falling through to 'unknown'.
+    field_reason: str | None = (
+        "no_comparable_fields" if state == "UNCHECKED" else None
+    )
+
     record = {
         "record_type": RECORD_TYPE,
         "checker_version": CHECKER_VERSION,
@@ -469,6 +506,8 @@ def check_prior_column(
         "state": state,
         "fields": field_records,
     }
+    if field_reason:
+        record["reason"] = field_reason
 
     _safe_append(record, log_path, append_prior_column_to_log)
     return record
@@ -511,7 +550,7 @@ def _unchecked_record(
 
 
 def _safe_append(record: dict, log_path: Path, append_fn) -> None:
-    """Append a log record, swallowing any error silently."""
+    """Append a log record; on failure, log the exception and return."""
     try:
         append_fn(record, log_path=log_path)
     except Exception:

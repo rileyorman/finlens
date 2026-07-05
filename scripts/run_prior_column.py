@@ -135,6 +135,7 @@ def main() -> None:
             payload,
             analysis_dir=analysis_dir,
             log_path=effective_log,
+            source_basename=filename,
         )
 
         state = record.get("state", "UNCHECKED")
