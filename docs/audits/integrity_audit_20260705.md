@@ -151,3 +151,34 @@ No drift detectable (nothing to drift from). Action: decide the durable Part 5 b
 - (d) Cross-profile hits, triaged: REI.UN "Operating income" matches a DEFAULT alias yet stays unmapped — VERIFIED DELIBERATE (the documented blended-NOI decision; CLAUDE.md says RioCan's printed subtotal is preserved in unmapped[] by design). RY "Insurance service result" matches an insurance_sector alias — correct routing (RY is financial_sector); by design. **NFG "Interest expense" matches a DEFAULT canonical alias yet is unmapped — small genuine anomaly** (defaults are supposed to always run); investigate when next touching the mapper — same family as the RY interest_expense sub-label item.
 
 **Step 8 — Opus strategic review:** prepared, Riley's action (new claude.ai chat per docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md, attach this report as the CC report card).
+
+---
+
+# ADDENDUM (same day, post-audit) — NVDA FY2026 June-4 copy: HUMAN VERIFICATION + CAPEX ADJUDICATION
+
+Riley hand-transcribed from the as-filed FY2026 10-K (transcription-first protocol; clean-room caveat: headline values had been named in-session beforehand, so this stamp is corroborative rather than blind).
+
+**VERIFIED — tie exactly to the filing (both years, $M):**
+
+| Line | Filed FY2026 / FY2025 | Stored (June-4 cache) | Verdict |
+|---|---|---|---|
+| Revenue | 215,938 / 130,497 | 215,938M / 130,497M | TIE |
+| Operating expenses | 23,076 / 16,405 | 23,076M / 16,405M | TIE |
+| Operating income | 130,387 / 81,453 | 130,387M / 81,453M | TIE |
+| Net income | 120,067 / 72,880 | 120,067M / 72,880M | TIE |
+| Total assets | 206,803 / 111,601 | 206,803M / 111,601M | TIE |
+| Operating cash flow | 102,718 / 64,089 | 102,718M / 64,089M | TIE |
+
+Gross margin (71.1%) ties the computed stored ratio; assets ≡ liabilities + equity holds in-cache to the dollar. The filed prior column (130,497 = FY2025) also SOURCE-CONFIRMS the fabrication evidence chain: the quarantined re-analyse extraction had presented exactly that value as FY2026.
+
+**ADJUDICATED WRONG — capex (closes the handoff's "capex 138.7M looks implausible" open item):**
+
+- Filed (MD&A liquidity disclosure): capital expenditures **$6.1B FY2026 / $3.4B FY2025**.
+- Stored: "Capital Expenditures" **138,735,000 (138.7M) / 97,890,000 (97.9M)**.
+- Off by ~44x / ~35x with INCONSISTENT factors — this is NOT a unit-scaling error (would be a uniform 1000x). The extractor pulled a different line or fabricated the value, inside a cash-flow statement it otherwise extracted perfectly (OCF, net investing, net financing all tie). Line-specific error under a verified spine.
+- Note: filed values are MD&A-rounded; the exact statement line was not transcribed. Irrelevant at 44x divergence.
+
+**Consequences:**
+1. The June-4 copy is now HUMAN-VERIFIED on the income-statement spine, total assets, and OCF — and KNOWN-WRONG on capex. Any consumer deriving FCF (OCF − capex), DCF inputs, or capex-based red flags from this cache overstates FCF by ~$6B. The cache is NOT hand-edited (no silent data surgery); the fix path is the queued NVDA re-analyse after fabrication fix (b) lands (NVDA is already in the em-dash re-analyse batch). Until then this is a documented confident-wrong-number in a dev-local cache — no external exposure.
+2. GUARD-CLASS GAP made concrete: the aggregate figure-presence guard (>=20% presence threshold) would NOT catch a single wrong line among ~74 correct ones. Two queued designs would: the PRIOR-COLUMN CONTINUITY RULE (see handoff queue) and a per-figure extension of the presence check (annotate each row found/not-found in source rather than only the aggregate ratio). Fold the per-figure idea into the continuity-rule design session.
+3. Priority-list update: action item #2's adjudication direction is reinforced (the log's layered signals outperformed the narration), and the PLD +290.2% triage (#1) now has a confirmed sibling error-class: single-line extraction errors in EDGAR-era caches.
