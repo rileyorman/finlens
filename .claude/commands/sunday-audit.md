@@ -36,6 +36,8 @@ A. **CLAUDE.md → CODEX_MEMORY.md drift.** Diff the engineering conventions sec
 
 B. **Session memory files.** Check `C:\Users\riley\.claude\projects\C--Users-riley-OneDrive-Documents-Python-Project-finlens\memory\` for stale or contradicted entries. Update or flag any that conflict with current `CLAUDE.md` or working-tree state.
 
+C. **[ADDITION 2026-07-05] CLAUDE.md → STERLING_BRIEF.md drift.** `STERLING_BRIEF.md` (repo root) is a derived digest maintained for Sterling's token economy; its SYNC MANIFEST section lists which CLAUDE.md headings each brief item digests. Diff each listed heading against its brief item: any listed CLAUDE.md heading changed since the brief's "Last synced" stamp requires the matching brief item re-synced and a new stamp (date + dev commit hash) in the same audit session. A stale stamp with changed headings is a FLAG. `STERLING_BRIEF.md` is downstream of `CLAUDE.md`; the reverse is never true.
+
 Report: list of synced items, or "No drift found."
 
 ---
