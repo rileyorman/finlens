@@ -113,8 +113,37 @@ Given a fetched ingest/ branch:
 
 ## Pilot = acceptance test (the only pre-gate run authorized)
 
-- Scope: 2–3 filers from ONE vertical Riley picks (recommend REIT or
-  resource — deepest adjudication casebook).
+- VERTICAL RATIFIED by Riley 2026-07-05: RESOURCES, five sub-shapes, one
+  COLD filer each (amendment: pilot widened from 2–3 to 5 filers because
+  each sub-shape serves a queued verification need — labeled amendment,
+  Riley's decision):
+  1. O&G E&P — recommend a GAS-WEIGHTED filer (e.g. Tourmaline TOU or ARC
+     ARX) DELIBERATELY: exercises the queued GAS-WEIGHTED AMBIGUITY POLICY
+     item (an "Oil & Gas"-described gas filer confidently resolving to
+     crude/WTI is a known latent issue — the pilot should surface it as a
+     judgment question, on purpose).
+  2. Integrated O&G — e.g. Imperial Oil (IMO). Suncor-shape n=2 evidence.
+  3. PIPELINE/MIDSTREAM — NEW structural shape, no sector profile exists
+     (recommend Pembina PPL over Enbridge — ENB stacks complexity the way
+     SEA does for explorers). EXPECTED to route to no/default profile and
+     degrade honestly — that is the point: it generates the judgment
+     questions the pilot exists to produce. No profile gets minted from
+     n=1 (flag-only, per the standing discipline).
+  4. Mining PRODUCER — e.g. Kinross or Lundin. NOTE: the queue says the
+     next cold mining filer is a MANDATORY validation event before the
+     mining sub-shape is claimed (TECK.B coverage deferred on exactly
+     this). The pilot filer IS that event's evidence — record it as such.
+  5. Mining EXPLORER — the queued "boring small TSXV junior" (n=2 for
+     mining_exploration_sector; NOT SEA, per the queue): pure exploration,
+     minimal investment book, no acquisition/held-for-distribution
+     wrinkles. Sterling shortlists 2–3 candidates against those criteria
+     during sourcing; Riley picks.
+- Adjacent resource shapes DELIBERATELY EXCLUDED from the pilot (note for
+  later, do not creep): royalty/streaming companies (FNV/WPM — a genuinely
+  different shape), drillers/oilfield services.
+- Pilot candidates are pilot artifacts, NOT cold-load gate slots — the
+  dry-run gate keeps its own separate hand-verification protocol. If a
+  pilot filer later serves a gate slot, it re-runs under that protocol.
 - Sterling produces bundles; CC runs the review side end-to-end; at least
   one candidate should surface a real judgment question (if none do, probe
   why — silence is suspicious at this corpus size).
