@@ -843,6 +843,130 @@ def _section_cross_extractor(
 
 
 # ---------------------------------------------------------------------------
+# Prior-column continuity section
+# ---------------------------------------------------------------------------
+
+def _pc_disposition_key(record: dict, field: dict) -> tuple[str, str, str, str]:
+    """Build the triage key for a prior_column_disposition lookup."""
+    return (
+        str(record.get("ticker") or ""),
+        str(record.get("fiscal_year") or ""),
+        str(field.get("canonical_field") or ""),
+        str(record.get("checker_version") or "1"),
+    )
+
+
+def _pc_latest_dispositions(
+    dispositions: list[dict],
+) -> dict[tuple[str, str, str, str], dict]:
+    """Return the most recent disposition per (ticker, fiscal_year, field, version)."""
+    latest: dict[tuple[str, str, str, str], dict] = {}
+    for disp in dispositions:
+        key = (
+            str(disp.get("ticker") or ""),
+            str(disp.get("fiscal_year") or ""),
+            str(disp.get("canonical_field") or ""),
+            str(disp.get("checker_version") or "1"),
+        )
+        if not all(key):
+            continue
+        current = latest.get(key)
+        if current is None or str(disp.get("timestamp") or "") > str(
+            current.get("timestamp") or ""
+        ):
+            latest[key] = disp
+    return latest
+
+
+def _pc_disposition_text(disposition: dict | None) -> str:
+    if not disposition:
+        return "OPEN"
+    disp_val = disposition.get("disposition", "?")
+    rationale = _cx_clip(disposition.get("rationale"), 60)
+    return f"DISPOSITIONED {disp_val} - {rationale}"
+
+
+def _section_prior_column(
+    records: list[dict],
+    dispositions: list[dict],
+) -> str:
+    """Render the prior-column continuity section of the integrity report."""
+    if not records:
+        return (
+            "  No prior-column continuity runs recorded yet.\n"
+            "  Run scripts/run_prior_column.py to populate."
+        )
+
+    latest_dispositions = _pc_latest_dispositions(dispositions)
+
+    # --- State counts ---
+    state_counts: dict[str, int] = defaultdict(int)
+    for rec in records:
+        state_counts[rec.get("state", "UNKNOWN")] += 1
+    total = len(records)
+
+    lines: list[str] = []
+    lines.append(f"  {total} run(s) recorded (all appended; not deduplicated).")
+    lines.append("")
+    lines.append("  By state:")
+    for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
+        cnt = state_counts.get(state, 0)
+        lines.append(
+            f"    {state:<10}  :  {cnt:3d}  ({_pct(cnt, total)})  {_bar(cnt, total)}"
+        )
+
+    # --- Unchecked reasons ---
+    unchecked_reasons: dict[str, int] = defaultdict(int)
+    for rec in records:
+        if rec.get("state") == "UNCHECKED":
+            unchecked_reasons[rec.get("reason") or "unknown"] += 1
+    if unchecked_reasons:
+        reason_text = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(unchecked_reasons.items())
+        )
+        lines += ["", f"  Unchecked reasons: {reason_text}"]
+
+    # --- CONFLICT detail lines ---
+    conflict_pairs = [
+        (rec, field)
+        for rec in records
+        if rec.get("state") == "FLAGGED"
+        for field in rec.get("fields", [])
+        if field.get("status") == "CONFLICT"
+    ]
+
+    if conflict_pairs:
+        lines += [
+            "",
+            "  CONFLICT detail:",
+            f"  {'ticker':<6}  {'year':<8}  {'field':<22}  "
+            f"{'prior_n':>16}  {'prior_filing':>16}  {'diff%':>7}  triage",
+            f"  {'-'*6}  {'-'*8}  {'-'*22}  "
+            f"{'-'*16}  {'-'*16}  {'-'*7}  {'-'*48}",
+        ]
+        for rec, field in conflict_pairs:
+            disp_key = _pc_disposition_key(rec, field)
+            disposition = latest_dispositions.get(disp_key)
+            val_n = field.get("value_prior_n")
+            val_p = field.get("value_prior_filing")
+            pct = field.get("pct_diff")
+            val_n_str = _fmt_bn(float(val_n)) if val_n is not None else "n/a"
+            val_p_str = _fmt_bn(float(val_p)) if val_p is not None else "n/a"
+            pct_str = f"{pct:.2f}%" if pct is not None else "n/a"
+            lines.append(
+                f"  {rec.get('ticker', '?'):<6}  "
+                f"{str(rec.get('fiscal_year', '?')):<8}  "
+                f"{field.get('canonical_field', '?'):<22}  "
+                f"{val_n_str:>16}  {val_p_str:>16}  {pct_str:>7}  "
+                f"{_pc_disposition_text(disposition)}"
+            )
+    else:
+        lines += ["", "  [!] Flagged filings: (none)"]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -874,6 +998,14 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     cx_disposition_records = [
         r for r in all_records
         if r.get("record_type") == "cross_extractor_disposition"
+    ]
+    pc_records = [
+        r for r in all_records
+        if r.get("record_type") == "prior_column_continuity"
+    ]
+    pc_disposition_records = [
+        r for r in all_records
+        if r.get("record_type") == "prior_column_disposition"
     ]
 
     n = len(integrity_records)
@@ -946,6 +1078,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
             diagnostics.unparseable_lines,
         )
     )
+
+    # 7. Prior-column continuity
+    out += [THIN, "  7. PRIOR-COLUMN CONTINUITY", THIN, ""]
+    out.append(_section_prior_column(pc_records, pc_disposition_records))
 
     # Footer
     out += ["", SEP, "  END OF REPORT", SEP]

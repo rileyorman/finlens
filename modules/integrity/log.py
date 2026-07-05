@@ -440,6 +440,102 @@ def append_cross_extractor_disposition_to_log(
     return path
 
 
+# ---------------------------------------------------------------------------
+# Prior-column continuity helpers
+# ---------------------------------------------------------------------------
+
+PRIOR_COLUMN_DISPOSITION_VALUES = {
+    "restatement",
+    "extraction_error",
+    "checker_error",
+    "other",
+}
+
+
+def append_prior_column_to_log(
+    record: dict,
+    log_path: Path | str | None = None,
+) -> Path:
+    """
+    Append a prior_column_continuity record to the integrity log.
+
+    Not idempotent by design: each checker run is a distinct event that
+    documents the state of the analysis dir at that point in time.
+    Appends even when the state is UNCHECKED so the runner produces a
+    complete audit trail.
+
+    Returns the path the record was written to.
+    """
+    path = Path(log_path) if log_path else _DEFAULT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+    return path
+
+
+def append_prior_column_disposition_to_log(
+    *,
+    ticker: str,
+    fiscal_year: str,
+    canonical_field: str,
+    checker_version: str,
+    disposition: str,
+    rationale: str,
+    author: str = "riley",
+    timestamp: str | None = None,
+    log_path: Path | str | None = None,
+) -> Path:
+    """
+    Append a human triage disposition for a prior-column continuity CONFLICT.
+
+    Keyed by (ticker, fiscal_year, canonical_field, checker_version).
+    Dispositions are append-only; readers use the latest timestamp.
+    """
+    path = Path(log_path) if log_path else _DEFAULT_LOG
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    required = {
+        "ticker":           str(ticker or "").strip(),
+        "fiscal_year":      str(fiscal_year or "").strip(),
+        "canonical_field":  str(canonical_field or "").strip(),
+        "checker_version":  str(checker_version or "").strip(),
+        "rationale":        str(rationale or "").strip(),
+        "author":           str(author or "").strip(),
+    }
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ValueError(
+            f"Missing required prior_column disposition field(s): {', '.join(missing)}"
+        )
+    disp_value = str(disposition or "").strip()
+    if disp_value not in PRIOR_COLUMN_DISPOSITION_VALUES:
+        allowed = ", ".join(sorted(PRIOR_COLUMN_DISPOSITION_VALUES))
+        raise ValueError(
+            f"Invalid prior_column disposition {disp_value!r}; expected one of: {allowed}"
+        )
+
+    record = {
+        "record_type":      "prior_column_disposition",
+        "ticker":           required["ticker"],
+        "fiscal_year":      required["fiscal_year"],
+        "canonical_field":  required["canonical_field"],
+        "checker_version":  required["checker_version"],
+        "disposition":      disp_value,
+        "rationale":        required["rationale"],
+        "timestamp":        timestamp or datetime.now(timezone.utc).isoformat(),
+        "author":           required["author"],
+    }
+
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+    return path
+
+
 def read_log(
     log_path: Path | str | None = None,
     ticker: str | None = None,
