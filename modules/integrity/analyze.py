@@ -103,6 +103,10 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
     """Aggregate check outcomes for one rule across all records."""
     ran = passed = failed = skipped_sector = skipped_field = skipped_other = 0
     values: list[float] = []
+    # Track observed values split by outcome so the distribution section can
+    # distinguish a breach that was correctly flagged from one that was missed.
+    passed_values: list[float] = []
+    failed_values: list[float] = []
     thresholds: dict = {}
 
     for rec in records:
@@ -119,13 +123,19 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
                     skipped_other += 1
             else:
                 ran += 1
-                if c.get("passed"):
+                check_passed = bool(c.get("passed"))
+                if check_passed:
                     passed += 1
                 else:
                     failed += 1
                 v = c.get("observed_value")
                 if v is not None:
-                    values.append(float(v))
+                    fv = float(v)
+                    values.append(fv)
+                    if check_passed:
+                        passed_values.append(fv)
+                    else:
+                        failed_values.append(fv)
                 if not thresholds and c.get("threshold"):
                     thresholds = c["threshold"]
 
@@ -135,6 +145,8 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
         "skipped_field":  skipped_field,
         "skipped_other":  skipped_other,
         "values": values,
+        "passed_values": passed_values,
+        "failed_values": failed_values,
         "thresholds": thresholds,
     }
 
@@ -305,6 +317,8 @@ def _section_distributions(records: list[dict]) -> str:
     for rid in DISTRIBUTION_RULES:
         st = _rule_stats(rid, records)
         values = st["values"]
+        passed_values = st["passed_values"]
+        failed_values = st["failed_values"]
         thresholds = st["thresholds"]
 
         is_growth = "growth" in rid
@@ -340,30 +354,54 @@ def _section_distributions(records: list[dict]) -> str:
         if parts:
             lines.append(f"    threshold: {', '.join(parts)}")
 
-        # Headroom commentary
+        # Ceiling commentary: partition breaching observations by outcome.
+        # A breach from a FAILED check means the rule caught it (working as intended).
+        # A breach from a PASSED check means the engine missed it (rule bug).
         if thresh_max is not None:
-            headroom = thresh_max - max_v
-            if headroom < 0:
+            breach_failed = [v for v in failed_values if v > thresh_max]
+            breach_passed = [v for v in passed_values if v > thresh_max]
+            if breach_passed:
+                # Check passed despite exceeding the ceiling -- real engine bug.
+                for v in breach_passed:
+                    lines.append(
+                        f"    [!] {fmt(v)} exceeds ceiling {fmt(thresh_max)}"
+                        f" but its check PASSED -- rule bug"
+                    )
+            if breach_failed:
+                # Breach was correctly caught; check failed as expected.
                 lines.append(
-                    f"    [!] Max observation {fmt(max_v)} EXCEEDS ceiling {fmt(thresh_max)} "
-                    f"-- this should have flagged"
+                    f"    {len(breach_failed)} observation(s) beyond ceiling"
+                    f" -- all flagged (rule working)"
                 )
-            else:
+            if not breach_passed and not breach_failed:
+                headroom = thresh_max - max_v
                 lines.append(
-                    f"    Headroom to ceiling : {fmt(headroom)} "
-                    f"(closest obs {fmt(max_v)})"
+                    f"    Headroom to ceiling : {fmt(headroom)}"
+                    f" (closest obs {fmt(max_v)})"
                 )
+
+        # Floor commentary: same logic applied to the lower bound.
         if thresh_min is not None:
-            headroom_floor = min_v - thresh_min
-            if headroom_floor < 0:
+            breach_failed = [v for v in failed_values if v < thresh_min]
+            breach_passed = [v for v in passed_values if v < thresh_min]
+            if breach_passed:
+                # Check passed despite falling below the floor -- real engine bug.
+                for v in breach_passed:
+                    lines.append(
+                        f"    [!] {fmt(v)} is below floor {fmt(thresh_min)}"
+                        f" but its check PASSED -- rule bug"
+                    )
+            if breach_failed:
+                # Breach was correctly caught; check failed as expected.
                 lines.append(
-                    f"    [!] Min observation {fmt(min_v)} BELOW floor {fmt(thresh_min)} "
-                    f"-- this should have flagged"
+                    f"    {len(breach_failed)} observation(s) below floor"
+                    f" -- all flagged (rule working)"
                 )
-            else:
+            if not breach_passed and not breach_failed:
+                headroom_floor = min_v - thresh_min
                 lines.append(
-                    f"    Headroom above floor: {fmt(headroom_floor)} "
-                    f"(closest obs {fmt(min_v)})"
+                    f"    Headroom above floor: {fmt(headroom_floor)}"
+                    f" (closest obs {fmt(min_v)})"
                 )
         lines.append("")
 
