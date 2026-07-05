@@ -323,6 +323,7 @@ def check_prior_column(
     analysis_dir: Path | str | None = None,
     log_path: Path | str | None = None,
     source_basename: str | None = None,
+    write_log: bool = True,
 ) -> dict:
     """Run the prior-column continuity check for one analysis-cache payload.
 
@@ -339,6 +340,10 @@ def check_prior_column(
                      Passed to _find_prior_filing to prevent a filing from
                      being matched as its own prior.  Optional; callers that
                      do not know the filename may omit it.
+    write_log        When False, the integrity log is never written regardless
+                     of log_path.  The runner passes False on --dry-run.
+                     Do NOT rely on log_path=None to suppress writes -- that
+                     sentinel means 'use the production default'.
 
     Returns
     -------
@@ -374,7 +379,7 @@ def check_prior_column(
             fiscal_year=None,
             reason="no_financial_data",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     ticker = _parse_ticker(payload)
@@ -391,7 +396,7 @@ def check_prior_column(
             fiscal_year=fiscal_year,
             reason="no_prior_fiscal_year",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     # --- Guard: degenerate stored data where both years are the same ---
@@ -405,7 +410,7 @@ def check_prior_column(
             prior_fiscal_year=fiscal_year_prior,
             reason="degenerate_prior_year",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     # --- Locate prior filing ---
@@ -422,7 +427,7 @@ def check_prior_column(
             prior_fiscal_year=fiscal_year_prior,
             reason="no_prior_filing",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     # --- Prior filing must have a readable financial_data dict (fail-closed) ---
@@ -436,7 +441,7 @@ def check_prior_column(
             prior_source_file=prior_basename,
             reason="reader_error",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     # --- Currency gate (mirrors cross_validate v2: no FX conversion, ever) ---
@@ -456,7 +461,7 @@ def check_prior_column(
             currency_prior=currency_prior,
             reason="currency_unknown",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     if currency_n != currency_prior:
@@ -472,7 +477,7 @@ def check_prior_column(
             currency_prior=currency_prior,
             reason="currency_mismatch",
         )
-        _safe_append(record, log_path, append_prior_column_to_log)
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
         return record
 
     # --- Field comparisons ---
@@ -509,7 +514,7 @@ def check_prior_column(
     if field_reason:
         record["reason"] = field_reason
 
-    _safe_append(record, log_path, append_prior_column_to_log)
+    _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
     return record
 
 
@@ -549,8 +554,21 @@ def _unchecked_record(
     }
 
 
-def _safe_append(record: dict, log_path: Path, append_fn) -> None:
-    """Append a log record; on failure, log the exception and return."""
+def _safe_append(
+    record: dict,
+    log_path: Path,
+    append_fn,
+    *,
+    write_log: bool = True,
+) -> None:
+    """Append a log record when write_log is True; on failure, log the exception and return.
+
+    Callers must pass write_log explicitly when operating in dry-run mode.
+    Do NOT use log_path=None as a dry-run sentinel -- None means 'use the
+    production default path', not 'suppress the write'.
+    """
+    if not write_log:
+        return
     try:
         append_fn(record, log_path=log_path)
     except Exception:

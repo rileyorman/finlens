@@ -422,6 +422,58 @@ def test_disposition_round_trip(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Dry-run / write_log contract tests
+# ---------------------------------------------------------------------------
+
+def test_dry_run_does_not_write_log(tmp_path):
+    """write_log=False must never touch the log file, even with a real log_path."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    n = _make_payload(
+        ticker="DRY",
+        fiscal_year="FY2025",
+        fiscal_year_prior="FY2024",
+        income=[_row("Revenues", 500_000, 400_000)],
+    )
+
+    check_prior_column(
+        n,
+        analysis_dir=analysis_dir,
+        log_path=log_path,
+        write_log=False,
+    )
+
+    # The log file must not have been created at all.
+    assert not log_path.exists(), "dry-run wrote to the integrity log"
+
+
+def test_write_log_true_writes_log(tmp_path):
+    """write_log=True (the default) must append a record to the log."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    n = _make_payload(
+        ticker="WRT",
+        fiscal_year="FY2025",
+        fiscal_year_prior="FY2024",
+        income=[_row("Revenues", 500_000, 400_000)],
+    )
+
+    check_prior_column(
+        n,
+        analysis_dir=analysis_dir,
+        log_path=log_path,
+        write_log=True,
+    )
+
+    assert log_path.exists(), "write_log=True but log file was not created"
+    lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["record_type"] == RECORD_TYPE
+
+
+# ---------------------------------------------------------------------------
 # 10. Degenerate prior year guard (fiscal_year_prior == fiscal_year)
 # ---------------------------------------------------------------------------
 

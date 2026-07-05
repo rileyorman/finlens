@@ -130,12 +130,12 @@ def main() -> None:
 
     for filename, payload in payloads:
         # Pass None for log_path in dry-run so check_prior_column won't write.
-        effective_log = None if args.dry_run else log_path
         record = check_prior_column(
             payload,
             analysis_dir=analysis_dir,
-            log_path=effective_log,
+            log_path=log_path,
             source_basename=filename,
+            write_log=not args.dry_run,
         )
 
         state = record.get("state", "UNCHECKED")
