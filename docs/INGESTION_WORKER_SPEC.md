@@ -168,3 +168,118 @@ zero network in tests — fetch functions mocked), plus a WORKER_RUNBOOK
 section appended to this doc describing exact invocation. Standard report:
 files, test summary, ruff, 3–5 sentences. CC reviews, runs the pilot
 jointly with Riley, commits.
+
+---
+
+## WORKER_RUNBOOK
+
+### Prerequisites
+
+- `FINLENS_INGEST_API_KEY` set in your shell to Sterling's spend-capped Anthropic key.
+- Python venv activated: `source venv/bin/activate` (Mac mini workspace).
+- Repo on `dev` (or feature branch); never run the worker while on an `ingest/` branch.
+
+### Step 1 — Identify the filing
+
+Find the issuer's investor-relations PDF URL (annual report or 20-F/10-K).
+SEDAR+ interactive pages: do **not** automate. If the only source is SEDAR+ gated,
+flag to Riley for manual browser download; place the PDF in `scratch/<TICKER>_<FY>/`
+and skip the fetch step (use `--url file:///path/to/filing.pdf` — not yet wired;
+file-URI support is v2).
+
+Source-type guide:
+| Source type | Use when |
+|-------------|----------|
+| `ir`        | Issuer IR page PDF (most Canadian filers) |
+| `edgar`     | SEC EDGAR direct PDF link (US filers) |
+| `sedar`     | Issuer-hosted SEDAR-mapped PDF (uses sedar_extractor) |
+
+### Step 2 — Run the worker
+
+```bash
+FINLENS_INGEST_API_KEY=sk-ant-... \
+python scripts/ingest_worker.py \
+    --ticker TOU \
+    --fy FY2024 \
+    --url https://tourmaline.ca/site/PDF/annual_report.pdf \
+    --source-type ir \
+    --out-dir candidates \
+    --scratch-dir /tmp/finlens_scratch/TOU_FY2024
+```
+
+**`--scratch-dir`** must be outside `~/.finlens`.  All FinLens cache/log writes
+during extraction land here (isolation via `FINLENS_DATA_DIR`).  Scratch dirs
+are disposable; delete after the bundle is committed.
+
+**Dry-run is not applicable** to the worker itself (there is no `--dry-run` flag —
+extraction costs money by design).  Review `questions.md` before pushing the bundle.
+
+### Step 3 — Inspect the bundle
+
+```
+candidates/<TICKER>_<FY>/
+    extraction.json   -- financial_data or sedar extraction result
+    mapping.json      -- sedar mapper output, or EDGAR note
+    provenance.json   -- URL, sha256, timestamps
+    worker_meta.json  -- model, key label, guard verdict, runtime
+    questions.md      -- OPEN judgment questions (empty if none)
+```
+
+Check `questions.md` carefully before committing.  Any open item must be
+relayed to Riley/CC — do NOT resolve judgment questions autonomously.
+
+### Step 4 — Commit the bundle to an ingest branch
+
+```bash
+git checkout -b ingest/TOU-FY2024
+git add candidates/TOU_FY2024/
+git commit -m "ingest(TOU FY2024): candidate bundle from IR PDF
+
+Source: https://tourmaline.ca/site/PDF/annual_report.pdf
+sha256: <first 16 chars from provenance.json>
+Guard: PASS  Model: claude-haiku-4-5-20251001
+Questions: 1 (sector ambiguity — gas-weighted filer)"
+git push origin ingest/TOU-FY2024
+```
+
+Tag the push in the session handoff for CC review.
+
+### Step 5 — CC review (CC-side)
+
+CC fetches the branch and runs:
+
+```bash
+python scripts/review_candidates.py \
+    --bundle-dir candidates/TOU_FY2024 \
+    [--canonical-extraction /path/to/canonical_extraction.json]
+```
+
+The runner re-fetches the PDF, verifies sha256, compares extractions if
+a canonical is supplied, and outputs a disposition:
+- **PROMOTED** — bundle passes; CC runs canonical guards + cross-extractor,
+  writes moat record, and files as fixture/library candidate.
+- **NEEDS_TRIAGE** — open questions or divergences; Riley resolves,
+  then CC re-runs.
+- **REJECTED** — provenance failed or fatal defect; returned to Sterling
+  with reason.
+
+### Pilot invocation sequence (five resource sub-shapes)
+
+Run one at a time; wait for CC disposition before the next.
+
+| # | Sub-shape | Suggested ticker | Source type | Note |
+|---|-----------|-----------------|-------------|------|
+| 1 | Gas-weighted O&G E&P | TOU or ARX | ir | Intentional sector-ambiguity probe |
+| 2 | Integrated O&G | IMO | ir | Suncor-shape n=2 evidence |
+| 3 | Pipeline/Midstream | PPL | ir | NEW shape; expect no profile → judgment questions |
+| 4 | Mining Producer | K or LUN | ir | Mandatory cold-filer validation for mining_sector |
+| 5 | Mining Explorer | TSXV junior TBD | ir | Shortlist 2–3; Riley picks |
+
+### Known behaviour flags (document as they arise)
+
+- `sedar_extractor._api_key()` reads `ANTHROPIC_API_KEY`; the worker
+  bridges from `FINLENS_INGEST_API_KEY` for the extraction duration and
+  restores the original value afterward.  Flag v2 if a cleaner API-key
+  param path is added to sedar_extractor.
+- All FinLens helpers respect `FINLENS_DATA_DIR` via `config.py`; no
+  hardcoded-path violations detected in v1.
