@@ -1028,6 +1028,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 19429,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_equity": {
+        "value": 26007,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1304,20 +1316,12 @@
         "value": 840
       },
       {
-        "label": "Total liabilities",
-        "value": 19429
-      },
-      {
         "label": "Attributable to shareholders of the company",
         "value": 25096
       },
       {
         "label": "Attributable to non-controlling interests (Note 28)",
         "value": 911
-      },
-      {
-        "label": "Total equity",
-        "value": 26007
       },
       {
         "label": "Total liabilities and equity",
@@ -1492,8 +1496,8 @@
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "mining_sector",
       "total": 119,
-      "mapped_count": 5,
-      "unmapped_count": 114,
+      "mapped_count": 7,
+      "unmapped_count": 112,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

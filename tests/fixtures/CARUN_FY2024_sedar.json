@@ -893,6 +893,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 6548781,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 9027312,
+        "source_label": "Total unitholders' equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1101,10 +1113,6 @@
         "value": 1111244
       },
       {
-        "label": "Total liabilities",
-        "value": 6548781
-      },
-      {
         "label": "Unit capital",
         "value": 4226115
       },
@@ -1117,10 +1125,6 @@
         "value": 9549
       },
       {
-        "label": "Total unitholders' equity",
-        "value": 9027312
-      },
-      {
         "label": "Total liabilities and unitholders' equity",
         "value": 15576093
       }
@@ -1129,8 +1133,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 63,
-      "mapped_count": 6,
-      "unmapped_count": 57,
+      "mapped_count": 8,
+      "unmapped_count": 55,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

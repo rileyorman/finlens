@@ -1067,6 +1067,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 372963,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 25492,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1347,20 +1359,12 @@
         "value": 146458
       },
       {
-        "label": "Total liabilities",
-        "value": 372963
-      },
-      {
         "label": "Issued share capital and contributed surplus",
         "value": 10220
       },
       {
         "label": "Shareholders' retained earnings and accumulated other comprehensive income",
         "value": 14312
-      },
-      {
-        "label": "Total shareholders' equity",
-        "value": 24532
       },
       {
         "label": "Equity in the participating account",
@@ -1371,20 +1375,20 @@
         "value": 264
       },
       {
-        "label": "Total equity",
-        "value": 25492
-      },
-      {
         "label": "Total liabilities and equity",
         "value": 398455
+      },
+      {
+        "label": "Total shareholders' equity",
+        "value": 24532
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "insurance_sector",
       "total": 85,
-      "mapped_count": 7,
-      "unmapped_count": 77,
+      "mapped_count": 9,
+      "unmapped_count": 75,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
@@ -1395,7 +1399,16 @@
       ],
       "gross_profit_derived": false,
       "collisions": [],
-      "resolved_collisions": []
+      "resolved_collisions": [
+        {
+          "canonical_field": "total_equity",
+          "rule": "prefer_primary_alias",
+          "chosen_label": "Total equity",
+          "rejected_labels": [
+            "Total shareholders' equity"
+          ]
+        }
+      ]
     }
   },
   "source_provenance": {

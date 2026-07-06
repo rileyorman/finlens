@@ -434,6 +434,71 @@ disagree, that is a defect: flag it, do not silently fix either side.
   updated REI.UN fixture test pins the derived value, the identity closing
   exactly, and the printed line's presence in unmapped[].
 
+### CB-013: total_equity is the grand total (incl. NCI) via prefer_primary_alias; total_liabilities as printed; identity rule as backstop
+- Status: DECIDED
+- Date: ratified 2026-07-06 (Riley+CC design session, all five rulings as
+  recommended)
+- Decided by: Riley
+- Scope: `total_equity` + `total_liabilities` (new default canonical
+  balance-sheet fields) / all sectors / all 15 corpus filers; new mapper
+  collision strategy `prefer_primary_alias`; new integrity rule
+  `sedar_balance_sheet_identity`
+- Decision: (1) `total_equity` = the filer's printed GRAND-TOTAL equity
+  line, consolidated INCLUDING NCI where presented within equity —
+  operationally, the equity line that closes assets ≡ liabilities + equity.
+  The attributable/NCI-excluding subtotal is deliberately NOT taken when a
+  grand total exists (stays in unmapped[]). (2) `total_liabilities` = the
+  printed "Total liabilities" subtotal as-presented; SHOP (no printed
+  subtotal) stays honestly unmapped, deliberately NOT derived as
+  assets − equity (a derived value would make the identity check pass by
+  construction). (3) Five equity aliases in declared priority order:
+  "total equity" > "total shareholders' equity" > "total unitholders'
+  equity" > "unitholders' equity" > "shareholders' equity total".
+  (4) Collisions resolve via new per-field opt-in `prefer_primary_alias`:
+  earliest-declared alias wins, recorded in meta.resolved_collisions.
+  (5) New deterministic integrity rule `sedar_balance_sheet_identity`
+  (warn): total_assets ≈ total_liabilities + total_equity, tolerance 0.5,
+  honest field_unavailable skip when a component is missing.
+- Reasoning: cross-filer label ambiguity is real and value-bearing — SLF
+  prints "Total shareholders' equity" 24,532 as the NCI-EXCLUDING subtotal
+  beside "Total equity" 25,492, while the SAME label IS the grand total on
+  CNQ/CNR/SHOP/SIG; "Unitholders' equity" is attributable-only on DIR.UN
+  (3,399,261 vs grand 4,731,073) but the grand total on REI.UN. Grand-total
+  (incl. NCI) is consistent with CB-011's consolidated net_income ruling
+  and is the only definition that closes the balance-sheet identity.
+  CB-010's `prefer_specific_alias` (longest label) could NOT be reused — it
+  picks the WRONG line on SLF (the subtotal's label is longer), proving the
+  fields need distinct strategies. CB-010 rejected explicit priority
+  ordering for `cash` as hidden convention; here the order IS the ruling
+  (a printed grand-total line supersedes scoped lines) and is documented,
+  so the objection does not carry. Known residual risk — a future insurer
+  printing ONLY an NCI-excluding subtotal would map the wrong concept —
+  is converted from silent error to flagged conflict by ruling (5): the
+  identity then fails by exactly the excluded amount.
+- Evidence: all 15 fixtures — identity ties EXACTLY on all 14 filers with
+  a printed Total liabilities line (e.g. RY 2,325,006 = 2,185,855 +
+  139,151; SLF 398,455 = 372,963 + 25,492; SIG 50,130,571 = 6,250,396 +
+  43,880,175); prefer_primary_alias fires on exactly SLF and DIR.UN
+  corpus-wide, both resolving to the printed "Total equity"; SHOP's
+  current + long-term subtotals (1,392 + 324 = 1,716) equal
+  assets − equity (15,189 − 13,473), confirming honest absence not
+  extraction failure; live moat-log record 182 (AEM FY2025 replay,
+  sedar_balance_sheet_identity passed, diff 0.0 at raw-dollar scale).
+  mapped_count +2 on 14 fixtures, +1 on SHOP (registry regenerated, all
+  15 rows campaign_validated, stored == resolved).
+- Enforced by: CLAUDE.md "Canonical Field Definitions" (total_equity /
+  total_liabilities entries — the enforcement copy); sedar_aliases.json
+  total_equity `collision_resolution: prefer_primary_alias` + ordered
+  aliases; sedar_mapper.py alias_order index + prefer_primary_alias
+  collision branch; rules.py `sedar_balance_sheet_identity` +
+  engine.py `_check_balance_sheet_identity` (ctx components resolve
+  top-level-then-mapped like total_assets); _CANONICAL_SCALE_FIELDS
+  classification; tests: test_cb013_* (mapper: SLF/DIR.UN resolution,
+  secondary grand-total forms, SHOP honest absence + no derivation,
+  14-fixture identity closure with pinned count) and
+  test_sedar_balance_sheet_identity_* (detection: pass / wrong-concept
+  flag at RY's real NCI 59 / honest skip).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

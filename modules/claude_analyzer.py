@@ -143,6 +143,8 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "revenue",
     "royalties",
     "total_assets",
+    "total_equity",
+    "total_liabilities",
     "total_revenue_bank",
 })
 

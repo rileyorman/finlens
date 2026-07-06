@@ -120,7 +120,7 @@ def test_cnr_fixture_maps_required_income_statement_fields():
     assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
     assert mapped["interest_expense"]["value"] == _source_value(data, "Interest expense")
     assert mapped["net_income"]["value"] == _source_value(data, "Net income")
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 7
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -135,7 +135,7 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     assert mapped["revenue"]["value"] == _source_value(data, "Revenue total")
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == _source_value(data, "Net income (loss)")
-    assert result["meta"]["mapped_count"] == 4
+    assert result["meta"]["mapped_count"] == 6
 
     # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
     # The first occurrence maps to net_income; the second is benign-skipped.
@@ -209,7 +209,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
     assert ifc_mapped["net_insurance_service_result"]["source_label"] == "Insurance service result"
     assert ifc_mapped["insurance_finance_result"]["source_label"] == "Insurance finance income (expense)"
     assert ifc_mapped["net_investment_result"]["source_label"] == "Net investment return"
-    assert ifc_result["meta"]["mapped_count"] == 7
+    assert ifc_result["meta"]["mapped_count"] == 9
     _assert_conservation(ifc_result)
     _assert_unmapped_labels_are_verbatim(ifc, ifc_result)
 
@@ -230,7 +230,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
         "Insurance finance income (expenses) from insurance contracts issued"
     )
     assert slf_mapped["net_investment_result"]["source_label"] == "Net investment result"
-    assert slf_result["meta"]["mapped_count"] == 7
+    assert slf_result["meta"]["mapped_count"] == 9
     _assert_conservation(slf_result)
     _assert_unmapped_labels_are_verbatim(slf, slf_result)
 
@@ -420,7 +420,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     assert mapped["revenue"]["source_label"] == "Total revenues"
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 6
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -478,7 +478,7 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     assert mapped["gross_profit"]["excludes_da"] is True
     assert abs(mapped["gross_profit"]["value"] - 13021.3) < 0.01
 
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["gross_profit_derived"] is True
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
@@ -583,7 +583,7 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert result["meta"]["sector_profile"] == "reit_sector"
     # CB-012: the printed "Total operating costs" line no longer counts as
     # mapped (derived entries are excluded from mapped_count) — 7 -> 6.
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -700,7 +700,7 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert "exploration_expense" not in mapped
 
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -782,7 +782,7 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["value"] == _source_value(data, "Net income for the year")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 9
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -838,7 +838,7 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     assert mapped["gross_profit"]["value"] == _source_value(data, "Gross profit")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 7
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Gross profit" not in unmapped_labels
@@ -952,7 +952,7 @@ def test_nfg_fixture_maps_mining_exploration_sector_without_producer_spine():
     assert mapped["capitalized_exploration_additions"]["value"] == -3853119
 
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 9
     assert result["meta"]["collisions"] == []
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -1056,7 +1056,7 @@ def test_cb009_nfg_purchases_line_maps_to_capitalized_additions():
     # the balance-sheet asset STOCK stays honestly unmapped
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Exploration and evaluation assets" in unmapped_labels
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 9
 
 
 def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
@@ -1123,7 +1123,7 @@ def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert any("xploration and evaluation assets" in label for label in unmapped_labels)
 
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)
@@ -1216,7 +1216,7 @@ def test_teckb_cb011_extension_maps_revenue_cost_of_sales_and_profit():
     # shareholders line (1,401) — consistent with existing net_income semantics
     assert result["mapped"]["net_income"]["source_label"] == "Profit for the year"
     assert result["mapped"]["net_income"]["value"] == 1072
-    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["collisions"] == []
 
 
@@ -1293,7 +1293,7 @@ def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == 292742
 
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -1362,7 +1362,7 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income"
     assert mapped["net_income"]["value"] == 259611
 
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 8
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -1539,3 +1539,121 @@ def test_bare_exploration_and_production_still_routes_resource():
     )
 
     assert result["meta"]["sector_profile"] == "resource_sector"
+
+
+def test_cb013_slf_total_equity_prefers_grand_total_over_nci_excluding_subtotal():
+    """CB-013 (ratified 2026-07-06): SLF prints BOTH "Total equity" 25,492
+    (grand total incl. NCI 264 + participating account 696) and "Total
+    shareholders' equity" 24,532 (the NCI-EXCLUDING subtotal). The per-field
+    prefer_primary_alias rule resolves to the alias declared FIRST in the
+    total_equity alias list — the grand total — and records the resolution;
+    the rejected subtotal stays visible in unmapped[]. Note the CB-010
+    prefer_specific_alias strategy would pick the WRONG line here (the
+    subtotal's label is longer), which is why CB-013 is a distinct rule."""
+    data = _load_fixture("SLF_FY2025_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert result["mapped"]["total_equity"]["source_label"] == "Total equity"
+    assert result["mapped"]["total_equity"]["value"] == 25492
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Total shareholders' equity" in unmapped_labels
+    assert result["meta"]["collisions"] == []
+    assert {
+        "canonical_field": "total_equity",
+        "rule": "prefer_primary_alias",
+        "chosen_label": "Total equity",
+        "rejected_labels": ["Total shareholders' equity"],
+    } in result["meta"]["resolved_collisions"]
+
+
+def test_cb013_dirun_total_equity_prefers_grand_total_over_attributable_only():
+    """CB-013: DIR.UN prints BOTH "Total equity" 4,731,073 (grand total) and
+    "Unitholders' equity" 3,399,261 (attributable-only). prefer_primary_alias
+    picks the grand total; the attributable line stays in unmapped[]."""
+    data = _load_fixture("DIRUN_FY2024_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert result["mapped"]["total_equity"]["source_label"] == "Total equity"
+    assert result["mapped"]["total_equity"]["value"] == 4731073
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Unitholders' equity" in unmapped_labels
+    assert result["meta"]["collisions"] == []
+    assert {
+        "canonical_field": "total_equity",
+        "rule": "prefer_primary_alias",
+        "chosen_label": "Total equity",
+        "rejected_labels": ["Unitholders' equity"],
+    } in result["meta"]["resolved_collisions"]
+
+
+def test_cb013_secondary_forms_map_where_they_are_the_grand_total():
+    """CB-013: the lower-priority alias forms ARE the grand total on filers
+    that print no "Total equity" line — they map cleanly with no collision.
+    REI.UN "Unitholders' equity"; CSU "Shareholders' equity total" (incl. NCI
+    692); CAR.UN "Total unitholders' equity"; CNQ "Total shareholders' equity"."""
+    expectations = [
+        ("REIUN_FY2025_sedar.json", "Unitholders' equity", 7157263),
+        ("CSU_FY2025_sedar.json", "Shareholders' equity total", 4267),
+        ("CARUN_FY2024_sedar.json", "Total unitholders' equity", 9027312),
+        ("cnq_fy2024_sedar.json", "Total shareholders' equity", 39468),
+    ]
+    for fixture_name, expected_label, expected_value in expectations:
+        data = _load_fixture(fixture_name)
+        result = map_line_items(
+            _line_items(data),
+            data["accounting_standard"],
+            sector=data.get("sector_inferred"),
+        )
+        field = result["mapped"]["total_equity"]
+        assert field["source_label"] == expected_label, fixture_name
+        assert field["value"] == expected_value, fixture_name
+        equity_resolutions = [
+            rc for rc in result["meta"]["resolved_collisions"]
+            if rc["canonical_field"] == "total_equity"
+        ]
+        assert equity_resolutions == [], fixture_name  # no collision to resolve
+
+
+def test_cb013_shop_total_liabilities_honestly_unmapped_no_derivation():
+    """CB-013 ruling 2: SHOP prints no standalone "Total liabilities" subtotal
+    (only current + long-term). total_liabilities stays honestly unmapped and
+    is deliberately NOT derived as assets - equity: a derived value would make
+    the balance-sheet identity check circular (pass by construction).
+    total_equity still maps via "Total shareholders' equity" (grand total)."""
+    data = _load_fixture("SHOP_FY2025_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector=data.get("sector_inferred"),
+    )
+
+    assert "total_liabilities" not in result["mapped"]
+    assert result["mapped"]["total_equity"]["value"] == 13473
+    assert result["mapped"]["total_equity"]["source_label"] == "Total shareholders' equity"
+
+
+def test_cb013_balance_sheet_identity_closes_on_all_mapped_fixtures():
+    """CB-013 self-validation: on every fixture where all three canonical
+    balance-sheet fields map, assets == liabilities + equity within the rule
+    tolerance. Pins the count at 14 (all but SHOP) so a silent coverage
+    shrink fails loudly."""
+    fixture_paths = sorted(FIXTURES_DIR.glob("*_sedar*.json"))
+    closed = 0
+    for path in fixture_paths:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        mapped = data["mapping"]["mapped"]
+        if not all(f in mapped for f in ("total_assets", "total_liabilities", "total_equity")):
+            continue
+        assets = mapped["total_assets"]["value"]
+        combined = mapped["total_liabilities"]["value"] + mapped["total_equity"]["value"]
+        assert abs(assets - combined) <= 0.5, path.name
+        closed += 1
+    assert closed == 14

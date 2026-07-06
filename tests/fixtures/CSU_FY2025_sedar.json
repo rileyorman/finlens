@@ -1082,6 +1082,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 11904,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 4267,
+        "source_label": "Shareholders' equity total",
+        "match_type": "exact",
+        "confidence": 0.97
       }
     },
     "unmapped": [
@@ -1366,10 +1378,6 @@
         "value": 5830
       },
       {
-        "label": "Total liabilities",
-        "value": 11904
-      },
-      {
         "label": "Capital stock",
         "value": 99
       },
@@ -1386,10 +1394,6 @@
         "value": 692
       },
       {
-        "label": "Shareholders' equity total",
-        "value": 4267
-      },
-      {
         "label": "Total liabilities and shareholders' equity",
         "value": 16171
       }
@@ -1398,8 +1402,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": null,
       "total": 83,
-      "mapped_count": 4,
-      "unmapped_count": 77,
+      "mapped_count": 6,
+      "unmapped_count": 75,
       "benign_skipped_count": 2,
       "benign_duplicates": [
         {

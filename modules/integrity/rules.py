@@ -198,6 +198,29 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # SEDAR balance-sheet component identity (CB-013): canonical mapped
+    # total_assets must equal canonical total_liabilities + total_equity.
+    # Complements sedar_total_assets_identity (which checks against the
+    # filing's PRINTED combined line): this one self-validates the two
+    # component fields and converts a wrong-concept equity pick (e.g. an
+    # NCI-excluding subtotal) into a flagged conflict instead of a silent
+    # error. Missing components are logged as honest field_unavailable
+    # skips (SHOP prints no standalone total liabilities subtotal).
+    # ------------------------------------------------------------------
+    {
+        "id": "sedar_balance_sheet_identity",
+        "description": "SEDAR total assets should equal total liabilities plus total equity",
+        "severity": "warn",
+        "check_type": "balance_sheet_identity",
+        "params": {
+            "absolute_tolerance": 0.5,
+        },
+        "sector_skip": (),
+        "requires_fields": ["total_assets", "total_liabilities", "total_equity"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
     # Accounting standard is informational only. The engine records it so
     # future cross-validation thresholds can become standard-aware.
     # ------------------------------------------------------------------
