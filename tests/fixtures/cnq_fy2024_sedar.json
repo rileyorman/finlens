@@ -455,7 +455,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Unrealized income during the period, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
+        "label": "Unrealized income during the period, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
         "values": {
           "Three Months Ended Dec 31 2024": 1,
           "Three Months Ended Dec 31 2023": 0,
@@ -465,7 +465,7 @@
         "confidence": 0.92
       },
       {
-        "label": "Reclassification to net earnings, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
+        "label": "Reclassification to net earnings, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
         "values": {
           "Three Months Ended Dec 31 2024": -1,
           "Three Months Ended Dec 31 2023": 0,
@@ -797,7 +797,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents \u2013 beginning of period",
+        "label": "Cash and cash equivalents – beginning of period",
         "values": {
           "Three Months Ended Dec 31 2024": 721,
           "Three Months Ended Dec 31 2023": 125,
@@ -807,7 +807,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents \u2013 end of period",
+        "label": "Cash and cash equivalents – end of period",
         "values": {
           "Three Months Ended Dec 31 2024": 131,
           "Three Months Ended Dec 31 2023": 877,
@@ -856,7 +856,7 @@
   },
   "mapping": {
     "mapped": {
-      "total_revenue": {
+      "revenue": {
         "value": 41509,
         "source_label": "Product sales",
         "match_type": "exact",
@@ -955,11 +955,11 @@
         "value": 2.85
       },
       {
-        "label": "Unrealized income during the period, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
+        "label": "Unrealized income during the period, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
         "value": 2
       },
       {
-        "label": "Reclassification to net earnings, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
+        "label": "Reclassification to net earnings, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
         "value": -4
       },
       {

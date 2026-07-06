@@ -188,14 +188,13 @@ def _profile_for_sector(
         token in sector_text for token in FINANCIAL_SECTOR_TOKENS
     ):
         return "financial_sector"
-    if "resource_sector" in sector_profiles and any(
-        token in sector_text for token in RESOURCE_SECTOR_TOKENS
-    ):
-        return "resource_sector"
-    if "reit_sector" in sector_profiles and any(
-        token in sector_text for token in REIT_SECTOR_TOKENS
-    ):
-        return "reit_sector"
+    # Mining-family must win before resource_sector: mining tokens ("mineral",
+    # "gold", "mining"...) are strictly more specific than the generic
+    # resource/O&G tokens, and resource_sector's broad "exploration and
+    # production" token would otherwise shadow miners — "Mineral Exploration
+    # and Production" must not get O&G royalty semantics. Same precedence
+    # pattern as insurance-before-financial above. O&G sector strings contain
+    # no mining tokens, so their routing is unchanged.
     if _is_mining_family_sector(sector_text):
         # Exploration-stage miners have pre-revenue statements, so they must not
         # route through the producer mining profile's revenue/production spine.
@@ -206,6 +205,14 @@ def _profile_for_sector(
             return "mining_exploration_sector"
         if "mining_sector" in sector_profiles:
             return "mining_sector"
+    if "resource_sector" in sector_profiles and any(
+        token in sector_text for token in RESOURCE_SECTOR_TOKENS
+    ):
+        return "resource_sector"
+    if "reit_sector" in sector_profiles and any(
+        token in sector_text for token in REIT_SECTOR_TOKENS
+    ):
+        return "reit_sector"
     return None
 
 

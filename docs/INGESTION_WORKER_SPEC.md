@@ -1,0 +1,290 @@
+# Ingestion Worker — Build Spec (v1 DRAFT)
+
+**Status:** DRAFT 2026-07-05 — design ratified in principle by Riley
+(Sterling as fetcher-and-extractor); PILOT is the acceptance test.
+FULL-SCALE VOLUME RUNS REMAIN GATED behind the #1 correctness gate per the
+ratified sequencing and the handoff "Moat thinking" note (ingestion jumps
+the queue WHEN the gate is met — not before).
+**Builder:** Sterling (sandbox). **Reviewer/committer/analyst-of-record:** CC.
+**Queue position:** task #3, behind the prior-column continuity checker.
+
+## Purpose and the one inviolable rule
+
+Sterling turns filings into REVIEWABLE CANDIDATE ARTIFACTS at machine speed.
+He is a fetcher-and-extractor, NEVER the analyst-of-record:
+
+- THE MOAT LOG IS SINGULAR. Integrity records are written ONLY on Riley's
+  Windows machine by the canonical pipeline. Nothing Sterling produces is
+  moat data until it crosses the CC review gate. A fragmented moat log is
+  not a moat.
+- Judgment never delegates: new aliases, sector routing, canonical-field
+  questions come back as FLAGGED QUESTIONS, never as decisions made by the
+  worker (augment-don't-mint discipline; the adjudication casebook stays
+  human-authored).
+
+## Architecture
+
+Sterling (Mac mini, sandbox repo)          CC (Windows, canonical repo)
+  fetch PDF (issuer IR / EDGAR)              re-fetch PDF by recorded URL
+  extract with STERLING'S OWN key    ==>     verify sha256 matches
+  map deterministically (mapper)     git     re-run CANONICAL extraction
+  bundle artifacts on ingest/ branch ==>     compare vs Sterling's candidate
+  flag judgment questions                    run guards + cross-extractor
+                                             write integrity records (moat)
+                                             triage flags with Riley
+
+## Part A — Sterling-side worker (sandbox: scripts/ingest_worker.py)
+
+### Sourcing rules (hard constraints)
+
+- Sources: issuer investor-relations pages and SEC EDGAR only. SEDAR+
+  CAPTCHA circumvention is PROHIBITED — the campaign default is
+  issuer-hosted PDFs (docs/FETCH_CAMPAIGN_LOG.md precedent). If a filing is
+  only obtainable through SEDAR+ interactively, flag it for Riley's manual
+  browser download; do not automate around access controls.
+- Record full provenance at fetch time: origin URL, retrieval method,
+  retrieval timestamp (UTC), PDF sha256, byte size, original filename.
+
+### Extraction run
+
+- Headless: import the existing modules (pdf_extractor, claude_analyzer,
+  sedar_extractor/mapper) — no Streamlit, no app.py changes.
+- API key: Sterling's OWN spend-capped Anthropic key via env var
+  FINLENS_INGEST_API_KEY. FinLens production keys never exist on the mini.
+- Data dir isolation: the worker MUST point all FinLens data writes
+  (cache, logs) at a scratch dir via FINLENS_DATA_DIR. Any integrity-log
+  lines produced on the mini (e.g. the figure-presence guard's append) are
+  SCRATCH DIAGNOSTICS — shipped inside the bundle for CC's information,
+  never merged into the moat log. BUILD NOTE: if any log/cache helper is
+  found not honoring FINLENS_DATA_DIR, parameterizing it is in scope for
+  this build (flag it in the report).
+
+### Candidate artifact bundle (committed to branch ingest/<TICKER>-<FY>)
+
+candidates/<TICKER>_<FY>/
+- extraction.json    — financial_data as returned (incl. figure_presence)
+- mapping.json       — attach_mapping output for SEDAR filers (mapped,
+                       unmapped, meta), or a note that the filer is EDGAR/XBRL
+- provenance.json    — the sourcing record above (URL, sha256, timestamps)
+- worker_meta.json   — model used, key LABEL (never the key), guard verdict,
+                       scratch-log lines, runtime, worker version
+- questions.md       — judgment flags (see below); empty file if none
+- THE PDF IS NOT COMMITTED — size and copyright discipline. sha256 + URL
+  stand in for it; CC re-fetches independently (which doubles as a
+  provenance check).
+
+### Judgment flags (questions.md), mandatory triggers
+
+- mapped_count below the sector's typical range, or zero
+- sector routing ambiguous (multiple token-ladder candidates, or the filer
+  self-describes outside known shapes — e.g. gas-weighted "Oil & Gas")
+- an unmapped label that LOOKS like an existing canonical concept (alias
+  candidate — report it, do NOT add it)
+- figure-presence verdict FABRICATED or ratio below 0.6
+- currency ambiguity, mixed-period statements, missing statement sections
+- anything requiring a canonical-definition interpretation
+
+## Part B — CC-side review runner (canonical: scripts/review_candidates.py)
+
+Given a fetched ingest/ branch:
+1. Re-fetch the PDF from provenance.json's URL; verify sha256. Mismatch or
+   dead URL → candidate REJECTED back to Sterling with reason (integrity
+   first: no artifact without verifiable source).
+2. Run the CANONICAL extraction on this machine (production config/keys).
+   Sterling's extraction.json is never promoted directly — it serves as an
+   independent-agreement witness: compare canonical vs candidate per field,
+   report divergences (a free second-extractor-style signal alongside the
+   Gemini check).
+3. Run the full canonical path: mapper, guards, integrity engine,
+   cross-extractor where applicable. Integrity records land in the real
+   moat log HERE — /integrity-log evidence per the standing gate.
+4. Surface Sterling's questions.md items + any canonical/candidate
+   divergences as the triage list for Riley.
+5. Output a per-candidate disposition: PROMOTED (fixture/library candidate),
+   NEEDS_TRIAGE, or REJECTED (with reason, returned to the sandbox).
+
+## Cost and throughput expectations
+
+- Sterling-side extraction: roughly $0.10–0.30 per filing on his capped key
+  (~$25/mo cap supports 100+ candidates — cap raises are Riley's call).
+- Canonical re-extraction doubles the per-filing extraction cost by design:
+  two independent reads are the point, not waste.
+- Post-gate target: 2–5 promoted filings/day without Riley in the fetch loop.
+
+## Pilot = acceptance test (the only pre-gate run authorized)
+
+- VERTICAL RATIFIED by Riley 2026-07-05: RESOURCES, five sub-shapes, one
+  COLD filer each (amendment: pilot widened from 2–3 to 5 filers because
+  each sub-shape serves a queued verification need — labeled amendment,
+  Riley's decision):
+  1. O&G E&P — recommend a GAS-WEIGHTED filer (e.g. Tourmaline TOU or ARC
+     ARX) DELIBERATELY: exercises the queued GAS-WEIGHTED AMBIGUITY POLICY
+     item (an "Oil & Gas"-described gas filer confidently resolving to
+     crude/WTI is a known latent issue — the pilot should surface it as a
+     judgment question, on purpose).
+  2. Integrated O&G — e.g. Imperial Oil (IMO). Suncor-shape n=2 evidence.
+  3. PIPELINE/MIDSTREAM — NEW structural shape, no sector profile exists
+     (recommend Pembina PPL over Enbridge — ENB stacks complexity the way
+     SEA does for explorers). EXPECTED to route to no/default profile and
+     degrade honestly — that is the point: it generates the judgment
+     questions the pilot exists to produce. No profile gets minted from
+     n=1 (flag-only, per the standing discipline).
+  4. Mining PRODUCER — e.g. Kinross or Lundin. NOTE: the queue says the
+     next cold mining filer is a MANDATORY validation event before the
+     mining sub-shape is claimed (TECK.B coverage deferred on exactly
+     this). The pilot filer IS that event's evidence — record it as such.
+  5. Mining EXPLORER — the queued "boring small TSXV junior" (n=2 for
+     mining_exploration_sector; NOT SEA, per the queue): pure exploration,
+     minimal investment book, no acquisition/held-for-distribution
+     wrinkles. Sterling shortlists 2–3 candidates against those criteria
+     during sourcing; Riley picks.
+- Adjacent resource shapes DELIBERATELY EXCLUDED from the pilot (note for
+  later, do not creep): royalty/streaming companies (FNV/WPM — a genuinely
+  different shape), drillers/oilfield services.
+- Pilot candidates are pilot artifacts, NOT cold-load gate slots — the
+  dry-run gate keeps its own separate hand-verification protocol. If a
+  pilot filer later serves a gate slot, it re-runs under that protocol.
+- Sterling produces bundles; CC runs the review side end-to-end; at least
+  one candidate should surface a real judgment question (if none do, probe
+  why — silence is suspicious at this corpus size).
+- Success = integrity records written canonically with /integrity-log
+  evidence, provenance re-fetch verification working, divergence comparison
+  producing sane output, and a spec v2 list of what the pilot proved wrong.
+- After the pilot: STOP. Volume waits for the gate, per ratified sequencing.
+
+## Out of scope for v1
+
+- Any app.py/UI changes (CC-side, later)
+- New sector profiles or aliases minted by the worker (flag-only)
+- SEDAR+ automation of any kind
+- Automatic promotion to fixtures/registry (human + CC step, unchanged)
+- Scheduling/cron (pilot is manually triggered end to end)
+
+## Deliverables
+
+Branch feat/ingestion-worker in the sandbox: the worker script, the review
+runner, tests (tmp_path everything; a fake-bundle fixture for the runner;
+zero network in tests — fetch functions mocked), plus a WORKER_RUNBOOK
+section appended to this doc describing exact invocation. Standard report:
+files, test summary, ruff, 3–5 sentences. CC reviews, runs the pilot
+jointly with Riley, commits.
+
+---
+
+## WORKER_RUNBOOK
+
+### Prerequisites
+
+- `FINLENS_INGEST_API_KEY` set in your shell to Sterling's spend-capped Anthropic key.
+- Python venv activated: `source venv/bin/activate` (Mac mini workspace).
+- Repo on `dev` (or feature branch); never run the worker while on an `ingest/` branch.
+
+### Step 1 — Identify the filing
+
+Find the issuer's investor-relations PDF URL (annual report or 20-F/10-K).
+SEDAR+ interactive pages: do **not** automate. If the only source is SEDAR+ gated,
+flag to Riley for manual browser download; place the PDF in `scratch/<TICKER>_<FY>/`
+and skip the fetch step (use `--url file:///path/to/filing.pdf` — not yet wired;
+file-URI support is v2).
+
+Source-type guide:
+| Source type | Use when |
+|-------------|----------|
+| `ir`        | Issuer IR page PDF (most Canadian filers) |
+| `edgar`     | SEC EDGAR direct PDF link (US filers) |
+| `sedar`     | Issuer-hosted SEDAR-mapped PDF (uses sedar_extractor) |
+
+### Step 2 — Run the worker
+
+```bash
+PYTHONPATH=. FINLENS_INGEST_API_KEY=sk-ant-... \
+python scripts/ingest_worker.py \
+    --ticker TOU \
+    --fy FY2024 \
+    --url https://tourmaline.ca/site/PDF/annual_report.pdf \
+    --source-type ir \
+    --out-dir candidates \
+    --scratch-dir /tmp/finlens_scratch/TOU_FY2024
+```
+
+**`PYTHONPATH=.`** is required when invoking the worker directly.  Python
+adds the script directory (`scripts/`) to `sys.path`, not the repo root;
+without `PYTHONPATH=.` the `modules.*` imports fail with `ModuleNotFoundError`.
+Discovered on first pilot run (IMO FY2025, 2026-07-05).
+
+**`--scratch-dir`** must be outside `~/.finlens`.  All FinLens cache/log writes
+during extraction land here (isolation via `FINLENS_DATA_DIR`).  Scratch dirs
+are disposable; delete after the bundle is committed.
+
+**Dry-run is not applicable** to the worker itself (there is no `--dry-run` flag —
+extraction costs money by design).  Review `questions.md` before pushing the bundle.
+
+### Step 3 — Inspect the bundle
+
+```
+candidates/<TICKER>_<FY>/
+    extraction.json   -- financial_data or sedar extraction result
+    mapping.json      -- sedar mapper output, or EDGAR note
+    provenance.json   -- URL, sha256, timestamps
+    worker_meta.json  -- model, key label, guard verdict, runtime
+    questions.md      -- OPEN judgment questions (empty if none)
+```
+
+Check `questions.md` carefully before committing.  Any open item must be
+relayed to Riley/CC — do NOT resolve judgment questions autonomously.
+
+### Step 4 — Commit the bundle to an ingest branch
+
+```bash
+git checkout -b ingest/TOU-FY2024
+git add candidates/TOU_FY2024/
+git commit -m "ingest(TOU FY2024): candidate bundle from IR PDF
+
+Source: https://tourmaline.ca/site/PDF/annual_report.pdf
+sha256: <first 16 chars from provenance.json>
+Guard: PASS  Model: claude-haiku-4-5-20251001
+Questions: 1 (sector ambiguity — gas-weighted filer)"
+git push origin ingest/TOU-FY2024
+```
+
+Tag the push in the session handoff for CC review.
+
+### Step 5 — CC review (CC-side)
+
+CC fetches the branch and runs:
+
+```bash
+python scripts/review_candidates.py \
+    --bundle-dir candidates/TOU_FY2024 \
+    [--canonical-extraction /path/to/canonical_extraction.json]
+```
+
+The runner re-fetches the PDF, verifies sha256, compares extractions if
+a canonical is supplied, and outputs a disposition:
+- **PROMOTED** — bundle passes; CC runs canonical guards + cross-extractor,
+  writes moat record, and files as fixture/library candidate.
+- **NEEDS_TRIAGE** — open questions or divergences; Riley resolves,
+  then CC re-runs.
+- **REJECTED** — provenance failed or fatal defect; returned to Sterling
+  with reason.
+
+### Pilot invocation sequence (five resource sub-shapes)
+
+Run one at a time; wait for CC disposition before the next.
+
+| # | Sub-shape | Suggested ticker | Source type | Note |
+|---|-----------|-----------------|-------------|------|
+| 1 | Gas-weighted O&G E&P | TOU or ARX | ir | Intentional sector-ambiguity probe |
+| 2 | Integrated O&G | IMO | ir | Suncor-shape n=2 evidence |
+| 3 | Pipeline/Midstream | PPL | ir | NEW shape; expect no profile → judgment questions |
+| 4 | Mining Producer | K or LUN | ir | Mandatory cold-filer validation for mining_sector |
+| 5 | Mining Explorer | TSXV junior TBD | ir | Shortlist 2–3; Riley picks |
+
+### Known behaviour flags (document as they arise)
+
+- `sedar_extractor._api_key()` reads `ANTHROPIC_API_KEY`; the worker
+  bridges from `FINLENS_INGEST_API_KEY` for the extraction duration and
+  restores the original value afterward.  Flag v2 if a cleaner API-key
+  param path is added to sedar_extractor.
+- All FinLens helpers respect `FINLENS_DATA_DIR` via `config.py`; no
+  hardcoded-path violations detected in v1.

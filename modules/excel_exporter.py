@@ -472,57 +472,106 @@ def _rag(metric: str, value) -> tuple:
     return _fill(_WHITE), "N/A", _GREY
 
 
+# Shared line-item alias lists. _calc_summary_metrics and
+# two_year_statement_pairs (the dashboard's two-year charts) must read the
+# same statement rows, so the lists live once at module level.
+_REV_LABELS = ["total revenues", "total revenue", "total net revenues", "total net revenue",
+               "net revenues", "net revenue", "net sales", "total sales", "revenues", "revenue", "sales"]
+_GP_LABELS  = ["gross profit", "gross margin", "gross earnings", "gross income"]
+_OI_LABELS  = ["income (loss) from operations", "income from operations", "operating income",
+               "operating profit", "operating earnings", "earnings from operations"]
+_NI_LABELS  = ["net income", "net earnings", "net loss", "net income (loss)",
+               "net earnings (loss)", "profit for the period", "profit for the year", "net profit"]
+_DA_LABELS  = ["depreciation and amortization", "depreciation & amortization",
+               "depreciation, depletion and amortization",
+               "depreciation", "amortization"]
+_OCF_LABELS = ["net cash provided by operating", "net cash from operating",
+               "net cash from operations",
+               "net cash used in operating", "cash provided by operating activities",
+               "net cash provided by (used in) operating",
+               "cash flows from operating", "cash generated from operating"]
+_CAPEX_LABELS = ["capital expenditures", "capital expenditure",
+                 "purchases of property, plant and equipment",
+                 "purchases of property and equipment",
+                 "additions to property and equipment",
+                 "additions to property",
+                 "payments for property and equipment",
+                 "acquisition of property", "purchase of property",
+                 "purchases of fixed assets", "purchase of fixed assets"]
+_BUYBACK_LABELS = ["repurchases of common stock", "repurchase of common stock",
+                   "payments for repurchase of common stock", "purchases of treasury stock",
+                   "purchase of treasury stock", "share repurchases", "common stock repurchased",
+                   "repurchases of shares", "repurchase of shares"]
+_DIVIDEND_LABELS = ["dividends paid", "payments of dividends", "payment of dividends",
+                    "dividends and dividend equivalents paid", "cash dividends paid",
+                    "dividends paid to shareholders", "distributions paid"]
+_ICF_LABELS = ["net cash provided by investing", "net cash used in investing",
+               "net cash provided by (used in) investing", "net cash from investing",
+               "cash flows from investing", "cash used in investing activities"]
+_FIN_CF_LABELS = ["net cash provided by financing", "net cash used in financing",
+                  "net cash provided by (used in) financing", "net cash from financing",
+                  "cash flows from financing", "cash used in financing activities"]
+
+
+def two_year_statement_pairs(financial_data: dict) -> dict:
+    """Current/prior values for the dashboard's two-year charts.
+
+    Returns {item_name: {"current": float|None, "prior": float|None}} using
+    the same alias lists as _calc_summary_metrics, so the charts always agree
+    with the Summary metrics and the Excel export.
+    """
+    is_rows = financial_data.get("income_statement", [])
+    cf_rows = financial_data.get("cash_flow_statement", [])
+
+    def _pair(rows, labels, lookup_fn):
+        return {
+            "current": lookup_fn(rows, labels, "value"),
+            "prior":   lookup_fn(rows, labels, "value_prior"),
+        }
+
+    return {
+        "Revenue":              _pair(is_rows, _REV_LABELS, _lookup2),
+        "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
+        "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
+        "Net Income":           _pair(is_rows, _NI_LABELS,  _lookup2),
+        "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
+        "Capital Expenditures": _pair(cf_rows, _CAPEX_LABELS, _lookup),
+        "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
+        "Dividends":            _pair(cf_rows, _DIVIDEND_LABELS, _lookup),
+        "Investing Cash Flow":  _pair(cf_rows, _ICF_LABELS, _lookup2),
+        "Financing Cash Flow":  _pair(cf_rows, _FIN_CF_LABELS, _lookup2),
+    }
+
+
 def _calc_summary_metrics(financial_data: dict) -> dict:
     """Derive metric card and RAG values from Call 1 financial data."""
     is_rows = financial_data.get("income_statement", [])
     bs_rows = financial_data.get("balance_sheet", [])
     cf_rows = financial_data.get("cash_flow_statement", [])
 
-    _REV = ["total revenues", "total revenue", "total net revenues", "total net revenue",
-            "net revenues", "net revenue", "net sales", "total sales", "revenues", "revenue", "sales"]
-    _GP  = ["gross profit", "gross margin", "gross earnings", "gross income"]
-    _OI  = ["income (loss) from operations", "income from operations", "operating income",
-            "operating profit", "operating earnings", "earnings from operations"]
-    _NI  = ["net income", "net earnings", "net loss", "net income (loss)",
-            "net earnings (loss)", "profit for the period", "profit for the year", "net profit"]
+    rev_c = _lookup2(is_rows, _REV_LABELS, "value")
+    rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
+    gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
+    oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
+    ni_c  = _lookup2(is_rows, _NI_LABELS,  "value")
 
-    rev_c = _lookup2(is_rows, _REV, "value")
-    rev_p = _lookup2(is_rows, _REV, "value_prior")
-    gp_c  = _lookup2(is_rows, _GP,  "value")
-    oi_c  = _lookup(is_rows,  _OI,  "value")
-    ni_c  = _lookup2(is_rows, _NI,  "value")
-
-    da_c = _lookup(cf_rows,
-                   ["depreciation and amortization", "depreciation & amortization",
-                    "depreciation, depletion and amortization",
-                    "depreciation", "amortization"],
-                   "value")
+    da_c = _lookup(cf_rows, _DA_LABELS, "value")
     if da_c is not None:
         da_c = abs(da_c)
 
-    ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else oi_c
+    # Derived metrics require ALL components: a missing component must yield
+    # None (honest "—" downstream), never a fallback to the other component —
+    # plain OI labelled "EBITDA" or plain OCF labelled "Free Cash Flow" is a
+    # confident wrong number (NVDA FY2026: OCF 102.72B shown as FCF vs true
+    # ≈96.6B when capex was missing).
+    ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else None
 
-    ocf_c = _lookup2(cf_rows,
-                     ["net cash provided by operating", "net cash from operating",
-                      "net cash from operations",
-                      "net cash used in operating", "cash provided by operating activities",
-                      "net cash provided by (used in) operating",
-                      "cash flows from operating", "cash generated from operating"],
-                     "value")
+    ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
 
-    capex_raw = _lookup(cf_rows,
-                        ["capital expenditures", "capital expenditure",
-                         "purchases of property, plant and equipment",
-                         "purchases of property and equipment",
-                         "additions to property and equipment",
-                         "additions to property",
-                         "payments for property and equipment",
-                         "acquisition of property", "purchase of property",
-                         "purchases of fixed assets", "purchase of fixed assets"],
-                        "value")
+    capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value")
     capex_c = abs(capex_raw) if capex_raw is not None else None
 
-    fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else ocf_c
+    fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None
 
     ca_c  = _lookup2(bs_rows, ["total current assets"],      "value")
     cl_c  = _lookup2(bs_rows, ["total current liabilities"], "value")

@@ -1,0 +1,452 @@
+<title>FinLens — Operating Guide</title>
+<style>
+  :root {
+    --ground: #f5f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f8;
+    --ink: #17233a;
+    --body: #3d4b63;
+    --muted: #71809a;
+    --accent: #1f6bbf;
+    --accent-bright: #2f7bd0;
+    --hairline: rgba(23, 35, 58, 0.12);
+    --hairline-soft: rgba(23, 35, 58, 0.07);
+    --good: #15803d;      --good-bg: rgba(21, 128, 61, 0.10);   --good-bd: rgba(21, 128, 61, 0.35);
+    --warn: #a16207;      --warn-bg: rgba(161, 98, 7, 0.10);    --warn-bd: rgba(161, 98, 7, 0.35);
+    --bad:  #b91c1c;      --bad-bg:  rgba(185, 28, 28, 0.10);   --bad-bd:  rgba(185, 28, 28, 0.35);
+    --resource: #9a6a10;
+    --chip-bg: rgba(23, 35, 58, 0.05);
+    --code-bg: rgba(23, 35, 58, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #1a2030;
+      --surface: #232b3e;
+      --surface-2: #1e2637;
+      --ink: #f1f5f9;
+      --body: #aab8ce;
+      --muted: #64748b;
+      --accent: #4d9fff;
+      --accent-bright: #378add;
+      --hairline: rgba(255, 255, 255, 0.10);
+      --hairline-soft: rgba(255, 255, 255, 0.06);
+      --good: #4ade80;    --good-bg: rgba(74, 222, 128, 0.12);  --good-bd: rgba(74, 222, 128, 0.40);
+      --warn: #fcd34d;    --warn-bg: rgba(252, 211, 77, 0.12);  --warn-bd: rgba(252, 211, 77, 0.40);
+      --bad:  #f87171;    --bad-bg:  rgba(248, 113, 113, 0.12); --bad-bd:  rgba(248, 113, 113, 0.40);
+      --resource: #f4b942;
+      --chip-bg: rgba(255, 255, 255, 0.06);
+      --code-bg: rgba(255, 255, 255, 0.07);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #1a2030; --surface: #232b3e; --surface-2: #1e2637;
+    --ink: #f1f5f9; --body: #aab8ce; --muted: #64748b;
+    --accent: #4d9fff; --accent-bright: #378add;
+    --hairline: rgba(255,255,255,0.10); --hairline-soft: rgba(255,255,255,0.06);
+    --good: #4ade80; --good-bg: rgba(74,222,128,0.12); --good-bd: rgba(74,222,128,0.40);
+    --warn: #fcd34d; --warn-bg: rgba(252,211,77,0.12); --warn-bd: rgba(252,211,77,0.40);
+    --bad: #f87171;  --bad-bg: rgba(248,113,113,0.12); --bad-bd: rgba(248,113,113,0.40);
+    --resource: #f4b942; --chip-bg: rgba(255,255,255,0.06); --code-bg: rgba(255,255,255,0.07);
+  }
+  :root[data-theme="light"] {
+    --ground: #f5f7fb; --surface: #ffffff; --surface-2: #eef2f8;
+    --ink: #17233a; --body: #3d4b63; --muted: #71809a;
+    --accent: #1f6bbf; --accent-bright: #2f7bd0;
+    --hairline: rgba(23,35,58,0.12); --hairline-soft: rgba(23,35,58,0.07);
+    --good: #15803d; --good-bg: rgba(21,128,61,0.10); --good-bd: rgba(21,128,61,0.35);
+    --warn: #a16207; --warn-bg: rgba(161,98,7,0.10); --warn-bd: rgba(161,98,7,0.35);
+    --bad: #b91c1c;  --bad-bg: rgba(185,28,28,0.10); --bad-bd: rgba(185,28,28,0.35);
+    --resource: #9a6a10; --chip-bg: rgba(23,35,58,0.05); --code-bg: rgba(23,35,58,0.06);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--body);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    font-size: 15px;
+    margin: 0;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 28px 90px; }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; align-items: center; gap: 16px; padding-bottom: 22px;
+              border-bottom: 1px solid var(--hairline); margin-bottom: 8px; }
+  .wordmark { font-size: 30px; font-weight: 650; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
+  .wordmark span { color: var(--accent); font-weight: 300; }
+  .masthead .sub { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+  .masthead-right { margin-left: auto; text-align: right; font-size: 12px; color: var(--muted); }
+
+  /* ---------- type ---------- */
+  h2 { color: var(--ink); font-size: 21px; font-weight: 650; letter-spacing: -0.015em;
+       margin: 52px 0 6px; text-wrap: balance; }
+  h3 { color: var(--ink); font-size: 15.5px; font-weight: 650; margin: 30px 0 6px; }
+  p { margin: 10px 0; max-width: 68ch; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+             color: var(--accent); margin: 52px 0 -46px; }
+  .lede { font-size: 16.5px; color: var(--ink); max-width: 62ch; }
+  ul { padding-left: 22px; max-width: 70ch; }
+  li { margin: 5px 0; }
+  code, .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; font-size: 0.92em;
+         background: var(--code-bg); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+  strong { color: var(--ink); font-weight: 650; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover, a:focus-visible { text-decoration: underline; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* ---------- toc ---------- */
+  .toc { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+         padding: 18px 22px; margin: 26px 0 8px; }
+  .toc-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+               color: var(--muted); margin-bottom: 10px; }
+  .toc ol { columns: 2; column-gap: 36px; margin: 0; padding-left: 20px; font-size: 13.5px; }
+  .toc li { margin: 3px 0; break-inside: avoid; }
+  @media (max-width: 640px) { .toc ol { columns: 1; } }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--hairline); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+       color: var(--muted); font-weight: 650; padding: 9px 14px; border-bottom: 1px solid var(--hairline);
+       background: var(--surface-2); white-space: nowrap; }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--hairline-soft); vertical-align: top; color: var(--body); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr { background: var(--surface); }
+
+  /* ---------- UI replicas ---------- */
+  .demo { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+          padding: 16px 18px; margin: 14px 0; }
+  .demo-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+                margin-bottom: 10px; font-weight: 700; }
+  .badge { display: inline-block; padding: 4px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 700;
+           letter-spacing: 0.09em; border: 1px solid; }
+  .badge.pass { color: var(--good); background: var(--good-bg); border-color: var(--good-bd); }
+  .badge.inv  { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge.dec  { color: var(--bad);  background: var(--bad-bg);  border-color: var(--bad-bd); }
+  .chip { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 650;
+          background: var(--chip-bg); color: var(--ink); border: 1px solid var(--hairline); }
+  .chip.flag { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .chip.map  { color: var(--muted); }
+  .qchip { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 650;
+           background: var(--chip-bg); color: var(--ink); border: 1px solid var(--hairline); }
+  .qchip small { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .rag { display: inline-block; min-width: 52px; text-align: center; padding: 2px 10px; border-radius: 4px;
+         font-size: 10.5px; font-weight: 750; letter-spacing: 0.04em; }
+  .rag.g { background: #70ad47; color: #fff; }
+  .rag.a { background: #ffc000; color: #333; }
+  .rag.r { background: #c00000; color: #fff; }
+  .rag.n { background: var(--chip-bg); color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 10px 10px 0;
+             padding: 12px 18px; margin: 16px 0; max-width: 70ch; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout .t { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+                color: var(--muted); margin-bottom: 4px; }
+
+  .cost { font-variant-numeric: tabular-nums; }
+  .kbd-note { font-size: 12.5px; color: var(--muted); }
+  hr { border: none; border-top: 1px solid var(--hairline); margin: 44px 0 0; }
+  .footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--hairline);
+            font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <div class="wordmark">Fin<span>Lens</span> <span style="font-weight:600;color:var(--ink)">Operating Guide</span></div>
+      <div class="sub">Source-Traced Fundamental Analysis · every tile, metric &amp; chart explained</div>
+    </div>
+    <div class="masthead-right">July 2026<br>dev branch</div>
+  </div>
+
+  <p class="lede">FinLens turns a filing — an uploaded PDF, an EDGAR fetch, or a SEDAR+ document — into an
+  investment analysis workspace: statements, a verdict, health metrics, valuation tools, sector economics,
+  and portfolio views. Its founding principle is <strong>honest numbers or no numbers</strong>: when FinLens can't
+  compute something safely, it shows a dash and tells you why, never a confident wrong figure.</p>
+
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#tour">The 60-second tour</a></li>
+      <li><a href="#loading">Loading a filing</a></li>
+      <li><a href="#verdict">Reading the verdict</a></li>
+      <li><a href="#statements">Statements tab</a></li>
+      <li><a href="#dashboard">Dashboard tab</a></li>
+      <li><a href="#economics">Economics tab (resource filers)</a></li>
+      <li><a href="#portfolio">Portfolio Manager</a></li>
+      <li><a href="#tracker">Stock Tracker</a></li>
+      <li><a href="#comparison">Filing Comparison &amp; Education</a></li>
+      <li><a href="#trust">Data sources &amp; the trust model</a></li>
+      <li><a href="#reference">Reference tables</a></li>
+      <li><a href="#tips">Tips &amp; troubleshooting</a></li>
+    </ol>
+  </nav>
+
+  <div class="eyebrow" id="tour">Section 1</div>
+  <h2>The 60-second tour</h2>
+  <p>The sidebar has five pages. <strong>Single Analysis</strong> is home: load a filing, read the verdict, work the tabs.
+  <strong>Portfolio Manager</strong> rolls your analyzed companies into one risk view. <strong>Filing Comparison</strong> diffs two
+  filings from the same company year-over-year. <strong>Stock Tracker</strong> is live market data with no upload needed.
+  <strong>Education</strong> explains every concept — the "Learn more →" links throughout the app land there.</p>
+  <p>The typical loop: load a filing → the <em>verdict hero</em> tells you signal, quality, and thesis at a glance →
+  Statements for the numbers → Dashboard for health, valuation, and the manager frameworks → Economics if it's a
+  miner or oil &amp; gas producer → export to Excel or a Word memo → it's saved in the Filing Library for free reloads.</p>
+
+  <div class="eyebrow" id="loading">Section 2</div>
+  <h2>Loading a filing</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Path</th><th>What it does</th><th>Cost</th></tr>
+    <tr><td><strong>Quick Analysis</strong></td><td>Type a public company; structured financials are fetched and analyzed with no document. No MD&amp;A sentiment (there's no prose to read).</td><td class="num cost">~$0.08</td></tr>
+    <tr><td><strong>Fetch from EDGAR / SEDAR+</strong></td><td>Pull a real filing by ticker from SEC EDGAR (US) or load a SEDAR+ document (Canada).</td><td class="num cost">~$0.08</td></tr>
+    <tr><td><strong>Upload</strong></td><td>PDF or Word (.docx), up to 200&nbsp;MB. Tick <em>Canadian filing (SEDAR+/IFRS)</em> to route through the IFRS extraction pipeline. The upload zone folds away once an analysis is on screen.</td><td class="num cost">~$0.08</td></tr>
+    <tr><td><strong>Filing Library</strong> (sidebar)</td><td><strong>Load</strong> restores a saved analysis instantly and free. <strong>Re-Analyse&nbsp;$</strong> re-runs the AI pipeline (fresh models, fresh text). <strong>Remove</strong> deletes the entry. The <em>Load from Registry</em> section pre-seeds validated Canadian filers into your library with no AI call.</td><td class="num cost">free / ~$0.08</td></tr>
+  </table></div>
+  <p class="kbd-note">Under the hood: a fast model (Haiku) extracts the statements; a reasoning model (Sonnet) writes the
+  analysis — that split is what keeps a full analysis near eight cents. Model choices live in <code>config.py</code>.</p>
+
+  <div class="eyebrow" id="verdict">Section 3</div>
+  <h2>Reading the verdict</h2>
+  <p>Every loaded analysis opens with the <strong>verdict hero</strong> — a banner tinted by the investment signal, carrying the
+  signal badge, the quality chip, the filing period and currency, and the full thesis paragraph.</p>
+
+  <div class="demo">
+    <div class="demo-label">As it appears in the app</div>
+    <div class="row">
+      <span class="badge inv">INVESTIGATE</span>
+      <span class="qchip">Quality 33 <small>/ 100 · 3 of 5 metrics</small></span>
+      <span style="color:var(--muted);font-size:12px">2024-12-31 · CAD</span>
+    </div>
+    <p style="font-size:13px;margin:10px 0 0">CNQ generated CAD 13.4B in operating cash flow in 2024 against CAD 7.1B returned to shareholders…</p>
+  </div>
+
+  <h3>The signal</h3>
+  <p>Claude's overall read of the filing, in three levels:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Signal</th><th>Meaning</th></tr>
+    <tr><td><span class="badge pass">PASS</span></td><td>Fundamentals support a closer look as an investment candidate.</td></tr>
+    <tr><td><span class="badge inv">INVESTIGATE</span></td><td>Mixed picture — specific questions need answers before conviction either way.</td></tr>
+    <tr><td><span class="badge dec">DECLINE</span></td><td>The filing shows disqualifying problems for this framework.</td></tr>
+  </table></div>
+
+  <h3>The Quality score</h3>
+  <p>A 0–100 score built from <strong>five financial-health checks</strong> — the same five graded Green/Amber/Red in the
+  Dashboard's Financial Health panel:</p>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Metric</th><th>What it measures</th><th>The question it answers</th></tr>
+    <tr><td class="num">1</td><td><strong>Liquidity</strong></td><td>Current ratio (current assets ÷ current liabilities)</td><td>Can it pay its bills this year?</td></tr>
+    <tr><td class="num">2</td><td><strong>Leverage</strong></td><td>Net debt ÷ EBITDA</td><td>How many years of earnings to clear the debt?</td></tr>
+    <tr><td class="num">3</td><td><strong>Revenue growth</strong></td><td>Year-over-year revenue change</td><td>Is the top line growing?</td></tr>
+    <tr><td class="num">4</td><td><strong>FCF conversion</strong></td><td>Free cash flow ÷ net income</td><td>Do reported profits become real cash?</td></tr>
+    <tr><td class="num">5</td><td><strong>Interest coverage</strong></td><td>Operating income ÷ interest expense</td><td>How comfortably does it service its debt?</td></tr>
+  </table></div>
+  <p>Each <em>available</em> metric earns <strong>Green&nbsp;=&nbsp;20, Amber&nbsp;=&nbsp;10, Red&nbsp;=&nbsp;0</strong> points, and the total is rescaled to
+  what was actually measurable — the chip always states its basis ("3 of 5 metrics"). <strong>Missing data is not poor
+  quality</strong>: a sparse quarterly filing scores over what it shows, not against what it lacks. If nothing is
+  available the chip simply doesn't appear.</p>
+  <p class="kbd-note">Worked example: a filing with one Green (20), one Amber (10), one Red (0) and two metrics
+  unavailable earns 30 of a possible 60 → <strong>Quality 50 / 100 · 3 of 5 metrics</strong>. The exact Green/Amber/Red
+  cutoffs for each metric are in the <a href="#reference">reference tables</a>, and the Financial Health panel on the
+  Dashboard shows you exactly which grade each metric received.</p>
+
+  <h3>Integrity &amp; mapping chips</h3>
+  <div class="demo">
+    <div class="demo-label">Above the company name</div>
+    <div class="row">
+      <span class="chip flag">⚑ revenue_growth_sanity</span>
+      <span class="chip map">SEDAR+ mapping · 6 of 54 lines mapped to canonical fields</span>
+    </div>
+  </div>
+  <p><strong>Integrity flags</strong> are the Data Integrity Engine's audit trail — sanity checks and accounting identities that
+  ran against this filing. A flag means "verify this figure against source," not "the app is broken."
+  The <strong>mapping chip</strong> (Canadian filings) reports how many statement lines resolved to canonical fields; the
+  <em>unmapped line items</em> expander lists the rest verbatim. Unmapped is honest, not hidden.</p>
+  <p>The <strong>📈 Track live in Stock Tracker</strong> button under the hero hands the ticker to Stock Tracker with data already fetched.</p>
+
+  <div class="eyebrow" id="statements">Section 4</div>
+  <h2>Statements tab</h2>
+  <ul>
+    <li><strong>Income Statement / Balance Sheet / Cash Flow</strong> render as full-width tabs, two fiscal years side by side, formatted in the filing's own scale (K/M/B/T).</li>
+    <li><strong>Scenario Simulator</strong> (expander): stress revenue and margins and watch distress score, scenario EBIT, and implied P/E respond, with a Claude narrative of the outcome.</li>
+    <li><strong>Bull / Bear Case</strong> (expander): the top three points each way.</li>
+    <li><strong>Downloads</strong>: a formatted Excel workbook (statements, summary metrics, RAG sheet) and a Word investment memo.</li>
+  </ul>
+
+  <div class="eyebrow" id="dashboard">Section 5</div>
+  <h2>Dashboard tab</h2>
+
+  <h3>Header cards — Quality · Beta · Margin of Safety</h3>
+  <p><strong>Quality Score</strong> repeats the hero's score with its basis. <strong>Beta</strong> (5-year monthly) arrives with market data —
+  a dash means market data isn't loaded yet. <strong>Margin of Safety</strong> fills in after you run the DCF below: intrinsic value
+  per share and the % gap to price (green &gt; 20% undervalued, amber ≥ 0, red overvalued).</p>
+
+  <h3>DCF Calculator</h3>
+  <p>Four inputs — <strong>WACC</strong> (default 10%), <strong>terminal growth</strong> (3%), <strong>revenue growth</strong> (5%), <strong>forecast period</strong>
+  (10 years) — produce intrinsic value per share and the margin of safety, which then feeds the header card and the
+  Valuation Snapshot.</p>
+
+  <h3>Peer Comparison</h3>
+  <p>Pick a sector bucket (auto-suggested from the filing's own sector text — a caption tells you what was picked and why),
+  edit the comma-separated peer list to any tickers you like (Canadian names welcome), and Load. The table shows
+  P/E, EV/EBITDA, P/B, P/S, revenue growth, and gross margin against the <strong>sector median</strong>:
+  green is meaningfully better than median, red meaningfully worse, and <strong>gray means within 10% of the median</strong> —
+  a hairline difference is not a verdict. Peer figures are trailing-twelve-month market data via yfinance, not filing-period numbers.</p>
+
+  <h3>Framework Perspectives — Dalio · Lynch · Marks</h3>
+  <p>Three managers' lenses on the same filing: <strong>Dalio</strong> (purple) places the company in its debt/productivity cycle;
+  <strong>Lynch</strong> (green) assigns a category — Fast Grower, Stalwart, Cyclical, Turnaround, Asset Play, Slow Grower — with the
+  story; <strong>Marks</strong> (amber) asks the second-level question the crowd isn't asking.</p>
+
+  <h3>Key Metrics row</h3>
+  <p>Revenue (with YoY change), gross margin, EBITDA margin, net income (with net margin), and free cash flow — all
+  pulled from the mapped statements.</p>
+
+  <h3>Two-Year Performance charts</h3>
+  <ul>
+    <li><strong>Grouped bars</strong>: revenue, gross profit, operating income, net income, and operating cash flow — prior year in teal, current in blue, one shared unit on the axis.</li>
+    <li><strong>Margins</strong>: gross / operating / net margin, both years, in percent.</li>
+    <li><strong>Cash-flow waterfall</strong> — adaptive: when the filing details at least two of capex / buybacks / dividends and they total ≥ 10% of operating cash flow, you get the <em>allocation</em> story (OCF → outflows → retained cash). Otherwise it falls back to the always-available <em>bridge</em>: Operating → Investing → Financing → net change in cash, which closes exactly for any filing.</li>
+  </ul>
+
+  <h3>Financial Health (RAG) &amp; Capital Allocation</h3>
+  <p>The five health checks with their values and Green/Amber/Red chips (thresholds in the
+  <a href="#reference">reference tables</a>), beside Claude's read of buybacks, dividends, M&amp;A, and the cash position.</p>
+
+  <h3>Dalio Stress Scenarios &amp; Market Sensitivity</h3>
+  <p>Interest coverage recomputed under four shocks — EBIT −30%, EBIT −60%, revenue −20% with margin compression, and a
+  credit seizure — each graded <strong>SAFE</strong> (≥3.0×), <strong>WATCH</strong> (≥1.5×), <strong>STRESS</strong> (≥1.0×), or <strong>DISTRESS</strong>.
+  Beside it, beta with a plain-language interpretation (defensive / market-neutral / cyclical / high-beta).</p>
+
+  <h3>Variant Perception &amp; Valuation Snapshot</h3>
+  <p>What consensus believes versus what the data suggests, and the quick multiples: P/E, EV/EBITDA, EV/Revenue, and
+  your DCF margin of safety.</p>
+
+  <h3>Framework-Attributed Cases &amp; MD&amp;A Sentiment</h3>
+  <p>Bull and bear cases with each point attributed to the framework that generated it (green cards bull, red cards bear).
+  For uploaded documents with MD&amp;A prose, a sentiment read (Positive / Cautious / Negative) with the language evidence.</p>
+
+  <div class="eyebrow" id="economics">Section 6</div>
+  <h2>Economics tab — resource filers</h2>
+  <p>Appears with live data only when the mapper resolves a <strong>mining or oil &amp; gas sector profile</strong>; other filers see an
+  explanatory note. Everything here is filing fundamentals crossed with free yfinance market data — no extra API cost.</p>
+
+  <h3>Tier 1 cards</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Card</th><th>What it is</th><th>Honest-skip behavior</th></tr>
+    <tr><td><strong>Earnings Yield</strong></td><td>Net income ÷ market cap — the value investor's inverted P/E.</td><td rowspan="2">Suppressed with a note whenever filing currency ≠ listing currency. FinLens first tries the sibling listing (SU → SU.TO for a CAD filing; AEM.TO → AEM for a USD filer) so dual-listed names usually resolve; it never silently converts FX.</td></tr>
+    <tr><td><strong>Revenue / Market Cap</strong></td><td>For oil &amp; gas this uses <em>gross-of-royalties</em> revenue — the canonical resource top line — and says so.</td></tr>
+    <tr><td><strong>Net Margin</strong></td><td>Net income ÷ revenue. Intra-filing, so currency never blocks it.</td><td>Needs both fields mapped.</td></tr>
+    <tr><td><strong>Commodity Spot</strong></td><td>Latest price via the commodity proxy (see <a href="#reference">proxy table</a>).</td><td>Names its proxy and role (primary/fallback).</td></tr>
+    <tr><td><strong>Commodity Linkage</strong></td><td>Correlation (r) and beta (β) of one year of daily returns, equity vs. commodity. <em>r</em> near 1 = the stock trades like the commodity; β above 1 = it amplifies commodity moves (operational leverage). Agnico: r = 0.76, β = 1.21×.</td><td>Skips below 20 overlapping trading days.</td></tr>
+    <tr><td><strong>Cheap company?</strong></td><td>Earnings yield tested against an 8% threshold, drawn as a bar on a 0–16% scale with the threshold as the amber mid-tick — you see <em>how far</em> from cheap, not just a verdict.</td><td>Carries the reason when earnings yield is unavailable.</td></tr>
+  </table></div>
+
+  <h3>The three charts</h3>
+  <ul>
+    <li><strong>Commodity Price Trend</strong> — one year of the proxy, unit-labeled axis (US$/bbl, US$/oz…), your filing's fiscal-year-end as a dotted line, and the latest close marked so the spot card ties to the chart. WTI carries a caveat for Canadian producers (WCS differential).</li>
+    <li><strong>Company vs Commodity, indexed to 100</strong> — both series rebased a year back on one axis. Read the gap: lines together = the equity is a commodity proxy; equity above = the market is re-rating the operator beyond the commodity (Suncor 155 vs WTI 103); below = it lags its own product.</li>
+    <li><strong>Cost Structure waterfall</strong> — the top line minus the mapped sector costs (mining: production costs, exploration, mine D&amp;A; oil &amp; gas: royalties, operating expense, DD&amp;A) down to <em>margin after these costs</em>. For O&amp;G the caption also reports the <strong>royalty burden</strong> as a share of the gross top line (CNQ: 14.1%). The end bar deliberately excludes G&amp;A, finance and other items — it will not equal printed operating income, and says so.</li>
+  </ul>
+
+  <div class="callout">
+    <div class="t">Coming — Tier 2</div>
+    The flagship margin-of-safety metric: <strong>AISC vs spot</strong> (miners) and <strong>netback vs price</strong> (oil &amp; gas).
+    Those figures live in the MD&amp;A, not the statements, so this tier waits on the MD&amp;A fetcher rather than fake a number.
+  </div>
+  <p>The <strong>Data provenance &amp; coverage</strong> expander shows exactly which ticker/listing was resolved, the commodity and
+  proxy, the scale factor applied, and any fetch errors — the receipts for everything above.</p>
+
+  <div class="eyebrow" id="portfolio">Section 7</div>
+  <h2>Portfolio Manager</h2>
+  <ul>
+    <li><strong>Portfolio Summary</strong>: holdings count, signal tallies (PASS / INVESTIGATE / DECLINE), and average quality across scoreable holdings.</li>
+    <li><strong>Predictive Analytics</strong>: a <em>Financial Distress Score</em> per holding (Altman-derived, 0 safe → 100 distressed; safe &lt; 40, watch 40–70, distress &gt; 70), a <em>Momentum Scorecard</em> (revenue/margin/cash-flow trends graded Improving or Mixed), and <em>Concentration Risk</em> bars for signal and sector concentration.</li>
+    <li><strong>Portfolio Analytics</strong>: quality trend over fiscal years, the valuation scatter (quality vs P/E — top-left is the sweet spot), a risk/return matrix (momentum vs distress), and an earnings-quality table (FCF conversion, revenue quality).</li>
+    <li><strong>Holdings table</strong> and <strong>Framework Scores</strong>: quality bars per holding, with each company's full Dalio and Marks narratives in expanders below — never truncated into table cells.</li>
+    <li><strong>Positions</strong>: lot-level tracking (buys, sells, cost basis) feeds live P&amp;L where enabled.</li>
+  </ul>
+
+  <div class="eyebrow" id="tracker">Section 8</div>
+  <h2>Stock Tracker</h2>
+  <ul>
+    <li><strong>Header</strong>: company identity, analyst consensus badge (Strong Buy → Sell), price target with upside %, analyst count, and a current-vs-target bar.</li>
+    <li><strong>Price &amp; Momentum</strong>: current price, 52-week high/low with distance, market cap; a 1-year price chart with 50-day (dotted) and 200-day (dashed) moving averages plus volume; badges for Above 50MA / Above 200MA and Golden/Death Cross; RSI-14 graded Oversold (&lt;30) / Neutral / Overbought (&gt;70).</li>
+    <li><strong>Sub-tabs</strong>: Technicals (short interest — LOW &lt;5% of float, ELEVATED ≤15%, HIGH above), Fundamentals (valuation multiples with plain-language notes), Earnings (next date, EPS estimate vs last actual, beat/miss), Segments, News &amp; Sentiment, and Filings.</li>
+    <li><strong>Watchlist</strong> (sidebar): one-click add, quick re-load, and a summary table.</li>
+  </ul>
+
+  <div class="eyebrow" id="comparison">Section 9</div>
+  <h2>Filing Comparison &amp; Education</h2>
+  <p><strong>Filing Comparison</strong> takes two filings from the same company (from the library or fresh uploads) and reports the
+  year-over-year story: MD&amp;A sentiment shift (Positive / Cautious / Negative), metric deltas, and theme tracking — which
+  topics are <em>new</em>, which <em>disappeared</em>, and which <em>changed</em> in emphasis. Language change in the MD&amp;A often leads the numbers.</p>
+  <p><strong>Education</strong> is the built-in glossary and curriculum — every "Learn more →" link in the app (Quality Score, Beta,
+  Margin of Safety, DCF, Investment Signals, Financial Statements…) lands on its explainer here.</p>
+
+  <div class="eyebrow" id="trust">Section 10</div>
+  <h2>Data sources &amp; the trust model</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Source</th><th>Used for</th><th>Trust stance</th></tr>
+    <tr><td>The filing itself</td><td>Statements, MD&amp;A, everything mapped</td><td>Ground truth. Every displayed figure traces here.</td></tr>
+    <tr><td>Claude (Anthropic)</td><td>Extraction (Haiku) and analysis (Sonnet)</td><td>Extraction is checked by the Integrity Engine's identities and sanity rules.</td></tr>
+    <tr><td>yfinance</td><td>Prices, market caps, betas, commodity proxies, peers</td><td>Market overlay. Currency-guarded before any cross with filing figures.</td></tr>
+    <tr><td>SEC EDGAR / SEDAR+</td><td>Filing retrieval</td><td>Primary documents.</td></tr>
+    <tr><td>FMP</td><td>Cross-validation input</td><td><strong>Advisory only</strong> — an unreliable witness that may never adjudicate a discrepancy alone.</td></tr>
+    <tr><td>Gemini (second extractor)</td><td>Independent re-extraction of the same PDF</td><td>The scalable correctness cross-check (Sunday audit tooling).</td></tr>
+  </table></div>
+  <p>Analyses cache to <code>~/.finlens</code> with a schema version — if the data format evolves, old entries prompt a
+  Re-Analyse instead of rendering silently wrong. The Filing Library, watchlist, portfolios, and integrity log all live
+  in the same folder, outside cloud-sync and temp directories, surviving reboots.</p>
+
+  <div class="eyebrow" id="reference">Section 11</div>
+  <h2>Reference tables</h2>
+
+  <h3>Financial Health thresholds (RAG + Quality points)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Metric</th><th>Measures</th><th><span class="rag g">GREEN</span> (20 pts)</th><th><span class="rag a">AMBER</span> (10 pts)</th><th><span class="rag r">RED</span> (0 pts)</th></tr>
+    <tr><td>Liquidity</td><td>Current ratio</td><td class="num">≥ 2.0</td><td class="num">≥ 1.0</td><td class="num">&lt; 1.0</td></tr>
+    <tr><td>Leverage</td><td>Net debt / EBITDA</td><td class="num">≤ 1.5</td><td class="num">≤ 3.0</td><td class="num">&gt; 3.0</td></tr>
+    <tr><td>Revenue growth</td><td>YoY %</td><td class="num">≥ 5%</td><td class="num">≥ 0%</td><td class="num">&lt; 0%</td></tr>
+    <tr><td>FCF conversion</td><td>FCF / net income</td><td class="num">≥ 100%</td><td class="num">≥ 50%</td><td class="num">&lt; 50%</td></tr>
+    <tr><td>Interest cover</td><td>Operating income / interest</td><td class="num">≥ 3.0×</td><td class="num">≥ 1.5×</td><td class="num">&lt; 1.5×</td></tr>
+  </table></div>
+  <p class="kbd-note">Quality = points earned ÷ points possible <em>for available metrics</em>, × 100. An unavailable metric shows
+  <span class="rag n">N/A</span> and is excluded from both sides.</p>
+
+  <h3>Commodity proxies (Economics tab)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Commodity</th><th>Primary proxy</th><th>Fallback</th><th>Unit</th></tr>
+    <tr><td>Gold</td><td class="mono">GC=F</td><td class="mono">GLD</td><td>US$/oz (ETF: US$/share)</td></tr>
+    <tr><td>Silver</td><td class="mono">SI=F</td><td class="mono">SLV</td><td>US$/oz (ETF: US$/share)</td></tr>
+    <tr><td>Copper</td><td class="mono">HG=F</td><td class="mono">COPX</td><td>US$/lb (ETF: US$/share)</td></tr>
+    <tr><td>Crude oil (WTI)</td><td class="mono">CL=F</td><td class="mono">USO</td><td>US$/bbl — WCS caveat for Canadian producers</td></tr>
+    <tr><td>Natural gas</td><td class="mono">NG=F</td><td class="mono">UNG</td><td>US$/MMBtu</td></tr>
+    <tr><td>Uranium</td><td class="mono">URA</td><td class="mono">URNM</td><td>Sector ETFs — no liquid uranium futures on the free tier, labeled as such</td></tr>
+  </table></div>
+  <p class="kbd-note">Zinc and nickel are deliberately unsupported rather than proxied dishonestly. Gold takes precedence
+  for gold-silver miners.</p>
+
+  <h3>Peer sector buckets</h3>
+  <p>Technology · Semiconductors · Consumer Staples · Healthcare · Financials · Energy · Industrials ·
+  Consumer Discretionary · Real Estate · Utilities · Materials · Metals &amp; Mining · Communications —
+  each pre-seeded with representative tickers, all editable before loading.</p>
+
+  <div class="eyebrow" id="tips">Section 12</div>
+  <h2>Tips &amp; troubleshooting</h2>
+  <ul>
+    <li><strong>Stray "?" in older analysis text</strong> — legacy cache damage from before the typography fix; a <strong>Re-Analyse&nbsp;$</strong> regenerates clean text. New analyses are unaffected.</li>
+    <li><strong>Beta / Margin of Safety showing "—"</strong> — load market data via the ticker lookup, and run the DCF for MoS.</li>
+    <li><strong>Economics ratios suppressed</strong> — the currency guard found no listing matching the filing currency; the note names both currencies. Honest skip beats silent FX.</li>
+    <li><strong>Dev tools</strong> (model selector, response cache controls, raw-extraction debug) — set <code>FINLENS_DEBUG=1</code> in <code>.env</code>.</li>
+    <li><strong>Ports</strong> — the always-on service runs at <code>:8501</code>; use <code>:8502</code> for development sessions.</li>
+    <li><strong>Costs</strong> — Library loads are free; only Quick Analysis, fetches, uploads, and Re-Analyse spend (~$0.08 each).</li>
+  </ul>
+
+  <div class="footer">
+    <span>FinLens Operating Guide · reflects the dev branch as of July 3, 2026</span>
+    <span>Canonical copy: <span class="mono">docs/OPERATING_GUIDE.html</span></span>
+  </div>
+
+</div>

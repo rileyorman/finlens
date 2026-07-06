@@ -7,6 +7,7 @@ reruns or other repeated calls.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import yfinance as yf
@@ -35,7 +36,23 @@ COMMODITY_PROXIES = {
         "fallback": "UNG",
         "label": "Henry Hub natural gas futures; UNG ETF fallback",
     },
+    "silver": {
+        "primary": "SI=F",
+        "fallback": "SLV",
+        "label": "Silver futures; SLV ETF fallback",
+    },
+    "uranium": {
+        # No liquid uranium futures on the free tier — both proxies are
+        # uranium-sector ETFs, honestly labeled as such in the UI.
+        "primary": "URA",
+        "fallback": "URNM",
+        "label": "Uranium sector ETFs (no liquid uranium futures on the free tier)",
+    },
 }
+
+# Minimum overlapping daily returns before correlation/beta are reported.
+# Below this the numbers are noise, so the card shows an honest skip instead.
+MIN_CORRELATION_POINTS = 20
 
 _SCALE_FACTORS = {
     "ones": 1,
@@ -110,13 +127,19 @@ def infer_commodity(sector_inferred: str | None, commodity_hint: str | None = No
             return hint
 
     sector = str(sector_inferred or "").lower()
+    # Gold before silver: a "gold-silver" miner prices primarily off gold.
     if "gold" in sector:
         return "gold"
+    if "silver" in sector:
+        return "silver"
     if "copper" in sector:
         return "copper"
-    if "natural gas" in sector or "gas" in sector:
+    if "uranium" in sector:
+        return "uranium"
+    has_oil_keyword = any(keyword in sector for keyword in ("oil", "crude", "petroleum"))
+    if "natural gas" in sector and not has_oil_keyword:
         return "natural gas"
-    if "oil" in sector or "crude" in sector or "petroleum" in sector:
+    if has_oil_keyword:
         return "crude oil"
     return None
 
@@ -142,6 +165,7 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
         "share_price": None,
         "market_cap": None,
         "shares_outstanding": None,
+        "currency": None,
         "ticker_used": _to_yfinance_ticker(ticker),
         "error": None,
     }
@@ -159,20 +183,26 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
         )
         market_cap = getattr(fast_info, "market_cap", None)
         shares = getattr(fast_info, "shares", None)
+        # Listing currency — the currency market_cap is quoted in. Needed by the
+        # filing-vs-listing currency guard on the market-cap ratios.
+        listing_currency = getattr(fast_info, "currency", None)
 
-        if market_cap is None or shares is None:
+        if market_cap is None or shares is None or listing_currency is None:
             try:
                 info = yt.info or {}
                 market_cap = market_cap if market_cap is not None else info.get("marketCap")
                 shares = shares if shares is not None else info.get("sharesOutstanding")
                 share_price = share_price or info.get("currentPrice") or info.get("regularMarketPrice")
+                listing_currency = listing_currency or info.get("currency")
             except Exception:
                 pass
 
+        currency_text = str(listing_currency).strip().upper() if listing_currency else ""
         result = {
             "share_price": _to_number(share_price),
             "market_cap": _to_number(market_cap),
             "shares_outstanding": _to_number(shares),
+            "currency": currency_text or None,
             "ticker_used": ticker_used,
             "error": None,
         }
@@ -182,6 +212,53 @@ def _fetch_company_market_data(ticker: str, cache: dict | None = None) -> dict[s
 
     _cache_set(cache, cache_key, result)
     return result
+
+
+def _resolve_company_market_data(
+    ticker: str,
+    filing_currency: str | None,
+    cache: dict | None = None,
+) -> dict[str, Any]:
+    """Fetch company market data, preferring the listing whose currency
+    matches the filing currency.
+
+    Dual-listed filers (SU on NYSE in USD vs SU.TO in CAD) otherwise resolve
+    to a listing whose market cap is in the wrong currency, and the currency
+    guard then suppresses every market-cap ratio. Trying the sibling listing
+    first keeps the guard honest AND the ratios alive.
+
+    Falls back to the primary resolution when no candidate matches.
+    """
+    primary = _fetch_company_market_data(ticker, cache)
+    if not filing_currency:
+        return primary
+    if _currency_code(primary.get("currency")) == filing_currency:
+        return primary
+
+    primary_symbol = str(primary.get("ticker_used") or "").strip().upper()
+    if not primary_symbol:
+        return primary
+
+    if primary_symbol.endswith((".TO", ".V")):
+        # Toronto listing mismatched (e.g. USD filer like Agnico): try the
+        # bare US-style symbol.
+        alternates = [primary_symbol.rsplit(".", 1)[0]]
+    else:
+        # US listing mismatched (e.g. CAD filer like Suncor): try Toronto,
+        # then TSX Venture.
+        alternates = [f"{primary_symbol}.TO", f"{primary_symbol}.V"]
+
+    for alternate in alternates:
+        if not alternate or alternate == primary_symbol:
+            continue
+        candidate = _fetch_company_market_data(alternate, cache)
+        if (
+            candidate.get("market_cap") is not None
+            and _currency_code(candidate.get("currency")) == filing_currency
+        ):
+            return candidate
+
+    return primary
 
 
 def _history_to_points(history: Any) -> list[dict[str, Any]]:
@@ -266,6 +343,68 @@ def _fetch_commodity_market_data(commodity: str | None, cache: dict | None = Non
     }
 
 
+def _daily_return_stats(
+    company_points: list[dict[str, Any]],
+    commodity_points: list[dict[str, Any]],
+    min_points: int = MIN_CORRELATION_POINTS,
+) -> dict[str, Any]:
+    """Correlation and beta of daily returns: company vs commodity proxy.
+
+    Answers "is this equity a commodity proxy or an operating story?" using
+    the two 1y price series the snapshot already fetches. Pure python —
+    aligned by shared dates, Pearson correlation, beta = cov / var(commodity).
+    """
+    insufficient = {
+        "correlation": None,
+        "beta": None,
+        "points_used": 0,
+        "reason": "insufficient overlapping price history",
+    }
+    company = {p["date"]: p["close"] for p in company_points or []}
+    commodity = {p["date"]: p["close"] for p in commodity_points or []}
+    common_dates = sorted(set(company) & set(commodity))
+    if len(common_dates) < min_points + 1:
+        insufficient["points_used"] = max(len(common_dates) - 1, 0)
+        return insufficient
+
+    company_returns: list[float] = []
+    commodity_returns: list[float] = []
+    for prev_date, cur_date in zip(common_dates, common_dates[1:]):
+        prev_co, cur_co = company[prev_date], company[cur_date]
+        prev_cm, cur_cm = commodity[prev_date], commodity[cur_date]
+        if prev_co and prev_cm:
+            company_returns.append(cur_co / prev_co - 1)
+            commodity_returns.append(cur_cm / prev_cm - 1)
+
+    n = len(company_returns)
+    if n < min_points:
+        insufficient["points_used"] = n
+        return insufficient
+
+    mean_co = sum(company_returns) / n
+    mean_cm = sum(commodity_returns) / n
+    cov = sum(
+        (a - mean_co) * (b - mean_cm)
+        for a, b in zip(company_returns, commodity_returns)
+    ) / n
+    var_cm = sum((b - mean_cm) ** 2 for b in commodity_returns) / n
+    var_co = sum((a - mean_co) ** 2 for a in company_returns) / n
+    if var_cm == 0 or var_co == 0:
+        return {
+            "correlation": None,
+            "beta": None,
+            "points_used": n,
+            "reason": "zero variance in one of the return series",
+        }
+
+    return {
+        "correlation": cov / (var_cm ** 0.5 * var_co ** 0.5),
+        "beta": cov / var_cm,
+        "points_used": n,
+        "reason": None,
+    }
+
+
 def _ratio(numerator: float | None, denominator: float | None) -> float | None:
     if numerator is None or denominator is None or denominator == 0:
         return None
@@ -277,6 +416,60 @@ def _reason(metric_name: str, required: list[str], missing: list[str]) -> str | 
     if missing_required:
         return f"missing required inputs: {', '.join(missing_required)}"
     return None
+
+
+def _currency_code(text: str | None) -> str | None:
+    """Extract an ISO-style 3-letter currency code from a currency label.
+
+    Filing currency labels can carry a scale suffix (e.g. "CAD, in ones",
+    "USD, in thousands"), while yfinance listing currency is a bare code
+    ("USD"). Compare codes, not raw labels. Returns None when no 3-letter
+    code is present — the guard then skips honestly rather than guessing.
+    """
+    if not text:
+        return None
+    match = re.search(r"\b[A-Z]{3}\b", str(text).upper())
+    return match.group(0) if match else None
+
+
+def _market_cap_currency_check(
+    filing_currency: str | None,
+    listing_currency: str | None,
+    ticker_used: str | None,
+) -> tuple[str, str | None]:
+    """Check that filing and listing currencies match before market-cap ratios.
+
+    Market-cap ratios divide filing-currency figures by yfinance market_cap,
+    which is quoted in the LISTING currency. If the two differ (e.g. a CAD
+    filer resolved to a USD listing) the ratio is silently wrong. No FX
+    conversion here — an honest skip beats a wrong number (integrity-first).
+
+    Returns (status, note): status is "match" / "mismatch" / "unknown";
+    note explains the skip (None on match).
+    """
+    if filing_currency and listing_currency:
+        if filing_currency == listing_currency:
+            return "match", None
+        return "mismatch", (
+            f"Market-cap ratios not shown: filing currency {filing_currency} vs "
+            f"listing currency {listing_currency} — a cross-currency ratio would "
+            f"be incorrect."
+        )
+    if not filing_currency and not listing_currency:
+        return "unknown", (
+            "Market-cap ratios not shown: filing and listing currencies could "
+            "not be determined — cannot confirm they match."
+        )
+    if not filing_currency:
+        return "unknown", (
+            f"Market-cap ratios not shown: filing currency unknown — cannot "
+            f"confirm it matches the listing currency ({listing_currency})."
+        )
+    return "unknown", (
+        f"Market-cap ratios not shown: listing currency for "
+        f"{ticker_used or 'the resolved ticker'} unknown — cannot confirm it "
+        f"matches the filing currency ({filing_currency})."
+    )
 
 
 def build_resource_economics_snapshot(
@@ -306,9 +499,50 @@ def build_resource_economics_snapshot(
     currency = _extract_text(fundamentals, "currency")
     fiscal_year_end = _extract_text(fundamentals, "fiscal_year_end")
 
+    # Statement-level cost fields for the cost-structure waterfall. The
+    # mining and resource sector profiles map different canonical names;
+    # extract them all and let the UI render whichever are present.
+    # Kept separate from raw_values so missing_inputs semantics stay
+    # scoped to the Tier 1 ratio inputs.
+    _extra_cost_fields = (
+        "exploration_expense",
+        "royalties",
+        "operating_expense",
+        "depletion_depreciation_amortization",
+    )
+    cost_structure = {
+        "revenue": None,  # filled after scaling below
+        "production_costs": None,
+        "mine_development_amortization": None,
+    }
+    for field in _extra_cost_fields:
+        value = _extract_field(fundamentals, field)
+        cost_structure[field] = value * factor if value is not None else None
+
     commodity = infer_commodity(sector_inferred, commodity_hint)
-    company_market = _fetch_company_market_data(ticker, cache)
+    # Resolve the filing currency first so the company lookup can prefer the
+    # listing quoted in the same currency (see _resolve_company_market_data).
+    filing_currency = _currency_code(currency)
+    company_market = _resolve_company_market_data(ticker, filing_currency, cache)
     commodity_market = _fetch_commodity_market_data(commodity, cache)
+
+    # Company share-price history for the indexed company-vs-commodity chart.
+    # Reuses the proxy fetcher (same 1y window and point shape as the
+    # commodity trend). Empty on failure — the chart simply doesn't render.
+    company_symbol = company_market.get("ticker_used")
+    company_trend_points: list[dict[str, Any]] = []
+    if company_symbol:
+        company_trend_points = _fetch_proxy_data(company_symbol, cache).get("trend", [])
+
+    # Fill the scaled statement values shared with the Tier 1 ratios.
+    cost_structure["revenue"] = values["revenue"]
+    cost_structure["production_costs"] = values["production_costs"]
+    cost_structure["mine_development_amortization"] = values["mine_development_amortization"]
+
+    correlation_stats = _daily_return_stats(
+        company_trend_points, commodity_market.get("trend", [])
+    )
+    correlation_stats["proxy_used"] = commodity_market.get("proxy_used")
 
     market_cap = company_market.get("market_cap")
     missing_inputs = [
@@ -337,6 +571,26 @@ def build_resource_economics_snapshot(
             "commodity_spot_price", ["commodity", "commodity_spot_price"], missing_inputs
         ),
     }
+
+    # Currency guard on the market-cap ratios (earnings_yield, revenue_to_market_cap).
+    # net_margin is intra-filing (currency cancels) and is deliberately untouched.
+    # Only overrides ratios that would otherwise compute — if inputs are missing,
+    # the missing-inputs reason above is the true cause and stands.
+    # (filing_currency was resolved above, before the company lookup.)
+    listing_currency = _currency_code(company_market.get("currency"))
+    currency_status, currency_note = _market_cap_currency_check(
+        filing_currency, listing_currency, company_market.get("ticker_used")
+    )
+    currency_suppressed = False
+    if currency_status != "match":
+        if earnings_yield is not None:
+            earnings_yield = None
+            reasons["earnings_yield"] = currency_note
+            currency_suppressed = True
+        if revenue_to_market_cap is not None:
+            revenue_to_market_cap = None
+            reasons["revenue_to_market_cap"] = currency_note
+            currency_suppressed = True
 
     cheap_company_or_cheap_sector = {
         "company_earnings_yield": earnings_yield,
@@ -384,6 +638,12 @@ def build_resource_economics_snapshot(
             "proxy_used": commodity_market.get("proxy_used"),
             "points": commodity_market.get("trend", []),
         },
+        "company_trend": {
+            "ticker_used": company_symbol,
+            "points": company_trend_points,
+        },
+        "commodity_correlation": correlation_stats,
+        "cost_structure": cost_structure,
         "cheap_company_or_cheap_sector": cheap_company_or_cheap_sector,
         "metadata": {
             "ticker": ticker,
@@ -392,6 +652,13 @@ def build_resource_economics_snapshot(
             "proxy_used": commodity_market.get("proxy_used"),
             "fiscal_year_end": fiscal_year_end,
             "currency": currency,
+            "currency_guard": {
+                "filing_currency": filing_currency,
+                "listing_currency": listing_currency,
+                "status": currency_status,
+                "suppressed": currency_suppressed,
+                "note": currency_note,
+            },
             "scale": scale,
             "scale_factor_applied": factor,
             "missing_inputs": missing_inputs,

@@ -125,6 +125,163 @@ When designing any new feature that writes files: ask "does this need to
 persist across a reboot?" If yes, NOT temp. "Will this be written frequently
 during normal use?" If yes, NOT a cloud sync folder.
 
+## SEDAR Canonical Revenue Semantics (per-sector)
+
+The mapper's canonical `revenue` and its sector-specific revenue names carry
+deliberate, distinct meanings. Do not "unify" the distinct ones, and do not
+re-mint sector names for the same concept (that was the Task A bug, fixed
+2026-07-03 — audit: docs/audits/2026-07-02-economics-contract-audit.md).
+
+- `revenue` (default; resource_sector and mining_sector fill THIS slot):
+  the filer's top line as canonically chosen. For resource/O&G filers this is
+  GROSS product sales BEFORE royalty deductions (CNQ "Product sales" 41,509,
+  not the net "Revenue" 35,656; Suncor "Gross revenues" 52,377) — per the
+  2026-06-17 ground-truth decision. Display surfaces label it "gross of
+  royalties" for resource filers.
+  NEGATIVE RULE: on royalty-reporting resource filers, bare "Revenue" /
+  net-of-royalties lines stay UNMAPPED BY DESIGN — canonical revenue = gross.
+  Bare "revenue" is never a safe alias in this sector (it would capture the
+  net line and collapse the gross/royalty split). Pinned by test.
+- `rental_revenue` (reit_sector): rental-only revenue per the NOI rule —
+  DELIBERATELY a different concept from a REIT's blended total (which, where
+  a "Total revenue" line exists, maps to default `revenue` separately).
+- `insurance_revenue` (insurance_sector): IFRS 17 insurance revenue —
+  DELIBERATELY distinct; not comparable to a corporate top line.
+- `royalties` is stored NEGATIVE (as-presented deduction, e.g. "Less:
+  royalties" −5,853). Consumers wanting a positive cost must negate it.
+
+When adding a sector profile: if the concept already has a default canonical
+name, AUGMENT that name with new aliases (mining_sector pattern). Mint a new
+canonical name only for a genuinely different concept, and record why.
+
+## Canonical Field Definitions (judgment-class fields)
+
+These fields carry documented judgment-class definitions. When mapping a new
+filer in the same sector, conform to these definitions instead of re-deriving
+the concept from the filer's subtotal labels.
+
+### `insurance_finance_result`
+
+DEFINITION: insurance finance income/(expense) from insurance contracts ISSUED
+- gross, EXCLUDING reinsurance finance income/(expense).
+
+RULE: take the "insurance finance income (expense) from contracts issued" line.
+Do NOT net in reinsurance finance. If the filer prints a combined "Net
+insurance financial result" subtotal, do NOT take it; take the issued-gross
+component. Rationale: cross-insurer consistency. SLF has no net rollup, so
+issued-gross is the only line common to both insurers.
+
+CURRENT FILERS:
+- IFC: `insurance_finance_result` = -1,041 from "Insurance finance income
+  (expense)" (issued line). IFC also prints "Reinsurance finance income
+  (expense)" +162 and "Net insurance financial result" -879; the -879 subtotal
+  is deliberately NOT taken.
+- SLF: `insurance_finance_result` = -6,787 from "Insurance finance income
+  (expenses) from insurance contracts issued". SLF prints no net rollup;
+  hand-confirmed 2026-06-17. Its reinsurance-held +69 and segregated-fund
+  -1,901 lines are separate and are not netted into this field.
+
+KNOWN TENSION: this reports a number that disagrees with IFC's own printed "Net
+insurance financial result" subtotal. That is deliberate for comparability, not
+an error. Any future insurer whose statement presents ONLY a net result and no
+issued-gross line breaks this rule and needs a design decision, not a silent
+map.
+
+### `net_operating_income` (REIT sector, conditional lift/derive field)
+
+DEFINITION: rental-only NOI - rental property operations only, EXCLUDING
+residential/development revenue and cost.
+
+RULE: conditional on filer shape:
+- PURE REIT: if the filer reports a clean rental-only NOI/net-rental-income
+  line with no development blended in, LIFT the printed line exactly.
+  Precedents: CAR.UN "Net operating income" 730,654; DIR.UN "Net rental
+  income" 355,432. Both are exact lifts, not derived.
+- BLENDED REIT: if the operating subtotal mixes development margin and/or
+  service-fee income into property results, DERIVE rental-only NOI as
+  rental_revenue - rental operating costs (recoverable + non-recoverable),
+  excluding residential inventory sales/cost AND property-management/service-fee
+  income. Do NOT lift the filer's blended "Operating income" subtotal.
+
+This matches the shipped implementation: derivation fires only where a
+development/inventory line exists; pure REITs lift the clean printed line.
+
+CURRENT FILER:
+- REI.UN: `net_operating_income` = 720,404, derived as 1,176,428 "Rental
+  revenue" - 414,386 "Recoverable under tenant leases" - 41,638
+  "Non-recoverable costs". RioCan's printed blended "Operating income" 798,716
+  is deliberately NOT used; it is preserved in `mapping.unmapped[]`.
+
+REI.UN RECONCILIATION:
+- RioCan printed blended "Operating income" = 798,716.
+- Derived rental-only NOI = 720,404.
+- Difference = 78,312, composed of 62,358 residential development margin
+  (244,189 "Residential inventory sales" - 181,831 "Residential inventory cost
+  of sales") plus 15,954 "Property management and other service fees".
+- 62,358 + 15,954 = 78,312; closes exactly.
+
+Rental-only NOI excludes BOTH the residential margin AND the service-fee income.
+That is why it will not match RioCan's printed operating-income line by design.
+
+### `property_operating_costs` (REIT sector, OPEN definition question)
+
+CURRENT STATE / INCONSISTENCY: `property_operating_costs` currently maps
+REI.UN's "Total operating costs" 637,855, which INCLUDES "Residential inventory
+cost of sales" 181,831. In the same fixture, `net_operating_income` EXCLUDES
+that same residential cost. Same filer, same line family, opposite treatment
+across two fields.
+
+OPEN HUMAN DECISION: should `property_operating_costs` be:
+- (i) blended total including residential inventory cost of sales: 637,855
+  (current REI.UN value; strongest comparability to the filing's printed
+  subtotal), or
+- (ii) rental-only operating costs: 456,024 = 414,386 "Recoverable under tenant
+  leases" + 41,638 "Non-recoverable costs" (strongest internal consistency with
+  the rental-only NOI derivation)?
+
+Tradeoff: comparability-to-filing vs internal-consistency-with-NOI. This is a
+definition gap, not a wrong number. Leave the current value untouched until
+Riley decides the canonical definition.
+
+CURRENT FILERS:
+- REI.UN: `property_operating_costs` = 637,855 from "Total operating costs";
+  OPEN as described above because the line includes residential inventory cost
+  of sales.
+- CAR.UN: `property_operating_costs` = -281,431 from "Property operating
+  costs".
+- DIR.UN: `property_operating_costs` = -110,786 from "Investment properties
+  operating expenses".
+
+## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
+
+CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped
+version e8e7062): FMP is an UNRELIABLE correctness witness GENERALLY —
+including US, USD, fully-XBRL-covered filers — not only SEDAR/CAD filers.
+
+PROOF CASE (JPM FY2025 operating_cash_flow): FMP returned +100.9B; the
+as-filed 10-K (accession 0001628280-26-008131, R9 Consolidated Statements of
+Cash Flows) shows (147,782) USD millions, byte-identical to FinLens's XBRL
+tag. FMP's value matches NO filed year — a phantom value on the filer class
+FMP should handle best.
+
+ADDITIONAL SEDAR/CAD failure modes (retained — these compound the general
+unreliability, they are not the whole principle): FMP has currency mismatches
+(reports USD or a different currency than the CAD filing) and coverage gaps
+for Canadian issuers (the free tier premium-blocks TSX tickers).
+
+STANDING CONSEQUENCES: internal-consistency checks (accounting identities)
+are the preferred validation; the #7 second-extractor cross-check uses Gemini
+(an independent extraction of the same source PDF), NOT FMP — Gemini is the
+scalable correctness path; an FMP result must NEVER adjudicate a discrepancy
+alone. CROSS_VALIDATE GUARD (v2, 2026-07-03): cross_validate.py requires filing
+currency == FMP reportedCurrency before comparing, writes currency_mismatch /
+currency_unknown abstentions without FX conversion, and records FMP value
+mismatches as advisory-only triage signals.
+CROSS_EXTRACTOR GUARD (v3, 2026-07-03): cross_extractor.py requires both
+value-within-tolerance and matching normalized source labels for AGREE;
+value-in-tolerance with differing labels becomes a soft FLAGGED field with a
+reason such as scope_masked_agree.
+
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
 External data sources (Claude analyses, FMP, yfinance, EDGAR) return data
@@ -329,6 +486,8 @@ Main entry point:
 Important project files:
 
 - `config.py` - Claude model names, input limits, and cache directory.
+- `sedar_extractor.py` - SEDAR+ PDF extraction; owns Option A cover-page selection (`_ordered_unique_pages`) and `attach_mapping()` (feeds statements to the canonical mapper).
+- `scripts/run_cross_extractor.py` - manual Sunday-audit runner for the Gemini second-extractor integrity signal.
 - `.env` - local secrets such as API keys. Do not commit.
 - `.env.example` - example environment variables.
 - `requirements.txt` - Python dependencies.
@@ -345,27 +504,55 @@ Important project files:
 Current files in `modules/`:
 
 - `__init__.py`
+- `analysis_cache.py` - schema-versioned analysis JSON cache (owns `CURRENT_SCHEMA_VERSION`).
 - `cache.py` - response caching helpers.
+- `campaign_pdf.py` - deterministic campaign-PDF resolution by recorded canonical filename (spec: `docs/CAMPAIGN_PDF_RESOLVER_SPEC.md`).
 - `claude_analyzer.py` - Claude prompts and Anthropic API calls.
 - `dcf_calculator.py` - discounted cash flow calculations.
+- `document_converter.py` - docx-to-markdown conversion (markitdown) for non-PDF uploads.
 - `edgar_fetcher.py` - SEC EDGAR filing lookup/fetch helpers.
 - `education_content.py` - educational UI content.
 - `excel_exporter.py` - Excel workbook generation and summary metric helpers.
 - `filing_comparison.py` - year-over-year filing comparison.
 - `filing_library.py` - local filing library persistence.
+- `fiscal_ai.py` - Fiscal.ai API helpers (company profile, shares outstanding, logo).
+- `fmp.py` - Financial Modeling Prep statement fetch and quick-financials helpers.
 - `market_data.py` - market data and ticker lookup helpers.
 - `market_ticker.py` - ticker/market display helpers.
 - `mda_sentiment.py` - MD&A sentiment analysis.
 - `memo_exporter.py` - Word investment memo generation.
 - `pdf_extractor.py` - PDF text extraction with `pdfplumber`.
 - `peer_comparison.py` - peer group and competitor comparison data.
+- `polymarket.py` - Polymarket macro-event probability helpers (experimental).
 - `portfolio_manager.py` - portfolio-level analysis display data.
 - `portfolio_registry.py` - local portfolio/ticker registry.
+- `position_tracker.py` - lot-level position persistence (portfolios, lots, cost basis).
 - `red_flag_detector.py` - red/yellow flag detection logic.
 - `scenario_simulator.py` - scenario and sensitivity analysis.
 - `stock_tracker.py` - stock data helper used by watchlist and portfolio views.
 - `supabase_storage.py` - optional Supabase persistence for filings and PDFs.
 - `watchlist.py` - local watchlist persistence.
+
+Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moat):
+
+- `engine.py` - detection orchestration; runs rules over an analysis and logs results.
+- `rules.py` - detection rules (sanity checks, identity checks, recency).
+- `sedar_mapper.py` - SEDAR statement-label-to-canonical-field mapping and sector-profile routing.
+- `sedar_aliases.json` - canonical field aliases and sector profiles consumed by the mapper.
+- `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`) and cross-extractor disposition appends.
+- `analyze.py` - integrity analysis entry points, including `/integrity-log` cross-extractor review output.
+- `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
+- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records; v3 AGREE requires value and normalized-label agreement.
+
+Subpackage `modules/economics/`:
+
+- `resource_economics.py` - Resource Economics Snapshot calculations (filing fundamentals x yfinance market/commodity data).
+- `resource_display.py` - display-text helpers for the economics panel (labels, captions, caveats).
+
+Subpackage `modules/analysis/`:
+
+- `munger_inversion.py` - Munger inversion pre-mortem engine.
+- `inversion_store.py` - persistent store for inversion results.
 
 ## Current Tech Stack
 

@@ -4,7 +4,6 @@ import ssl
 import anthropic
 import httpx
 
-from config import EXTRACTION_MODEL
 from modules.excel_exporter import _calc_summary_metrics, _lookup, _lookup2
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"

@@ -6,7 +6,7 @@ import re
 import anthropic
 import httpx
 
-from config import EXTRACTION_MODEL, MAX_FILING_CHARS
+from config import MAX_FILING_CHARS
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 OPUS_48_MODEL = "claude-opus-4-8"
@@ -76,7 +76,6 @@ _USER_TEMPLATE = """Analyse the MD&A sentiment in this financial filing:
 
 
 def _safe_json(raw: str) -> dict:
-    import re
     text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     try:

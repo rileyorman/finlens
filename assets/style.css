@@ -132,10 +132,43 @@ div[data-testid="stMetric"] label {
 }
 
 div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    font-size: 24px;
+    font-size: 21px;
     font-weight: 600;
     color: #F1F5F9;
     letter-spacing: -0.02em;
+}
+
+/* Metrics must never truncate: a clipped "$3…" or "INVESTIGA…" misleads.
+   Let labels and values wrap instead of ellipsizing in narrow columns.
+   Note: stMetricLabel is a <label> element and the ellipsis styles live on
+   the markdown container inside it, so keep these selectors attribute-only. */
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] * {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] * {
+    /* Values stay on one line — "$194.83" must never break mid-number.
+       overflow stays visible so a tight fit renders whole, not as "$3…". */
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+[data-testid="stMetricDelta"],
+[data-testid="stMetricDelta"] * {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Labels wrap at word boundaries only — never "CURRE / NT". */
+[data-testid="stMetricLabel"] p {
+    overflow-wrap: normal !important;
+    word-break: keep-all !important;
 }
 
 /* Buttons */
@@ -303,13 +336,21 @@ hr {
     letter-spacing: 0;
 }
 
+/* The sidebar-wide `* { font-size: 12px !important }` rule also hits the
+   wordmark spans; this later rule restores the brand size. */
+.finlens-sidebar-wordmark span {
+    font-size: 18px !important;
+}
+
 .finlens-sidebar-wordmark-fin {
     color: #F1F5F9;
     font-weight: 600;
 }
 
 .finlens-sidebar-wordmark-lens {
-    color: #185FA5;
+    /* Match the header wordmark. The previous #185FA5 was near-invisible
+       against the dark sidebar background. */
+    color: #378ADD;
     font-weight: 300;
 }
 

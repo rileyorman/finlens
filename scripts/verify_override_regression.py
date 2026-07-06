@@ -76,7 +76,7 @@ print()
 print("Defaults preserved?")
 print(f"  revenue       = 66605?  {result['mapped'].get('revenue', {}).get('value') == 66605}")
 print(f"  net_income    = 20369?  {result['mapped'].get('net_income', {}).get('value') == 20369}")
-print(f"  Sector adds present?")
+print("  Sector adds present?")
 print(f"  net_interest_income          = 33000? "
       f"{result['mapped'].get('net_interest_income', {}).get('value') == 33000}")
 print(f"  provision_for_credit_losses  = 4362?  "

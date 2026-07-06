@@ -20,6 +20,43 @@ peer_map = {
 }
 
 
+# Keyword rules mapping a filing's inferred sector text to a peer_map bucket.
+# Order matters: more specific keywords first (semiconductor before software,
+# oil/gas before generic energy would be redundant but harmless).
+_SECTOR_KEYWORDS = [
+    ("Semiconductors",         ["semiconductor", "chip", "gpu", "foundry"]),
+    ("Metals & Mining",        ["gold", "silver", "copper", "mining", "miner", "metals"]),
+    ("Energy",                 ["oil", "gas", "petroleum", "energy", "pipeline", "oil sands"]),
+    ("Financials",             ["bank", "insurance", "insurer", "financial", "asset management"]),
+    ("Real Estate",            ["reit", "real estate", "properties", "property"]),
+    ("Healthcare",             ["health", "pharma", "biotech", "medical"]),
+    ("Utilities",              ["utility", "utilities", "electric power"]),
+    ("Consumer Staples",       ["staples", "food", "beverage", "grocery", "household products"]),
+    ("Consumer Discretionary", ["retail", "restaurant", "apparel", "automotive", "e-commerce"]),
+    ("Industrials",            ["industrial", "railway", "railroad", "machinery", "aerospace", "transport"]),
+    ("Communications",         ["telecom", "media", "entertainment", "streaming", "communication"]),
+    ("Materials",              ["chemical", "materials", "packaging", "forestry", "fertilizer"]),
+    ("Technology",             ["software", "technology", "saas", "cloud", "internet", "it services"]),
+]
+
+
+def suggest_sector(sector_text: str | None) -> str | None:
+    """Map a filing's inferred sector text to a peer_map bucket.
+
+    SEDAR/EDGAR sector descriptions ("Integrated Oil & Gas", "Gold Mining")
+    never match peer_map keys by substring, which used to leave the peer
+    selector defaulting to Technology for an oil-sands producer. Returns
+    None when nothing matches — the caller keeps its own default.
+    """
+    text = str(sector_text or "").lower()
+    if not text.strip():
+        return None
+    for bucket, keywords in _SECTOR_KEYWORDS:
+        if any(keyword in text for keyword in keywords):
+            return bucket
+    return None
+
+
 def _num(value):
     try:
         if value is None:
@@ -44,13 +81,17 @@ def _fetch_peer(ticker: str) -> dict:
     }
 
 
-def get_peer_data(ticker: str, sector: str) -> dict:
+def get_peer_data(ticker: str, sector: str, tickers: list[str] | None = None) -> dict:
+    """Fetch peer metrics. `tickers` overrides the sector's default peer set,
+    letting the caller pass a user-edited list (e.g. Canadian energy names)."""
     try:
         ticker = (ticker or "").strip().upper()
         sector = (sector or "").strip()
-        tickers = peer_map.get(sector, [])
+        if tickers is None:
+            tickers = peer_map.get(sector, [])
+        tickers = [t.strip().upper() for t in tickers if t and t.strip()]
         if not tickers:
-            return {"peers": [], "medians": {}, "error": f"No peer map found for sector '{sector}'."}
+            return {"peers": [], "medians": {}, "error": f"No peer tickers for sector '{sector}'."}
 
         peer_tickers = [peer for peer in tickers if peer.upper() != ticker]
         peers = []

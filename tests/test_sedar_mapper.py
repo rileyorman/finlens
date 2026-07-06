@@ -581,6 +581,52 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_resource_sector_maps_suncor_class_gross_revenues():
+    """Task B (Suncor-scoped, decision (a) 2026-07-03): integrated-producer
+    labels map through resource_sector. "Gross revenues" fills canonical
+    `revenue` (gross-of-royalties convention); the net-of-royalties line
+    stays unmapped BY DESIGN (CLAUDE.md per-sector revenue semantics)."""
+    items = [
+        {"label": "Gross revenues", "value": 52377, "confidence": 0.99},
+        {"label": "Less: royalties", "value": -3469, "confidence": 0.99},
+        {"label": "Revenues and Other Income (net)", "value": 49310, "confidence": 0.99},
+        {"label": "Net Earnings", "value": 5918, "confidence": 0.99},
+        {"label": "Total assets", "value": 89913, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Integrated Oil & Gas")
+    mapped = result["mapped"]
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
+    assert mapped["revenue"]["source_label"] == "Gross revenues"
+    assert mapped["revenue"]["value"] == 52377
+    assert mapped["royalties"]["source_label"] == "Less: royalties"
+    assert mapped["royalties"]["value"] == -3469
+    assert mapped["net_income"]["source_label"] == "Net Earnings"
+    assert mapped["net_income"]["value"] == 5918
+    assert mapped["total_assets"]["value"] == 89913
+
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenues and Other Income (net)" in unmapped_labels
+
+
+def test_resource_sector_bare_net_revenue_stays_unmapped_by_design():
+    """Negative guard for Task B: a bare net-of-royalties "Revenue" line must
+    NOT map in resource_sector — canonical revenue = GROSS (2026-06-17 ground
+    truth). No bare "revenue" alias may exist in any profile; this test fails
+    if one is ever added."""
+    items = [
+        {"label": "Product sales", "value": 41509, "confidence": 0.99},
+        {"label": "Less: royalties", "value": -5853, "confidence": 0.99},
+        {"label": "Revenue", "value": 35656, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Upstream Oil & Gas")
+
+    assert result["mapped"]["revenue"]["source_label"] == "Product sales"
+    assert result["mapped"]["revenue"]["value"] == 41509
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Revenue" in unmapped_labels
+
+
 def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     """
     CNQ (Canadian Natural Resources, IFRS, CAD, December year-end).
@@ -589,10 +635,12 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     canonical fields. CNQ maps sector-native fields from its primary income
     statement while preserving default net_income via "Net earnings".
 
-    Important CNQ semantics: `total_revenue` is gross Product sales before
-    royalties. The statement also contains a net "Revenue" line after royalties;
-    that line deliberately remains unmapped so the gross and royalty components
-    do not collapse into one generic revenue value.
+    Important CNQ semantics: canonical `revenue` is gross Product sales before
+    royalties (Task A rename, 2026-07-03 — resource_sector fills the DEFAULT
+    revenue slot like mining_sector does; audit 551aaae §8). The statement also
+    contains a net "Revenue" line after royalties; that line deliberately
+    remains unmapped so the gross and royalty components do not collapse into
+    one generic revenue value.
     """
     data = _load_fixture("cnq_fy2024_sedar.json")
     assert data["accounting_standard"] == "IFRS"
@@ -611,8 +659,9 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     )
     mapped = result["mapped"]
 
-    assert mapped["total_revenue"]["source_label"] == "Product sales"
-    assert mapped["total_revenue"]["value"] == 41509
+    assert mapped["revenue"]["source_label"] == "Product sales"
+    assert mapped["revenue"]["value"] == 41509
+    assert "total_revenue" not in mapped  # Task A: sector-minted name retired
 
     assert mapped["royalties"]["source_label"] == "Less: royalties"
     assert mapped["royalties"]["value"] == -5853
@@ -1144,3 +1193,66 @@ def test_ambiguous_duplicate_different_values_still_blocks(monkeypatch):
     assert result["meta"].get("benign_skipped_count", 0) == 0
     meta = result["meta"]
     assert meta["mapped_count"] + meta["unmapped_count"] + meta.get("benign_skipped_count", 0) == meta["total"]
+
+
+# ---------------------------------------------------------------------------
+# Token-ladder precedence: mining-family before resource_sector.
+# Pins the sibling-shadowing fix (queue item 2026-07-03): resource_sector's
+# broad "exploration and production" token must not capture mining filers —
+# "Mineral Exploration and Production" previously routed to resource_sector
+# (O&G royalty semantics) because resource was checked first.
+# ---------------------------------------------------------------------------
+
+def test_mineral_exploration_and_production_routes_to_exploration_not_resource():
+    # Explorer-shaped statements (NFG) under the shadowing sector string:
+    # must reach the mining branch, not O&G royalty semantics.
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector="Mineral Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["exploration_expense"]["value"] == 52563340
+
+
+def test_mineral_exploration_string_wins_on_explicit_token_even_for_producer_shape():
+    # Existing design pinned: an explicit exploration token in the sector text
+    # routes to the exploration profile regardless of statement shape
+    # (explicit token OR loss shape). AEM's producer statements under the
+    # shadowing string still land mining-family, never resource_sector.
+    data = _load_fixture("AEM_FY2025_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector="Mineral Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+
+
+def test_oil_and_gas_exploration_and_production_still_routes_resource():
+    # Non-regression: O&G phrasings contain no mining tokens, so the
+    # mining-first precedence must not move them.
+    data = _load_fixture("cnq_fy2024_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector="Oil and Gas Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
+
+
+def test_bare_exploration_and_production_still_routes_resource():
+    # Non-regression: the broad token's remaining coverage (E&P strings with
+    # no oil/gas and no mining words) keeps its resource_sector routing.
+    data = _load_fixture("cnq_fy2024_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector="Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "resource_sector"

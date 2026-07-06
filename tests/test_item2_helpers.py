@@ -2,7 +2,6 @@
 - _escape_md_dollars (app.py)
 - _to_yfinance_ticker (modules/market_data.py)
 """
-import importlib
 import sys
 import types
 
@@ -19,6 +18,7 @@ from modules.market_data import _to_yfinance_ticker
 @pytest.mark.parametrize("ticker, expected", [
     ("REI.UN",  "REI-UN.TO"),
     ("rei.un",  "REI-UN.TO"),   # case-insensitive normalisation
+    ("NFG",     "NFG.V"),       # CAD listing keeps New Found Gold ratios currency-consistent
     ("BCE.PR.A", "BCE-PR-A.TO"),
     ("AAPL",   "AAPL"),         # plain US ticker unchanged
     ("SHOP.TO", "SHOP.TO"),     # already has .TO suffix

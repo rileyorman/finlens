@@ -230,7 +230,6 @@ def _data_row(tbl, row_idx: int, values: list, col_widths: list,
         align = WD_ALIGN_PARAGRAPH.LEFT if i == 0 else WD_ALIGN_PARAGRAPH.CENTER
         p.alignment = align
         bold  = (i == 0)
-        color = value_color if (value_color and i != 0) else (None if i != 0 else None)
         _run(p, str(val) if val is not None else "—",
              bold=bold, size=9,
              color=(value_color if (value_color and i > 0) else None))
@@ -265,7 +264,6 @@ def create_memo(
     period   = financial_data.get("period", "")
     currency = financial_data.get("currency", "")
     fy       = financial_data.get("fiscal_year", "Current Year")
-    fy_prior = financial_data.get("fiscal_year_prior", "Prior Year")
 
     sd       = summary_data or {}
     signal   = (sd.get("signal") or "PASS").upper()
@@ -273,8 +271,6 @@ def create_memo(
     ticker   = sd.get("ticker") or "—"
     sector   = sd.get("sector_inferred") or "—"
     fdate    = sd.get("filing_date") or "—"
-    cats     = sd.get("catalysts") or []
-    risks    = sd.get("risks") or []
 
     bb       = bear_bull_data or {}
     bull_pts = (bb.get("bull_case") or [])[:3]

@@ -1252,6 +1252,6 @@
     "canonical_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\IFC_FY2025.pdf",
     "retrieval_method": "manual browser download from issuer IR",
     "pdf_origin_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
-    "document_note": "Q4 2025 Financial Statements"
+    "document_note": "Q4 2025 Financial Statements. Canonical field-definition cross-ref: see CLAUDE.md section 'Canonical Field Definitions (judgment-class fields)'."
   }
 }

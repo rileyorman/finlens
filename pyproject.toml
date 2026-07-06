@@ -1,0 +1,31 @@
+# Project tooling config for FinLens.
+# Ruff = linter (and formatter). Added July 2026 as a machine-enforced
+# quality gate, per the "Minimize Human Error" principle.
+
+[tool.ruff]
+# CI runs Python 3.11 and CLAUDE.md marks that version as authoritative,
+# so lint against 3.11 rules rather than the local 3.13.
+target-version = "py311"
+line-length = 100
+
+# Don't lint generated, vendored, or data folders.
+exclude = [
+    "venv",
+    ".venv",
+    "__pycache__",
+    "cache",
+    "library",
+    "logs",
+    "data",
+    "assets",
+    ".pytest_cache",
+]
+
+[tool.ruff.lint]
+# Lenient starter set: high-signal checks only — real bugs and dead code,
+# not style nitpicks. Broaden this later once the codebase is clean.
+select = [
+    "E9",   # syntax errors (belt-and-suspenders with py_compile)
+    "F",    # Pyflakes: unused imports, undefined names, unused variables
+    "E722", # bare 'except:' that silently swallows errors
+]

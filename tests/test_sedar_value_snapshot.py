@@ -21,7 +21,6 @@ from modules.integrity.sedar_mapper import map_line_items
 from scripts.build_filing_registry import (
     FILING_MANIFEST,
     _line_items_from_fixture,
-    _mapper_source_value,
     _sector_argument,
 )
 

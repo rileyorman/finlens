@@ -5,8 +5,9 @@ import httpx
 import json
 import logging
 import re
+import unicodedata
 
-from config import EXTRACTION_MODEL, ANALYSIS_MODEL, BEAR_BULL_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
+from config import ANALYSIS_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
 
 # Model alias for the dashboard insights call (same tier as analysis)
 DASHBOARD_MODEL = ANALYSIS_MODEL
@@ -36,6 +37,22 @@ def _has_unit_scale_word(value: object) -> bool:
         return False
     text = value.lower()
     return any(word in text for word in _UNIT_SCALE_WORDS)
+
+
+def is_truncated_excerpt(text: str | None) -> bool:
+    """True when stored filing text is almost certainly a truncated excerpt.
+
+    Library entries and legacy text caches were historically written as
+    text[:MAX_FILING_CHARS], so a stored document of exactly that length is a
+    truncation signature, not a real document size. Excerpts that size were
+    cut for the analysis calls (2-4) and usually end mid-document with no
+    financial statements — feeding one to extraction (Call 1) yields either an
+    honest FabricatedExtractionError or, pre-guard, fabricated numbers
+    (reference incident: NVDA FY2026 re-analyse, 2026-07-03). A genuine
+    document of exactly MAX_FILING_CHARS chars is astronomically unlikely; the
+    cost of a false positive is only a PDF re-extraction or an honest error.
+    """
+    return text is not None and len(text) == MAX_FILING_CHARS
 
 
 def is_legacy_scaled_financial_data_stale(
@@ -76,6 +93,68 @@ def is_per_share_line_item(label) -> bool:
     return bool(_PER_SHARE_RE.search(str(label or "").lower()))
 
 
+# Top-level scalar fields that carry the filing's unit scale and must be scaled
+# to raw dollars at this boundary (see the "Normalize at the Boundary" principle
+# in CLAUDE.md). app.py promotes EVERY mapped SEDAR canonical field to a
+# top-level financial_data key, so the canonical portion below MUST stay in sync
+# with the canonical fields in modules/integrity/sedar_aliases.json. That sync is
+# machine-enforced by tests/test_sedar_scaling_whitelist.py -- do not hand-manage
+# this from memory when adding a sector field.
+
+# Market/derived scalars -- not SEDAR canonical fields (sourced from FMP/yfinance).
+_MARKET_DERIVED_SCALE_FIELDS = frozenset({
+    "free_cash_flow",
+    "fcf",
+    "market_cap",
+    "shares_outstanding",
+    "total_debt",
+})
+
+# SEDAR canonical fields that are dollar magnitudes -- scaled by the unit factor.
+_CANONICAL_SCALE_FIELDS = frozenset({
+    "cash",
+    "cost_of_revenue",
+    "depletion_depreciation_amortization",
+    "ebitda",
+    "exploration_expense",
+    "gross_profit",
+    "insurance_finance_result",
+    "insurance_revenue",
+    "insurance_service_expenses",
+    "interest_expense",
+    "investment_property_fair_value_delta",
+    "mine_development_amortization",
+    "net_cash_used_in_operating_activities",
+    "net_income",
+    "net_insurance_service_result",
+    "net_interest_income",
+    "net_investment_result",
+    "net_loss",
+    "net_operating_income",
+    "operating_expense",
+    "operating_income",
+    "operating_loss",
+    "production_costs",
+    "property_operating_costs",
+    "provision_for_credit_losses",
+    "rd_expense",
+    "rental_revenue",
+    "revenue",
+    "royalties",
+    "total_assets",
+    "total_revenue_bank",
+})
+
+# SEDAR canonical fields that are NOT dollar magnitudes (ratios/margins) and must
+# never be unit-scaled. Kept explicit so the sync test forces a deliberate
+# scale/no-scale decision for every canonical field rather than defaulting.
+_NON_SCALED_CANONICAL_FIELDS = frozenset({
+    "gross_margin",  # ratio, not a currency magnitude
+})
+
+_TOP_LEVEL_SCALE_FIELDS = _MARKET_DERIVED_SCALE_FIELDS | _CANONICAL_SCALE_FIELDS
+
+
 def normalize_financial_data(financial_data: dict) -> dict:
     """Scale financial_data values to raw dollars based on the currency unit.
 
@@ -112,21 +191,11 @@ def normalize_financial_data(financial_data: dict) -> dict:
                 if isinstance(v, (int, float)):
                     row[value_key] = v * scale
 
-    # Exporters consume financial_data directly, so normalizing here keeps
-    # Excel/memo/scenario outputs on the same raw-dollar basis without touching
-    # their modules.
-    for key in (
-        "free_cash_flow",
-        "fcf",
-        "market_cap",
-        "shares_outstanding",
-        "total_debt",
-        "cash",
-        "revenue",
-        "net_income",
-        "gross_profit",
-        "total_assets",
-    ):
+    # Exporters and downstream consumers read these top-level scalars directly,
+    # so scaling them here keeps Excel/memo/scenario/DCF outputs and every
+    # promoted SEDAR canonical field on the same raw-dollar basis without
+    # per-consumer scaling logic.
+    for key in _TOP_LEVEL_SCALE_FIELDS:
         v = financial_data.get(key)
         if isinstance(v, (int, float)):
             financial_data[key] = v * scale
@@ -180,10 +249,34 @@ def _text_content(response) -> str:
     return next((b.text for b in response.content if b.type == "text"), "")
 
 
+# Typography that Claude emits in prose, mapped to readable ASCII equivalents.
+# Do not revert _sanitize to a blanket '?' replace: em-dashes in analyst text
+# were stored as "?" and displayed that way permanently (cache holds the result).
+_TYPOGRAPHY_ASCII = str.maketrans({
+    "—": "--",   # em dash
+    "–": "-",    # en dash
+    "−": "-",    # unicode minus
+    "‘": "'",    # left single quote
+    "’": "'",    # right single quote / apostrophe
+    "“": '"',    # left double quote
+    "”": '"',    # right double quote
+    "…": "...",  # ellipsis
+    " ": " ",    # non-breaking space
+})
+
+
 def _sanitize(text: str) -> str:
-    """Replace non-ASCII characters with '?' — prevents charmap errors on Windows."""
+    """Convert model text to readable ASCII — keeps the Windows charmap-safety
+    guarantee (output is pure ASCII) without destroying typography: em dashes
+    become '--', curly quotes straighten, accents drop (é -> e). '?' remains
+    only for genuinely unmappable symbols."""
     if not text:
         return text
+    text = text.translate(_TYPOGRAPHY_ASCII)
+    # NFKD splits accented letters into base + combining mark; drop the marks
+    # so "é" becomes "e" (not "e?").
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
     return text.encode("ascii", "replace").decode("ascii")
 
 
@@ -359,6 +452,112 @@ Additional rules:
 """
 
 
+# ---------------------------------------------------------------------------
+# Figure-presence guard.
+# A number that appears NOWHERE in the source text cannot have been read from
+# it — it was recalled from training or invented. Reference incident
+# (2026-07-03): re-analysing NVDA from text truncated before the statements
+# produced a complete fabricated extraction that passed every downstream
+# check (Quality 100/100, zero integrity flags). This guard makes that
+# failure loud instead of silent.
+# ---------------------------------------------------------------------------
+
+FIGURE_PRESENCE_MIN_ROWS = 5     # below this, too few rows to judge
+FIGURE_PRESENCE_MIN_RATIO = 0.2  # reject when fewer than 20% of values appear
+
+
+class FabricatedExtractionError(ValueError):
+    """Extracted figures do not appear in the source text."""
+
+
+def _number_in_text(number: float, text: str) -> bool:
+    """True if the number appears in the text in any common filing format."""
+    candidates = set()
+    if float(number) == int(number):
+        whole = int(number)
+        candidates.add(f"{whole:,}")   # 130,497
+        candidates.add(str(whole))     # 130497
+    else:
+        candidates.add(f"{number:,.2f}")  # 1,234.56
+        candidates.add(f"{number:.2f}")   # 1234.56
+        candidates.add(f"{number:g}")     # 2.5 (no trailing zero)
+    return any(candidate in text for candidate in candidates)
+
+
+def _figure_presence(financial_data: dict, source_text: str) -> dict:
+    """Share of extracted statement values that literally appear in the text."""
+    checked = 0
+    found = 0
+    rows: list[dict] = []
+    for section in ("income_statement", "balance_sheet", "cash_flow_statement"):
+        for row in financial_data.get(section, []) or []:
+            value = row.get("value")
+            if value is None:
+                continue
+            try:
+                number = abs(float(value))
+            except (TypeError, ValueError):
+                continue
+            checked += 1
+            row_found = _number_in_text(number, source_text)
+            if row_found:
+                found += 1
+            rows.append({
+                "section": section,
+                "line_item": row.get("line_item", ""),
+                "found": row_found,
+            })
+    ratio = (found / checked) if checked else None
+    return {"checked": checked, "found": found, "ratio": ratio, "rows": rows}
+
+
+def _check_figure_presence(financial_data: dict, source_text: str, model: str) -> dict:
+    """Run the guard, append its verdict to the integrity log, and raise on
+    fabrication. Returns the presence dict so callers can attach it."""
+    presence = _figure_presence(financial_data, source_text)
+    fabricated = (
+        presence["checked"] >= FIGURE_PRESENCE_MIN_ROWS
+        and presence["ratio"] is not None
+        and presence["ratio"] < FIGURE_PRESENCE_MIN_RATIO
+    )
+    presence["verdict"] = "FABRICATED" if fabricated else "PASS"
+
+    try:
+        # Lazy import: the integrity package must never depend on this module.
+        from modules.integrity.log import append_figure_presence_to_log
+        missing_all = [
+            r["section"] + ":" + r["line_item"]
+            for r in presence["rows"]
+            if not r["found"]
+        ]
+        missing_count = len(missing_all)
+        missing_rows = missing_all[:20]
+        append_figure_presence_to_log(
+            company=str(financial_data.get("company_name") or "Unknown"),
+            model=model,
+            checked=presence["checked"],
+            found=presence["found"],
+            ratio=presence["ratio"],
+            verdict=presence["verdict"],
+            source_chars=len(source_text),
+            missing_rows=missing_rows,
+            missing_count=missing_count,
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("figure-presence log append failed")
+
+    if fabricated:
+        raise FabricatedExtractionError(
+            f"Extraction rejected: only {presence['found']} of "
+            f"{presence['checked']} extracted figures appear in the source "
+            f"text ({len(source_text):,} characters). The text likely does "
+            f"not contain the financial statements (truncated or wrong "
+            f"document) and the model filled in numbers from memory. "
+            f"No analysis was saved."
+        )
+    return presence
+
+
 def analyze_financials(
     document_text: str,
     api_key: str,
@@ -378,12 +577,20 @@ def analyze_financials(
                 ),
             },
         ]
+        # The text Claude actually sees lives in the context blocks — the
+        # figure-presence guard must check against exactly that.
+        guard_text = "".join(
+            block.get("text", "")
+            for block in filing_context
+            if isinstance(block, dict)
+        )
     else:
         # Front+back slice: captures business context at the top and financial
         # statements at the end, which large filings (e.g. Walgreens 10-K) place
         # well past the 150K character mark if front-only truncation is used.
         document_text = document_text[:MAX_EXTRACTION_FRONT] + document_text[-MAX_EXTRACTION_BACK:]
         user_message = _render_template(USER_PROMPT_TEMPLATE, document_text=document_text)
+        guard_text = document_text
 
     response = client.messages.create(
         model=model,
@@ -406,6 +613,14 @@ def analyze_financials(
         raw = match.group(1)
 
     financial_data = json.loads(raw)
+
+    # Figure-presence guard: values are still in filing units here (before
+    # normalization), which is exactly how they appear in the source text.
+    # Raises FabricatedExtractionError when the numbers aren't in the text.
+    financial_data["figure_presence"] = _check_figure_presence(
+        financial_data, guard_text, model
+    )
+
     return normalize_financial_data(financial_data)
 
 

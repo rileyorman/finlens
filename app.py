@@ -13,12 +13,25 @@ from pathlib import Path
 from urllib.parse import quote_plus
 import streamlit as st
 import yfinance as yf
+
+# streamlit-cookies-manager still decorates a helper with the deprecated
+# st.cache at import time, which paints a deprecation banner into the app on
+# every boot. Point st.cache at st.cache_data (ignoring legacy kwargs) before
+# the import runs. The decorated helper lives in EncryptedCookieManager,
+# which FinLens does not use.
+def _quiet_cache(func=None, **_legacy_kwargs):
+    if func is None:
+        return st.cache_data
+    return st.cache_data(func)
+
+st.cache = _quiet_cache
 from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
 from sedar_extractor import SedarExtractionError, extract_sedar_filing
 from modules.claude_analyzer import (
+    FabricatedExtractionError,
     analyze_financials,
     analyze_summary,
     analyze_bear_bull,
@@ -26,6 +39,7 @@ from modules.claude_analyzer import (
     analyze_mda_sentiment,
     build_filing_context,
     is_legacy_scaled_financial_data_stale,
+    is_truncated_excerpt,
     is_per_share_line_item,
     normalize_financial_data,
     normalize_and_validate,
@@ -33,7 +47,7 @@ from modules.claude_analyzer import (
 from modules.integrity import cross_validate_filing
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
-from modules.excel_exporter import create_excel_file, _calc_summary_metrics
+from modules.excel_exporter import create_excel_file, _calc_summary_metrics, two_year_statement_pairs
 from modules.memo_exporter import create_memo
 from modules.edgar_fetcher import (
     get_cik,
@@ -47,8 +61,9 @@ from modules.edgar_fetcher import (
 from modules.education_content import EDUCATION
 from modules.red_flag_detector import detect_flags
 from modules.market_data import get_market_data, search_ticker, search_ticker_details
-from modules.peer_comparison import get_peer_data, peer_map
+from modules.peer_comparison import get_peer_data, peer_map, suggest_sector
 from modules.dcf_calculator import calculate_dcf
+from modules.economics.resource_display import build_commodity_display_text
 from modules.economics.resource_economics import build_resource_economics_snapshot
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
@@ -121,7 +136,11 @@ DEFAULT_MODEL_LABEL = next(
 def _get_filing_context(filing_text: str, ticker: str | None, period: str | None) -> list:
     ticker_key = (ticker or "unknown").strip().upper() or "unknown"
     period_key = re.sub(r"\s+", "_", (period or "unknown").strip()) or "unknown"
-    cache_key = f"filing_context::{ticker_key}::{period_key}"
+    # Text length in the key keeps contexts built from different text for the
+    # same filing apart — without it, a context built from empty or truncated
+    # text earlier in the session would be silently reused by Re-Analyse (and
+    # its blocks are exactly what Call 1's figure-presence guard checks).
+    cache_key = f"filing_context::{ticker_key}::{period_key}::{len(filing_text or '')}"
     if cache_key not in st.session_state:
         st.session_state[cache_key] = build_filing_context(filing_text)
     return st.session_state[cache_key]
@@ -265,7 +284,6 @@ SEDAR_QUICK_LINKS = [
     ("Interim Financial Statements", "Interim Financial Statements"),
 ]
 CANADIAN_EXCHANGES = {"TOR", "TSX", "CNQ", "VAN"}
-US_EXCHANGES = {"NMS", "NYQ", "NGM", "NCM", "ASE", "AMEX", "PCX", "NASDAQ", "NYSE"}
 
 
 def _ensure_yfinance_cache_location():
@@ -338,69 +356,43 @@ def _is_canadian_quote(quote: dict) -> bool:
     return symbol.endswith(".TO") or exchange in CANADIAN_EXCHANGES
 
 
-def _is_us_quote(quote: dict) -> bool:
-    symbol = (quote.get("symbol") or "").upper()
-    exchange = (quote.get("exchange") or "").upper()
-    return "." not in symbol and exchange in US_EXCHANGES
-
-
-def _resolve_sedar_company_from_yfinance(ticker: str) -> dict | None:
-    symbol = (ticker or "").strip().upper()
-    if not symbol:
-        return None
-
-    _ensure_yfinance_cache_location()
-
-    candidates = [symbol]
-    if "." not in symbol:
-        candidates.extend([f"{symbol}.TO", f"{symbol}.V"])
-
-    seen = set()
-    for candidate in candidates:
-        if candidate in seen:
-            continue
-        seen.add(candidate)
-        try:
-            info = yf.Ticker(candidate).info or {}
-        except Exception:
-            continue
-
-        company_name = (
-            info.get("longName")
-            or info.get("shortName")
-            or info.get("displayName")
-            or info.get("name")
-        )
-        quote_type = (info.get("quoteType") or "").upper()
-        if company_name and quote_type in {"EQUITY", "ETF", ""}:
-            return {"symbol": candidate, "company_name": company_name}
-    return None
-
-
-def _quality_score(m: dict) -> int:
-    """0–100 quality score from 5 RAG health metrics. Green=20, Amber=10, Red/None=0."""
+def _quality_score(m: dict) -> tuple[int | None, int]:
+    """(score, metrics_available): 0–100 quality score over the AVAILABLE
+    RAG health metrics only (Green=20, Amber=10, Red=0, rescaled to the
+    available maximum). Missing data is not poor quality — a sparse
+    extraction must not score like a distressed company. Returns (None, 0)
+    when no metrics are available."""
     def pts(metric, value):
-        if value is None:
-            return 0
         if metric == "liquidity":  return 20 if value >= 2.0 else (10 if value >= 1.0 else 0)
         if metric == "leverage":   return 20 if value <= 1.5 else (10 if value <= 3.0 else 0)
         if metric == "rev_growth": return 20 if value >= 5.0 else (10 if value >= 0.0 else 0)
         if metric == "fcf_conv":   return 20 if value >= 100.0 else (10 if value >= 50.0 else 0)
         if metric == "int_cover":  return 20 if value >= 3.0 else (10 if value >= 1.5 else 0)
         return 0
-    return sum([
-        pts("liquidity",  m.get("current_ratio")),
-        pts("leverage",   m.get("nd_ebitda")),
-        pts("rev_growth", m.get("rev_growth")),
-        pts("fcf_conv",   m.get("fcf_conv")),
-        pts("int_cover",  m.get("int_cover")),
-    ])
+
+    checks = [
+        ("liquidity",  m.get("current_ratio")),
+        ("leverage",   m.get("nd_ebitda")),
+        ("rev_growth", m.get("rev_growth")),
+        ("fcf_conv",   m.get("fcf_conv")),
+        ("int_cover",  m.get("int_cover")),
+    ]
+    earned = 0
+    available = 0
+    for metric, value in checks:
+        if value is None:
+            continue
+        available += 1
+        earned += pts(metric, value)
+    if available == 0:
+        return None, 0
+    return round(earned / (available * 20) * 100), available
 
 
 def _dash_rag(metric: str, value) -> tuple:
     """Return (bg_hex, label) for dashboard RAG cells — mirrors excel_exporter thresholds."""
     if value is None:
-        return "#D9D9D9", "N/A"
+        return "rgba(148,163,184,0.25)", "N/A"
     if metric == "liquidity":  c = "G" if value >= 2.0 else ("A" if value >= 1.0 else "R")
     elif metric == "leverage": c = "G" if value <= 1.5 else ("A" if value <= 3.0 else "R")
     elif metric == "rev_growth": c = "G" if value >= 5.0 else ("A" if value >= 0.0 else "R")
@@ -470,6 +462,21 @@ def _library_text_for_entry(entry: dict) -> str | None:
         if text:
             return text
     return entry.get("raw_text")
+
+
+def _reanalyse_text_for_entry(entry: dict) -> str | None:
+    """Full-document text for Re-Analyse, or None when only a truncated excerpt exists.
+
+    Extraction (Call 1) needs the full document — its input windows and the
+    figure-presence guard assume the financial statements are present, and an
+    80K analysis excerpt usually ends before them. Returning None routes the
+    caller to PDF re-extraction or an honest error instead of a doomed
+    extraction call (fabrication fix (b), reference: NVDA FY2026 incident).
+    """
+    text = _library_text_for_entry(entry)
+    if is_truncated_excerpt(text):
+        return None
+    return text
 
 
 def _supabase_row_to_library_entry(row: dict) -> dict:
@@ -638,10 +645,11 @@ def _analysis_cache_payload(
     except Exception as e:
         logger.warning(f"detect_flags failed: {e}")
 
-    try:
-        payload["ratio_data"] = _calc_summary_metrics(financial_data)
-    except Exception as e:
-        logger.warning(f"_calc_summary_metrics failed: {e}")
+    # Derived metrics are deliberately NOT stored: every consumer recomputes
+    # _calc_summary_metrics(financial_data) at render time, so a stored copy
+    # can only drift from the live derivation (a pre-1cc9fd9 snapshot would
+    # still carry the OCF-mislabelled-as-FCF value). financial_data is the
+    # stored source of truth; derivations stay live.
 
     return payload
 
@@ -1216,6 +1224,11 @@ _NAV_ITEMS = [
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
     ),
     (
+        "Commodities",
+        "commodities",
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 18 3 22 9 12 21 2 9 6 3"/><path d="M2 9h20"/><path d="M12 21 8 9l3-6"/><path d="m12 21 4-12-3-6"/></svg>',
+    ),
+    (
         "Education",
         "education",
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
@@ -1245,7 +1258,7 @@ if not st.session_state.get("authenticated"):
               <circle cx="56" cy="32" r="4" fill="#FFB454"/>
             </svg>
             <h2 style="margin-top:0.75rem;margin-bottom:0.25rem;">FinLens</h2>
-            <p style="color:#94A3B8;margin-bottom:2rem;">Financial Statement Analyzer</p>
+            <p style="color:#94A3B8;margin-bottom:2rem;">Source-Traced Fundamental Analysis</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1435,11 +1448,6 @@ if not st.session_state["onboarding_complete"]:
             st.rerun()
     st.stop()
 
-def _svg_b64(path: str) -> str:
-    import base64
-    return base64.b64encode(open(path, "rb").read()).decode()
-
-
 st.markdown("""
 <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:0.5px solid #2D3650;">
     <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinLens">
@@ -1453,7 +1461,7 @@ st.markdown("""
             Fin<span style="color:#378ADD;font-weight:300">Lens</span>
         </div>
         <div style="font-size:11px;color:#64748B;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px">
-            AI Financial Analysis
+            Source-Traced Fundamental Analysis
         </div>
     </div>
 </div>
@@ -1616,13 +1624,6 @@ if _education_topic:
 _NAV_SLUG_BY_LABEL = {label: slug for label, slug, _ in _NAV_ITEMS}
 
 
-def _query_param_value(name: str) -> str | None:
-    value = st.query_params.get(name)
-    if isinstance(value, list):
-        return value[0] if value else None
-    return value
-
-
 def _filing_key(entry: dict) -> str:
     ticker = entry.get("ticker") or "NA"
     period = entry.get("fiscal_year") or entry.get("period") or "unknown"
@@ -1646,14 +1647,32 @@ def _library_period_sort_key(entry: dict):
     return (1, label.lower())
 
 
+def _looks_like_filename(name: str) -> bool:
+    """True when a stored company name is really an uploaded filename,
+    e.g. 'RIOCAN_FY2025_ANNUAL_FINANCIALS.PDF.PDF' or 'SU_FY2025.PDF'."""
+    return bool(re.search(r"(?i)\.(pdf|docx?)\b", name)) or "_" in name
+
+
+def _clean_filename_label(name: str) -> str:
+    """Make a filename presentable: strip (repeated) extensions, turn
+    underscores into spaces. Last-resort label when no company name exists."""
+    base = re.sub(r"(?i)(\.(pdf|docx?))+$", "", name.strip())
+    return re.sub(r"[_\s]+", " ", base).strip()
+
+
 def _library_company_header(ticker: str, entries: list[dict]) -> str:
-    company_name = ""
+    raw_name = ""
     for entry in entries:
-        company_name = str(entry.get("company_name") or "").strip()
-        if company_name:
+        raw_name = str(entry.get("company_name") or "").strip()
+        if raw_name:
             break
 
-    if not company_name and ticker and ticker != "N/A":
+    company_name = raw_name
+    raw_is_filename = _looks_like_filename(raw_name) if raw_name else False
+
+    # A filename is not a company name: prefer a yfinance lookup, and only
+    # fall back to the cleaned-up filename when the lookup finds nothing.
+    if (not company_name or raw_is_filename) and ticker and ticker != "N/A":
         cache_key = f"company_name_{ticker}"
         if cache_key not in st.session_state:
             try:
@@ -1663,7 +1682,13 @@ def _library_company_header(ticker: str, entries: list[dict]) -> str:
                 ).get("longName", "") or ""
             except Exception:
                 st.session_state[cache_key] = ""
-        company_name = str(st.session_state.get(cache_key) or "").strip()
+        looked_up = str(st.session_state.get(cache_key) or "").strip()
+        if looked_up:
+            company_name = looked_up
+        elif raw_is_filename:
+            company_name = _clean_filename_label(raw_name)
+    elif raw_is_filename:
+        company_name = _clean_filename_label(raw_name)
 
     if company_name and ticker and ticker != "N/A":
         return f"{company_name.upper()} ({ticker})"
@@ -1685,7 +1710,7 @@ with st.sidebar:
             <div class="finlens-sidebar-wordmark">
                 <span class="finlens-sidebar-wordmark-fin">Fin</span><span class="finlens-sidebar-wordmark-lens">Lens</span>
             </div>
-            <div class="finlens-sidebar-tagline">AI INVESTMENT ANALYSIS PLATFORM</div>
+            <div class="finlens-sidebar-tagline">SOURCE-TRACED FUNDAMENTAL ANALYSIS</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1773,7 +1798,7 @@ with st.sidebar:
 
                 if cur_tickers:
                     st.markdown(
-                        "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        "<hr style='margin:4px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                         unsafe_allow_html=True,
                     )
 
@@ -1866,7 +1891,7 @@ document.addEventListener('focusin', function(e) {
                         st.warning("No tickers found in CSV.")
 
                 st.markdown(
-                    "<hr style='margin:4px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                    "<hr style='margin:4px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                     unsafe_allow_html=True,
                 )
                 if st.session_state.get("pm_confirm_delete") == sel_pf:
@@ -1892,7 +1917,7 @@ document.addEventListener('focusin', function(e) {
 
             # --- Analysis Library (read-only, re-analyse only) ----------------
             st.markdown(
-                "<hr style='margin:6px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                "<hr style='margin:6px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                 unsafe_allow_html=True,
             )
             st.markdown("""
@@ -1917,7 +1942,8 @@ document.addEventListener('focusin', function(e) {
             )
             if st.session_state.get("al_no_text_warning"):
                 st.warning(
-                    f"No PDF stored for **{st.session_state.al_no_text_warning}** — "
+                    f"No full source document stored for **{st.session_state.al_no_text_warning}** "
+                    "(no cached PDF, and any stored text is only a truncated excerpt) — "
                     "switch to Single Analysis to re-upload."
                 )
                 st.session_state.al_no_text_warning = None
@@ -1957,11 +1983,11 @@ document.addEventListener('focusin', function(e) {
                             if st.button("Yes, re-analyse", key=f"al_ra_yes_{eid}",
                                          width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
-                                _entry_text = _library_text_for_entry(entry)
+                                _entry_text = _reanalyse_text_for_entry(entry)
                                 _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
-                                        "raw_text":     _entry_text[:MAX_FILING_CHARS],
+                                        "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
                                         "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                         "entry_id":     eid,
                                         "file_name":    entry.get("file_name", ""),
@@ -2008,7 +2034,7 @@ document.addEventListener('focusin', function(e) {
                                             else:
                                                 _extracted_text = extract_text_from_pdf(io.BytesIO(_pdf_bytes))
                                             st.session_state.pending_reanalyse = {
-                                                "raw_text":     _extracted_text[:MAX_FILING_CHARS],
+                                                "raw_text":     _extracted_text,  # full re-extracted document — do not pre-truncate extraction input
                                                 "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                                 "entry_id":     eid,
                                                 "file_name":    entry.get("file_name", ""),
@@ -2032,20 +2058,23 @@ document.addEventListener('focusin', function(e) {
                                 st.session_state.al_confirm_reanalyse = None
                                 st.rerun()
                     st.markdown(
-                        "<hr style='margin:2px 0;border:none;border-top:0.5px solid #e0e0e0'>",
+                        "<hr style='margin:2px 0;border:none;border-top:0.5px solid rgba(255,255,255,0.08)'>",
                         unsafe_allow_html=True,
                     )
 
         st.divider()
 
-    _default_model_index = list(MODEL_OPTIONS).index(DEFAULT_MODEL_LABEL)
-    st.sidebar.selectbox(
-        "Dev mode model",
-        list(MODEL_OPTIONS),
-        index=_default_model_index,
-        key="analysis_model_label",
-    )
-    st.sidebar.caption(f"{get_model_label()} — {get_model()}")
+    # Dev tooling only: model override + raw model IDs stay out of the
+    # user-facing sidebar (get_model falls back to the config default).
+    if os.getenv("FINLENS_DEBUG") == "1":
+        _default_model_index = list(MODEL_OPTIONS).index(DEFAULT_MODEL_LABEL)
+        st.sidebar.selectbox(
+            "Dev mode model",
+            list(MODEL_OPTIONS),
+            index=_default_model_index,
+            key="analysis_model_label",
+        )
+        st.sidebar.caption(f"{get_model_label()} — {get_model()}")
 
     # --- Filing Library (Single Analysis mode only) --------------------
     if page == "Single Analysis":
@@ -2179,6 +2208,14 @@ document.addEventListener('focusin', function(e) {
                                 if st.button("Load", key=f"lib_load_{eid}", width='stretch'):
                                     _entry_period = entry.get("fiscal_year") or entry.get("period", "")
                                     _entry_ticker = ticker if ticker != "—" else None
+                                    # Toast fires after the rerun (a toast shown
+                                    # now would be discarded by st.rerun).
+                                    st.session_state["_just_loaded_label"] = (
+                                        f"{_library_company_header(ticker, [entry])}"
+                                        f"{' — ' + _entry_period if _entry_period else ''}"
+                                    )
+                                    # Load path: excerpt-sized text is fine here — it only feeds
+                                    # analysis-sized calls (dashboard regen), never extraction.
                                     _entry_text = _library_text_for_entry(entry)
                                     st.session_state.cached_filing_text = _entry_text
                                     _cached_analysis = (
@@ -2202,12 +2239,11 @@ document.addEventListener('focusin', function(e) {
                                         st.rerun()
 
                                     if _legacy_scaled_stale(entry.get("financial_data"), entry.get("schema_version")):
+                                        # Route to the Re-Analyse confirmation instead of loading. The
+                                        # stale message is rendered in that confirmation block below —
+                                        # NOT here, because st.rerun() discards any st.warning shown now.
                                         st.session_state.confirm_reanalyse = eid
                                         st.session_state.confirm_delete = None
-                                        st.warning(
-                                            "This stored analysis was saved with an older normalization schema. "
-                                            "Use **Re-Analyse $** to refresh it before loading."
-                                        )
                                         st.rerun()
 
                                     fd = normalize_financial_data(entry["financial_data"])
@@ -2292,6 +2328,14 @@ document.addEventListener('focusin', function(e) {
 
                         # --- Re-analyse confirmation ---
                         if expanded and st.session_state.get("confirm_reanalyse") == eid:
+                            # Recompute staleness at render time (entry is in scope) so the
+                            # message survives the rerun that routed us here — whether the
+                            # prompt came from a stale Load or a direct Re-Analyse click.
+                            if _legacy_scaled_stale(entry.get("financial_data"), entry.get("schema_version")):
+                                st.warning(
+                                    "This stored analysis was saved with an older normalization schema, so its "
+                                    "figures may be mis-scaled. Re-analyse to refresh it before loading."
+                                )
                             st.caption(
                                 f"Re-analyse **{entry.get('company_name') or entry.get('file_name') or 'Unknown'}**? This will run 4 Claude API calls "
                                 f"(~$0.10–0.15 cost) and overwrite the existing result."
@@ -2301,11 +2345,11 @@ document.addEventListener('focusin', function(e) {
                                 if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
                                              width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
-                                    _entry_text = _library_text_for_entry(entry)
+                                    _entry_text = _reanalyse_text_for_entry(entry)
                                     _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
-                                            "raw_text":     _entry_text[:MAX_FILING_CHARS],
+                                            "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
                                             "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                             "entry_id":     eid,
                                             "file_name":    entry.get("file_name", ""),
@@ -2338,15 +2382,17 @@ document.addEventListener('focusin', function(e) {
                                              width='stretch'):
                                     st.session_state.confirm_reanalyse = None
                                     st.rerun()
-        st.divider()
-        n = cache_count()
-        st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
-        if n:
-            if st.button("Clear Cache", width='stretch'):
-                cleared = clear_cache()
-                st.session_state.uploader_key += 1  # force file uploader to reset
-                st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
-                st.rerun()
+        # Response-cache plumbing is dev tooling — hidden from end users.
+        if os.getenv("FINLENS_DEBUG") == "1":
+            st.divider()
+            n = cache_count()
+            st.caption(f"Cache: {n} entr{'y' if n == 1 else 'ies'}" if n else "Cache: empty")
+            if n:
+                if st.button("Clear Cache", width='stretch'):
+                    cleared = clear_cache()
+                    st.session_state.uploader_key += 1  # force file uploader to reset
+                    st.success(f"Cleared {cleared} cached entr{'y' if cleared == 1 else 'ies'}.")
+                    st.rerun()
 
 # --- Portfolio Manager page --------------------------------------------
 if page == "Portfolio Manager":
@@ -2373,7 +2419,16 @@ if page == "Portfolio Manager":
                 st.session_state.pending_reanalyse = None
                 st.stop()
             with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
-                _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+                try:
+                    _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+                except SedarExtractionError as e:
+                    st.error(f"SEDAR+ extraction failed: {e}")
+                    st.stop()
+                except Exception as e:
+                    # pending_reanalyse stays set so a rerun retries —
+                    # transient API errors (e.g. 529 Overloaded) usually succeed on retry.
+                    st.error(f"SEDAR+ extraction failed: {e} — click Re-Analyse again to retry.")
+                    st.stop()
                 _ra_fd = _sedar_extraction_to_financial_data(
                     _sedar_result,
                     ra.get("file_name", ""),
@@ -2382,7 +2437,11 @@ if page == "Portfolio Manager":
                 )
         else:
             with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
-                _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+                try:
+                    _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+                except FabricatedExtractionError as _fab_err:
+                    st.error(f"🛑 {_fab_err}")
+                    st.stop()
         with st.spinner("Call 2: Generating investment signal..."):
             _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 3: Generating bull/bear case..."):
@@ -2403,12 +2462,18 @@ if page == "Portfolio Manager":
             st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
+                # _ra_text is the full document here (truncated excerpts are
+                # routed away before extraction), so this write heals any legacy
+                # cache an older re-analyse truncated. Never write excerpts here.
                 safe_write_text(ra["file_path"], _ra_text)
             except Exception:
                 pass
         try:
+            # Library JSON stores an analysis-sized excerpt (matches fresh
+            # upload); the full document lives in the on-disk text/PDF caches.
             lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                    _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                    _ra_fd, _ra_sd, _ra_bb, _ra_dd,
+                    raw_text=_ra_text[:MAX_FILING_CHARS],
                     mda_sentiment=_ra_mda,
                     source=ra.get("source", "pdf"),
                     file_path=ra.get("file_path"))
@@ -2420,7 +2485,7 @@ if page == "Portfolio Manager":
             _ra_sd,
             _ra_bb,
             _ra_dd,
-            raw_text=_ra_text,
+            raw_text=_ra_text[:MAX_FILING_CHARS],
             mda_sentiment=_ra_mda,
             file_name=ra.get("file_name", ""),
             file_size=ra.get("file_size", 0),
@@ -2474,7 +2539,8 @@ if page == "Portfolio Manager":
     pass_n   = sum(1 for r in analysed if r["signal"] == "PASS")
     inv_n    = sum(1 for r in analysed if r["signal"] == "INVESTIGATE")
     dec_n    = sum(1 for r in analysed if r["signal"] == "DECLINE")
-    avg_qs   = (sum(r["quality_score"] for r in analysed) / len(analysed)) if analysed else None
+    _qs_vals = [r["quality_score"] for r in analysed if r["quality_score"] is not None]
+    avg_qs   = (sum(_qs_vals) / len(_qs_vals)) if _qs_vals else None
 
     # --- Section 1: Portfolio Summary ---
     st.markdown("##### Portfolio Summary")
@@ -2483,14 +2549,16 @@ if page == "Portfolio Manager":
     s2.metric("🟢 PASS", pass_n)
     s3.metric("🟡 INVESTIGATE", inv_n)
     s4.metric("🔴 DECLINE", dec_n)
-    qs_color = "#70AD47" if (avg_qs or 0) >= 70 else ("#FFC000" if (avg_qs or 0) >= 40 else "#C00000")
+    qs_color = "#4ADE80" if (avg_qs or 0) >= 70 else ("#FCD34D" if (avg_qs or 0) >= 40 else "#F87171")
     with s5:
         qs_str = f"{avg_qs:.0f}" if avg_qs is not None else "—"
         st.markdown(
-            f'<div style="border:1px solid #ddd;border-radius:6px;padding:8px 12px;text-align:center;margin-top:4px">'
-            f'<div style="font-size:11px;color:#888">Avg Quality</div>'
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;'
+            f'padding:8px 12px;text-align:center;margin-top:4px">'
+            f'<div style="font-size:11px;color:#64748B">Avg Quality</div>'
             f'<div style="font-size:22px;font-weight:700;color:{qs_color}">{qs_str}</div>'
-            f'<div style="font-size:10px;color:#aaa">/ 100</div>'
+            f'<div style="font-size:10px;color:#64748B">/ 100</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -3074,7 +3142,7 @@ if page == "Portfolio Manager":
                 )
                 _dark(fig1)
                 fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
-                st.plotly_chart(fig1, width='stretch')
+                st.plotly_chart(fig1, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 2: Valuation Dashboard ───────────────────────────────────
     with row1_right:
@@ -3106,7 +3174,7 @@ if page == "Portfolio Manager":
                 _dark(fig2)
                 fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
                 fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
-                st.plotly_chart(fig2, width='stretch')
+                st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
     with row2_left:
@@ -3159,7 +3227,7 @@ if page == "Portfolio Manager":
                 _dark(fig3)
                 fig3.update_xaxes(title_text='Distress Score', range=[0, 100])
                 fig3.update_yaxes(title_text='Momentum Score', range=[0, 100])
-                st.plotly_chart(fig3, width='stretch')
+                st.plotly_chart(fig3, width='stretch', config={"displayModeBar": False})
 
     # ── Panel 4: Earnings Quality Scorecard ────────────────────────────
     with row2_right:
@@ -3212,6 +3280,9 @@ if page == "Portfolio Manager":
     st.divider()
 
     # --- Section 5: Framework Scores ---
+    # Scores stay in a scannable table; the Dalio/Marks narratives are
+    # Claude-written analysis and render in full below (never truncated
+    # into table cells — see CLAUDE.md truncation principle).
     st.markdown("##### Framework Scores")
     st.dataframe(
         [
@@ -3219,8 +3290,6 @@ if page == "Portfolio Manager":
                 "Ticker":        r["ticker"],
                 "Company":       r["company_name"],
                 "Quality Score": r["quality_score"],
-                "Dalio View":    (r["dalio_view"] or "—"),
-                "Marks View":    (r["marks_view"] or "—"),
             }
             for r in analysed
         ],
@@ -3230,10 +3299,18 @@ if page == "Portfolio Manager":
             "Quality Score": st.column_config.ProgressColumn(
                 "Quality Score", min_value=0, max_value=100, format="%d",
             ),
-            "Dalio View": st.column_config.TextColumn("Dalio View", width="large"),
-            "Marks View": st.column_config.TextColumn("Marks View", width="large"),
         },
     )
+    for r in analysed:
+        if not (r["dalio_view"] or r["marks_view"]):
+            continue
+        with st.expander(f"{r['ticker']} — Dalio & Marks framework views"):
+            if r["dalio_view"]:
+                st.markdown("**Dalio — cycle view**")
+                st.markdown(_escape_md_dollars(r["dalio_view"]))
+            if r["marks_view"]:
+                st.markdown("**Marks — second-level view**")
+                st.markdown(_escape_md_dollars(r["marks_view"]))
 
     st.stop()
 
@@ -3546,6 +3623,260 @@ if page == "Filing Comparison":
     st.stop()
 
 
+# --- Commodities page ---------------------------------------------------
+if page == "Commodities":
+    from modules.economics.resource_economics import (
+        COMMODITY_PROXIES,
+        _fetch_proxy_data,
+        infer_commodity,
+    )
+    from modules.economics.resource_display import PROXY_UNITS
+
+    st.markdown("## Commodities")
+    st.caption(
+        "Oil & gas and minerals — spot prices, relative performance, and "
+        "one-year trends. Same free yfinance proxy feeds that power the "
+        "Economics tab; ETF-proxied commodities are labeled as such."
+    )
+
+    # One identity color per commodity, used everywhere on this page
+    # (colorblind-validated as a set on the dark surface).
+    _CMD_ORDER = ["gold", "silver", "copper", "crude oil", "natural gas", "uranium"]
+    _CMD_LABEL = {
+        "gold": "Gold", "silver": "Silver", "copper": "Copper",
+        "crude oil": "WTI Crude", "natural gas": "Natural Gas",
+        "uranium": "Uranium (ETF proxy)",
+    }
+    _CMD_COLOR = {
+        "gold": "#B8821F", "silver": "#3574C6", "copper": "#C2554F",
+        "crude oil": "#26A69A", "natural gas": "#8B5CF6", "uranium": "#B565A8",
+    }
+
+    @st.cache_data(ttl=900, show_spinner=False)
+    def _cmd_fetch(symbol: str) -> dict:
+        return _fetch_proxy_data(symbol)
+
+    def _cmd_load(commodity_key: str) -> dict:
+        cfg = COMMODITY_PROXIES[commodity_key]
+        for role in ("primary", "fallback"):
+            data = _cmd_fetch(cfg[role])
+            if data.get("spot_price") is not None or data.get("trend"):
+                return {"symbol": cfg[role], "role": role, **data}
+        return {"symbol": cfg["primary"], "role": "primary",
+                "spot_price": None, "trend": []}
+
+    with st.spinner("Fetching commodity data…"):
+        _cmd = {key: _cmd_load(key) for key in _CMD_ORDER}
+
+    def _cmd_pct(new_value, old_value):
+        if not new_value or not old_value:
+            return None
+        return (new_value / old_value - 1) * 100
+
+    def _cmd_pill(pct_value, label):
+        if pct_value is None:
+            return (f'<span style="color:#64748B;font-size:11px;'
+                    f'margin-right:8px">{label} —</span>')
+        color = "#4ADE80" if pct_value >= 0 else "#F87171"
+        return (f'<span style="color:{color};font-size:11px;font-weight:650;'
+                f'margin-right:8px">{label} {pct_value:+.1f}%</span>')
+
+    # --- Spot cards -----------------------------------------------------
+    _cmd_cols = st.columns(3)
+    for _i, _key in enumerate(_CMD_ORDER):
+        _d = _cmd[_key]
+        _trend = _d.get("trend") or []
+        _spot = _d.get("spot_price")
+        _day = _cmd_pct(_trend[-1]["close"], _trend[-2]["close"]) if len(_trend) >= 2 else None
+        _year = _cmd_pct(_trend[-1]["close"], _trend[0]["close"]) if len(_trend) >= 2 else None
+        _unit = PROXY_UNITS.get(_d["symbol"], "US$")
+        _spot_str = f"${_spot:,.2f}" if _spot is not None else "—"
+        with _cmd_cols[_i % 3]:
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+                f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;'
+                f'padding:14px 16px;margin-bottom:12px">'
+                f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+                f'text-transform:uppercase;color:#64748B">'
+                f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
+                f'background:{_CMD_COLOR[_key]};margin-right:7px"></span>{_CMD_LABEL[_key]}</div>'
+                f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+                f'{_spot_str} <span style="font-size:11px;color:#64748B;font-weight:400">{_unit}</span></div>'
+                f'<div>{_cmd_pill(_day, "1d")}{_cmd_pill(_year, "1y")}'
+                f'<span style="color:#64748B;font-size:10px">via {_d["symbol"]}</span></div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # --- Classic ratios ---------------------------------------------------
+    _gold_spot = _cmd["gold"].get("spot_price")
+    _silver_spot = _cmd["silver"].get("spot_price")
+    _wti_spot = _cmd["crude oil"].get("spot_price")
+    _gas_spot = _cmd["natural gas"].get("spot_price")
+    _r1, _r2 = st.columns(2)
+    with _r1:
+        _gs = (_gold_spot / _silver_spot) if (_gold_spot and _silver_spot) else None
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px">'
+            f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+            f'text-transform:uppercase;color:#64748B">Gold / Silver ratio</div>'
+            f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+            f'{f"{_gs:,.1f}" if _gs else "—"}</div>'
+            f'<div style="font-size:11px;color:#64748B">ounces of silver per ounce of gold — '
+            f'higher means silver is cheap relative to gold</div></div>',
+            unsafe_allow_html=True,
+        )
+    with _r2:
+        _og = (_wti_spot / _gas_spot) if (_wti_spot and _gas_spot) else None
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);'
+            f'border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px">'
+            f'<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;'
+            f'text-transform:uppercase;color:#64748B">Oil / Gas ratio</div>'
+            f'<div style="font-size:26px;font-weight:650;color:#F1F5F9;margin:4px 0 2px">'
+            f'{f"{_og:,.1f}" if _og else "—"}</div>'
+            f'<div style="font-size:11px;color:#64748B">WTI $/bbl ÷ Henry Hub $/MMBtu — '
+            f'energy-equivalent parity is ≈ 6; higher favors gas-weighted producers</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # --- Relative performance (indexed) -----------------------------------
+    st.markdown("##### Relative Performance — indexed to 100, last 1 year")
+    st.caption("Pick commodities to compare. Each series is rebased to 100 at the start of its window.")
+    _picked = st.multiselect(
+        "Commodities to compare",
+        [_CMD_LABEL[k] for k in _CMD_ORDER],
+        default=["Gold", "WTI Crude", "Copper"],
+        label_visibility="collapsed",
+    )
+    _label_to_key = {v: k for k, v in _CMD_LABEL.items()}
+
+    def _cmd_parse_date(value):
+        try:
+            return datetime.fromisoformat(str(value))
+        except (ValueError, TypeError):
+            return None
+
+    _idx_fig = go.Figure()
+    for _label in _picked:
+        _key = _label_to_key[_label]
+        _points = _cmd[_key].get("trend") or []
+        if len(_points) < 2 or not _points[0]["close"]:
+            continue
+        _base = _points[0]["close"]
+        _xs = [_cmd_parse_date(p["date"]) for p in _points]
+        if any(x is None for x in _xs):
+            _xs = [p["date"] for p in _points]
+        _ys = [p["close"] / _base * 100 for p in _points]
+        _idx_fig.add_trace(go.Scatter(
+            x=_xs, y=_ys, mode='lines', name=_label,
+            line=dict(color=_CMD_COLOR[_key], width=2),
+            hovertemplate=_label + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+        ))
+        _idx_fig.add_annotation(
+            x=_xs[-1], y=_ys[-1], text=f"{_ys[-1]:.0f}",
+            showarrow=False, xanchor='left',
+            font=dict(color=_CMD_COLOR[_key], size=10),
+        )
+    if _idx_fig.data:
+        _idx_fig.add_hline(y=100, line_dash='dot', line_color='rgba(148,163,184,0.4)')
+        _idx_fig.update_layout(
+            paper_bgcolor='#1E2433', plot_bgcolor='#1E2433',
+            font=dict(color='#94A3B8', size=11),
+            margin=dict(l=40, r=40, t=20, b=40), height=320,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        )
+        _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+        _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
+        st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
+    else:
+        st.caption("No trend data available for the selected commodities.")
+
+    st.divider()
+
+    # --- Small multiples: one-year trend per commodity ---------------------
+    st.markdown("##### One-Year Trends")
+    _sm_cols = st.columns(3)
+    for _i, _key in enumerate(_CMD_ORDER):
+        _points = _cmd[_key].get("trend") or []
+        with _sm_cols[_i % 3]:
+            st.markdown(
+                f'<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;'
+                f'text-transform:uppercase;color:#94A3B8;margin:4px 0 2px">'
+                f'{_CMD_LABEL[_key]} <span style="color:#64748B;font-weight:400">'
+                f'{PROXY_UNITS.get(_cmd[_key]["symbol"], "US$")}</span></div>',
+                unsafe_allow_html=True,
+            )
+            if len(_points) < 2:
+                st.caption("No data.")
+                continue
+            _xs = [_cmd_parse_date(p["date"]) for p in _points]
+            if any(x is None for x in _xs):
+                _xs = [p["date"] for p in _points]
+            _ys = [p["close"] for p in _points]
+            _sm_fig = go.Figure(go.Scatter(
+                x=_xs, y=_ys, mode='lines',
+                line=dict(color=_CMD_COLOR[_key], width=1.8),
+                hovertemplate="%{x|%b %d}: %{y:,.2f}<extra></extra>",
+            ))
+            _sm_fig.add_annotation(
+                x=_xs[-1], y=_ys[-1], text=f"{_ys[-1]:,.2f}",
+                showarrow=False, xanchor='left',
+                font=dict(color=_CMD_COLOR[_key], size=10),
+            )
+            _sm_fig.update_layout(
+                paper_bgcolor='#1E2433', plot_bgcolor='#1E2433',
+                font=dict(color='#64748B', size=10),
+                margin=dict(l=35, r=35, t=8, b=25), height=150,
+                showlegend=False,
+            )
+            _sm_fig.update_xaxes(gridcolor='rgba(255,255,255,0.05)', zerolinecolor='rgba(255,255,255,0.08)')
+            _sm_fig.update_yaxes(gridcolor='rgba(255,255,255,0.05)', zerolinecolor='rgba(255,255,255,0.08)')
+            st.plotly_chart(_sm_fig, width='stretch', config={"displayModeBar": False})
+
+    st.divider()
+
+    # --- Your resource filers ---------------------------------------------
+    st.markdown("##### Your Resource Filers")
+    _resource_profiles = {"mining_sector", "resource_sector", "mining_exploration_sector"}
+    _res_rows = []
+    for _entry in lib_get():
+        _efd = _entry.get("financial_data") or {}
+        _emeta = ((_efd.get("mapping") or {}).get("meta") or {})
+        if _emeta.get("sector_profile") not in _resource_profiles:
+            continue
+        _sector_text = (
+            _efd.get("sector_inferred")
+            or (_entry.get("summary_data") or {}).get("sector_inferred")
+            or ""
+        )
+        _linked = infer_commodity(_sector_text)
+        _res_rows.append({
+            "Company": _library_company_header(_library_ticker(_entry), [_entry]),
+            "Sector": _sector_text or "—",
+            "Linked Commodity": _CMD_LABEL.get(_linked, (_linked or "—").title()),
+            "Period": _library_period_label(_entry) or "—",
+        })
+    if _res_rows:
+        st.dataframe(_res_rows, width='stretch', hide_index=True)
+        st.caption(
+            "Load any of these in Single Analysis for the full Economics tab — "
+            "commodity linkage (r/β), the indexed company-vs-commodity chart, "
+            "and the cost-structure waterfall."
+        )
+    else:
+        st.caption(
+            "No resource-sector filings in your library yet. Load a miner or "
+            "oil & gas producer (e.g. AEM, CNQ, SU from the registry) to link "
+            "filings to these commodities."
+        )
+
+    st.stop()
+
+
 # --- Education page ----------------------------------------------------
 if page == "Education":
     _render_education_page(_education_topic)
@@ -3729,14 +4060,15 @@ if page == "Stock Tracker":
     mom   = sd["momentum"]
     comp  = sd["company"]
 
-    # Helper: coloured pill badge
+    # Helper: coloured pill badge (dark-theme tints, same palette as the
+    # PASS / INVESTIGATE / DECLINE signal badges)
     def _pill(label, ok):
         if ok is None:
-            color, bg, sym = "#888", "#f5f5f5", "—"
+            color, bg, sym = "#94A3B8", "rgba(148,163,184,0.12)", "—"
         elif ok:
-            color, bg, sym = "#2d7a2d", "#e8f5e9", "✓"
+            color, bg, sym = "#4ADE80", "rgba(74,222,128,0.12)", "✓"
         else:
-            color, bg, sym = "#c0392b", "#fdecea", "✗"
+            color, bg, sym = "#F87171", "rgba(248,113,113,0.12)", "✗"
         return (
             f'<span style="background:{bg};color:{color};padding:5px 12px;'
             f'border-radius:20px;font-size:13px;font-weight:600;'
@@ -3844,11 +4176,11 @@ if page == "Stock Tracker":
         except Exception:
             return '<span style="color:#94A3B8;font-size:12px">—</span>'
         if actual > estimated:
-            label, color, bg = "Beat", "#2d7a2d", "#e8f5e9"
+            label, color, bg = "Beat", "#4ADE80", "rgba(74,222,128,0.12)"
         elif actual < estimated:
-            label, color, bg = "Miss", "#c0392b", "#fdecea"
+            label, color, bg = "Miss", "#F87171", "rgba(248,113,113,0.12)"
         else:
-            label, color, bg = "In Line", "#7d5a00", "#fffbea"
+            label, color, bg = "In Line", "#FCD34D", "rgba(252,211,77,0.12)"
         return (
             f'<span style="background:{bg};color:{color};padding:2px 8px;'
             f'border-radius:999px;font-size:11px;font-weight:700">{label}</span>'
@@ -3868,13 +4200,13 @@ if page == "Stock Tracker":
 
     def _short_interest_badge(short_pct):
         if short_pct is None:
-            return ("—", "#888", "#f5f5f5")
+            return ("—", "#94A3B8", "rgba(148,163,184,0.12)")
         short_pct = float(short_pct)
         if short_pct < 0.05:
-            return ("LOW", "#2d7a2d", "#e8f5e9")
+            return ("LOW", "#4ADE80", "rgba(74,222,128,0.12)")
         if short_pct <= 0.15:
-            return ("ELEVATED", "#7d5a00", "#fffbea")
-        return ("HIGH", "#c0392b", "#fdecea")
+            return ("ELEVATED", "#FCD34D", "rgba(252,211,77,0.12)")
+        return ("HIGH", "#F87171", "rgba(248,113,113,0.12)")
 
     @st.cache_data(ttl=900, show_spinner=False)
     def _get_short_interest(ticker: str) -> dict:
@@ -3929,10 +4261,10 @@ if page == "Stock Tracker":
         desc = comp["description"]
         if desc:
             short_desc = desc[:200] + "..."
-            st.markdown(short_desc)
+            st.markdown(_escape_md_dollars(short_desc))
             if len(desc) > 200:
                 with st.expander("Read more"):
-                    st.markdown(desc)
+                    st.markdown(_escape_md_dollars(desc))
     with header_analyst_col:
         analyst = sd["analyst"]
         rec = (analyst["recommendation"] or "").upper()
@@ -3941,11 +4273,11 @@ if page == "Stock Tracker":
         num_an = analyst["num_analysts"]
 
         if rec in ("BUY", "STRONG_BUY", "STRONG BUY"):
-            rec_color, rec_bg = "#2d7a2d", "#e8f5e9"
+            rec_color, rec_bg = "#4ADE80", "rgba(74,222,128,0.15)"
         elif rec in ("SELL", "STRONG_SELL", "STRONG SELL", "UNDERPERFORM"):
-            rec_color, rec_bg = "#c0392b", "#fdecea"
+            rec_color, rec_bg = "#F87171", "rgba(248,113,113,0.15)"
         else:
-            rec_color, rec_bg = "#7d5a00", "#fffbea"
+            rec_color, rec_bg = "#FCD34D", "rgba(252,211,77,0.15)"
 
         if rec:
             st.markdown(
@@ -3979,17 +4311,17 @@ if page == "Stock Tracker":
             fill_width = abs(t_pct - c_pct)
             st.markdown(
                 f'<div style="margin:10px 0 4px">'
-                f'<div style="background:#e8e8e8;border-radius:6px;height:10px;position:relative">'
+                f'<div style="background:rgba(255,255,255,0.10);border-radius:6px;height:10px;position:relative">'
                 f'<div style="position:absolute;left:{fill_left:.0f}%;width:{fill_width:.0f}%;'
-                f'height:100%;background:#7cb9e8;border-radius:6px"></div>'
+                f'height:100%;background:rgba(77,159,255,0.45);border-radius:6px"></div>'
                 f'<div style="position:absolute;left:{c_pct:.0f}%;transform:translateX(-50%);'
-                f'width:3px;height:100%;background:#333;border-radius:2px" title="Current"></div>'
+                f'width:3px;height:100%;background:#F1F5F9;border-radius:2px" title="Current"></div>'
                 f'<div style="position:absolute;left:{t_pct:.0f}%;transform:translateX(-50%);'
-                f'width:3px;height:100%;background:#2d7a2d;border-radius:2px" title="Target"></div>'
+                f'width:3px;height:100%;background:#4ADE80;border-radius:2px" title="Target"></div>'
                 f'</div>'
-                f'<div style="font-size:11px;color:#888;margin-top:4px">'
-                f'&#9632; Current: ${cur:,.2f} &nbsp;&nbsp; '
-                f'<span style="color:#2d7a2d">&#9632;</span> Target: ${target:,.2f}</div>'
+                f'<div style="font-size:11px;color:#64748B;margin-top:4px">'
+                f'<span style="color:#F1F5F9">&#9632;</span> Current: ${cur:,.2f} &nbsp;&nbsp; '
+                f'<span style="color:#4ADE80">&#9632;</span> Target: ${target:,.2f}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -3999,7 +4331,9 @@ if page == "Stock Tracker":
     price_metrics_col, price_chart_col = st.columns([1, 1])
     with price_metrics_col:
         st.markdown("#### Price & Momentum")
-        c1, c2, c3, c4 = st.columns(4)
+        # 2x2 grid: this block lives in a half-width column, and four
+        # metrics across were so narrow that prices wrapped mid-number.
+        c1, c2 = st.columns(2)
         with c1:
             st.metric(
                 "Current Price",
@@ -4015,6 +4349,7 @@ if page == "Stock Tracker":
                 delta=f"{pct_hi:.1f}% from high" if pct_hi is not None else None,
                 delta_color="inverse",
             )
+        c3, c4 = st.columns(2)
         with c3:
             lo52 = price["week_52_low"]
             pct_lo = price["pct_from_52_low"]
@@ -4041,14 +4376,14 @@ if page == "Stock Tracker":
         rsi = mom["rsi_14"]
         if rsi is not None:
             if rsi < 30:
-                rsi_label, rsi_color = "Oversold", "#2d7a2d"
-                rsi_bg = "#e8f5e9"
+                rsi_label, rsi_color = "Oversold", "#4ADE80"
+                rsi_bg = "rgba(74,222,128,0.12)"
             elif rsi < 70:
-                rsi_label, rsi_color = "Neutral", "#555"
-                rsi_bg = "#f5f5f5"
+                rsi_label, rsi_color = "Neutral", "#94A3B8"
+                rsi_bg = "rgba(148,163,184,0.12)"
             else:
-                rsi_label, rsi_color = "Overbought", "#c0392b"
-                rsi_bg = "#fdecea"
+                rsi_label, rsi_color = "Overbought", "#F87171"
+                rsi_bg = "rgba(248,113,113,0.12)"
             st.markdown(
                 f'<div style="margin:8px 0 0 0">'
                 f'<span style="font-weight:600">RSI (14):</span> {rsi:.1f} &nbsp;'
@@ -4089,7 +4424,7 @@ if page == "Stock Tracker":
                 xaxis_rangeslider_visible=False,
                 yaxis_tickprefix="$",
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
             # Volume bar chart
             if "Volume" in hist_df.columns:
@@ -4103,7 +4438,7 @@ if page == "Stock Tracker":
                     showlegend=False,
                     yaxis=dict(tickformat=".2s"),
                 )
-                st.plotly_chart(vol_fig, width='stretch')
+                st.plotly_chart(vol_fig, width='stretch', config={"displayModeBar": False})
 
     st.divider()
 
@@ -4245,8 +4580,8 @@ if page == "Stock Tracker":
             if surp is not None:
                 s_sign = "+" if surp >= 0 else ""
                 s_label = "Beat" if surp >= 0 else "Miss"
-                s_color = "#2d7a2d" if surp >= 0 else "#c0392b"
-                s_bg = "#e8f5e9" if surp >= 0 else "#fdecea"
+                s_color = "#4ADE80" if surp >= 0 else "#F87171"
+                s_bg = "rgba(74,222,128,0.12)" if surp >= 0 else "rgba(248,113,113,0.12)"
                 st.markdown(
                     f'Last Quarter: <span style="background:{s_bg};color:{s_color};'
                     f'padding:2px 8px;border-radius:10px;font-size:13px;font-weight:600">'
@@ -5305,18 +5640,27 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
             st.rerun()
 
-uploaded_file = st.file_uploader(
-    "Upload Financial Statements (PDF or Word)",
-    type=["pdf", "docx"],
-    help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
-    key=f"pdf_uploader_{st.session_state.uploader_key}",
-)
-canadian_filing = st.checkbox(
-    "Canadian filing (SEDAR+ / IFRS)",
-    value=False,
-    help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
-    key="canadian_sedar_upload",
-)
+# Once an analysis is on screen the upload zone collapses out of the way,
+# so the loaded company — not the intake plumbing — owns the page. A
+# collapsed expander still renders its widgets, so upload state survives.
+_has_loaded_analysis = bool(st.session_state.get("financial_data"))
+with st.expander(
+    "📄 Upload Financial Statements (PDF or Word)",
+    expanded=not _has_loaded_analysis,
+):
+    uploaded_file = st.file_uploader(
+        "Upload Financial Statements (PDF or Word)",
+        type=["pdf", "docx"],
+        help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
+        key=f"pdf_uploader_{st.session_state.uploader_key}",
+        label_visibility="collapsed",
+    )
+    canadian_filing = st.checkbox(
+        "Canadian filing (SEDAR+ / IFRS)",
+        value=False,
+        help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
+        key="canadian_sedar_upload",
+    )
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
@@ -5325,9 +5669,21 @@ if st.session_state.get("reanalyse_no_text"):
     _pdf_info = st.session_state.get("reanalyse_pdf_info") or {}
     if _pdf_info.get("source") == "edgar":
         _restored_text = _read_text_cache(_pdf_info.get("file_path"))
+        if _restored_text and is_truncated_excerpt(_restored_text):
+            # Legacy corrupted cache: an earlier re-analyse wrote the 80K
+            # excerpt back over the full EDGAR text. Extraction would fail
+            # its figure-presence guard — fail honestly with the remedy.
+            st.info(
+                f"Cached EDGAR text for **{st.session_state.reanalyse_no_text}** is a truncated "
+                f"excerpt (the financial statements are missing). Load the filing from EDGAR "
+                f"again to re-fetch the full document, then re-analyse."
+            )
+            st.session_state.reanalyse_no_text = None
+            st.session_state.reanalyse_pdf_info = None
+            st.stop()
         if _restored_text:
             st.session_state.pending_reanalyse = {
-                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "raw_text":     _restored_text,  # full document — extraction needs the statements
                 "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
@@ -5375,7 +5731,7 @@ if st.session_state.get("reanalyse_no_text"):
             else:
                 _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
             st.session_state.pending_reanalyse = {
-                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "raw_text":     _restored_text,  # full re-extracted document — do not pre-truncate extraction input
                 "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
@@ -5590,7 +5946,16 @@ if st.session_state.get("pending_reanalyse"):
             st.session_state.pending_reanalyse = None
             st.stop()
         with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
-            _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+            try:
+                _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+            except SedarExtractionError as e:
+                st.error(f"SEDAR+ extraction failed: {e}")
+                st.stop()
+            except Exception as e:
+                # pending_reanalyse stays set so a rerun retries —
+                # transient API errors (e.g. 529 Overloaded) usually succeed on retry.
+                st.error(f"SEDAR+ extraction failed: {e} — click Re-Analyse again to retry.")
+                st.stop()
             _ra_fd = _sedar_extraction_to_financial_data(
                 _sedar_result,
                 ra.get("file_name", ""),
@@ -5599,7 +5964,11 @@ if st.session_state.get("pending_reanalyse"):
             )
     else:
         with st.spinner(f"Call 1: Extracting financials ({get_model_label()})..."):
-            _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+            try:
+                _ra_fd = analyze_financials(_ra_text, API_KEY, model=get_model(), filing_context=_ra_context)
+            except FabricatedExtractionError as _fab_err:
+                st.error(f"🛑 {_fab_err}")
+                st.stop()
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):
@@ -5630,13 +5999,19 @@ if st.session_state.get("pending_reanalyse"):
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
+            # _ra_text is the full document here (truncated excerpts are routed
+            # away before extraction), so this write heals any legacy cache an
+            # older re-analyse truncated. Never write excerpts to this cache.
             safe_write_text(ra["file_path"], _ra_text)
         except Exception:
             pass
 
     try:
+        # Library JSON stores an analysis-sized excerpt (matches fresh upload);
+        # the full document lives in the on-disk text/PDF caches.
         lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                _ra_fd, _ra_sd, _ra_bb, _ra_dd,
+                raw_text=_ra_text[:MAX_FILING_CHARS],
                 mda_sentiment=_ra_mda,
                 source=ra.get("source", "pdf"),
                 file_path=ra.get("file_path"),
@@ -5649,7 +6024,7 @@ if st.session_state.get("pending_reanalyse"):
         _ra_sd,
         _ra_bb,
         _ra_dd,
-        raw_text=_ra_text,
+        raw_text=_ra_text[:MAX_FILING_CHARS],
         mda_sentiment=_ra_mda,
         file_name=ra.get("file_name", ""),
         file_size=ra.get("file_size", 0),
@@ -6023,7 +6398,21 @@ if st.session_state.financial_data:
     mda_sentiment   = st.session_state.get("mda_sentiment")
     _integrity_flags = _integrity_flag_names(financial_data)
     if _integrity_flags:
-        st.warning("Data integrity flags: " + ", ".join(_integrity_flags))
+        # Chip row, not a warning slab: flags are the audit trail (the
+        # product's moat), not an error state.
+        _flag_pills = "".join(
+            f'<span style="background:rgba(252,211,77,0.12);color:#FCD34D;'
+            f'border:1px solid rgba(252,211,77,0.30);padding:2px 10px;'
+            f'border-radius:999px;font-size:11px;font-weight:600;'
+            f'margin-right:6px">⚑ {escape(str(f))}</span>'
+            for f in _integrity_flags
+        )
+        st.markdown(
+            f'<div style="margin:2px 0 8px"><span style="color:#64748B;'
+            f'font-size:11px;margin-right:8px">INTEGRITY FLAGS</span>'
+            f'{_flag_pills}</div>',
+            unsafe_allow_html=True,
+        )
 
     # If dashboard insights are missing (old library entry or failed Call 4 in the
     # upload pipeline), generate them now from the structured data we do have.
@@ -6050,25 +6439,103 @@ if st.session_state.financial_data:
             )
             st.session_state.dashboard_data = dashboard_data
 
-    company  = financial_data.get("company_name") or "Untitled Document"
     period   = financial_data.get("period") or ""
     currency = financial_data.get("currency") or ""
     fy       = financial_data.get("fiscal_year") or "Current Year"
     fy_prior = financial_data.get("fiscal_year_prior") or "Prior Year"
     ticker   = st.session_state.get("resolved_ticker") or summary_data.get("ticker")
 
+    company = financial_data.get("company_name") or "Untitled Document"
+    if _looks_like_filename(company):
+        # Uploaded-file analyses store the raw filename (SU_FY2025.pdf) as
+        # company_name. Show a real name instead — same resolution as the
+        # library sidebar: yfinance longName, else the cleaned filename.
+        company = _library_company_header(
+            _library_ticker({"ticker": ticker}),
+            [{"company_name": company}],
+        )
+
+    # Toast confirming what just loaded (set by the library Load handler
+    # before its rerun — a toast shown pre-rerun would be discarded).
+    _just_loaded = st.session_state.pop("_just_loaded_label", None)
+    if _just_loaded:
+        st.toast(f"Loaded {_just_loaded}", icon="📂")
+
     st.subheader(company)
     _period_str = period or "Unknown period"
-    st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
+
+    # --- Verdict hero strip -------------------------------------------
+    # The moment of arrival: signal, quality, and the thesis in one
+    # signal-colored banner, so the verdict greets you before the tabs.
+    _hero_signal = (summary_data.get("signal") or "").upper()
+    _hero_thesis = summary_data.get("thesis") or ""
+    if _hero_signal or _hero_thesis:
+        _HERO_RGB = {
+            "PASS":        ("74,222,128", "#4ADE80"),
+            "INVESTIGATE": ("252,211,77", "#FCD34D"),
+            "DECLINE":     ("248,113,113", "#F87171"),
+        }
+        _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
+        _hero_qs, _hero_qs_n = _quality_score(_calc_summary_metrics(financial_data))
+        _hero_qs_chip = (
+            f'<span title="Scored from the five Financial Health checks (Dashboard tab): '
+            f'Liquidity · Leverage · Revenue growth · FCF conversion · Interest coverage" '
+            f'style="background:rgba(255,255,255,0.06);color:#F1F5F9;cursor:help;'
+            f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
+            f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
+            f'/ 100 · {_hero_qs_n} of 5 metrics</span></span>'
+            if _hero_qs is not None else ""
+        )
+        _hero_badge = (
+            f'<span style="background:rgba({_hero_rgb},0.15);color:{_hero_hex};'
+            f'border:1px solid rgba({_hero_rgb},0.45);padding:5px 16px;'
+            f'border-radius:6px;font-size:14px;font-weight:700;'
+            f'letter-spacing:1.2px">{escape(_hero_signal)}</span>'
+            if _hero_signal else ""
+        )
+        _hero_meta = f"{_period_str}  ·  {currency}" if currency else _period_str
+        st.markdown(
+            f'<div style="border-radius:14px;padding:16px 20px;margin:2px 0 14px;'
+            f'background:linear-gradient(135deg,rgba({_hero_rgb},0.10) 0%,#1E2840 60%);'
+            f'border:1px solid rgba({_hero_rgb},0.30);'
+            f'box-shadow:0 0 30px rgba({_hero_rgb},0.12), 0 4px 24px rgba(0,0,0,0.3)">'
+            f'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;'
+            f'margin-bottom:{"10px" if _hero_thesis else "0"}">'
+            f'{_hero_badge}'
+            f'{_hero_qs_chip}'
+            f'<span style="color:#64748B;font-size:12px">{escape(_hero_meta)}</span>'
+            f'</div>'
+            + (
+                f'<div style="color:#CBD5E1;font-size:14px;line-height:1.55">'
+                f'{escape(_hero_thesis)}</div>'
+                if _hero_thesis else ""
+            )
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+        # Cross-page hop: hand the ticker to Stock Tracker already tracked.
+        if ticker:
+            _hero_track_col, _ = st.columns([1, 4])
+            with _hero_track_col:
+                if st.button("📈 Track live in Stock Tracker", key="hero_track_btn"):
+                    from modules.stock_tracker import get_stock_data as _hero_gsd
+                    with st.spinner(f"Fetching live data for {ticker}…"):
+                        st.session_state.stock_data = _hero_gsd(ticker)
+                        st.session_state.st_current_ticker = str(ticker).upper()
+                    st.session_state["nav_mode"] = "Stock Tracker"
+                    st.query_params["page"] = "stocks"
+                    st.rerun()
+    else:
+        st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
 
     if (
         st.session_state.get("analysis_loaded_from_cache")
         and st.session_state.get("analysis_cache_is_stale")
     ):
         st.warning(
-            f"⚠️ This analysis was saved with an older version of FinLens "
-            f"and may display incorrect numbers or be missing fields. "
-            f"Click **Re-Analyse $** above to refresh it with the current pipeline."
+            "⚠️ This analysis was saved with an older version of FinLens "
+            "and may display incorrect numbers or be missing fields. "
+            "Click **Re-Analyse $** above to refresh it with the current pipeline."
         )
 
     _fd_check = st.session_state.get("financial_data") or {}
@@ -6111,11 +6578,17 @@ if st.session_state.financial_data:
         _mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
         if isinstance(_mapping, dict):
             _mapping_meta = _mapping.get("meta") or {}
-            st.info(
-                "SEDAR+ mapping: "
-                f"{_mapping_meta.get('mapped_count', 0)} mapped, "
-                f"{_mapping_meta.get('unmapped_count', 0)} unmapped, "
-                f"{_mapping_meta.get('total', 0)} total."
+            # Compact chip instead of a full-width info slab — the mapping
+            # census is provenance, not a problem to fix.
+            st.markdown(
+                f'<div style="margin:2px 0 8px">'
+                f'<span style="background:rgba(148,163,184,0.10);color:#94A3B8;'
+                f'border:1px solid rgba(148,163,184,0.25);padding:2px 10px;'
+                f'border-radius:999px;font-size:11px;font-weight:600">'
+                f'SEDAR+ mapping · {_mapping_meta.get("mapped_count", 0)} of '
+                f'{_mapping_meta.get("total", 0)} lines mapped to canonical fields'
+                f'</span></div>',
+                unsafe_allow_html=True,
             )
             with st.expander("SEDAR+ unmapped line items", expanded=False):
                 _unmapped = _mapping.get("unmapped") or []
@@ -6480,7 +6953,7 @@ if st.session_state.financial_data:
                             f'<blockquote style="border-left:3px solid #374B6B;'
                             f'margin:4px 0;padding:6px 12px;'
                             f'color:#94A3B8;font-size:13px;font-style:italic">'
-                            f'{_escape_md_dollars(phrase)}</blockquote>',
+                            f'{escape(phrase)}</blockquote>',
                             unsafe_allow_html=True,
                         )
         elif mda_sentiment and mda_sentiment.get("error"):
@@ -6607,78 +7080,6 @@ if st.session_state.financial_data:
                         st.info(_escape_md_dollars(_sr["narrative"]))
 
         # --- Financial statement tables ---
-        _is_fmp_source = financial_data.get("source") == "fmp"
-        _has_prior_values = any(
-            row.get("value_prior") is not None
-            for section in ("income_statement", "balance_sheet", "cash_flow_statement")
-            for row in financial_data.get(section, [])
-            if row.get("row_type") != "section_header"
-        )
-        col_cfg = {
-            "line_item":   st.column_config.TextColumn("Line Item"),
-            "value_prior": st.column_config.NumberColumn(fy_prior, format="%.0f"),
-            "value":       st.column_config.NumberColumn(fy,       format="%.0f"),
-        }
-        if _is_fmp_source and not _has_prior_values:
-            col_cfg = {
-                "line_item": st.column_config.TextColumn("Line Item"),
-                "value":     st.column_config.TextColumn(fy),
-            }
-        elif _is_fmp_source:
-            col_cfg = {
-                "line_item":   st.column_config.TextColumn("Line Item"),
-                "value_prior": st.column_config.TextColumn(fy_prior),
-                "value":       st.column_config.TextColumn(fy),
-            }
-
-        def _display_rows(rows):
-            if _is_fmp_source:
-                def _fmt_fmp_statement_value(value):
-                    if value is None:
-                        return None
-                    try:
-                        raw_value = float(value) * (financial_data.get("scale") or 1)
-                    except (TypeError, ValueError):
-                        return None
-                    sign = "-" if raw_value < 0 else ""
-                    abs_value = abs(raw_value)
-                    if abs_value >= 1_000_000_000_000:
-                        return f"{sign}${abs_value / 1_000_000_000_000:,.2f}T"
-                    if abs_value >= 1_000_000_000:
-                        return f"{sign}${abs_value / 1_000_000_000:,.1f}B"
-                    if abs_value >= 1_000_000:
-                        return f"{sign}${abs_value / 1_000_000:,.1f}M"
-                    return f"{sign}${abs_value:,.0f}"
-
-                def _fmt_fmp_per_share(value):
-                    try:
-                        if value is None:
-                            return None
-                        return f"${float(value):,.2f}"
-                    except (TypeError, ValueError):
-                        return None
-
-                display = []
-                for r in rows:
-                    _row_fmt = (
-                        _fmt_fmp_per_share
-                        if is_per_share_line_item(r.get("line_item"))
-                        else _fmt_fmp_statement_value
-                    )
-                    row = {
-                        "line_item": r.get("line_item"),
-                        "value": _row_fmt(r.get("value")),
-                    }
-                    if _has_prior_values:
-                        row["value_prior"] = _row_fmt(r.get("value_prior"))
-                    display.append(row)
-                return display
-
-            return [
-                {"line_item": r.get("line_item"), "value_prior": r.get("value_prior"), "value": r.get("value")}
-                for r in rows
-            ]
-
         def _display_edgar_statement(rows):
             import html as _html
 
@@ -6755,26 +7156,28 @@ if st.session_state.financial_data:
                 unsafe_allow_html=True,
             )
 
-        col1, col2, col3 = st.columns(3)
+        # Full-width statement tabs. Three side-by-side columns forced long
+        # line items ("Selling, General and Administrative Expense") to wrap
+        # over four lines; one statement at full width reads like a filing.
+        _stmt_is, _stmt_bs, _stmt_cf = st.tabs(
+            ["Income Statement", "Balance Sheet", "Cash Flow Statement"]
+        )
 
-        with col1:
-            st.markdown("**Income Statement**")
+        with _stmt_is:
             rows = financial_data.get("income_statement", [])
             if rows:
                 _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
-        with col2:
-            st.markdown("**Balance Sheet**")
+        with _stmt_bs:
             rows = financial_data.get("balance_sheet", [])
             if rows:
                 _display_edgar_statement(rows)
             else:
                 st.info("Not found in document.")
 
-        with col3:
-            st.markdown("**Cash Flow Statement**")
+        with _stmt_cf:
             rows = financial_data.get("cash_flow_statement", [])
             if rows:
                 _display_edgar_statement(rows)
@@ -6834,42 +7237,44 @@ if st.session_state.financial_data:
                 )
 
         # --- Debug: Raw Extraction -----------------------------------------------
-        with st.expander("🔬 Debug: Raw Extraction Output", expanded=False):
-            st.caption(
-                "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
-                "Use this to diagnose — / N/A values in the Summary tab."
-            )
-            import json as _json
+        # Dev-only diagnostic: hidden unless FINLENS_DEBUG=1 is set in .env,
+        # so end users never see internal extraction plumbing.
+        if os.getenv("FINLENS_DEBUG") == "1":
+            with st.expander("🔬 Debug: Raw Extraction Output", expanded=False):
+                st.caption(
+                    "Shows exactly what Claude extracted vs. what _calc_summary_metrics() resolved. "
+                    "Use this to diagnose — / N/A values in the Summary tab."
+                )
 
-            _dbg_metrics = _calc_summary_metrics(financial_data)
+                _dbg_metrics = _calc_summary_metrics(financial_data)
 
-            # Resolved metrics — what the Summary sheet actually uses
-            st.markdown("**Resolved Metrics** (what the Summary tab renders)")
-            _resolved_rows = [
-                {"Metric": k, "Value": v}
-                for k, v in _dbg_metrics.items()
-            ]
-            st.dataframe(_resolved_rows, width='stretch', hide_index=True)
+                # Resolved metrics — what the Summary sheet actually uses
+                st.markdown("**Resolved Metrics** (what the Summary tab renders)")
+                _resolved_rows = [
+                    {"Metric": k, "Value": v}
+                    for k, v in _dbg_metrics.items()
+                ]
+                st.dataframe(_resolved_rows, width='stretch', hide_index=True)
 
-            st.divider()
+                st.divider()
 
-            # Raw line items — what Claude extracted from the PDF
-            for _section_key, _section_label in [
-                ("income_statement",    "Income Statement"),
-                ("balance_sheet",       "Balance Sheet"),
-                ("cash_flow_statement", "Cash Flow Statement"),
-            ]:
-                _rows = financial_data.get(_section_key, [])
-                st.markdown(f"**{_section_label}** — {len(_rows)} line items extracted")
-                if _rows:
-                    st.dataframe(
-                        [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
-                        width='stretch',
-                        hide_index=True,
-                    )
-                else:
-                    st.caption("No rows found.")
-                st.write("")
+                # Raw line items — what Claude extracted from the PDF
+                for _section_key, _section_label in [
+                    ("income_statement",    "Income Statement"),
+                    ("balance_sheet",       "Balance Sheet"),
+                    ("cash_flow_statement", "Cash Flow Statement"),
+                ]:
+                    _rows = financial_data.get(_section_key, [])
+                    st.markdown(f"**{_section_label}** — {len(_rows)} line items extracted")
+                    if _rows:
+                        st.dataframe(
+                            [{"line_item": r.get("line_item"), "value": r.get("value"), "value_prior": r.get("value_prior")} for r in _rows],
+                            width='stretch',
+                            hide_index=True,
+                        )
+                    else:
+                        st.caption("No rows found.")
+                    st.write("")
 
     # =====================================================================
     with tab_dash:
@@ -6891,43 +7296,31 @@ if st.session_state.financial_data:
                 "Re-analyse to run Call 4 (Dalio / Lynch / Marks frameworks)."
             )
 
-        # --- Section 1: Header — Signal badge, thesis, Quality Score, Beta, MoS ---
-        sig_col, qs_col, beta_col, mos_col = st.columns([3, 2, 2, 2])
+        # --- Section 1: Header — Quality Score, Beta, MoS ---
+        # (The signal badge + thesis moved to the verdict hero strip above
+        # the tabs; the old in-tab copy was redundant.)
+        qs_col, beta_col, mos_col = st.columns(3)
 
-        with sig_col:
-            _BADGE_STYLE_D = {
-                "PASS":        {"bg": "#052e16", "color": "#4ADE80", "border": "#166534"},
-                "INVESTIGATE": {"bg": "#1C0F00", "color": "#FCD34D", "border": "#92400E"},
-                "DECLINE":     {"bg": "#1F0000", "color": "#F87171", "border": "#991B1B"},
-            }
-            signal_d = (summary_data.get("signal") or "").upper()
-            if signal_d in _BADGE_STYLE_D:
-                s = _BADGE_STYLE_D[signal_d]
-                st.markdown(
-                    f'<div style="display:inline-block;background:{s["bg"]};color:{s["color"]};'
-                    f'border:1px solid {s["border"]};'
-                    f'padding:6px 22px;border-radius:4px;font-size:16px;font-weight:700;'
-                    f'letter-spacing:1.5px;margin:4px 0 6px 0">{signal_d}</div>',
-                    unsafe_allow_html=True,
-                )
-            thesis = summary_data.get("thesis") or ""
-            if thesis:
-                import html as _html
-                st.markdown(
-                    f'<p style="font-size:14px;color:#94A3B8;margin:4px 0 0 0;line-height:1.5">'
-                    f'{_html.escape(_escape_md_dollars(thesis))}</p>',
-                    unsafe_allow_html=True,
-                )
+        qs, qs_n = _quality_score(metrics)
+        if qs is None:
+            qs_color = "#94A3B8"
+        else:
+            qs_color = "#4ADE80" if qs >= 70 else ("#FCD34D" if qs >= 40 else "#F87171")
 
-        qs = _quality_score(metrics)
-        qs_color = "#70AD47" if qs >= 70 else ("#FFC000" if qs >= 40 else "#C00000")
+        # Shared dark-card shell for the three header stat cards.
+        _stat_card_style = (
+            "background:linear-gradient(135deg,#252D40 0%,#1E2840 100%);"
+            "border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;"
+            "padding:12px 16px;text-align:center"
+        )
 
         with qs_col:
             st.markdown(
-                f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
-                f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs}</div>'
-                f'<div style="font-size:10px;color:#aaa">/ 100</div>'
+                f'<div style="{_stat_card_style}">'
+                f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
+                f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs if qs is not None else "—"}</div>'
+                f'<div style="font-size:10px;color:#64748B">'
+                f'{f"/ 100 · {qs_n} of 5 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -6937,10 +7330,10 @@ if st.session_state.financial_data:
             beta_val = market_data.get("beta")
             beta_str = f"{beta_val:.2f}" if beta_val else "—"
             st.markdown(
-                f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Beta</div>'
-                f'<div style="font-size:28px;font-weight:700">{beta_str}</div>'
-                f'<div style="font-size:10px;color:#aaa">market sensitivity</div>'
+                f'<div style="{_stat_card_style}">'
+                f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Beta</div>'
+                f'<div style="font-size:28px;font-weight:700;color:#F1F5F9">{beta_str}</div>'
+                f'<div style="font-size:10px;color:#64748B">market sensitivity</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -6951,24 +7344,24 @@ if st.session_state.financial_data:
             _iv_hdr  = _dcf_hdr.get("intrinsic_value_per_share")
             _mos_hdr = _dcf_hdr.get("margin_of_safety_pct")
             if _iv_hdr is not None and _mos_hdr is not None:
-                _mc = "#70AD47" if _mos_hdr > 20 else ("#FFC000" if _mos_hdr >= 0 else "#C00000")
+                _mc = "#4ADE80" if _mos_hdr > 20 else ("#FCD34D" if _mos_hdr >= 0 else "#F87171")
                 _lbl = "undervalued" if _mos_hdr > 0 else "overvalued"
                 st.markdown(
-                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                    f'<div style="font-size:22px;font-weight:700">${_iv_hdr:,.2f}</div>'
+                    f'<div style="{_stat_card_style}">'
+                    f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    f'<div style="font-size:22px;font-weight:700;color:#F1F5F9">${_iv_hdr:,.2f}</div>'
                     f'<div style="font-size:16px;font-weight:700;color:{_mc}">{_mos_hdr:+.1f}%</div>'
-                    f'<div style="font-size:10px;color:#aaa">{_lbl}</div>'
+                    f'<div style="font-size:10px;color:#64748B">{_lbl}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
-                    f'<div style="border:1px solid #ddd;border-radius:6px;padding:12px 16px;text-align:center">'
-                    f'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
-                    f'<div style="font-size:28px;font-weight:700">—</div>'
-                    f'<div style="font-size:10px;color:#aaa">DCF required</div>'
-                    f'</div>',
+                    f'<div style="{_stat_card_style}">'
+                    '<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Margin of Safety</div>'
+                    '<div style="font-size:28px;font-weight:700;color:#F1F5F9">—</div>'
+                    '<div style="font-size:10px;color:#64748B">DCF required</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             _learn_more("margin_of_safety", "Margin of Safety")
@@ -7061,15 +7454,17 @@ if st.session_state.financial_data:
                 or ""
             )
             _sector_idx = 0
+            _auto_pick_note = None
             _auto_s = st.session_state.get("auto_sector")
+            _suggested = suggest_sector(_sector_hint)
             if _auto_s and _auto_s in _sector_options:
                 _sector_idx = _sector_options.index(_auto_s)
-            elif _sector_hint:
-                _hint_l = _sector_hint.lower()
-                for _i, _sector_name in enumerate(_sector_options):
-                    if _sector_name.lower() in _hint_l or _hint_l in _sector_name.lower():
-                        _sector_idx = _i
-                        break
+            elif _suggested:
+                _sector_idx = _sector_options.index(_suggested)
+                _auto_pick_note = (
+                    f'Auto-picked from the filing sector "{_sector_hint}" — '
+                    f'change it if wrong.'
+                )
 
             _pc_sector_col, _pc_btn_col = st.columns([2, 1])
             with _pc_sector_col:
@@ -7079,11 +7474,27 @@ if st.session_state.financial_data:
                     index=_sector_idx,
                     key="peer_sector",
                 )
+                if _auto_pick_note and _peer_sector == _suggested:
+                    st.caption(_auto_pick_note)
+                elif not _suggested and _sector_hint:
+                    st.caption(
+                        f'No peer bucket matched the filing sector "{_sector_hint}" — '
+                        f'pick one, or edit the ticker list below.'
+                    )
+            _default_peers = ", ".join(peer_map.get(_peer_sector, []))
+            _peer_tickers_text = st.text_input(
+                "Peer tickers (comma-separated — edit to compare against your own set)",
+                value=_default_peers,
+                key=f"peer_tickers_{_peer_sector}",
+            )
             with _pc_btn_col:
                 st.write("")
                 if st.button("Load Peer Comparison", width='stretch', key="peer_load_btn"):
+                    _peer_list = [t.strip() for t in _peer_tickers_text.split(",") if t.strip()]
                     with st.spinner("Fetching peer data from yfinance..."):
-                        st.session_state["peer_data"] = get_peer_data(_peer_ticker, _peer_sector)
+                        st.session_state["peer_data"] = get_peer_data(
+                            _peer_ticker, _peer_sector, tickers=_peer_list
+                        )
 
             _peer_data = st.session_state.get("peer_data")
             if _peer_data:
@@ -7139,7 +7550,13 @@ if st.session_state.financial_data:
                             return f'<td style="font-weight:700;color:#F1F5F9">{text}</td>'
                         value = _pc_num(value)
                         median_value = _pc_num(_med.get(metric))
-                        if value is None or median_value is None:
+                        # Neutral band: within ±10% of the median stays gray.
+                        # A P/E a hair under the median is not meaningfully
+                        # "better" — binary red/green overstated precision.
+                        if value is None or median_value is None or (
+                            median_value != 0
+                            and abs(value - median_value) <= 0.10 * abs(median_value)
+                        ):
                             color = "#94A3B8"
                         else:
                             lower_better = metric in ("pe", "ev_ebitda", "pb", "ps")
@@ -7208,6 +7625,12 @@ if st.session_state.financial_data:
                         """,
                         unsafe_allow_html=True,
                     )
+                    st.caption(
+                        "Peer figures are trailing-twelve-month market data via "
+                        "yfinance; your company's row uses the same market data, "
+                        "not filing-period figures. Gray = within 10% of the "
+                        "sector median."
+                    )
 
         st.divider()
 
@@ -7216,36 +7639,40 @@ if st.session_state.financial_data:
         fw_dalio, fw_lynch, fw_marks = st.columns(3)
 
         with fw_dalio:
-            dalio_text = _escape_md_dollars(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
+            # HTML container: html-escape only (no \$-escaping — see thesis note above).
+            dalio_text = escape(dd.get("dalio_view") or "Re-analyse to generate Dalio view.")
             st.markdown(
-                f'<div style="background:#EEEDFE;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#5B4FCF;margin-bottom:8px;'
+                f'<div style="background:rgba(139,127,232,0.10);border:0.5px solid rgba(139,127,232,0.30);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#A79DF5;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Dalio — All Weather</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{dalio_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{dalio_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
         with fw_lynch:
             lynch_cat  = dd.get("lynch_category") or ""
-            lynch_text = _escape_md_dollars(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
-            cat_suffix = f" ({lynch_cat})" if lynch_cat else ""
+            lynch_text = escape(dd.get("lynch_story") or "Re-analyse to generate Lynch view.")
+            cat_suffix = f" ({escape(lynch_cat)})" if lynch_cat else ""
             st.markdown(
-                f'<div style="background:#E1F5EE;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#217A4B;margin-bottom:8px;'
+                f'<div style="background:rgba(78,206,139,0.08);border:0.5px solid rgba(78,206,139,0.28);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#5FD69A;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Lynch — One Up{cat_suffix}</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{lynch_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{lynch_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
         with fw_marks:
-            marks_text = _escape_md_dollars(dd.get("marks_view") or "Re-analyse to generate Marks view.")
+            marks_text = escape(dd.get("marks_view") or "Re-analyse to generate Marks view.")
             st.markdown(
-                f'<div style="background:#FAEEDA;border-radius:8px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#B06000;margin-bottom:8px;'
+                f'<div style="background:rgba(255,180,84,0.08);border:0.5px solid rgba(255,180,84,0.28);'
+                f'border-radius:12px;padding:16px 18px">'
+                f'<div style="font-size:12px;font-weight:700;color:#FFB454;margin-bottom:8px;'
                 f'text-transform:uppercase;letter-spacing:0.5px">Marks — Second Level</div>'
-                f'<div style="font-size:14px;color:#333;line-height:1.5">{marks_text}</div>'
+                f'<div style="font-size:14px;color:#CBD5E1;line-height:1.5">{marks_text}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -7293,6 +7720,191 @@ if st.session_state.financial_data:
 
         st.divider()
 
+        # --- Section 3b: Two-Year Performance charts ---
+        # The statements carry two fiscal years side by side; these charts
+        # make the comparison visible instead of leaving it as table rows.
+        _pairs = two_year_statement_pairs(financial_data)
+
+        def _chart_dark(fig, height=300, **extra):
+            """Shared dark theme for dashboard charts."""
+            fig.update_layout(
+                paper_bgcolor="#1E2433",
+                plot_bgcolor="#1E2433",
+                font=dict(color="#94A3B8", size=11),
+                margin=dict(l=40, r=20, t=30, b=40),
+                height=height,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                **extra,
+            )
+            fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)",
+                             zerolinecolor="rgba(255,255,255,0.1)")
+            fig.update_yaxes(gridcolor="rgba(255,255,255,0.06)",
+                             zerolinecolor="rgba(255,255,255,0.1)")
+            return fig
+
+        # Colorblind-validated pair (dataviz six-checks, dark surface):
+        # prior year teal, current year blue.
+        _PRIOR_COLOR, _CURRENT_COLOR = "#26A69A", "#3574C6"
+        _fy_prior_name = str(fy_prior or "Prior year")
+        _fy_name = str(fy or "Current year")
+
+        _UNIT_WORDS = {"T": "trillions", "B": "billions", "M": "millions",
+                       "K": "thousands", "": ""}
+
+        def _money_scale(values):
+            """Pick one divisor + unit for a chart so all bars share a scale."""
+            peak = max((abs(v) for v in values if v is not None), default=0)
+            if peak >= 1_000_000_000_000:
+                return 1_000_000_000_000, "T"
+            if peak >= 1_000_000_000:
+                return 1_000_000_000, "B"
+            if peak >= 1_000_000:
+                return 1_000_000, "M"
+            if peak >= 1_000:
+                return 1_000, "K"
+            return 1, ""
+
+        _bar_items = [
+            name for name in ("Revenue", "Gross Profit", "Operating Income",
+                              "Net Income", "Operating Cash Flow")
+            if _pairs[name]["current"] is not None
+            and _pairs[name]["prior"] is not None
+        ]
+        if len(_bar_items) >= 2:
+            st.markdown("##### Two-Year Performance")
+            perf_col, margin_col = st.columns([3, 2])
+
+            with perf_col:
+                _cur_vals = [_pairs[n]["current"] for n in _bar_items]
+                _pri_vals = [_pairs[n]["prior"] for n in _bar_items]
+                _div, _sfx = _money_scale(_cur_vals + _pri_vals)
+                fig_perf = go.Figure()
+                fig_perf.add_trace(go.Bar(
+                    name=_fy_prior_name, x=_bar_items,
+                    y=[v / _div for v in _pri_vals],
+                    marker_color=_PRIOR_COLOR,
+                    customdata=[_fmt_num(v) for v in _pri_vals],
+                    hovertemplate="%{x} · " + _fy_prior_name + ": %{customdata}<extra></extra>",
+                ))
+                fig_perf.add_trace(go.Bar(
+                    name=_fy_name, x=_bar_items,
+                    y=[v / _div for v in _cur_vals],
+                    marker_color=_CURRENT_COLOR,
+                    text=[_fmt_num(v) for v in _cur_vals],
+                    textposition="outside",
+                    textfont=dict(size=10, color="#CBD5E1"),
+                    cliponaxis=False,
+                    customdata=[_fmt_num(v) for v in _cur_vals],
+                    hovertemplate="%{x} · " + _fy_name + ": %{customdata}<extra></extra>",
+                ))
+                _chart_dark(fig_perf, barmode="group", bargap=0.3, bargroupgap=0.08)
+                fig_perf.update_yaxes(title_text=_UNIT_WORDS[_sfx] or None)
+                st.plotly_chart(fig_perf, width='stretch',
+                                config={"displayModeBar": False})
+
+            with margin_col:
+                _rev_cur = _pairs["Revenue"]["current"]
+                _rev_pri = _pairs["Revenue"]["prior"]
+                _margin_rows = []
+                for _name, _label in (("Gross Profit", "Gross"),
+                                      ("Operating Income", "Operating"),
+                                      ("Net Income", "Net")):
+                    _c = _pairs[_name]["current"]
+                    _p = _pairs[_name]["prior"]
+                    if None not in (_c, _p) and _rev_cur and _rev_pri:
+                        _margin_rows.append(
+                            (_label, _p / _rev_pri * 100, _c / _rev_cur * 100)
+                        )
+                if _margin_rows:
+                    fig_marg = go.Figure()
+                    fig_marg.add_trace(go.Bar(
+                        name=_fy_prior_name,
+                        x=[r[0] for r in _margin_rows],
+                        y=[r[1] for r in _margin_rows],
+                        marker_color=_PRIOR_COLOR,
+                        hovertemplate="%{x} margin · " + _fy_prior_name + ": %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_marg.add_trace(go.Bar(
+                        name=_fy_name,
+                        x=[r[0] for r in _margin_rows],
+                        y=[r[2] for r in _margin_rows],
+                        marker_color=_CURRENT_COLOR,
+                        text=[f"{r[2]:.1f}%" for r in _margin_rows],
+                        textposition="outside",
+                        textfont=dict(size=10, color="#CBD5E1"),
+                        cliponaxis=False,
+                        hovertemplate="%{x} margin · " + _fy_name + ": %{y:.1f}%<extra></extra>",
+                    ))
+                    _chart_dark(fig_marg, barmode="group", bargap=0.3, bargroupgap=0.08)
+                    fig_marg.update_yaxes(ticksuffix="%", title_text="margin")
+                    st.plotly_chart(fig_marg, width='stretch',
+                                    config={"displayModeBar": False})
+
+        # Cash flow waterfall. Preferred: where operating cash flow went
+        # (capex / buybacks / dividends). If the extraction lacks those
+        # detail lines, or they are immaterial next to OCF, fall back to the
+        # always-present section totals: Operating -> Investing -> Financing
+        # -> Net Change (this closes exactly for any filing).
+        _ocf_cur = _pairs["Operating Cash Flow"]["current"]
+        _detail_flows = []
+        for _name in ("Capital Expenditures", "Buybacks", "Dividends"):
+            _v = _pairs[_name]["current"]
+            if _v is not None and _v != 0:
+                _detail_flows.append((_name, -abs(_v)))
+        _detail_total = sum(abs(f[1]) for f in _detail_flows)
+        _icf_cur = _pairs["Investing Cash Flow"]["current"]
+        _fin_cur = _pairs["Financing Cash Flow"]["current"]
+
+        _wf_steps = None  # (title, caption, [(label, value)...], end_label)
+        if (_ocf_cur is not None and len(_detail_flows) >= 2
+                and _detail_total >= 0.10 * abs(_ocf_cur)):
+            _wf_steps = (
+                "Cash Flow Allocation",
+                f"Where {_fy_name} operating cash flow went — the remainder "
+                f"stays on the balance sheet.",
+                _detail_flows,
+                "Retained Cash",
+            )
+        elif _ocf_cur is not None and _icf_cur is not None and _fin_cur is not None:
+            _wf_steps = (
+                "Cash Flow Bridge",
+                f"{_fy_name} cash movement by statement section — operating, "
+                f"investing, and financing activities.",
+                [("Investing Activities", _icf_cur),
+                 ("Financing Activities", _fin_cur)],
+                "Net Change in Cash",
+            )
+
+        if _wf_steps:
+            _wf_title, _wf_caption, _wf_flows, _wf_end = _wf_steps
+            st.markdown(f"##### {_wf_title}")
+            st.caption(_wf_caption)
+            _wf_total = _ocf_cur + sum(f[1] for f in _wf_flows)
+            _div_wf, _ = _money_scale([_ocf_cur] + [f[1] for f in _wf_flows])
+            fig_wf = go.Figure(go.Waterfall(
+                x=(["Operating Cash Flow"] + [f[0] for f in _wf_flows]
+                   + [_wf_end]),
+                y=([_ocf_cur / _div_wf] + [f[1] / _div_wf for f in _wf_flows]
+                   + [0]),
+                measure=(["absolute"] + ["relative"] * len(_wf_flows)
+                         + ["total"]),
+                decreasing=dict(marker=dict(color="#F87171")),
+                increasing=dict(marker=dict(color="#4ADE80")),
+                totals=dict(marker=dict(color="#3574C6")),
+                connector=dict(line=dict(color="rgba(255,255,255,0.2)", width=1)),
+                text=([_fmt_num(_ocf_cur)] + [_fmt_num(f[1]) for f in _wf_flows]
+                      + [_fmt_num(_wf_total)]),
+                textposition="outside",
+                textfont=dict(size=10, color="#CBD5E1"),
+                cliponaxis=False,
+                hoverinfo="skip",
+            ))
+            _chart_dark(fig_wf, height=320, showlegend=False)
+            st.plotly_chart(fig_wf, width='stretch',
+                            config={"displayModeBar": False})
+
+        st.divider()
+
         # --- Section 4: Financial Health (RAG) | Capital Allocation ---
         rag_col, cap_col = st.columns(2)
 
@@ -7314,13 +7926,18 @@ if st.session_state.financial_data:
                         val_str = f"{val:.1f}%"
                     else:
                         val_str = f"{val:.2f}"
-                    lbl_color = "#fff" if rag_lbl == "RED" else "#333"
+                    if rag_lbl == "RED":
+                        lbl_color = "#fff"
+                    elif rag_lbl == "N/A":
+                        lbl_color = "#CBD5E1"
+                    else:
+                        lbl_color = "#333"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                        f'padding:7px 4px;border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px">{lbl}</span>'
+                        f'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#CBD5E1">{lbl}</span>'
                         f'<span>'
-                        f'<span style="font-size:13px;margin-right:10px;color:#555">{val_str}</span>'
+                        f'<span style="font-size:13px;margin-right:10px;color:#94A3B8">{val_str}</span>'
                         f'<span style="background:{bg};color:{lbl_color};padding:2px 10px;'
                         f'border-radius:3px;font-size:11px;font-weight:700">{rag_lbl}</span>'
                         f'</span></div>',
@@ -7339,9 +7956,15 @@ if st.session_state.financial_data:
                             detail = item.get("value") or item.get("detail", "")
                         else:
                             title, detail = str(item), ""
-                        st.markdown(f"**{title}**")
+                        st.markdown(f"**{_escape_md_dollars(title)}**")
                         if detail:
-                            st.caption(detail)
+                            # Claude-written analysis: render at readable size,
+                            # not st.caption's faint 11px gray.
+                            st.markdown(
+                                f'<p style="font-size:13px;color:#94A3B8;'
+                                f'margin:0 0 10px 0;line-height:1.55">{escape(detail)}</p>',
+                                unsafe_allow_html=True,
+                            )
                 else:
                     st.caption("Re-analyse to generate capital allocation insights.")
 
@@ -7372,7 +7995,7 @@ if st.session_state.financial_data:
             with st.container(border=True):
                 st.markdown("##### Lynch Story")
                 story = dd.get("lynch_story") or "Re-analyse to generate Lynch story."
-                st.write(story)
+                st.write(_escape_md_dollars(story))
 
         st.divider()
 
@@ -7392,7 +8015,7 @@ if st.session_state.financial_data:
                 st.write(_escape_md_dollars(mq))
                 _mos_marks = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 if _mos_marks is not None:
-                    _mos_mc = "#70AD47" if _mos_marks > 20 else ("#FFC000" if _mos_marks >= 0 else "#C00000")
+                    _mos_mc = "#4ADE80" if _mos_marks > 20 else ("#FCD34D" if _mos_marks >= 0 else "#F87171")
                     st.markdown(
                         f'Margin of Safety: <span style="color:{_mos_mc};font-weight:700">'
                         f'{_mos_marks:+.1f}%</span>',
@@ -7419,7 +8042,7 @@ if st.session_state.financial_data:
                 ]
                 for scen_name, stressed_ic in scenarios:
                     if stressed_ic is None:
-                        status, bg, lbl_c = "N/A", "#D9D9D9", "#333"
+                        status, bg, lbl_c = "N/A", "rgba(148,163,184,0.25)", "#CBD5E1"
                     elif stressed_ic >= 3.0:
                         status, bg, lbl_c = "SAFE", "#70AD47", "#fff"
                     elif stressed_ic >= 1.5:
@@ -7431,10 +8054,10 @@ if st.session_state.financial_data:
                     ic_str = f"{stressed_ic:.1f}x" if stressed_ic is not None else "—"
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                        f'padding:7px 4px;border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px">{scen_name}</span>'
+                        f'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#CBD5E1">{scen_name}</span>'
                         f'<span>'
-                        f'<span style="font-size:13px;margin-right:10px;color:#555">{ic_str}</span>'
+                        f'<span style="font-size:13px;margin-right:10px;color:#94A3B8">{ic_str}</span>'
                         f'<span style="background:{bg};color:{lbl_c};padding:2px 10px;'
                         f'border-radius:3px;font-size:11px;font-weight:700">{status}</span>'
                         f'</span></div>',
@@ -7502,9 +8125,9 @@ if st.session_state.financial_data:
                 ]:
                     st.markdown(
                         f'<div style="display:flex;justify-content:space-between;padding:5px 4px;'
-                        f'border-bottom:1px solid #f0f0f0">'
-                        f'<span style="font-size:14px;color:#555">{vname}</span>'
-                        f'<span style="font-size:14px;font-weight:700">{vval}</span>'
+                        f'border-bottom:1px solid rgba(255,255,255,0.06)">'
+                        f'<span style="font-size:14px;color:#94A3B8">{vname}</span>'
+                        f'<span style="font-size:14px;font-weight:700;color:#F1F5F9">{vval}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
@@ -7524,15 +8147,16 @@ if st.session_state.financial_data:
             st.markdown("**Bull Case**")
             for i, pt in enumerate(bull_cases[:3]):
                 fw     = _BULL_FW[i] if i < len(_BULL_FW) else ""
-                title  = _escape_md_dollars(pt.get("title", ""))
-                detail = _escape_md_dollars(pt.get("detail", ""))
+                # HTML cards: html-escape only (no \$-escaping — markdown never runs in raw HTML).
+                title  = escape(pt.get("title", ""))
+                detail = escape(pt.get("detail", ""))
                 st.markdown(
-                    f'<div style="background:#F0F7EC;border-left:4px solid #70AD47;'
+                    f'<div style="background:rgba(112,173,71,0.10);border-left:4px solid #70AD47;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
-                    f'<div style="font-size:11px;color:#4A7C35;font-weight:700;text-transform:uppercase;'
+                    f'<div style="font-size:11px;color:#8FCE6B;font-weight:700;text-transform:uppercase;'
                     f'letter-spacing:0.5px;margin-bottom:4px">{fw}</div>'
-                    f'<div style="font-size:14px;font-weight:600;margin-bottom:4px">{title}</div>'
-                    f'<div style="font-size:13px;color:#555">{detail}</div>'
+                    f'<div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">{title}</div>'
+                    f'<div style="font-size:13px;color:#94A3B8">{detail}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
@@ -7543,15 +8167,15 @@ if st.session_state.financial_data:
             st.markdown("**Bear Case**")
             for i, pt in enumerate(bear_cases[:3]):
                 fw     = _BEAR_FW[i] if i < len(_BEAR_FW) else ""
-                title  = _escape_md_dollars(pt.get("title", ""))
-                detail = _escape_md_dollars(pt.get("detail", ""))
+                title  = escape(pt.get("title", ""))
+                detail = escape(pt.get("detail", ""))
                 st.markdown(
-                    f'<div style="background:#FDF2F2;border-left:4px solid #C00000;'
+                    f'<div style="background:rgba(217,83,79,0.10);border-left:4px solid #D9534F;'
                     f'padding:10px 14px;margin-bottom:8px;border-radius:0 6px 6px 0">'
-                    f'<div style="font-size:11px;color:#8B0000;font-weight:700;text-transform:uppercase;'
+                    f'<div style="font-size:11px;color:#F08A8A;font-weight:700;text-transform:uppercase;'
                     f'letter-spacing:0.5px;margin-bottom:4px">{fw}</div>'
-                    f'<div style="font-size:14px;font-weight:600;margin-bottom:4px">{title}</div>'
-                    f'<div style="font-size:13px;color:#555">{detail}</div>'
+                    f'<div style="font-size:14px;font-weight:600;color:#F1F5F9;margin-bottom:4px">{title}</div>'
+                    f'<div style="font-size:13px;color:#94A3B8">{detail}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
@@ -7624,18 +8248,35 @@ if st.session_state.financial_data:
                 _econ_fetch_errs = _econ_metadata.get("fetch_errors") or {}
 
                 # --- Header line ---
-                _econ_cmdt_label = (_econ_cmdt_mkt.get("commodity") or "—").title()
-                _econ_proxy = _econ_cmdt_mkt.get("proxy_used") or "—"
+                _econ_cmdt_key = _econ_cmdt_mkt.get("commodity")
+                _econ_proxy_symbol = _econ_cmdt_mkt.get("proxy_used")
+                _econ_proxy = _econ_proxy_symbol or "—"
                 _econ_proxy_role = _econ_cmdt_mkt.get("proxy_role") or "—"
+                _econ_cmdt_display = build_commodity_display_text(
+                    _econ_cmdt_key,
+                    _econ_proxy_symbol,
+                )
+                _econ_cmdt_header_label = _econ_cmdt_display["header_label"]
+                _econ_cmdt_spot_title = _econ_cmdt_display["spot_title"]
+                _econ_cmdt_caveat = _econ_cmdt_display["crude_caveat"]
                 st.markdown(
                     f'<div style="font-size:20px;font-weight:700;color:#F1F5F9;margin:0 0 4px 0">'
                     f'Resource Economics Snapshot — Tier 1</div>'
                     f'<div style="font-size:12px;color:#64748B;margin:0 0 16px 0">'
                     f'Filing fundamentals × yfinance commodity overlay. '
-                    f'Commodity: {escape(_econ_cmdt_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
-                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.</div>',
+                    f'Commodity: {escape(_econ_cmdt_header_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
+                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.'
+                    f'{"<br>" + escape(_econ_cmdt_caveat) if _econ_cmdt_caveat else ""}</div>',
                     unsafe_allow_html=True,
                 )
+
+                # Currency guard — the module suppresses market-cap ratios when the
+                # filing currency and the listing currency differ or can't be
+                # determined (honest skip beats a wrong cross-currency number).
+                # Code-generated text, no dollars — safe for the markdown pipeline.
+                _econ_guard = _econ_metadata.get("currency_guard") or {}
+                if _econ_guard.get("suppressed") and _econ_guard.get("note"):
+                    st.warning(_econ_guard["note"])
 
                 # --- Helpers (local; reused across cards) ---
                 def _econ_fmt_pct(v):
@@ -7662,19 +8303,35 @@ if st.session_state.financial_data:
                     "font-size:11px;color:#94A3B8;margin-top:6px;font-style:italic;"
                 )
 
-                def _econ_metric_card(label, value, reason=None):
+                def _econ_metric_card(label, value, reason=None, extra_html=""):
+                    # The currency-guard note renders once in the banner above;
+                    # cards affected by it carry a short pointer instead of
+                    # repeating the full sentence.
+                    if reason and reason == _econ_guard.get("note"):
+                        reason = "Suppressed — see currency note above."
                     body = (
                         f'<div style="{_econ_label_style}">{escape(label)}</div>'
                         f'<div style="{_econ_value_style}">{escape(value)}</div>'
                     )
                     if reason:
                         body += f'<div style="{_econ_reason_style}">{escape(reason)}</div>'
+                    body += extra_html
                     st.markdown(
                         f'<div style="{_econ_card_style}">{body}</div>',
                         unsafe_allow_html=True,
                     )
 
                 # --- Row 1: three metric cards ---
+                # resource_sector canonical revenue is GROSS of royalties (product
+                # sales / gross revenues per the 2026-06-17 ground-truth decision) —
+                # label it so a user reconciling against the filing's net "Revenue"
+                # line isn't hit by an unexplained discrepancy.
+                _econ_is_gross_revenue = _econ_sector_profile == "resource_sector"
+                _econ_revenue_label = (
+                    "Revenue (gross of royalties) / Market Cap"
+                    if _econ_is_gross_revenue
+                    else "Revenue / Market Cap"
+                )
                 _ec1, _ec2, _ec3 = st.columns(3)
                 with _ec1:
                     _econ_metric_card(
@@ -7684,7 +8341,7 @@ if st.session_state.financial_data:
                     )
                 with _ec2:
                     _econ_metric_card(
-                        "Revenue / Market Cap",
+                        _econ_revenue_label,
                         _econ_fmt_mult(_econ_metrics.get("revenue_to_market_cap")),
                         _econ_reasons.get("revenue_to_market_cap"),
                     )
@@ -7694,20 +8351,45 @@ if st.session_state.financial_data:
                         _econ_fmt_pct(_econ_metrics.get("net_margin")),
                         _econ_reasons.get("net_margin"),
                     )
+                if _econ_is_gross_revenue:
+                    st.caption(
+                        "Revenue basis: gross of royalties — the canonical resource-sector "
+                        "top line (e.g. product sales / gross revenues), before royalty "
+                        "deductions. Net margin uses the same gross revenue denominator."
+                    )
 
-                # --- Row 2: commodity spot + cheap company/sector flag ---
-                _ecA, _ecB = st.columns([1, 1])
+                # --- Row 2: spot + commodity linkage + cheap flag ---
+                _ecA, _ecB, _ecC = st.columns(3)
                 with _ecA:
                     _spot_reason = _econ_spot.get("reason") or (
                         f"via {_econ_proxy} ({_econ_proxy_role})"
                         if _econ_cmdt_mkt.get("proxy_used") else None
                     )
                     _econ_metric_card(
-                        f"{_econ_cmdt_label} Spot",
+                        _econ_cmdt_spot_title,
                         _econ_fmt_price(_econ_spot.get("value")),
                         _spot_reason,
                     )
                 with _ecB:
+                    # Is the equity a commodity proxy or an operating story?
+                    _econ_corr = _econ_snapshot.get("commodity_correlation") or {}
+                    _corr_val = _econ_corr.get("correlation")
+                    _corr_beta = _econ_corr.get("beta")
+                    if _corr_val is not None and _corr_beta is not None:
+                        _corr_value_text = f"r = {_corr_val:.2f}"
+                        _corr_reason = (
+                            f"β {_corr_beta:.2f}× vs {_econ_corr.get('proxy_used') or 'proxy'} "
+                            f"daily moves · {_econ_corr.get('points_used')} trading days"
+                        )
+                    else:
+                        _corr_value_text = "—"
+                        _corr_reason = _econ_corr.get("reason")
+                    _econ_metric_card(
+                        "Commodity Linkage (1y daily returns)",
+                        _corr_value_text,
+                        _corr_reason,
+                    )
+                with _ecC:
                     _flag = _econ_cheap.get("company_flag")
                     _flag_label_map = {
                         "high_earnings_yield": "Cheap company signal",
@@ -7719,13 +8401,42 @@ if st.session_state.financial_data:
                         f"vs 8% threshold. See trend below for sector context."
                         if _flag else None
                     )
+                    # Show the verdict as a position on a scale, not just a
+                    # phrase: bar = earnings yield on a 0-16% scale, with the
+                    # 8% threshold as the amber mid-tick.
+                    _flag_bar = ""
+                    _ey_val = _econ_metrics.get("earnings_yield")
+                    if isinstance(_ey_val, (int, float)):
+                        _ey_fill = max(0.0, min(_ey_val / 0.16, 1.0)) * 100
+                        _ey_color = "#4ADE80" if _ey_val >= 0.08 else "#94A3B8"
+                        _flag_bar = (
+                            f'<div style="margin-top:8px;background:rgba(255,255,255,0.10);'
+                            f'border-radius:4px;height:8px;position:relative">'
+                            f'<div style="width:{_ey_fill:.0f}%;height:100%;'
+                            f'background:{_ey_color};border-radius:4px"></div>'
+                            f'<div style="position:absolute;left:50%;top:-2px;width:2px;'
+                            f'height:12px;background:#FCD34D" title="8% threshold"></div>'
+                            f'</div>'
+                            f'<div style="font-size:10px;color:#64748B;margin-top:3px">'
+                            f'earnings yield on a 0–16% scale · amber tick = 8% threshold</div>'
+                        )
                     _econ_metric_card(
                         "Cheap company / cheap sector?",
                         _flag_label,
                         _flag_reason,
+                        extra_html=_flag_bar,
                     )
 
                 # --- Commodity price trend chart ---
+                # Trend dates arrive as ISO strings; parse to datetime so the
+                # x-axis is a true date axis. Shared by the trend chart and the
+                # indexed company-vs-commodity chart below.
+                def _econ_parse_date(value):
+                    try:
+                        return datetime.fromisoformat(str(value))
+                    except (ValueError, TypeError):
+                        return None
+
                 _trend_points = _econ_trend.get("points") or []
                 if _trend_points:
                     st.markdown(
@@ -7736,16 +8447,8 @@ if st.session_state.financial_data:
                         f'Filing fiscal year end overlaid in dotted gray.</div>',
                         unsafe_allow_html=True,
                     )
-                    # Trend dates arrive as ISO strings; parse to datetime so the
-                    # x-axis is a true date axis and the FYE overlay positions
-                    # correctly. Fall back to raw strings only if any point fails
-                    # to parse (so the x list never mixes types).
-                    def _econ_parse_date(value):
-                        try:
-                            return datetime.fromisoformat(str(value))
-                        except (ValueError, TypeError):
-                            return None
-
+                    # Fall back to raw strings only if any point fails to
+                    # parse (so the x list never mixes types).
                     _raw_xs = [p["date"] for p in _trend_points]
                     _parsed_xs = [_econ_parse_date(x) for x in _raw_xs]
                     _trend_xs = _parsed_xs if all(d is not None for d in _parsed_xs) else _raw_xs
@@ -7789,11 +8492,183 @@ if st.session_state.financial_data:
                         showlegend=False,
                         height=280,
                     )
+                    # Mark the latest close so the spot card above ties
+                    # visually to the end of the line.
+                    _trend_fig.add_trace(go.Scatter(
+                        x=[_trend_xs[-1]], y=[_trend_ys[-1]],
+                        mode='markers',
+                        marker=dict(size=8, color='#F4B942'),
+                        showlegend=False, hoverinfo='skip',
+                    ))
+                    _trend_fig.add_annotation(
+                        x=_trend_xs[-1], y=_trend_ys[-1],
+                        text=f"${_trend_ys[-1]:,.2f}",
+                        showarrow=False, xanchor='left', xshift=6,
+                        font=dict(color='#F4B942', size=10),
+                    )
                     _trend_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
-                    _trend_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Close')
+                    _trend_fig.update_yaxes(
+                        gridcolor='rgba(255,255,255,0.06)',
+                        zerolinecolor='rgba(255,255,255,0.1)',
+                        title_text=_econ_cmdt_display.get("unit_label") or "US$",
+                    )
                     st.plotly_chart(_trend_fig, width='stretch', config={"displayModeBar": False})
                 else:
                     st.caption("Commodity price trend unavailable — proxy returned no points.")
+
+                # --- Company vs commodity — indexed relative performance ---
+                # Both series rebased to 100 one year back, on ONE axis: shows
+                # whether the equity tracked the commodity or diverged from it.
+                _company_trend = _econ_snapshot.get("company_trend") or {}
+                _company_points = _company_trend.get("points") or []
+                _company_symbol = _company_trend.get("ticker_used") or "Company"
+                if _company_points and _trend_points:
+
+                    def _econ_indexed(points):
+                        base = points[0]["close"]
+                        if not base:
+                            return None, None
+                        xs = [_econ_parse_date(p["date"]) for p in points]
+                        if any(x is None for x in xs):
+                            xs = [p["date"] for p in points]
+                        ys = [p["close"] / base * 100 for p in points]
+                        return xs, ys
+
+                    _cmd_xs, _cmd_ys = _econ_indexed(_trend_points)
+                    _cmp_xs, _cmp_ys = _econ_indexed(_company_points)
+                    if _cmd_ys and _cmp_ys:
+                        _cmd_name = _econ_trend.get("proxy_used") or "Commodity"
+                        st.markdown(
+                            '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                            'Company vs Commodity — indexed to 100, last 1 year</div>'
+                            '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                            'Is the equity tracking the commodity or diverging from it? '
+                            'Both series rebased to 100 at the start of the window.</div>',
+                            unsafe_allow_html=True,
+                        )
+                        # Colorblind-validated pair on the dark surface:
+                        # commodity amber #B8821F, company blue #3574C6.
+                        _idx_fig = go.Figure()
+                        _idx_fig.add_trace(go.Scatter(
+                            x=_cmd_xs, y=_cmd_ys, mode='lines',
+                            name=_cmd_name,
+                            line=dict(color='#B8821F', width=2),
+                            hovertemplate=_cmd_name + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+                        ))
+                        _idx_fig.add_trace(go.Scatter(
+                            x=_cmp_xs, y=_cmp_ys, mode='lines',
+                            name=_company_symbol,
+                            line=dict(color='#3574C6', width=2),
+                            hovertemplate=_company_symbol + " · %{x|%b %d}: %{y:.0f}<extra></extra>",
+                        ))
+                        _idx_fig.add_hline(
+                            y=100, line_dash='dot',
+                            line_color='rgba(148,163,184,0.4)',
+                        )
+                        # Direct labels at the line ends: final index values.
+                        for _xs, _ys, _color in (
+                            (_cmd_xs, _cmd_ys, '#B8821F'),
+                            (_cmp_xs, _cmp_ys, '#3574C6'),
+                        ):
+                            _idx_fig.add_annotation(
+                                x=_xs[-1], y=_ys[-1],
+                                text=f"{_ys[-1]:.0f}",
+                                showarrow=False, xanchor='left',
+                                font=dict(color=_color, size=10),
+                            )
+                        _idx_fig.update_layout(
+                            paper_bgcolor='#1E2433',
+                            plot_bgcolor='#1E2433',
+                            font=dict(color='#94A3B8', size=11),
+                            margin=dict(l=40, r=40, t=20, b=40),
+                            height=280,
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                        )
+                        _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                        _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
+                        st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
+
+                # --- Cost structure waterfall (statement-level) ---
+                # Where the top line goes, using the sector profile's mapped
+                # cost fields. Ends in "margin after these costs" — G&A,
+                # finance, and other items are deliberately out of scope, so
+                # the end bar is NOT the filer's printed operating income.
+                _cs = _econ_snapshot.get("cost_structure") or {}
+                _cs_rev = _cs.get("revenue")
+                _CS_ITEMS = [
+                    ("royalties", "Royalties"),
+                    ("production_costs", "Production Costs"),
+                    ("operating_expense", "Operating Expense"),
+                    ("exploration_expense", "Exploration"),
+                    ("mine_development_amortization", "Mine D&A"),
+                    ("depletion_depreciation_amortization", "DD&A"),
+                ]
+                # -abs() normalizes both storage conventions: royalties are
+                # stored negative (as-presented deduction), most costs positive.
+                _cs_flows = [
+                    (label, -abs(_cs[key]))
+                    for key, label in _CS_ITEMS
+                    if _cs.get(key)
+                ]
+                if _cs_rev and _cs_flows:
+                    st.markdown(
+                        '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                        'Cost Structure — where the top line goes</div>'
+                        '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                        'Statement-level costs from the sector profile\'s mapped fields '
+                        'only. The end bar is the margin after these costs — before '
+                        'G&amp;A, finance, and other items, so it will not equal the '
+                        'filer\'s printed operating income.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    _cs_margin = _cs_rev + sum(f[1] for f in _cs_flows)
+                    _cs_div, _ = _money_scale([_cs_rev] + [f[1] for f in _cs_flows])
+                    _cs_fig = go.Figure(go.Waterfall(
+                        x=(["Revenue"] + [f[0] for f in _cs_flows]
+                           + ["Margin After These Costs"]),
+                        y=([_cs_rev / _cs_div] + [f[1] / _cs_div for f in _cs_flows]
+                           + [0]),
+                        measure=(["absolute"] + ["relative"] * len(_cs_flows)
+                                 + ["total"]),
+                        decreasing=dict(marker=dict(color="#F87171")),
+                        increasing=dict(marker=dict(color="#4ADE80")),
+                        totals=dict(marker=dict(color="#3574C6")),
+                        connector=dict(line=dict(color="rgba(255,255,255,0.2)", width=1)),
+                        text=([_fmt_num(_cs_rev)] + [_fmt_num(f[1]) for f in _cs_flows]
+                              + [_fmt_num(_cs_margin)]),
+                        textposition="outside",
+                        textfont=dict(size=10, color="#CBD5E1"),
+                        cliponaxis=False,
+                        hoverinfo="skip",
+                    ))
+                    _cs_fig.update_layout(
+                        paper_bgcolor='#1E2433',
+                        plot_bgcolor='#1E2433',
+                        font=dict(color='#94A3B8', size=11),
+                        margin=dict(l=40, r=20, t=30, b=40),
+                        height=300,
+                        showlegend=False,
+                    )
+                    _cs_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                    _cs_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
+                    st.plotly_chart(_cs_fig, width='stretch', config={"displayModeBar": False})
+                    _cs_margin_pct = _cs_margin / _cs_rev * 100 if _cs_rev else None
+                    if _cs_margin_pct is not None:
+                        # Royalty burden — the O&G-specific number: what share
+                        # of the GROSS top line the crown/royalty holders took
+                        # (canonical resource revenue is gross of royalties).
+                        _royalty_note = ""
+                        _cs_royalties = _cs.get("royalties")
+                        if _cs_royalties and _cs_rev:
+                            _royalty_pct = abs(_cs_royalties) / _cs_rev * 100
+                            _royalty_note = (
+                                f" Royalties took {_royalty_pct:.1f}% of the "
+                                f"gross top line."
+                            )
+                        st.caption(
+                            f"Margin after these costs: {_cs_margin_pct:.1f}% "
+                            f"of the top line.{_royalty_note}"
+                        )
 
                 # --- Tier 2 placeholder slot (clearly upcoming, no fake data) ---
                 _econ_tier2_style = (

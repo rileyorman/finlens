@@ -18,12 +18,17 @@ Programmatic
 from __future__ import annotations
 
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .log import read_log, _DEFAULT_LOG
-from .cross_validate import FMP_PREMIUM_BLOCKED
+from .log import read_log, _DEFAULT_LOG, get_last_read_log_diagnostics
+from .cross_validate import (
+    CV_ABSTAIN_CURRENCY_MISMATCH,
+    CV_ABSTAIN_CURRENCY_UNKNOWN,
+    CV_SEVERITY_ADVISORY,
+    FMP_PREMIUM_BLOCKED,
+)
 
 
 LOW_SAMPLE_THRESHOLD = 10
@@ -36,6 +41,8 @@ DISTRIBUTION_RULES = [
     "net_margin_ceiling",
     "revenue_growth_sanity",
 ]
+FLAG_SEVERITIES = ("hard", "soft", "unclassified")
+CX_TRIAGE_STATUSES = ("CONFLICT", "GEMINI_MISSING")
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +103,10 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
     """Aggregate check outcomes for one rule across all records."""
     ran = passed = failed = skipped_sector = skipped_field = skipped_other = 0
     values: list[float] = []
+    # Track observed values split by outcome so the distribution section can
+    # distinguish a breach that was correctly flagged from one that was missed.
+    passed_values: list[float] = []
+    failed_values: list[float] = []
     thresholds: dict = {}
 
     for rec in records:
@@ -112,13 +123,19 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
                     skipped_other += 1
             else:
                 ran += 1
-                if c.get("passed"):
+                check_passed = bool(c.get("passed"))
+                if check_passed:
                     passed += 1
                 else:
                     failed += 1
                 v = c.get("observed_value")
                 if v is not None:
-                    values.append(float(v))
+                    fv = float(v)
+                    values.append(fv)
+                    if check_passed:
+                        passed_values.append(fv)
+                    else:
+                        failed_values.append(fv)
                 if not thresholds and c.get("threshold"):
                     thresholds = c["threshold"]
 
@@ -128,6 +145,8 @@ def _rule_stats(rule_id: str, records: list[dict]) -> dict:
         "skipped_field":  skipped_field,
         "skipped_other":  skipped_other,
         "values": values,
+        "passed_values": passed_values,
+        "failed_values": failed_values,
         "thresholds": thresholds,
     }
 
@@ -298,6 +317,8 @@ def _section_distributions(records: list[dict]) -> str:
     for rid in DISTRIBUTION_RULES:
         st = _rule_stats(rid, records)
         values = st["values"]
+        passed_values = st["passed_values"]
+        failed_values = st["failed_values"]
         thresholds = st["thresholds"]
 
         is_growth = "growth" in rid
@@ -333,30 +354,54 @@ def _section_distributions(records: list[dict]) -> str:
         if parts:
             lines.append(f"    threshold: {', '.join(parts)}")
 
-        # Headroom commentary
+        # Ceiling commentary: partition breaching observations by outcome.
+        # A breach from a FAILED check means the rule caught it (working as intended).
+        # A breach from a PASSED check means the engine missed it (rule bug).
         if thresh_max is not None:
-            headroom = thresh_max - max_v
-            if headroom < 0:
+            breach_failed = [v for v in failed_values if v > thresh_max]
+            breach_passed = [v for v in passed_values if v > thresh_max]
+            if breach_passed:
+                # Check passed despite exceeding the ceiling -- real engine bug.
+                for v in breach_passed:
+                    lines.append(
+                        f"    [!] {fmt(v)} exceeds ceiling {fmt(thresh_max)}"
+                        f" but its check PASSED -- rule bug"
+                    )
+            if breach_failed:
+                # Breach was correctly caught; check failed as expected.
                 lines.append(
-                    f"    [!] Max observation {fmt(max_v)} EXCEEDS ceiling {fmt(thresh_max)} "
-                    f"-- this should have flagged"
+                    f"    {len(breach_failed)} observation(s) beyond ceiling"
+                    f" -- all flagged (rule working)"
                 )
-            else:
+            if not breach_passed and not breach_failed:
+                headroom = thresh_max - max_v
                 lines.append(
-                    f"    Headroom to ceiling : {fmt(headroom)} "
-                    f"(closest obs {fmt(max_v)})"
+                    f"    Headroom to ceiling : {fmt(headroom)}"
+                    f" (closest obs {fmt(max_v)})"
                 )
+
+        # Floor commentary: same logic applied to the lower bound.
         if thresh_min is not None:
-            headroom_floor = min_v - thresh_min
-            if headroom_floor < 0:
+            breach_failed = [v for v in failed_values if v < thresh_min]
+            breach_passed = [v for v in passed_values if v < thresh_min]
+            if breach_passed:
+                # Check passed despite falling below the floor -- real engine bug.
+                for v in breach_passed:
+                    lines.append(
+                        f"    [!] {fmt(v)} is below floor {fmt(thresh_min)}"
+                        f" but its check PASSED -- rule bug"
+                    )
+            if breach_failed:
+                # Breach was correctly caught; check failed as expected.
                 lines.append(
-                    f"    [!] Min observation {fmt(min_v)} BELOW floor {fmt(thresh_min)} "
-                    f"-- this should have flagged"
+                    f"    {len(breach_failed)} observation(s) below floor"
+                    f" -- all flagged (rule working)"
                 )
-            else:
+            if not breach_passed and not breach_failed:
+                headroom_floor = min_v - thresh_min
                 lines.append(
-                    f"    Headroom above floor: {fmt(headroom_floor)} "
-                    f"(closest obs {fmt(min_v)})"
+                    f"    Headroom above floor: {fmt(headroom_floor)}"
+                    f" (closest obs {fmt(min_v)})"
                 )
         lines.append("")
 
@@ -364,7 +409,7 @@ def _section_distributions(records: list[dict]) -> str:
 
 
 def _fmt_bn(v: float | None) -> str:
-    """Format a raw-USD value as T/B/M/K for the report."""
+    """Format a raw filing/FMP value as T/B/M/K for the report."""
     if v is None:
         return "n/a"
     if abs(v) >= 1e12:
@@ -378,10 +423,30 @@ def _fmt_bn(v: float | None) -> str:
 
 def _fmt_cv_fmp_status(rec: dict) -> str:
     if rec.get("fmp_fetch_success"):
+        if rec.get("abstention_reason"):
+            return f"available; abstained: {rec.get('abstention_reason')}"
         return "available"
     if rec.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED:
         return "unavailable at current FMP tier"
     return "transient failure"
+
+
+def _cv_field_severity(field: dict) -> str:
+    if field.get("status") in ("DISAGREE", "MINOR_DIVERGENCE"):
+        return CV_SEVERITY_ADVISORY
+    return ""
+
+
+def _cv_field_abstention_reason(record: dict, field: dict) -> str:
+    reason = field.get("abstention_reason") or record.get("abstention_reason")
+    return str(reason or "")
+
+
+def _cv_is_currency_abstention(record: dict, field: dict) -> bool:
+    return _cv_field_abstention_reason(record, field) in {
+        CV_ABSTAIN_CURRENCY_MISMATCH,
+        CV_ABSTAIN_CURRENCY_UNKNOWN,
+    }
 
 
 def _section_divergence(cv_records: list[dict]) -> str:
@@ -396,16 +461,18 @@ def _section_divergence(cv_records: list[dict]) -> str:
 
     # --- Summary table ---
     lines += [
-        f"  {'ticker':<6}  {'fiscal_year':<11}  {'overall_status':<22}  {'fmp_status':<32}",
-        f"  {'-'*6}  {'-'*11}  {'-'*22}  {'-'*32}",
+        f"  {'ticker':<6}  {'fiscal_year':<11}  {'ver':<4}  {'overall_status':<22}  {'fmp_status':<42}",
+        f"  {'-'*6}  {'-'*11}  {'-'*4}  {'-'*22}  {'-'*42}",
     ]
     for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
         fmp_status = _fmt_cv_fmp_status(rec)
+        version = str(rec.get("checker_version") or "1")
         lines.append(
             f"  {rec.get('ticker', '?'):<6}  "
             f"{rec.get('fiscal_year', '?'):<11}  "
+            f"v{version:<3}  "
             f"{rec.get('overall_status', '?'):<22}  "
-            f"{fmp_status:<32}"
+            f"{fmp_status:<42}"
         )
 
     # --- Per-field breakdown ---
@@ -413,9 +480,9 @@ def _section_divergence(cv_records: list[dict]) -> str:
         "",
         "  Per-field breakdown:",
         f"  {'ticker':<5}  {'year':<6}  {'field':<22}  "
-        f"{'finlens':>14}  {'fmp':>14}  {'diff%':>7}  status",
+        f"{'finlens':>14}  {'fmp':>14}  {'diff%':>7}  {'severity':<9}  {'status':<17}  reason",
         f"  {'-'*5}  {'-'*6}  {'-'*22}  "
-        f"{'-'*14}  {'-'*14}  {'-'*7}  {'-'*18}",
+        f"{'-'*14}  {'-'*14}  {'-'*7}  {'-'*9}  {'-'*17}  {'-'*18}",
     ]
     for rec in sorted(cv_records, key=lambda r: (r.get("ticker", ""), r.get("fiscal_year", ""))):
         ticker = rec.get("ticker", "?")
@@ -428,14 +495,16 @@ def _section_divergence(cv_records: list[dict]) -> str:
             fm_str  = _fmt_bn(fm_v)
             pct_str = f"{pct:.1f}%" if pct is not None else "n/a"
             status  = fld.get("status", "?")
-            flag    = " [!]" if status in ("DISAGREE", "MINOR_DIVERGENCE") else "    "
+            severity = _cv_field_severity(fld)
+            reason = _cv_field_abstention_reason(rec, fld)
             lines.append(
                 f"  {ticker:<5}  {fy:<6}  {fld.get('field', '?'):<22}  "
-                f"{fl_str:>14}  {fm_str:>14}  {pct_str:>7}  {status}{flag}"
+                f"{fl_str:>14}  {fm_str:>14}  {pct_str:>7}  "
+                f"{severity:<9}  {status:<17}  {reason}"
             )
 
     # --- Flags ---
-    disagree = [
+    advisory_disagree = [
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
         for fld in r.get("cv_fields", [])
@@ -447,6 +516,12 @@ def _section_divergence(cv_records: list[dict]) -> str:
         for fld in r.get("cv_fields", [])
         if fld.get("status") == "MINOR_DIVERGENCE"
     ]
+    currency_abstentions = [
+        f"{r.get('ticker')} {fld.get('field')} ({_cv_field_abstention_reason(r, fld)})"
+        for r in cv_records
+        for fld in r.get("cv_fields", [])
+        if _cv_is_currency_abstention(r, fld)
+    ]
     premium_blocked = [
         f"{r.get('ticker')} {r.get('fiscal_year')}"
         for r in cv_records
@@ -456,22 +531,437 @@ def _section_divergence(cv_records: list[dict]) -> str:
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
         for fld in r.get("cv_fields", [])
-        if fld.get("status") == "UNMATCHED"
+        if fld.get("status") == "UNMATCHED" and not _cv_field_abstention_reason(r, fld)
     ]
 
     lines.append("")
-    if disagree:
-        lines.append(f"  [!] Disagreements (>10%)    : {_trunc(disagree)}")
+    if advisory_disagree:
+        lines.append(
+            f"  Advisory divergences (>10%, needs triage): {_trunc(advisory_disagree)}"
+        )
     if minor:
-        lines.append(f"  Minor divergences (2-10%)   : {_trunc(minor)}")
+        lines.append(f"  Minor advisory divergences (2-10%)      : {_trunc(minor)}")
+    if currency_abstentions:
+        lines.append(f"  Abstained by currency gate              : {_trunc(currency_abstentions)}")
     if premium_blocked:
         lines.append(
             f"  Corroboration unavailable at current FMP tier: {_trunc(premium_blocked)}"
         )
     if unmatched:
         lines.append(f"  Unmatched (no FMP period)   : {_trunc(unmatched)}")
-    if not disagree and not minor and not unmatched:
+    if not advisory_disagree and not minor and not currency_abstentions and not unmatched:
         lines.append("  All compared fields agree (<2% divergence).")
+
+    return "\n".join(lines)
+
+
+def _cx_checker_version_label(record: dict) -> str:
+    return str(record.get("checker_version") or "1")
+
+
+def _cx_checker_version(record: dict) -> int:
+    raw = record.get("checker_version")
+    if raw in (None, ""):
+        return 1
+    try:
+        return int(str(raw))
+    except ValueError:
+        return 1
+
+
+def _cx_is_definitive(record: dict) -> bool:
+    return record.get("state") != "UNCHECKED"
+
+
+def _cx_latest_sort_key(record: dict) -> tuple[int, str]:
+    return (_cx_checker_version(record), str(record.get("timestamp") or ""))
+
+
+def _cx_latest_records(records: list[dict]) -> list[dict]:
+    latest_definitive: dict[str, dict] = {}
+    retained: list[dict] = []
+    for idx, record in enumerate(records):
+        if not _cx_is_definitive(record):
+            retained.append(record)
+            continue
+
+        accession = str(record.get("filing_accession") or "")
+        key = accession if accession else f"__missing_accession_{idx}"
+        current = latest_definitive.get(key)
+        if current is None or _cx_latest_sort_key(record) > _cx_latest_sort_key(current):
+            latest_definitive[key] = record
+
+    selected = retained + list(latest_definitive.values())
+    return sorted(selected, key=lambda r: str(r.get("timestamp") or ""), reverse=True)
+
+
+def _cx_field_severity(field: dict) -> str:
+    severity = field.get("severity")
+    return severity if severity in ("hard", "soft") else "unclassified"
+
+
+def _cx_field_reason(field: dict) -> str:
+    return str(field.get("reason") or "")
+
+
+def _cx_record_flagged_severity(record: dict) -> str:
+    severities = [
+        _cx_field_severity(field)
+        for field in record.get("cross_extractor_fields", [])
+        if field.get("status") == "CONFLICT"
+    ]
+    if "hard" in severities:
+        return "hard"
+    if "soft" in severities:
+        return "soft"
+    return "unclassified"
+
+
+def _cx_flagged_label(record: dict) -> str:
+    ticker = record.get("ticker", "?")
+    fiscal_year = record.get("fiscal_year", "?")
+    return f"{ticker} {fiscal_year} ({_cx_record_flagged_severity(record)})"
+
+
+def _cx_disposition_key(record: dict, field: dict | None = None) -> tuple[str, str, str]:
+    field_name = (
+        str(field.get("canonical_field") or "")
+        if field is not None
+        else str(record.get("field") or "")
+    )
+    return (
+        str(record.get("filing_accession") or ""),
+        field_name,
+        _cx_checker_version_label(record),
+    )
+
+
+def _cx_latest_dispositions(dispositions: list[dict]) -> dict[tuple[str, str, str], dict]:
+    latest: dict[tuple[str, str, str], dict] = {}
+    for record in dispositions:
+        key = _cx_disposition_key(record)
+        if not all(key):
+            continue
+        current = latest.get(key)
+        if current is None or str(record.get("timestamp") or "") > str(current.get("timestamp") or ""):
+            latest[key] = record
+    return latest
+
+
+def _cx_triage_targets(records: list[dict]) -> list[tuple[dict, dict]]:
+    targets: list[tuple[dict, dict]] = []
+    for record in records:
+        if record.get("state") not in ("FLAGGED", "PARTIAL"):
+            continue
+        for field in record.get("cross_extractor_fields", []):
+            if field.get("status") in CX_TRIAGE_STATUSES:
+                targets.append((record, field))
+    return targets
+
+
+def _cx_fmt_value(value: object) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
+
+
+def _cx_clip(value: object, cap: int = 64) -> str:
+    text = str(value if value is not None else "")
+    return text if len(text) <= cap else text[: cap - 4] + " ..."
+
+
+def _cx_disposition_text(disposition: dict | None) -> str:
+    if not disposition:
+        return "OPEN"
+    return f"DISPOSITIONED {disposition.get('disposition', '?')} - {_cx_clip(disposition.get('rationale'), 72)}"
+
+
+def _cx_version_sort(version: str) -> tuple[int, str]:
+    try:
+        return (int(version), version)
+    except ValueError:
+        return (1, version)
+
+
+def _cx_version_summary(records: list[dict]) -> list[str]:
+    version_states: dict[str, Counter] = defaultdict(Counter)
+    version_models: dict[str, Counter] = defaultdict(Counter)
+    legacy_without_key = 0
+    for record in records:
+        version = _cx_checker_version_label(record)
+        version_states[version][record.get("state", "UNKNOWN")] += 1
+        version_models[version][record.get("model") or "unknown"] += 1
+        if record.get("checker_version") in (None, ""):
+            legacy_without_key += 1
+
+    lines = ["  Agreement records by checker_version:"]
+    if not version_states:
+        lines.append("    (none)")
+        return lines
+
+    for version in sorted(version_states, key=_cx_version_sort):
+        state_text = ", ".join(
+            f"{state}={count}" for state, count in sorted(version_states[version].items())
+        )
+        model_text = ", ".join(
+            f"{model}={count}" for model, count in sorted(version_models[version].items())
+        )
+        lines.append(f"    v{version}: {sum(version_states[version].values())} record(s); {state_text}; models: {model_text}")
+    lines.append(f"  Legacy agreements without checker_version: {legacy_without_key}")
+    return lines
+
+
+def _section_cross_extractor(
+    records: list[dict],
+    dispositions: list[dict],
+    total_records_parsed: int,
+    unparseable_lines: int,
+) -> str:
+    lines = [
+        "  Log parse check:",
+        f"    Parsed records          : {total_records_parsed}",
+        f"    Unparseable JSON lines  : {unparseable_lines}",
+    ]
+
+    if not records:
+        lines += [
+            "",
+            "  No Gemini second-extractor runs recorded yet.",
+            "  Run scripts/run_cross_extractor.py manually for campaign filers ($).",
+        ]
+        return "\n".join(lines)
+
+    lines += [""] + _cx_version_summary(records)
+    latest_records = _cx_latest_records(records)
+    latest_dispositions = _cx_latest_dispositions(dispositions)
+
+    state_counts: dict[str, int] = defaultdict(int)
+    for rec in latest_records:
+        state = rec.get("state", "UNKNOWN")
+        state_counts[state] += 1
+
+    flagged_severity_counts: dict[str, int] = defaultdict(int)
+    for rec in latest_records:
+        if rec.get("state") == "FLAGGED":
+            flagged_severity_counts[_cx_record_flagged_severity(rec)] += 1
+
+    lines += ["", "  Latest definitive/accession view by state:"]
+    total = len(latest_records)
+    for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
+        cnt = state_counts.get(state, 0)
+        line = (
+            f"    {state:<10}  :  {cnt:3d}  ({_pct(cnt, total)})  {_bar(cnt, total)}"
+        )
+        if state == "FLAGGED":
+            severity_text = " / ".join(
+                f"{flagged_severity_counts.get(severity, 0)} {severity}"
+                for severity in FLAG_SEVERITIES
+            )
+            line += f"  ({severity_text})"
+        lines.append(line)
+
+    flagged = [
+        _cx_flagged_label(r)
+        for r in latest_records
+        if r.get("state") == "FLAGGED"
+    ]
+    unchecked_reasons: dict[str, int] = defaultdict(int)
+    for rec in latest_records:
+        if rec.get("state") == "UNCHECKED":
+            unchecked_reasons[rec.get("reason") or "unknown"] += 1
+
+    lines.append("")
+    lines.append(
+        f"  [!] Flagged filings       : {_trunc(flagged) if flagged else '(none)'}"
+    )
+    if unchecked_reasons:
+        reason_text = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(unchecked_reasons.items())
+        )
+        lines.append(f"  Unchecked reasons       : {reason_text}")
+
+    triage_targets = _cx_triage_targets(latest_records)
+    open_targets = [
+        (record, field)
+        for record, field in triage_targets
+        if _cx_disposition_key(record, field) not in latest_dispositions
+    ]
+    lines += [
+        "",
+        "  Triage status:",
+        f"    Disposition records    : {len(dispositions)}",
+        f"    Triage target fields   : {len(triage_targets)}",
+        f"    Open triage targets    : {len(open_targets)}",
+    ]
+
+    if triage_targets:
+        lines += [
+            "",
+            f"  {'ticker':<6}  {'year':<8}  {'ver':<4}  {'field':<26}  {'status':<14}  {'reason':<22}  triage",
+            f"  {'-'*6}  {'-'*8}  {'-'*4}  {'-'*26}  {'-'*14}  {'-'*22}  {'-'*48}",
+        ]
+        for record, field in triage_targets:
+            disposition = latest_dispositions.get(_cx_disposition_key(record, field))
+            lines.append(
+                f"  {record.get('ticker', '?'):<6}  "
+                f"{str(record.get('fiscal_year', '?')):<8}  "
+                f"v{_cx_checker_version_label(record):<3}  "
+                f"{_cx_clip(field.get('canonical_field'), 26):<26}  "
+                f"{field.get('status', '?'):<14}  "
+                f"{_cx_clip(_cx_field_reason(field), 22):<22}  "
+                f"{_cx_disposition_text(disposition)}"
+            )
+
+    conflict_targets = [
+        (record, field)
+        for record, field in triage_targets
+        if field.get("status") == "CONFLICT"
+    ]
+    if conflict_targets:
+        lines += ["", "  Per-CONFLICT details:"]
+        for record, field in conflict_targets:
+            disposition = latest_dispositions.get(_cx_disposition_key(record, field))
+            reason = _cx_field_reason(field)
+            reason_text = f" reason={reason}" if reason else ""
+            lines.append(
+                f"    {record.get('ticker', '?')} {record.get('fiscal_year', '?')} "
+                f"v{_cx_checker_version_label(record)} "
+                f"{field.get('canonical_field', '?')} "
+                f"severity={_cx_field_severity(field)}"
+                f"{reason_text} "
+                f"triage={_cx_disposition_text(disposition)}"
+            )
+            lines.append(
+                f"      values: FinLens={_cx_fmt_value(field.get('finlens_value'))} "
+                f"Gemini={_cx_fmt_value(field.get('gemini_value'))}"
+            )
+            lines.append(f"      FinLens label: {_cx_clip(field.get('finlens_label'), 96)}")
+            lines.append(f"      Gemini label : {_cx_clip(field.get('gemini_label'), 96)}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Prior-column continuity section
+# ---------------------------------------------------------------------------
+
+def _pc_disposition_key(record: dict, field: dict) -> tuple[str, str, str, str]:
+    """Build the triage key for a prior_column_disposition lookup."""
+    return (
+        str(record.get("ticker") or ""),
+        str(record.get("fiscal_year") or ""),
+        str(field.get("canonical_field") or ""),
+        str(record.get("checker_version") or "1"),
+    )
+
+
+def _pc_latest_dispositions(
+    dispositions: list[dict],
+) -> dict[tuple[str, str, str, str], dict]:
+    """Return the most recent disposition per (ticker, fiscal_year, field, version)."""
+    latest: dict[tuple[str, str, str, str], dict] = {}
+    for disp in dispositions:
+        key = (
+            str(disp.get("ticker") or ""),
+            str(disp.get("fiscal_year") or ""),
+            str(disp.get("canonical_field") or ""),
+            str(disp.get("checker_version") or "1"),
+        )
+        if not all(key):
+            continue
+        current = latest.get(key)
+        if current is None or str(disp.get("timestamp") or "") > str(
+            current.get("timestamp") or ""
+        ):
+            latest[key] = disp
+    return latest
+
+
+def _pc_disposition_text(disposition: dict | None) -> str:
+    if not disposition:
+        return "OPEN"
+    disp_val = disposition.get("disposition", "?")
+    rationale = _cx_clip(disposition.get("rationale"), 60)
+    return f"DISPOSITIONED {disp_val} - {rationale}"
+
+
+def _section_prior_column(
+    records: list[dict],
+    dispositions: list[dict],
+) -> str:
+    """Render the prior-column continuity section of the integrity report."""
+    if not records:
+        return (
+            "  No prior-column continuity runs recorded yet.\n"
+            "  Run scripts/run_prior_column.py to populate."
+        )
+
+    latest_dispositions = _pc_latest_dispositions(dispositions)
+
+    # --- State counts ---
+    state_counts: dict[str, int] = defaultdict(int)
+    for rec in records:
+        state_counts[rec.get("state", "UNKNOWN")] += 1
+    total = len(records)
+
+    lines: list[str] = []
+    lines.append(f"  {total} run(s) recorded (all appended; not deduplicated).")
+    lines.append("")
+    lines.append("  By state:")
+    for state in ("VERIFIED", "PARTIAL", "FLAGGED", "UNCHECKED"):
+        cnt = state_counts.get(state, 0)
+        lines.append(
+            f"    {state:<10}  :  {cnt:3d}  ({_pct(cnt, total)})  {_bar(cnt, total)}"
+        )
+
+    # --- Unchecked reasons ---
+    unchecked_reasons: dict[str, int] = defaultdict(int)
+    for rec in records:
+        if rec.get("state") == "UNCHECKED":
+            unchecked_reasons[rec.get("reason") or "unknown"] += 1
+    if unchecked_reasons:
+        reason_text = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(unchecked_reasons.items())
+        )
+        lines += ["", f"  Unchecked reasons: {reason_text}"]
+
+    # --- CONFLICT detail lines ---
+    conflict_pairs = [
+        (rec, field)
+        for rec in records
+        if rec.get("state") == "FLAGGED"
+        for field in rec.get("fields", [])
+        if field.get("status") == "CONFLICT"
+    ]
+
+    if conflict_pairs:
+        lines += [
+            "",
+            "  CONFLICT detail:",
+            f"  {'ticker':<6}  {'year':<8}  {'field':<22}  "
+            f"{'prior_n':>16}  {'prior_filing':>16}  {'diff%':>7}  triage",
+            f"  {'-'*6}  {'-'*8}  {'-'*22}  "
+            f"{'-'*16}  {'-'*16}  {'-'*7}  {'-'*48}",
+        ]
+        for rec, field in conflict_pairs:
+            disp_key = _pc_disposition_key(rec, field)
+            disposition = latest_dispositions.get(disp_key)
+            val_n = field.get("value_prior_n")
+            val_p = field.get("value_prior_filing")
+            pct = field.get("pct_diff")
+            val_n_str = _fmt_bn(float(val_n)) if val_n is not None else "n/a"
+            val_p_str = _fmt_bn(float(val_p)) if val_p is not None else "n/a"
+            pct_str = f"{pct:.2f}%" if pct is not None else "n/a"
+            lines.append(
+                f"  {rec.get('ticker', '?'):<6}  "
+                f"{str(rec.get('fiscal_year', '?')):<8}  "
+                f"{field.get('canonical_field', '?'):<22}  "
+                f"{val_n_str:>16}  {val_p_str:>16}  {pct_str:>7}  "
+                f"{_pc_disposition_text(disposition)}"
+            )
+    else:
+        lines += ["", "  [!] Flagged filings: (none)"]
 
     return "\n".join(lines)
 
@@ -489,9 +979,10 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     log_path  Override the default log path.  None uses ~/.finlens/integrity_log.jsonl.
     """
     all_records = read_log(log_path)
+    diagnostics = get_last_read_log_diagnostics()
 
     # Split by record type.  Existing integrity records have no record_type field;
-    # cross-validation records are tagged with record_type="cross_validation".
+    # cross-validation and cross-extractor records are tagged explicitly.
     integrity_records = [
         r for r in all_records
         if r.get("record_type", "integrity") == "integrity"
@@ -499,6 +990,22 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     cv_records = [
         r for r in all_records
         if r.get("record_type") == "cross_validation"
+    ]
+    cx_records = [
+        r for r in all_records
+        if r.get("record_type") == "cross_extractor_agreement"
+    ]
+    cx_disposition_records = [
+        r for r in all_records
+        if r.get("record_type") == "cross_extractor_disposition"
+    ]
+    pc_records = [
+        r for r in all_records
+        if r.get("record_type") == "prior_column_continuity"
+    ]
+    pc_disposition_records = [
+        r for r in all_records
+        if r.get("record_type") == "prior_column_disposition"
     ]
 
     n = len(integrity_records)
@@ -517,6 +1024,9 @@ def analyze_log(log_path: Path | str | None = None) -> str:
         "  FINLENS DATA INTEGRITY LOG REPORT",
         f"  Generated : {now_utc}",
         f"  Log file  : {path_label}",
+        f"  Log lines : {diagnostics.physical_lines}",
+        f"  Parsed    : {diagnostics.records_parsed} record(s)",
+        f"  Unparseable JSON lines: {diagnostics.unparseable_lines}",
         SEP,
     ]
 
@@ -557,6 +1067,21 @@ def analyze_log(log_path: Path | str | None = None) -> str:
     # 5. Cross-validation divergences
     out += [THIN, "  5. CROSS-VALIDATION DIVERGENCES", THIN, ""]
     out.append(_section_divergence(cv_records))
+
+    # 6. Gemini second-extractor signal
+    out += [THIN, "  6. GEMINI SECOND-EXTRACTOR SIGNAL", THIN, ""]
+    out.append(
+        _section_cross_extractor(
+            cx_records,
+            cx_disposition_records,
+            diagnostics.records_parsed,
+            diagnostics.unparseable_lines,
+        )
+    )
+
+    # 7. Prior-column continuity
+    out += [THIN, "  7. PRIOR-COLUMN CONTINUITY", THIN, ""]
+    out.append(_section_prior_column(pc_records, pc_disposition_records))
 
     # Footer
     out += ["", SEP, "  END OF REPORT", SEP]

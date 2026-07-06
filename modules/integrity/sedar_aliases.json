@@ -252,12 +252,17 @@
     },
     "resource_sector": {
       "canonical_fields": {
-        "total_revenue": {
+        "revenue": {
           "aliases": [
             {
               "label": "product sales",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            },
+            {
+              "label": "gross revenues",
+              "standards": ["IFRS"],
+              "source": "SU_FY2025_dry_run"
             }
           ],
           "patterns": []
@@ -391,6 +396,11 @@
               "label": "loss and comprehensive loss for the year",
               "standards": ["IFRS"],
               "source": "NFG_FY2024"
+            },
+            {
+              "label": "net loss and comprehensive loss",
+              "standards": ["IFRS"],
+              "source": "SIG_FY2024"
             }
           ],
           "patterns": []
@@ -401,6 +411,11 @@
               "label": "loss from operating activities",
               "standards": ["IFRS"],
               "source": "NFG_FY2024"
+            },
+            {
+              "label": "loss before other items",
+              "standards": ["IFRS"],
+              "source": "SIG_FY2024"
             }
           ],
           "patterns": []
@@ -446,6 +461,11 @@
               "label": "net cash used in operating activities",
               "standards": ["IFRS"],
               "source": "NFG_FY2024"
+            },
+            {
+              "label": "cash flows from operating activities",
+              "standards": ["IFRS"],
+              "source": "SIG_FY2024"
             }
           ],
           "patterns": []

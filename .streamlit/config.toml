@@ -6,5 +6,13 @@ textColor = "#F1F5F9"
 primaryColor = "#185FA5"
 font = "sans serif"
 
+[client]
+# Hide Streamlit's own chrome (Deploy button, hamburger menu) so the app
+# reads as a product, not a Streamlit script.
+toolbarMode = "minimal"
+
 [server]
 headless = true
+# Bind to localhost only. Without this, Streamlit listens on 0.0.0.0 and the
+# app is reachable by any device on the same network (security sweep 2026-07-02).
+address = "localhost"
