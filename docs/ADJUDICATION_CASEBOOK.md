@@ -269,24 +269,53 @@ disagree, that is a defect: flag it, do not silently fix either side.
   collision-blocks-mapping behavior.
 
 ### CB-011: mining-producer profile extension — n=2 evidence in hand, design session unblocked
-- Status: OPEN
-- Date: opened 2026-07-03 (TECK.B deferral); evidence completed 2026-07-05 (K FY2024)
-- Decided by: pending (Riley+CC design session, fresh head)
-- Scope: `revenue`, production costs, DD&A / mining_sector / AEM, TECK.B, K
-- Decision (question): with two mining producers now evidenced (AEM + K),
-  decide the mining_sector coverage extension: TECK.B's bare
-  "Revenue (Note 6)" + "Profit for the year", and K's flagged candidates
-  "Production cost of sales" + "Depreciation, depletion and amortization".
-  Note the interaction with CB-004: mining_sector fills the default
-  `revenue` slot, and K's "Metal sales" alias already shipped (a2b2b4d) —
-  the open half is TECK.B's bare-"Revenue" form and the cost fields.
+- Status: DECIDED
+- Date: opened 2026-07-03 (TECK.B deferral); evidence completed 2026-07-05
+  (K FY2024); ratified 2026-07-06 (Riley+CC design session)
+- Decided by: Riley (all four questions ratified as recommended)
+- Scope: `revenue`, `cost_of_revenue`, `net_income`, production costs, DD&A
+  / mining_sector + defaults / AEM, TECK.B, K
+- Decision (four rulings):
+  1. mining_sector `revenue` gains bare "revenue" [TECKB_FY2025] AND
+     "metal sales" [K_FY2024]. Sector-scoped — the resource_sector royalty
+     NEGATIVE RULE is untouched; mining producers seen so far print a single
+     revenue line with royalties inside costs, so the gross/net split that
+     rule protects does not arise in mining_sector.
+  2. DEFAULT `net_income` gains "profit for the year" [TECKB_FY2025] —
+     generic IFRS wording, nothing mining-specific ("net earnings" [ATD]
+     precedent for a default alias with single-filer evidence). Maps the
+     CONSOLIDATED total incl. NCI (TECK.B 1,072, not the 1,401
+     attributable-to-shareholders line) per existing net_income semantics.
+  3. mining_sector `production_costs` gains "production cost of sales"
+     [K_FY2024]; `mine_development_amortization` gains "depreciation,
+     depletion and amortization" [K_FY2024] — augment-don't-mint: same
+     concepts as AEM's aliases in Kinross's wording. The AEM-flavored
+     canonical name stays (renames are breaking).
+  4. LABELED ADDITION beyond the original scope: DEFAULT `cost_of_revenue`
+     gains bare "cost of sales" [TECKB_FY2025] — the standard IFRS caption.
+     Values stay as-presented: TECK.B's includes D&A, ATD's variant
+     explicitly excludes it (semantics tag on the ATD alias records this).
+- CORRECTION recorded during the session: this entry previously said K's
+  "Metal sales" alias "already shipped (a2b2b4d)" — that commit touched
+  field_aliases.py, the PILOT COMPARATOR's table, not the production
+  mapper. The production-side alias ships with this decision; a pinning
+  test now covers the production route explicitly.
 - Reasoning: profile-extension review discipline required a second mining
   filer before claiming the sub-shape; K FY2024 was that mandatory
   validation event and PASSED (93/93 rows two-read agreement).
 - Evidence: AEM FY2025 (ground-truthed 2026-07-01); K FY2024 pilot bundle;
-  TECK.B fixture (maps gross_profit + total_assets only).
-- Enforced by: (once decided) mining_sector profile changes + registry
-  regen + full suite per the fixture-mapped_count rule.
+  TECK.B fixture. Post-decision re-map: TECK.B mapped_count 2 -> 5
+  (revenue 10,756 / cost_of_revenue -8,099 / net_income 1,072 join
+  gross_profit + total_assets); identity check 10,756 - 8,099 = 2,657 =
+  mapped gross_profit, closes exactly. All other fixtures unchanged
+  (machine-confirmed, zero collisions corpus-wide); CNQ still 6 with bare
+  net "Revenue" honest-unmapped.
+- Enforced by: sedar_aliases.json additions; registry regen (TECK.B
+  stored=resolved=5); tests test_teckb_cb011_extension_maps_revenue_cost_of_sales_and_profit,
+  test_k_producer_labels_map_in_mining_sector, updated
+  test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_aliases,
+  and the resource_sector negative guard's updated docstring stating the
+  mining_sector exception boundary.
 
 ---
 

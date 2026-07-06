@@ -999,9 +999,27 @@
   },
   "mapping": {
     "mapped": {
+      "revenue": {
+        "value": 10756,
+        "source_label": "Revenue (Note 6)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cost_of_revenue": {
+        "value": -8099,
+        "source_label": "Cost of sales",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "gross_profit": {
         "value": 2657,
         "source_label": "Gross profit",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "net_income": {
+        "value": 1072,
+        "source_label": "Profit for the year",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -1013,14 +1031,6 @@
       }
     },
     "unmapped": [
-      {
-        "label": "Revenue (Note 6)",
-        "value": 10756
-      },
-      {
-        "label": "Cost of sales",
-        "value": -8099
-      },
       {
         "label": "General and administration",
         "value": -269
@@ -1076,10 +1086,6 @@
       {
         "label": "Profit from discontinued operations (Note 5(c))",
         "value": 0
-      },
-      {
-        "label": "Profit for the year",
-        "value": 1072
       },
       {
         "label": "Profit (loss) from continuing operations attributable to: Shareholders of the company",
@@ -1316,16 +1322,182 @@
       {
         "label": "Total liabilities and equity",
         "value": 45436
+      },
+      {
+        "label": "Profit (loss) from continuing operations",
+        "value": 1072
+      },
+      {
+        "label": "Depreciation and amortization",
+        "value": 1757
+      },
+      {
+        "label": "Provision for income taxes from continuing operations",
+        "value": 584
+      },
+      {
+        "label": "Net finance expense",
+        "value": 641
+      },
+      {
+        "label": "Income taxes paid",
+        "value": -1235
+      },
+      {
+        "label": "Expenditures on decommissioning and restoration provisions",
+        "value": -106
+      },
+      {
+        "label": "QB variable consideration to IMSA and Codelco",
+        "value": -142
+      },
+      {
+        "label": "Foreign exchange (gains) losses",
+        "value": 41
+      },
+      {
+        "label": "Embedded derivatives and other",
+        "value": -155
+      },
+      {
+        "label": "Net change in non-cash working capital items",
+        "value": -978
+      },
+      {
+        "label": "Net cash provided by continuing operating activities",
+        "value": 1479
+      },
+      {
+        "label": "Net cash provided by discontinued operating activities",
+        "value": 0
+      },
+      {
+        "label": "Total operating activities",
+        "value": 1479
+      },
+      {
+        "label": "Expenditures on property, plant and equipment",
+        "value": -1838
+      },
+      {
+        "label": "Capitalized stripping costs",
+        "value": -224
+      },
+      {
+        "label": "Expenditures on investments and other assets",
+        "value": -187
+      },
+      {
+        "label": "Net proceeds from sale of steelmaking coal business",
+        "value": 0
+      },
+      {
+        "label": "Proceeds from sale of investments and other assets",
+        "value": 88
+      },
+      {
+        "label": "Proceeds from interest and dividend income",
+        "value": 251
+      },
+      {
+        "label": "Net cash provided by (used in) continuing investing activities",
+        "value": -1910
+      },
+      {
+        "label": "Net cash used in discontinued investing activities",
+        "value": 0
+      },
+      {
+        "label": "Total investing activities",
+        "value": -1910
+      },
+      {
+        "label": "Proceeds from debt",
+        "value": 308
+      },
+      {
+        "label": "Redemption, purchase or repayment of debt",
+        "value": -733
+      },
+      {
+        "label": "Repayment of lease liabilities",
+        "value": -112
+      },
+      {
+        "label": "QB advances from SMM/SC",
+        "value": 476
+      },
+      {
+        "label": "Sale of minority interest in steelmaking coal business",
+        "value": 0
+      },
+      {
+        "label": "Interest and finance charges paid",
+        "value": -686
+      },
+      {
+        "label": "Issuance of Class B subordinate voting shares",
+        "value": 26
+      },
+      {
+        "label": "Purchase and cancellation of Class B subordinate voting shares",
+        "value": -1011
+      },
+      {
+        "label": "Dividends paid",
+        "value": -246
+      },
+      {
+        "label": "Net contributions from non-controlling interests",
+        "value": 157
+      },
+      {
+        "label": "Settlement of other liabilities",
+        "value": -25
+      },
+      {
+        "label": "Net cash used in continuing financing activities",
+        "value": -1846
+      },
+      {
+        "label": "Net cash used in discontinued financing activities",
+        "value": 0
+      },
+      {
+        "label": "Total financing activities",
+        "value": -1846
+      },
+      {
+        "label": "Increase (decrease) in cash and cash equivalents",
+        "value": -2277
+      },
+      {
+        "label": "Effect of exchange rate changes on cash and cash equivalents",
+        "value": -298
+      },
+      {
+        "label": "Cash and cash equivalents at beginning of year",
+        "value": 7587
+      },
+      {
+        "label": "Cash and cash equivalents at end of year",
+        "value": 5012
       }
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "mining_sector",
-      "total": 78,
-      "mapped_count": 2,
-      "unmapped_count": 76,
-      "benign_skipped_count": 0,
-      "benign_duplicates": [],
+      "total": 119,
+      "mapped_count": 5,
+      "unmapped_count": 113,
+      "benign_skipped_count": 1,
+      "benign_duplicates": [
+        {
+          "normalized_label": "asset impairment",
+          "occurrence_count": 2,
+          "value": 0.0
+        }
+      ],
       "gross_profit_derived": false,
       "collisions": []
     }
