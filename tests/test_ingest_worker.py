@@ -460,6 +460,90 @@ class TestCompareExtractions:
         assert all(f["status"] == "MISSING" for f in result)
 
 
+# Real worker sedar output: mapping lives in a SEPARATE mapping.json (not
+# inline), statement rows are {label, values{year: value}}, labels carry
+# '(Note N)' references, and the cash-flow key is 'cash_flow'.  Modeled on
+# the PPL FY2024 pilot bundle, which the pre-fix comparator reported as
+# all-MISSING despite perfect two-read agreement.
+REAL_SEDAR_EXTRACTION = {
+    "source": "sedar_pdf",
+    "schema_version": 5,
+    "currency": "CAD",
+    "scale": "millions",
+    "fiscal_year_end": "2024-12-31",
+    "statements": {
+        "income_statement": [
+            {"label": "Revenue (Note 19)", "values": {"2024": 7384, "2023": 6331}},
+            {"label": "Earnings", "values": {"2024": 1874, "2023": 1776}},
+        ],
+        "balance_sheet": [
+            {"label": "Total assets", "values": {"2024": 35967, "2023": 32618}},
+        ],
+        "cash_flow": [
+            {"label": "Cash flow from operating activities", "values": {"2024": 3214, "2023": 2635}},
+            {"label": "Capital expenditures", "values": {"2024": -955, "2023": -606}},
+        ],
+    },
+}
+
+REAL_SEDAR_MAPPING = {
+    "mapped": {
+        "gross_profit": {"value": 3316, "source_label": "Gross profit"},
+        "total_assets": {"value": 35967, "source_label": "Total assets"},
+    },
+    "unmapped": [{"label": "Revenue (Note 19)", "value": 7384}],
+    "meta": {"sector_profile": "resource_sector", "mapped_count": 2},
+}
+
+
+class TestCompareExtractionsSedarBundle:
+    def test_all_five_fields_resolve_on_real_sedar_shape(self):
+        from review_candidates import compare_extractions
+
+        result = compare_extractions(
+            REAL_SEDAR_EXTRACTION,
+            REAL_SEDAR_EXTRACTION,
+            candidate_mapping=REAL_SEDAR_MAPPING,
+            canonical_mapping=REAL_SEDAR_MAPPING,
+        )
+        assert all(f["status"] == "AGREE" for f in result), result
+
+    def test_note_reference_stripped_for_alias_match(self):
+        from review_candidates import _extract_field_value
+
+        assert _extract_field_value(REAL_SEDAR_EXTRACTION, "revenue") == 7384
+
+    def test_current_year_selected_not_prior(self):
+        from review_candidates import _extract_field_value
+
+        # fiscal_year_end 2024-12-31 -> the 2024 column, not 2023.
+        assert _extract_field_value(REAL_SEDAR_EXTRACTION, "net_income") == 1874
+
+    def test_separate_mapping_takes_precedence(self):
+        from review_candidates import _extract_field_value
+
+        mapping = {"mapped": {"total_assets": {"value": 111, "source_label": "Total assets"}}}
+        assert _extract_field_value(REAL_SEDAR_EXTRACTION, "total_assets", mapping) == 111
+
+    def test_cash_flow_key_without_statement_suffix(self):
+        from review_candidates import _extract_field_value
+
+        assert _extract_field_value(REAL_SEDAR_EXTRACTION, "operating_cash_flow") == 3214
+        assert _extract_field_value(REAL_SEDAR_EXTRACTION, "capex") == -955
+
+    def test_edgar_shape_unaffected(self):
+        from review_candidates import compare_extractions
+
+        # Passing an explicit mapping alongside an EDGAR-shape extraction
+        # must not disturb the legacy row scan.
+        result = compare_extractions(
+            FAKE_FINANCIAL_DATA,
+            FAKE_FINANCIAL_DATA,
+            candidate_mapping={"note": "EDGAR filer (TOU) -- no SEDAR mapper applied."},
+        )
+        assert all(f["status"] != "MISSING" for f in result), result
+
+
 class TestDetermineDisposition:
     def test_promoted_when_all_clean(self):
         from review_candidates import determine_disposition

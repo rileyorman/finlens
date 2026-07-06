@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -37,7 +38,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from modules.integrity.field_aliases import FIELD_ALIASES, FIELD_STATEMENT  # noqa: E402
 
-REVIEWER_VERSION = "1"
+REVIEWER_VERSION = "2"  # v2: sedar-path comparison (separate mapping.json, label/values rows)
 
 
 # ---------------------------------------------------------------------------
@@ -112,32 +113,106 @@ def verify_provenance(provenance: dict) -> tuple[bytes | None, str]:
 # Field comparison (Sterling candidate vs canonical extraction)
 # ---------------------------------------------------------------------------
 
-def _extract_field_value(financial_data: dict, canonical: str) -> float | None:
-    """Pull a value for a canonical field from a financial_data dict.
+# Trailing '(Note 19)' / '(Notes 5 and 6)' references on IFRS statement
+# labels; stripped before alias comparison so 'Revenue (Note 19)' matches
+# the 'Revenue' alias.  Comparison-only normalization -- the SEDAR mapper's
+# own alias rules (including the resource-sector bare-'revenue' negative
+# rule) are untouched.
+_NOTE_REF_RE = re.compile(r"\s*\((?:note|notes)\s[^)]*\)", re.IGNORECASE)
+
+
+def _normalize_label(label: str) -> str:
+    return _NOTE_REF_RE.sub("", label).strip().lower()
+
+
+def _current_year_hint(financial_data: dict) -> str | None:
+    """Best-effort current-filing-year string ('2024') for sedar row values."""
+    fye = str(financial_data.get("fiscal_year_end") or "")
+    if len(fye) >= 4 and fye[:4].isdigit():
+        return fye[:4]
+    digits = "".join(ch for ch in str(financial_data.get("fiscal_year") or "") if ch.isdigit())
+    return digits[-4:] if len(digits) >= 4 else None
+
+
+def _sedar_row_value(row: dict, year_hint: str | None) -> float | None:
+    """Pull the current-year value from a sedar row's {year: value} dict."""
+    values = row.get("values") or {}
+    if not values:
+        return None
+    key = None
+    if year_hint:
+        for k in values:
+            if year_hint in str(k):
+                key = k
+                break
+    if key is None:
+        # No year hint matched; latest year by string sort ('2024' > '2023',
+        # 'FY2024' > 'FY2023').
+        key = sorted(values, key=str)[-1]
+    v = values[key]
+    return float(v) if v is not None else None
+
+
+def _extract_field_value(
+    financial_data: dict, canonical: str, mapping: dict | None = None
+) -> float | None:
+    """Pull a value for a canonical field from an extraction.
+
+    Sources, in order:
+      1. mapping['mapped'] -- the bundle's mapping.json (sedar path keeps
+         mapping in a separate file; pass it here).
+      2. financial_data['mapping']['mapped'] -- legacy inline-mapping shape.
+      3. EDGAR/IR statement rows: financial_data[stmt]['line_item'/'value'].
+      4. sedar statement rows: financial_data['statements'][stmt]
+         ['label'/'values'{year: value}], labels normalized (note refs
+         stripped, case-folded) before alias comparison.
 
     Alias table sourced from modules.integrity.field_aliases (shared with
     prior_column.py).  Add new aliases there, not here.
     """
     aliases = FIELD_ALIASES
     statements = FIELD_STATEMENT
-    # Try mapping.mapped first (SEDAR).
-    mapped = (financial_data.get("mapping") or {}).get("mapped") or {}
-    if canonical in mapped:
-        v = mapped[canonical].get("value")
-        return float(v) if v is not None else None
-    # Fall back to statement rows.
+    for mapped_source in (mapping, financial_data.get("mapping")):
+        mapped = (mapped_source or {}).get("mapped") or {}
+        if canonical in mapped:
+            v = mapped[canonical].get("value")
+            return float(v) if v is not None else None
     stmt_key = statements.get(canonical)
     if not stmt_key:
         return None
+    # EDGAR/IR shape: statement lists at the top level.
     for row in financial_data.get(stmt_key) or []:
         if row.get("line_item") in (aliases.get(canonical) or []):
             v = row.get("value")
             return float(v) if v is not None else None
+    # sedar shape: nested 'statements' block; its cash-flow key is
+    # 'cash_flow', not 'cash_flow_statement'.
+    statements_block = financial_data.get("statements")
+    if isinstance(statements_block, dict):
+        rows = (
+            statements_block.get(stmt_key)
+            or statements_block.get(stmt_key.replace("_statement", ""))
+            or []
+        )
+        wanted = {_normalize_label(a) for a in aliases.get(canonical) or []}
+        year_hint = _current_year_hint(financial_data)
+        for row in rows:
+            label = row.get("label")
+            if label and _normalize_label(label) in wanted:
+                return _sedar_row_value(row, year_hint)
     return None
 
 
-def compare_extractions(candidate: dict, canonical: dict) -> list[dict]:
+def compare_extractions(
+    candidate: dict,
+    canonical: dict,
+    candidate_mapping: dict | None = None,
+    canonical_mapping: dict | None = None,
+) -> list[dict]:
     """Compare five headline fields between candidate and canonical extractions.
+
+    candidate_mapping/canonical_mapping are the bundles' mapping.json dicts
+    (sedar path); pass None for EDGAR/IR bundles.
 
     Returns a list of per-field comparison dicts:
       {field, candidate_value, canonical_value, pct_diff, status}
@@ -146,8 +221,8 @@ def compare_extractions(candidate: dict, canonical: dict) -> list[dict]:
     fields = ["revenue", "net_income", "total_assets", "operating_cash_flow", "capex"]
     results = []
     for field in fields:
-        cand_v = _extract_field_value(candidate, field)
-        canon_v = _extract_field_value(canonical, field)
+        cand_v = _extract_field_value(candidate, field, candidate_mapping)
+        canon_v = _extract_field_value(canonical, field, canonical_mapping)
         if cand_v is None or canon_v is None:
             results.append({
                 "field": field,
@@ -284,7 +359,21 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             print(f"ERROR: cannot parse canonical extraction: {exc}", file=sys.stderr)
             return 1
-        field_comparison = compare_extractions(extraction, canonical_data)
+        # sedar bundles keep mapping in a sibling mapping.json; load the
+        # canonical run's copy when present so mapped-only fields compare.
+        canonical_mapping = None
+        canon_mapping_path = canon_path.parent / "mapping.json"
+        if canon_mapping_path.exists():
+            try:
+                canonical_mapping = json.loads(canon_mapping_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                print(f"  [warn] cannot parse {canon_mapping_path}; comparing without it.")
+        field_comparison = compare_extractions(
+            extraction,
+            canonical_data,
+            candidate_mapping=bundle["mapping"],
+            canonical_mapping=canonical_mapping,
+        )
         print("Field comparison (candidate vs canonical):")
         print(
             f"  {'field':<22}  {'candidate':>16}  {'canonical':>16}  {'diff%':>7}  status"

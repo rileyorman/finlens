@@ -51,6 +51,7 @@ FIELD_ALIASES: dict[str, list[str]] = {
         "Net Income",
         "Net income",
         "Net income (loss)",                              # IFRS: IMO FY2025
+        "Earnings",                                       # IFRS: PPL FY2024 (bundle ingest/PPL-FY2024, two-read agreement)
     ],
     "total_assets": [
         "Assets",
@@ -61,6 +62,7 @@ FIELD_ALIASES: dict[str, list[str]] = {
         "Net Cash Provided by Operating Activities",
         "Net Cash from Operating Activities",
         "Cash flows from (used in) operating activities",  # IFRS: IMO FY2025
+        "Cash flow from operating activities",             # IFRS: PPL FY2024 (bundle ingest/PPL-FY2024, two-read agreement)
     ],
     "capex": [
         "Capital Expenditures",
