@@ -512,3 +512,115 @@ class TestReviewCandidatesMain:
 
         rc = main(["--bundle-dir", str(tmp_path / "nonexistent"), "--skip-fetch"])
         assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# IFRS alias coverage (field_aliases shared table)
+# ---------------------------------------------------------------------------
+# Triggered by IMO FY2025 pilot: net_income, operating_cash_flow, and capex
+# were MISSING on both Sterling and CC sides because the comparator alias
+# lists were US-GAAP-flavored.  These tests pin the IFRS labels from the
+# IMO FY2025 extraction (bundle ingest/IMO-FY2025, guard PASS, ratio=1.0).
+
+# IMO FY2025 as-filed label strings (empirical — from extraction.json)
+_IMO_FINANCIAL_DATA = {
+    "company_name": "Imperial Oil Limited",
+    "fiscal_year": "FY2025",
+    "currency": "CAD, in millions",
+    "income_statement": [
+        {"line_item": "Revenues", "value": 53_000},
+        {"line_item": "Net income (loss)", "value": 1_843},
+    ],
+    "balance_sheet": [
+        {"line_item": "Total assets", "value": 19_500},
+    ],
+    "cash_flow_statement": [
+        {"line_item": "Cash flows from (used in) operating activities", "value": 3_200},
+        {"line_item": "Additions to property, plant and equipment", "value": -1_100},
+    ],
+}
+
+
+class TestFieldAliasesModule:
+    """Unit tests for modules/integrity/field_aliases.py (shared alias table)."""
+
+    def test_ifrs_net_income_label_present(self):
+        from modules.integrity.field_aliases import FIELD_ALIASES
+
+        assert "Net income (loss)" in FIELD_ALIASES["net_income"]
+
+    def test_ifrs_operating_cash_flow_label_present(self):
+        from modules.integrity.field_aliases import FIELD_ALIASES
+
+        assert "Cash flows from (used in) operating activities" in FIELD_ALIASES["operating_cash_flow"]
+
+    def test_ifrs_capex_label_present(self):
+        from modules.integrity.field_aliases import FIELD_ALIASES
+
+        assert "Additions to property, plant and equipment" in FIELD_ALIASES["capex"]
+
+    def test_headline_fields_complete(self):
+        from modules.integrity.field_aliases import HEADLINE_FIELDS, FIELD_ALIASES, FIELD_STATEMENT
+
+        assert set(HEADLINE_FIELDS) == set(FIELD_ALIASES.keys()) == set(FIELD_STATEMENT.keys())
+
+
+class TestCompareExtractionsIFRS:
+    """Comparator resolves IFRS-labeled IMO fields (regression against MISSING bug)."""
+
+    def test_imo_net_income_resolved(self):
+        from review_candidates import compare_extractions
+
+        result = compare_extractions(_IMO_FINANCIAL_DATA, _IMO_FINANCIAL_DATA)
+        ni = next(f for f in result if f["field"] == "net_income")
+        assert ni["status"] == "AGREE", (
+            f"net_income should AGREE against itself but got {ni['status']}; "
+            "label 'Net income (loss)' not resolved by comparator"
+        )
+
+    def test_imo_operating_cash_flow_resolved(self):
+        from review_candidates import compare_extractions
+
+        result = compare_extractions(_IMO_FINANCIAL_DATA, _IMO_FINANCIAL_DATA)
+        ocf = next(f for f in result if f["field"] == "operating_cash_flow")
+        assert ocf["status"] == "AGREE", (
+            f"operating_cash_flow should AGREE against itself but got {ocf['status']}; "
+            "label 'Cash flows from (used in) operating activities' not resolved"
+        )
+
+    def test_imo_capex_resolved(self):
+        from review_candidates import compare_extractions
+
+        result = compare_extractions(_IMO_FINANCIAL_DATA, _IMO_FINANCIAL_DATA)
+        capex = next(f for f in result if f["field"] == "capex")
+        assert capex["status"] == "AGREE", (
+            f"capex should AGREE against itself but got {capex['status']}; "
+            "label 'Additions to property, plant and equipment' not resolved"
+        )
+
+    def test_imo_all_five_fields_not_missing(self):
+        """All five headline fields must resolve from the IMO extraction."""
+        from review_candidates import compare_extractions
+
+        result = compare_extractions(_IMO_FINANCIAL_DATA, _IMO_FINANCIAL_DATA)
+        missing = [f["field"] for f in result if f["status"] == "MISSING"]
+        assert not missing, f"Fields still MISSING with IMO IFRS labels: {missing}"
+
+
+class TestPriorColumnIFRSAliases:
+    """prior_column._ALIASES includes the IFRS labels (shared-table regression)."""
+
+    def test_ifrs_net_income_in_prior_column_aliases(self):
+        from modules.integrity.prior_column import _ALIASES
+
+        assert "Net income (loss)" in _ALIASES["net_income"]
+
+    def test_ifrs_operating_cash_flow_in_prior_column_aliases(self):
+        from modules.integrity.prior_column import _ALIASES
+
+        assert "Cash flows from (used in) operating activities" in _ALIASES["operating_cash_flow"]
+
+    def test_ifrs_capex_in_prior_column_aliases(self):
+        from modules.integrity.prior_column import _ALIASES
+
+        assert "Additions to property, plant and equipment" in _ALIASES["capex"]

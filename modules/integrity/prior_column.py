@@ -46,47 +46,17 @@ DISPOSITION_RECORD_TYPE = "prior_column_disposition"
 # Relative tolerance for MATCH: |a - b| / max(|a|, |b|) <= TOLERANCE
 TOLERANCE = 0.005  # 0.5%, per spec
 
+from .field_aliases import HEADLINE_FIELDS, FIELD_STATEMENT, FIELD_ALIASES
+
 # v1 canonical fields in output order
-V1_FIELDS = ["revenue", "net_income", "total_assets", "operating_cash_flow", "capex"]
+V1_FIELDS = HEADLINE_FIELDS
 
 # Statement key that holds each canonical field
-_STATEMENT_MAP: dict[str, str] = {
-    "revenue":             "income_statement",
-    "net_income":          "income_statement",
-    "total_assets":        "balance_sheet",
-    "operating_cash_flow": "cash_flow_statement",
-    "capex":               "cash_flow_statement",
-}
+_STATEMENT_MAP = FIELD_STATEMENT
 
 # Alias lists for fallback label-scan resolution.
-# Mirrors the label sets used by cross_validate.py and excel_exporter summary
-# metrics; capex aliases include as-filed variants present in existing caches.
-_ALIASES: dict[str, list[str]] = {
-    "revenue": [
-        "Revenues",
-        "Revenue",
-    ],
-    "net_income": [
-        "Net Income",
-        "Net income",
-    ],
-    "total_assets": [
-        "Assets",
-        "Total Assets",
-        "Total assets",
-    ],
-    "operating_cash_flow": [
-        "Net Cash Provided by Operating Activities",
-        "Net Cash from Operating Activities",
-    ],
-    "capex": [
-        "Capital Expenditures",
-        "Purchases of Property, Plant and Equipment",
-        "Purchase of property and equipment",
-        "Additions to property, plant and equipment",
-        "Capital expenditures",
-    ],
-}
+# Source of truth: modules/integrity/field_aliases.py
+_ALIASES = FIELD_ALIASES
 
 # Valid disposition values for prior_column_disposition records
 PRIOR_COLUMN_DISPOSITION_VALUES = {

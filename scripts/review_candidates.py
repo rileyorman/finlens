@@ -27,6 +27,16 @@ import json
 import sys
 from pathlib import Path
 
+# Add repo root to sys.path so 'modules.*' is importable when the script
+# is invoked directly (python scripts/review_candidates.py).  Running via
+# 'PYTHONPATH=. python ...' or 'python -m pytest' already covers this;
+# the explicit insert is a safety net for direct invocation.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from modules.integrity.field_aliases import FIELD_ALIASES, FIELD_STATEMENT  # noqa: E402
+
 REVIEWER_VERSION = "1"
 
 
@@ -103,27 +113,13 @@ def verify_provenance(provenance: dict) -> tuple[bytes | None, str]:
 # ---------------------------------------------------------------------------
 
 def _extract_field_value(financial_data: dict, canonical: str) -> float | None:
-    """Pull a value for a canonical field from a financial_data dict."""
-    aliases: dict[str, list[str]] = {
-        "revenue":             ["Revenues", "Revenue"],
-        "net_income":          ["Net Income", "Net income"],
-        "total_assets":        ["Assets", "Total Assets", "Total assets"],
-        "operating_cash_flow": [
-            "Net Cash Provided by Operating Activities",
-            "Net Cash from Operating Activities",
-        ],
-        "capex": [
-            "Capital Expenditures",
-            "Purchases of Property, Plant and Equipment",
-        ],
-    }
-    statements: dict[str, str] = {
-        "revenue":             "income_statement",
-        "net_income":          "income_statement",
-        "total_assets":        "balance_sheet",
-        "operating_cash_flow": "cash_flow_statement",
-        "capex":               "cash_flow_statement",
-    }
+    """Pull a value for a canonical field from a financial_data dict.
+
+    Alias table sourced from modules.integrity.field_aliases (shared with
+    prior_column.py).  Add new aliases there, not here.
+    """
+    aliases = FIELD_ALIASES
+    statements = FIELD_STATEMENT
     # Try mapping.mapped first (SEDAR).
     mapped = (financial_data.get("mapping") or {}).get("mapped") or {}
     if canonical in mapped:

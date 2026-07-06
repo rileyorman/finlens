@@ -14,8 +14,14 @@ if [ -z "$staged_py" ]; then
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-PYTHON="$REPO_ROOT/venv/Scripts/python.exe"
-if [ ! -f "$PYTHON" ]; then
+# Detect venv python: Windows path first, then macOS/Linux, then bare fallback.
+if [ -f "$REPO_ROOT/venv/Scripts/python.exe" ]; then
+    PYTHON="$REPO_ROOT/venv/Scripts/python.exe"
+elif [ -f "$REPO_ROOT/venv/bin/python" ]; then
+    PYTHON="$REPO_ROOT/venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+else
     PYTHON=python
 fi
 

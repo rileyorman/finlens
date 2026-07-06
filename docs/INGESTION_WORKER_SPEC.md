@@ -197,7 +197,7 @@ Source-type guide:
 ### Step 2 — Run the worker
 
 ```bash
-FINLENS_INGEST_API_KEY=sk-ant-... \
+PYTHONPATH=. FINLENS_INGEST_API_KEY=sk-ant-... \
 python scripts/ingest_worker.py \
     --ticker TOU \
     --fy FY2024 \
@@ -206,6 +206,11 @@ python scripts/ingest_worker.py \
     --out-dir candidates \
     --scratch-dir /tmp/finlens_scratch/TOU_FY2024
 ```
+
+**`PYTHONPATH=.`** is required when invoking the worker directly.  Python
+adds the script directory (`scripts/`) to `sys.path`, not the repo root;
+without `PYTHONPATH=.` the `modules.*` imports fail with `ModuleNotFoundError`.
+Discovered on first pilot run (IMO FY2025, 2026-07-05).
 
 **`--scratch-dir`** must be outside `~/.finlens`.  All FinLens cache/log writes
 during extraction land here (isolation via `FINLENS_DATA_DIR`).  Scratch dirs
