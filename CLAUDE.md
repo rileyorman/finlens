@@ -339,6 +339,13 @@ CROSS_EXTRACTOR GUARD (v3, 2026-07-03): cross_extractor.py requires both
 value-within-tolerance and matching normalized source labels for AGREE;
 value-in-tolerance with differing labels becomes a soft FLAGGED field with a
 reason such as scope_masked_agree.
+CROSS_EXTRACTOR DERIVED-FIELD RULE (v4, 2026-07-06, casebook CB-014):
+mapper-derived fields (derived: True) are never sent to Gemini — they appear
+in every cross-check record with structural status DERIVED / reason
+derived_by_construction, are excluded from the aggregate-state computation
+(VERIFIED stays reachable), and need no triage disposition (version bumps no
+longer re-open them). A mapping with ONLY derived fields returns honest
+UNCHECKED (no_line_item_backed_fields), never a vacuous VERIFIED.
 
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
@@ -600,7 +607,7 @@ Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moa
 - `log.py` - JSONL integrity log persistence (`~/.finlens/integrity_log.jsonl`) and cross-extractor disposition appends.
 - `analyze.py` - integrity analysis entry points, including `/integrity-log` cross-extractor review output.
 - `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
-- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records; v3 AGREE requires value and normalized-label agreement.
+- `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records; v3 AGREE requires value and normalized-label agreement; v4 (CB-014) gives mapper-derived fields structural DERIVED status outside the comparison denominator.
 
 Subpackage `modules/economics/`:
 
