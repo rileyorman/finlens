@@ -113,9 +113,16 @@ disagree, that is a defect: flag it, do not silently fix either side.
   a development/inventory line exists).
 
 ### CB-003: property_operating_costs definition — TWO AXES
-- Status: OPEN
-- Date: opened 2026-07-03 (ninth session)
-- Decided by: pending (Riley)
+- Status: DECIDED — see CB-012 for the full decision record (rental-only,
+  ratified by Riley 2026-07-06). BOTH axes resolved there: (i) INCLUSION =
+  rental-only; (ii) SIGN = lifted values keep the filer's as-presented sign,
+  the derived blended-REIT value is a positive cost magnitude (CLAUDE.md
+  SIGN NOTE). BOOKKEEPING NOTE (2026-07-06): CB-012 was minted during the
+  clean-sweep session without noticing this earlier entry covered the same
+  question — CB-012 holds the ruling; this entry stays as the original
+  question record. Found during the same-day handoff cleanup.
+- Date: opened 2026-07-03 (ninth session); decided 2026-07-06 (as CB-012)
+- Decided by: Riley (via CB-012)
 - Scope: `property_operating_costs` / reit_sector / REI.UN, CAR.UN, DIR.UN
 - Decision (question): decide BOTH axes together — (i) INCLUSION: blended
   total including residential inventory cost of sales (REI.UN 637,855,
@@ -383,10 +390,13 @@ disagree, that is a defect: flag it, do not silently fix either side.
   mining_sector exception boundary.
 
 ### CB-012: property_operating_costs is RENTAL-ONLY — the two-axis definition gap closed
-- Status: DECIDED
+- Status: DECIDED (this entry ANSWERS CB-003, which recorded the same open
+  question since 2026-07-03 — cross-referenced there; both axes resolved:
+  inclusion here, sign in the CLAUDE.md SIGN NOTE this entry enforces)
 - Date: opened 2026-06-17 (ground-truth pass, recorded in CLAUDE.md as an
-  OPEN definition question); ratified 2026-07-06 (Riley+CC design session —
-  the fourth and final decision of the clean-sweep session)
+  OPEN definition question; formalized as CB-003 on 2026-07-03); ratified
+  2026-07-06 (Riley+CC design session — the fourth and final decision of
+  the clean-sweep session)
 - Decided by: Riley
 - Scope: `property_operating_costs` / reit_sector / REI.UN vs CAR.UN, DIR.UN
 - Decision: RENTAL-ONLY — rental property operations only, excluding
