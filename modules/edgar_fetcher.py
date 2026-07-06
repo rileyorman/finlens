@@ -428,6 +428,30 @@ def get_recent_filings(cik: str, form_type: str = "10-K", count: int = 5) -> lis
         return []
 
 
+def _is_annual_duration(item: dict) -> bool:
+    """True if a companyfacts item covers a full-year period (or is an instant fact).
+
+    A 10-K's XBRL data can include QUARTERLY duration facts (e.g. Prologis
+    tags its "Selected Quarterly Financial Data" note), and those carry
+    form="10-K" and fp="FY" just like the annual facts — so neither field
+    distinguishes them. A Q4 fact shares its end date with the annual fact,
+    ties on the (end, filed) sort, and gets picked as "prior year"
+    (PLD FY2025 bug: fiscal_year_prior == fiscal_year, prior revenue = Q4).
+    Duration is the only reliable discriminator: quarters run ~90 days,
+    years ~364-371 (52/53-week calendars included).
+
+    Balance-sheet facts are point-in-time (no "start") — always kept.
+    """
+    start, end = item.get("start"), item.get("end")
+    if not start or not end:
+        return True  # instant fact (balance sheet) — no duration to check
+    try:
+        days = (date.fromisoformat(end) - date.fromisoformat(start)).days
+    except ValueError:
+        return True  # unparseable dates — keep, matching old behavior
+    return days >= 300
+
+
 def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) -> tuple:
     try:
         us_gaap = facts.get("facts", {}).get("us-gaap", {})
@@ -440,7 +464,9 @@ def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) 
             values = units.get("USD") or next(iter(units.values()), [])
             annual = [
                 item for item in values
-                if item.get("form") == "10-K" and item.get("val") is not None
+                if item.get("form") == "10-K"
+                and item.get("val") is not None
+                and _is_annual_duration(item)
             ]
             if not annual:
                 continue
