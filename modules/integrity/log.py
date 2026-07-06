@@ -90,31 +90,47 @@ def _set_last_read_log_diagnostics(diagnostics: LogReadDiagnostics) -> None:
     _LAST_READ_LOG_DIAGNOSTICS = diagnostics
 
 
+def _validation_content_hash(overall_status: str | None, check_tuples) -> str:
+    """Hash a validation outcome: overall status + every rule's result.
+
+    Keying on filing_accession alone loses evidence: a re-analysis of the
+    same filing after a code fix can flip the verdict (PLD 2026-07-06:
+    info_only -> clean after the XBRL quarterly-fact fix), and the changed
+    record was silently dropped as a "duplicate". Content-hashing keeps the
+    original goal (identical re-validations, e.g. on library Load, still
+    dedupe) while a changed outcome for the same filing appends.
+    """
+    vals = sorted(
+        f"{rule_id}:{passed}:{skipped}:{observed}"
+        for rule_id, passed, skipped, observed in check_tuples
+    )
+    payload = f"{overall_status}|" + "|".join(vals)
+    return hashlib.md5(payload.encode()).hexdigest()[:8]
+
+
 def _result_key(result: "ValidationResult") -> str:
     """Compute a stable identity key for a ValidationResult."""
-    if result.filing_accession:
-        return result.filing_accession
-    # Fallback: composite of ticker + fiscal year + source + hash of observed values.
-    vals = sorted(
-        f"{c.rule_id}:{c.observed_value}"
-        for c in result.checks
-        if c.observed_value is not None
+    h = _validation_content_hash(
+        result.overall_status,
+        ((c.rule_id, c.passed, c.skipped, c.observed_value) for c in result.checks),
     )
-    h = hashlib.md5("|".join(vals).encode()).hexdigest()[:8]
+    if result.filing_accession:
+        return f"{result.filing_accession}|{h}"
     return f"{result.ticker}|{result.fiscal_year}|{result.filing_source or ''}|{h}"
 
 
 def _record_key(record: dict) -> str:
     """Extract the same identity key from a deserialized log record dict."""
+    h = _validation_content_hash(
+        record.get("overall_status"),
+        (
+            (c.get("rule_id"), c.get("passed"), c.get("skipped"), c.get("observed_value"))
+            for c in record.get("checks", [])
+        ),
+    )
     accn = record.get("filing_accession")
     if accn:
-        return accn
-    vals = sorted(
-        f"{c['rule_id']}:{c.get('observed_value')}"
-        for c in record.get("checks", [])
-        if c.get("observed_value") is not None
-    )
-    h = hashlib.md5("|".join(vals).encode()).hexdigest()[:8]
+        return f"{accn}|{h}"
     return (
         f"{record.get('ticker')}|{record.get('fiscal_year')}"
         f"|{record.get('filing_source', '')}|{h}"
@@ -154,8 +170,12 @@ def append_to_log(
     Append a single ValidationResult record to the integrity log.
     Creates the log file and parent directories if they don't exist.
 
-    Idempotent: if a record with the same filing_accession (or composite
-    fallback key) already exists in the log, the write is silently skipped.
+    Idempotent on OUTCOME, not on filing: if a record with the same
+    filing_accession (or composite fallback key) AND the same validation
+    outcome (overall status + per-rule results) already exists in the log,
+    the write is silently skipped. A re-validation of the same filing whose
+    outcome CHANGED (e.g. healed by a code fix) appends a new record —
+    that transition is audit evidence, not a duplicate.
 
     Returns the path the record was written to (or would have been written to).
     """
@@ -225,6 +245,22 @@ def _cv_checker_version(record: dict) -> str:
     return str(record.get("checker_version") or "1")
 
 
+def _cv_content_hash(overall_status: str | None, field_tuples) -> str:
+    """Hash a cross-validation outcome: overall status + every field result.
+
+    Same rationale as _validation_content_hash: a re-analysis of the same
+    filing can change the compared filing values (and therefore the CV
+    outcome); a changed outcome must append rather than be dropped as a
+    duplicate of the stale record.
+    """
+    vals = sorted(
+        f"{field}:{filing_value}:{fmp_value}:{status}"
+        for field, filing_value, fmp_value, status in field_tuples
+    )
+    payload = f"{overall_status}|" + "|".join(vals)
+    return hashlib.md5(payload.encode()).hexdigest()[:8]
+
+
 def _cv_already_logged(path: Path, key: str) -> bool:
     """Return True if a cross-validation record with the given cv| key already exists."""
     if not path.exists():
@@ -242,9 +278,21 @@ def _cv_already_logged(path: Path, key: str) -> bool:
                     continue
                 yr_m = re.search(r"(\d{4})", str(record.get("fiscal_year", "")))
                 yr_s = yr_m.group(1) if yr_m else str(record.get("fiscal_year", ""))
+                rh = _cv_content_hash(
+                    record.get("overall_status"),
+                    (
+                        (
+                            f.get("field"),
+                            f.get("finlens_value"),
+                            f.get("fmp_value"),
+                            f.get("status"),
+                        )
+                        for f in record.get("cv_fields", [])
+                    ),
+                )
                 rkey = (
                     f"cv|{record.get('ticker', '')}|{yr_s}"
-                    f"|v{_cv_checker_version(record)}"
+                    f"|v{_cv_checker_version(record)}|{rh}"
                 )
                 if rkey == key:
                     return bool(record.get("fmp_fetch_reason"))
@@ -262,8 +310,10 @@ def append_cv_to_log(
     """
     Append a CrossValidationResult record to the integrity log.
 
-    Idempotent: skips the write silently if a cross-validation record for the
-    same ticker + fiscal year + checker_version already exists in the log.
+    Idempotent on OUTCOME: skips the write silently if a cross-validation
+    record for the same ticker + fiscal year + checker_version with the same
+    outcome (overall status + per-field values/statuses) already exists in
+    the log. A changed outcome for the same filing appends a new record.
 
     Returns the path the record was written to (or would have been written to).
     """
@@ -273,7 +323,11 @@ def append_cv_to_log(
     yr_m = re.search(r"(\d{4})", str(result.fiscal_year or ""))
     yr_s = yr_m.group(1) if yr_m else str(result.fiscal_year or "")
     checker_version = str(getattr(result, "checker_version", None) or "1")
-    key  = f"cv|{result.ticker}|{yr_s}|v{checker_version}"
+    h = _cv_content_hash(
+        result.overall_status,
+        ((f.field, f.finlens_value, f.fmp_value, f.status) for f in result.fields),
+    )
+    key  = f"cv|{result.ticker}|{yr_s}|v{checker_version}|{h}"
 
     if _cv_already_logged(path, key):
         return path
