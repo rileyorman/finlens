@@ -181,6 +181,22 @@ FILING_MANIFEST = {
             "E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."
         ),
     },
+    "SIG_FY2024_sedar.json": {
+        "order": 15,
+        "ticker": "SIG",
+        "company_name": "Sitka Gold Corp.",
+        "fiscal_year": "FY2024",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\SIG_FY2024.pdf",
+        "commit": None,
+        "notes": (
+            "Explorer-shape n=2 (the boring TSXV junior); promoted 2026-07-06 from the "
+            "Sterling pilot bundle (two-read agreement 51/51 rows; provenance sha256 "
+            "independently re-verified by CC on promotion). Capitalizes E&E where NFG "
+            "expenses it — first live carrier of CB-009 capitalized_exploration_additions "
+            "and CB-010 cash collision resolution (prefer_specific_alias). Pilot-grade "
+            "evidence; human ground-truth stamp pending (Riley, transcription protocol)."
+        ),
+    },
 }
 
 

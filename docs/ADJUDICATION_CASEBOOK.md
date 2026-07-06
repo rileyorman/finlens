@@ -283,7 +283,12 @@ disagree, that is a defect: flag it, do not silently fix either side.
   E&E maps"); alias rejection recorded in ba405b0 commit message; NFG
   fixture post-mint maps BOTH fields (exploration_expense 52,563,340 and
   capitalized_exploration_additions −3,853,119) with the balance-sheet
-  stock still honestly unmapped.
+  stock still honestly unmapped. [ADDITION 2026-07-06, same day: SIG
+  promoted to fixture #15 — the originating filer now carries the minted
+  field live: capitalized_exploration_additions −6,927,597 mapped from
+  the cash-flow statement via the statement-scoped alias, the
+  identically-labeled balance-sheet stock honestly unmapped; pinned by
+  the SIG fixture test.]
 - Enforced by: sedar_aliases.json (scoped aliases) + sedar_mapper.py
   (statement_scope index, per-statement duplicate grouping,
   conservation-safe multi-match tail) + _CANONICAL_SCALE_FIELDS
@@ -333,7 +338,11 @@ disagree, that is a defect: flag it, do not silently fix either side.
   independent reads); post-decision corpus re-map machine-confirmed zero
   mapped-count changes and zero resolved collisions across all 14 fixtures
   (no fixture carries the SIG shape — the rule fires only on the evidenced
-  collision).
+  collision). [ADDITION 2026-07-06, same day: SIG promoted to fixture #15
+  — the rule FIRED LIVE in production for the first time: cash mapped
+  15,208,214 from "Cash and cash equivalents (Note 4)", the bare "Cash"
+  note row rejected, resolution recorded in meta.resolved_collisions;
+  pinned by the SIG fixture test.]
 - Enforced by: sedar_mapper.py collision guard (CB-010 branch) +
   sedar_aliases.json cash flag; tests
   test_cb010_cash_collision_resolves_to_most_specific_alias (SIG values)
