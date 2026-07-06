@@ -559,14 +559,19 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     if da_c is not None:
         da_c = abs(da_c)
 
-    ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else oi_c
+    # Derived metrics require ALL components: a missing component must yield
+    # None (honest "—" downstream), never a fallback to the other component —
+    # plain OI labelled "EBITDA" or plain OCF labelled "Free Cash Flow" is a
+    # confident wrong number (NVDA FY2026: OCF 102.72B shown as FCF vs true
+    # ≈96.6B when capex was missing).
+    ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else None
 
     ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
 
     capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value")
     capex_c = abs(capex_raw) if capex_raw is not None else None
 
-    fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else ocf_c
+    fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None
 
     ca_c  = _lookup2(bs_rows, ["total current assets"],      "value")
     cl_c  = _lookup2(bs_rows, ["total current liabilities"], "value")
