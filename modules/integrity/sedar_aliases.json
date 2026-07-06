@@ -440,6 +440,23 @@
           ],
           "patterns": []
         },
+        "capitalized_exploration_additions": {
+          "aliases": [
+            {
+              "label": "exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "SIG_FY2024",
+              "statements": ["cash_flow"]
+            },
+            {
+              "label": "purchases of exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024",
+              "statements": ["cash_flow"]
+            }
+          ],
+          "patterns": []
+        },
         "cash": {
           "collision_resolution": "prefer_specific_alias",
           "aliases": [

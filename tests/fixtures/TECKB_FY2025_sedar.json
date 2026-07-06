@@ -1336,6 +1336,10 @@
         "value": 584
       },
       {
+        "label": "Asset impairment",
+        "value": 0
+      },
+      {
         "label": "Net finance expense",
         "value": 641
       },
@@ -1489,15 +1493,9 @@
       "sector_profile": "mining_sector",
       "total": 119,
       "mapped_count": 5,
-      "unmapped_count": 113,
-      "benign_skipped_count": 1,
-      "benign_duplicates": [
-        {
-          "normalized_label": "asset impairment",
-          "occurrence_count": 2,
-          "value": 0.0
-        }
-      ],
+      "unmapped_count": 114,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
       "gross_profit_derived": false,
       "collisions": [],
       "resolved_collisions": []

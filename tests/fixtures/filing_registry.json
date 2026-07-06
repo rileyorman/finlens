@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-06T17:03:56Z",
+  "generated_at": "2026-07-06T17:13:29Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -262,8 +262,8 @@
         "issuer_url": "https://newfoundgold.ca/investors/ (manual download, FY2024 standalone financial statements)",
         "retrieval_method": "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17"
       },
-      "stored_field_count": 6,
-      "resolved_field_count": 6,
+      "stored_field_count": 7,
+      "resolved_field_count": 7,
       "filing_date": "2025-03-20",
       "commit": null,
       "notes": "Manual issuer-IR download; first pre-revenue mining exploration filer. Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."

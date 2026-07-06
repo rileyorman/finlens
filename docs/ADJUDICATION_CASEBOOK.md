@@ -225,27 +225,67 @@ disagree, that is a defect: flag it, do not silently fix either side.
   re-analyse batch; prior-column continuity checker (shipped 7f0a65e line)
   as the future guard.
 
-### CB-009: capitalized E&E is NOT exploration_expense — alias rejected, mint decision pending
-- Status: OPEN (the rejection is settled; the mint decision is the open half)
-- Date: opened 2026-07-05/06 (SIG FY2024 pilot review)
-- Decided by: rejection CC (pilot disposition); mint decision pending (Riley)
-- Scope: `exploration_expense` + possible new field / mining_exploration_sector / SIG vs NFG
-- Decision: SIG's cash-flow investing line "Exploration and evaluation
-  assets" (−6,927,597) must NOT alias to `exploration_expense`. OPEN
-  question: mint a new canonical field for capitalized E&E additions
-  (e.g. exploration capex), or leave capitalized-explorer spend honestly
-  unmapped?
+### CB-009: capitalized E&E is NOT exploration_expense — alias rejected, field minted
+- Status: DECIDED
+- Date: opened 2026-07-05/06 (SIG FY2024 pilot review); mint ratified
+  2026-07-06 (Riley+CC design session, same day as CB-010/CB-011)
+- Decided by: rejection CC (pilot disposition); mint Riley (all four
+  session questions ratified as recommended)
+- Scope: `exploration_expense` + minted `capitalized_exploration_additions`
+  / mining_exploration_sector / SIG vs NFG
+- Decision (four rulings):
+  1. MINT `capitalized_exploration_additions`: capitalized E&E additions —
+     the investing cash outflow adding to exploration & evaluation assets.
+     Value stored AS-PRESENTED (negative outflow; royalties precedent).
+     DELIBERATELY a different concept from `exploration_expense` (P&L):
+     IFRS 6 lets explorers choose either policy, so the two fields are a
+     designed PAIR — comparing explorers requires both, and the policy
+     split staying visible is the point.
+  2. NAME: capitalized_exploration_additions — says capitalized (policy),
+     exploration (concept), additions (a flow, not the asset stock).
+  3. ALIASES (both, n=2): "exploration and evaluation assets" [SIG_FY2024]
+     + "purchases of exploration and evaluation assets" [NFG_FY2024], both
+     statement-scoped to cash_flow. NFG evidences the pair design live: it
+     expenses exploration work AND capitalizes acquisition-type E&E, so
+     both fields map on one filer (fixture mapped_count 6 -> 7).
+  4. MECHANISM (two pieces, both required): (a) statement-scoped aliases —
+     an alias may declare "statements": ["cash_flow"]; scoped aliases FAIL
+     CLOSED on items without statement attribution. Valid here where it was
+     rejected for CB-010: stock vs flow genuinely live in DIFFERENT
+     statements (NFG's balance sheet carries the IDENTICAL label
+     "Exploration and evaluation assets" for the asset STOCK 34,505,484 —
+     an unscoped alias would map the wrong concept). (b) Duplicate-ambiguity
+     grouping by (normalized_label, statement) instead of label alone —
+     without it, SIG's own stock/flow twin labels self-destruct as
+     "ambiguous" before aliases are consulted. Same label in the SAME
+     statement keeps the old ambiguity semantics; items without statement
+     info group under None (old behavior preserved). Conservation
+     side-effect handled: cross-statement same-label same-value pairs are
+     no longer silently benign-skipped — they stay visible in unmapped[]
+     (corpus effect confined to mining-family fixtures, the only ones whose
+     line_items include cash_flow: AEM/NFG/TECK.B benign counts fell,
+     unmapped rose, mapped counts unchanged except NFG's +1).
 - Reasoning: NFG EXPENSES exploration (income statement) — that is what
   `exploration_expense` means; SIG CAPITALIZES it (investing outflow onto
   the balance sheet). Mapping both to one field collapses the exact
   accounting-policy split an analyst comparing explorers needs to see.
   Augment-don't-mint requires a genuinely different concept for a new name
-  — this IS one, which is why it needs a mint decision rather than an
-  alias.
+  — this IS one.
 - Evidence: SIG FY2024 bundle (two-read agreement on the value); NFG
   precedent 41c08dc ("Capitalized E&E preserved in unmapped[], expensed
-  E&E maps"); alias rejection recorded in ba405b0 commit message.
-- Enforced by: absence of the alias (deliberate); this entry.
+  E&E maps"); alias rejection recorded in ba405b0 commit message; NFG
+  fixture post-mint maps BOTH fields (exploration_expense 52,563,340 and
+  capitalized_exploration_additions −3,853,119) with the balance-sheet
+  stock still honestly unmapped.
+- Enforced by: sedar_aliases.json (scoped aliases) + sedar_mapper.py
+  (statement_scope index, per-statement duplicate grouping,
+  conservation-safe multi-match tail) + _CANONICAL_SCALE_FIELDS
+  classification (the scaling-whitelist gate caught the missing entry —
+  machine enforcement working); tests
+  test_cb009_capitalized_ee_additions_map_from_cash_flow_only,
+  test_cb009_scoped_alias_fails_closed_without_statement_attribution,
+  test_cb009_same_statement_same_label_different_values_still_ambiguous,
+  test_cb009_nfg_purchases_line_maps_to_capitalized_additions.
 
 ### CB-010: cash collision — note sub-component must not beat the statement total
 - Status: DECIDED

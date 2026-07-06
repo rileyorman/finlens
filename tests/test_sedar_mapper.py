@@ -925,8 +925,18 @@ def test_nfg_fixture_maps_mining_exploration_sector_without_producer_spine():
         == _cash_flow_source_value(data, "Cash at end of year")
     )
 
+    # CB-009 (2026-07-06): the cash-flow "Purchases of exploration and
+    # evaluation assets" now maps to the minted capitalized_exploration_additions
+    # (statement-scoped, cash_flow only); the balance-sheet asset STOCK with
+    # the "Exploration and evaluation assets" label stays unmapped (asserted
+    # above). mapped_count 6 -> 7.
+    assert mapped["capitalized_exploration_additions"]["source_label"] == (
+        "Purchases of exploration and evaluation assets"
+    )
+    assert mapped["capitalized_exploration_additions"]["value"] == -3853119
+
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["collisions"] == []
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -954,6 +964,83 @@ def test_mining_no_token_no_revenue_spine_routes_to_exploration_profile():
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
     assert result["mapped"]["exploration_expense"]["value"] == 52563340
     assert result["mapped"]["net_cash_used_in_operating_activities"]["value"] == -55683060
+
+
+def test_cb009_capitalized_ee_additions_map_from_cash_flow_only():
+    """CB-009 (ratified 2026-07-06): SIG shape — the cash-flow investing line
+    "Exploration and evaluation assets" (the period's capitalized additions,
+    real SIG FY2024 value) maps to the minted capitalized_exploration_additions;
+    the balance-sheet line with the IDENTICAL label (the asset STOCK, synthetic
+    value) stays unmapped. Requires both CB-009 mechanisms: per-statement
+    duplicate grouping (the two rows are no longer a same-label ambiguity) and
+    the cash_flow statement scope on the alias."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": 20_000_000,
+         "confidence": 0.99, "statement": "balance_sheet"},
+        {"label": "Exploration and evaluation assets", "value": -6_927_597,
+         "confidence": 0.99, "statement": "cash_flow"},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    field = result["mapped"]["capitalized_exploration_additions"]
+    assert field["value"] == -6_927_597  # as-presented negative outflow
+    assert field["source_label"] == "Exploration and evaluation assets"
+    unmapped_values = [item["value"] for item in result["unmapped"]]
+    assert 20_000_000 in unmapped_values  # the stock row, honestly unmapped
+    assert result["meta"]["collisions"] == []
+
+
+def test_cb009_scoped_alias_fails_closed_without_statement_attribution():
+    """A statement-scoped alias must NOT match an item that carries no
+    statement key — the scope exists because the same label names a different
+    concept elsewhere, so an unattributed row is unsafe to map."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": -6_927_597, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert "capitalized_exploration_additions" not in result["mapped"]
+    assert [item["value"] for item in result["unmapped"]] == [-6_927_597]
+
+
+def test_cb009_same_statement_same_label_different_values_still_ambiguous():
+    """Per-statement grouping must not weaken the original ambiguity guard:
+    the same label twice in the SAME statement with different values remains
+    ambiguous — both rows go to unmapped before alias matching."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": -6_927_597,
+         "confidence": 0.99, "statement": "cash_flow"},
+        {"label": "Exploration and evaluation assets", "value": -1_000_000,
+         "confidence": 0.99, "statement": "cash_flow"},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert "capitalized_exploration_additions" not in result["mapped"]
+    assert len(result["unmapped"]) == 2
+
+
+def test_cb009_nfg_purchases_line_maps_to_capitalized_additions():
+    """NFG capitalizes acquisition-type E&E while expensing exploration work —
+    both fields legitimately coexist on one filer, which is the pair design
+    working: exploration_expense (P&L) AND capitalized_exploration_additions
+    (investing outflow) both map. NFG fixture mapped_count 6 -> 7."""
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    field = result["mapped"]["capitalized_exploration_additions"]
+    assert field["source_label"] == "Purchases of exploration and evaluation assets"
+    assert field["value"] == -3853119
+    assert result["mapped"]["exploration_expense"]["value"] == 52563340
+    # the balance-sheet asset STOCK stays honestly unmapped
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Exploration and evaluation assets" in unmapped_labels
+    assert result["meta"]["mapped_count"] == 7
 
 
 def test_cb010_cash_collision_resolves_to_most_specific_alias():

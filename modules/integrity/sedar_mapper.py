@@ -246,8 +246,8 @@ def _build_match_indexes(
     alias_table: dict[str, Any],
     accounting_standard: str,
     sector_profile: str | None,
-) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str]]:
-    """Return (exact_map, patterns, semantics_map, collision_rules).
+) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set]]:
+    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope).
 
     exact_map       normalized_label -> canonical_field_name
     patterns        list of (starts_with_prefix, canonical_field_name)
@@ -256,11 +256,20 @@ def _build_match_indexes(
                     Per-field opt-in (CB-010): a field config may declare
                     "collision_resolution": "prefer_specific_alias" to resolve
                     distinct-label collisions instead of blocking them.
+    statement_scope normalized_label -> set of statement keys the alias may
+                    match in (CB-009): an alias may declare
+                    "statements": ["cash_flow"] when the same label names a
+                    DIFFERENT concept in another statement (SIG's cash-flow
+                    "Exploration and evaluation assets" is the period's
+                    capitalized additions; the identical balance-sheet label
+                    is the asset stock). Scoped aliases FAIL CLOSED: an item
+                    without statement attribution never matches them.
     """
     exact: dict[str, str] = {}
     patterns: list[tuple[str, str]] = []
     semantics_map: dict[str, dict] = {}
     collision_rules: dict[str, str] = {}
+    statement_scope: dict[str, set] = {}
 
     # First-write-wins on alias-label collisions: defaults are iterated before
     # sector-profile fields, so a default claims a collided label and the
@@ -284,11 +293,16 @@ def _build_match_indexes(
                         semantics_map[label] = sem
                     else:
                         semantics_map.pop(label, None)
+                    statements = alias.get("statements")
+                    if statements:
+                        statement_scope[label] = set(statements)
+                    else:
+                        statement_scope.pop(label, None)
         for pattern in config.get("patterns") or []:
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
 
-    return exact, patterns, semantics_map, collision_rules
+    return exact, patterns, semantics_map, collision_rules, statement_scope
 
 
 def _unmapped_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -473,7 +487,7 @@ def map_line_items(
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
     sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
-    exact, patterns, semantics_map, collision_rules = _build_match_indexes(
+    exact, patterns, semantics_map, collision_rules, statement_scope = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
 
@@ -490,15 +504,24 @@ def map_line_items(
     # "Net earnings" repeated at the top of a Comprehensive Income section).
     # First occurrence proceeds normally; subsequent occurrences are silently skipped.
     # Same normalized label with different values = ambiguous; all go to unmapped.
-    label_index: dict[str, list[int]] = defaultdict(list)
+    # CB-009 (ratified 2026-07-06): grouped by (normalized_label, statement),
+    # not label alone — the same label in DIFFERENT statements is two different
+    # lines (SIG's balance-sheet "Exploration and evaluation assets" is the
+    # asset STOCK; its cash-flow twin is the period's capitalized additions),
+    # so cross-statement pairs must reach alias matching where statement-scoped
+    # aliases discriminate. Same label in the SAME statement keeps today's
+    # semantics. Items without statement attribution group under None,
+    # preserving the old behavior exactly.
+    label_index: dict[tuple, list[int]] = defaultdict(list)
     for i, row in enumerate(normalized_items):
-        label_index[row["normalized_label"]].append(i)
+        key = (row["normalized_label"], row["item"].get("statement"))
+        label_index[key].append(i)
 
     benign_skip: set[int] = set()
     ambiguous_indices: set[int] = set()
     benign_duplicates_meta: list[dict] = []
 
-    for normalized_label, indices in label_index.items():
+    for (normalized_label, _statement), indices in label_index.items():
         if len(indices) <= 1:
             continue
         values = [_coerce_number(normalized_items[i]["item"].get("value")) for i in indices]
@@ -534,6 +557,17 @@ def map_line_items(
         canonical_field = exact.get(normalized_label)
         match_type = "exact"
         item_semantics = semantics_map.get(normalized_label)
+
+        # CB-009: statement-scoped alias enforcement. A scoped alias matches
+        # only items attributed to one of its declared statements; items
+        # without statement attribution fail closed (never match a scoped
+        # alias) — the scope exists precisely because the same label names a
+        # different concept elsewhere, so an unattributed row is unsafe.
+        if canonical_field is not None:
+            scope = statement_scope.get(normalized_label)
+            if scope is not None and item.get("statement") not in scope:
+                canonical_field = None
+                item_semantics = None
 
         if canonical_field is None:
             for prefix, field_name in patterns:
@@ -627,6 +661,12 @@ def map_line_items(
         mapped[canonical_field] = _mapped_item(
             match["item"], match["match_type"], match.get("semantics")
         )
+        # Same-label multi-match (possible since CB-009's per-statement
+        # duplicate grouping lets cross-statement same-label rows reach
+        # candidates): first occurrence maps, the rest stay visible in
+        # unmapped[] — conservation requires every row land somewhere.
+        for extra_match in matches[1:]:
+            unmapped.append(_unmapped_item(extra_match["item"]))
 
     # --- Part B: Derived gross profit ---
     # When gross_profit is not directly mapped but both revenue and cost_of_revenue are,

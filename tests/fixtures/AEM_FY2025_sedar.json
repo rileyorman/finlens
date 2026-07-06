@@ -1087,6 +1087,14 @@
         "value": 97545
       },
       {
+        "label": "Impairment reversal (Note 24)",
+        "value": -229000
+      },
+      {
+        "label": "Foreign currency translation (gain) loss",
+        "value": -25654
+      },
+      {
         "label": "Other",
         "value": 139797
       },
@@ -1205,6 +1213,14 @@
       {
         "label": "Income and mining taxes paid",
         "value": 1177927
+      },
+      {
+        "label": "Amortization of property, plant and mine development (Note 9)",
+        "value": 1645297
+      },
+      {
+        "label": "Net income for the year",
+        "value": 4461461
       }
     ],
     "meta": {
@@ -1212,27 +1228,12 @@
       "sector_profile": "mining_sector",
       "total": 96,
       "mapped_count": 7,
-      "unmapped_count": 84,
-      "benign_skipped_count": 5,
+      "unmapped_count": 88,
+      "benign_skipped_count": 1,
       "benign_duplicates": [
         {
-          "normalized_label": "amortization of property, plant and mine development",
-          "occurrence_count": 2,
-          "value": 1645297.0
-        },
-        {
-          "normalized_label": "impairment reversal",
-          "occurrence_count": 2,
-          "value": -229000.0
-        },
-        {
-          "normalized_label": "foreign currency translation (gain) loss",
-          "occurrence_count": 2,
-          "value": -25654.0
-        },
-        {
           "normalized_label": "net income for the year",
-          "occurrence_count": 3,
+          "occurrence_count": 2,
           "value": 4461461.0
         }
       ],
