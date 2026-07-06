@@ -499,6 +499,71 @@ disagree, that is a defect: flag it, do not silently fix either side.
   test_sedar_balance_sheet_identity_* (detection: pass / wrong-concept
   flag at RY's real NCI 59 / honest skip).
 
+### CB-014: derived fields get structural DERIVED status in the cross-check — never sent to Gemini, never dispositioned, never capping the filer state
+- Status: DECIDED
+- Date: opened 2026-07-03 (open-queue design item "derived fields in the
+  cross-check denominator"; scope grew 2026-07-06 when CB-012 made REI.UN
+  property_operating_costs a second derived field); ratified 2026-07-06
+  (Riley+CC design session, all five rulings as recommended)
+- Decided by: Riley
+- Scope: cross_extractor.py comparison contract / all derived mapped
+  fields (corpus census: ATD gross_profit, REI.UN net_operating_income +
+  property_operating_costs) / CROSS_EXTRACTOR_VERSION 3 → 4
+- Decision: (1) Derived fields are never sent to Gemini and appear in
+  every cross-check record with explicit structural per-field status
+  DERIVED / reason derived_by_construction — explicit annotation, not
+  silent exclusion. (2) DERIVED rows are excluded from the aggregate-state
+  computation: VERIFIED stays reachable for filers carrying derived
+  fields; the PARTIAL-cap alternative was presented and rejected (PARTIAL's
+  ratified meaning is "the WITNESS honestly abstained"; a derived field is
+  "WE decided by construction"). (3) DERIVED needs no triage disposition
+  and is not re-opened by checker_version bumps; version 3 → 4, v3 records
+  preserved append-only (REI.UN's v3-linked "other" disposition stays as
+  history). (4) _derived_label becomes substring (was prefix) and
+  derived_label_mismatch fires when EITHER label is derived-marked (was
+  both — unreachable once FinLens-side derived fields left the
+  comparison); the surviving real case is Gemini deriving gross_profit
+  (the prompt invites it) against a printed FinLens line. (5) CB-013-aware
+  FIELD_DESCRIPTIONS for total_equity (grand total INCLUDING NCI, not the
+  attributable subtotal) and total_liabilities ship in the same commit so
+  the checker's concept definitions stay in lockstep with the mapper's
+  rulings. Edge guard: a mapping with ONLY derived fields returns honest
+  UNCHECKED (no_line_item_backed_fields), never a vacuous VERIFIED.
+- Reasoning: a synthetic value has no statement line for an independent
+  extractor to find — GEMINI_MISSING (or a reason-less soft CONFLICT
+  against the filer's printed blended line) was structurally guaranteed
+  every run, which is triage cost with zero information content, made
+  perpetual by version-linked disposition keys (analyze.py
+  _cx_disposition_key includes checker_version). A derived field's
+  verification path is different by nature: ATD gross_profit's inputs
+  (revenue, cost_of_revenue) are both themselves in the denominator
+  (transitively covered); REI.UN's NOI identity is pinned by test, though
+  its cost components are not canonical fields — coverage stated honestly,
+  not overclaimed. Silent exclusion was rejected on integrity-first
+  grounds: the log must show the field exists and why it was not
+  independently checked.
+- Evidence: LIVE FIRST RUN (2026-07-06, gemini-3.5-flash, moat-log record
+  183): REI.UN FY2025 = VERIFIED — the first VERIFIED this filer has ever
+  been eligible for — 8/8 line-item-backed fields AGREE byte-exact
+  (including first-run agreement on the new CB-013 fields: total_equity
+  7,157,263 via "Unitholders' equity", total_liabilities 7,737,129), both
+  derived fields recorded DERIVED/derived_by_construction with
+  gemini_value null. Pre-fix live costs on record: the 2026-07-03 v3 run
+  had REI.UN FLAGGED on property_operating_costs; ATD gross_profit's
+  reason mis-bucketed scope_masked_agree vs derived_label_mismatch purely
+  on Gemini's phrasing (prefix-only detection).
+- Enforced by: cross_extractor.py (checkable/derived split in
+  cross_check_filing, FIELD_STATUS_DERIVED +
+  FIELD_REASON_DERIVED_BY_CONSTRUCTION, _aggregate_state exclusion with
+  anti-vacuous-VERIFIED guard, _derived_label substring, either-sided
+  _masked_agree_reason, UNCHECKED_NO_LINE_ITEM_BACKED_FIELDS,
+  CROSS_EXTRACTOR_VERSION "4", CB-013-aware FIELD_DESCRIPTIONS);
+  analyze.py needs no change (DERIVED is outside CX_TRIAGE_STATUSES by
+  construction); tests test_cb014_* (7 pins: prompt exclusion + DERIVED
+  annotation, VERIFIED-reachable, conflicts-not-masked, all-derived →
+  UNCHECKED, substring detection, deterministic suffix reason,
+  description lockstep).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

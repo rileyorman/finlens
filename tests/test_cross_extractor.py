@@ -109,7 +109,7 @@ def test_cross_extractor_verified_when_all_fields_agree(monkeypatch, tmp_path):
     assert [field.status for field in result.fields] == ["AGREE", "AGREE"]
     assert "severity" not in result.fields[0].to_dict()
     assert "reason" not in result.fields[0].to_dict()
-    assert result.checker_version == "3"
+    assert result.checker_version == "4"
 
 
 def test_cross_extractor_value_match_with_differing_label_is_soft_scope_masked_agree(monkeypatch, tmp_path):
@@ -137,7 +137,12 @@ def test_cross_extractor_value_match_with_differing_label_is_soft_scope_masked_a
     assert field.to_dict()["reason"] == "scope_masked_agree"
 
 
-def test_cross_extractor_value_match_with_both_derived_labels_gets_derived_reason(monkeypatch, tmp_path):
+def test_cross_extractor_value_match_with_derived_marked_label_gets_derived_reason(monkeypatch, tmp_path):
+    """CB-014: derived_label_mismatch fires when EITHER label is derived-marked
+    (was: both). The FinLens item here deliberately carries only a derived-style
+    LABEL without the mapper's derived flag, so it still reaches comparison —
+    pinning the Gemini-side derivation path (the prompt invites Gemini to
+    derive gross_profit)."""
     _patch_pdf_and_log(monkeypatch, tmp_path)
     monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
         {
@@ -366,7 +371,7 @@ def test_cross_extractor_log_writer_is_idempotent_by_filing_accession_and_versio
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["record_type"] == "cross_extractor_agreement"
-    assert record["checker_version"] == "3"
+    assert record["checker_version"] == "4"
 
 
 def test_cross_extractor_log_allows_new_version_after_legacy_v1_definitive(tmp_path):
@@ -402,7 +407,7 @@ def test_cross_extractor_log_allows_new_version_after_legacy_v1_definitive(tmp_p
     ]
     assert len(records) == 2
     assert records[0].get("checker_version") is None
-    assert records[1]["checker_version"] == "3"
+    assert records[1]["checker_version"] == "4"
 
 
 def test_cross_extractor_log_allows_new_version_after_legacy_v2_definitive(tmp_path):
@@ -447,12 +452,12 @@ def test_cross_extractor_log_allows_new_version_after_legacy_v2_definitive(tmp_p
         for line in path.read_text(encoding="utf-8").splitlines()
     ]
     assert len(records) == 2
-    assert [record["checker_version"] for record in records] == ["2", "3"]
+    assert [record["checker_version"] for record in records] == ["2", "4"]
     assert records[0]["state"] == "VERIFIED"
     assert records[1]["state"] == "FLAGGED"
     report = analyze_log(path)
     assert "scope_masked_agree" in report
-    assert "ATD FY2025 v3 net_income severity=soft reason=scope_masked_agree" in report
+    assert "ATD FY2025 v4 net_income severity=soft reason=scope_masked_agree" in report
 
 
 def test_cross_extractor_log_allows_unchecked_then_definitive_same_filing(tmp_path):
@@ -688,7 +693,7 @@ def test_cross_extractor_disposition_appears_joined_in_report(tmp_path):
         ticker="ATD",
         fiscal_year="FY2025",
         field="interest_expense",
-        checker_version="3",
+        checker_version="4",
         disposition="checker_error",
         rationale="Gemini used a note component instead of the statement total.",
         timestamp="2026-07-04T00:01:00+00:00",
@@ -700,7 +705,7 @@ def test_cross_extractor_disposition_appears_joined_in_report(tmp_path):
     assert "Open triage targets    : 0" in report
     assert "DISPOSITIONED checker_error" in report
     assert "Gemini used a note component" in report
-    assert "ATD FY2025 v3 interest_expense severity=soft" in report
+    assert "ATD FY2025 v4 interest_expense severity=soft" in report
 
 
 def test_cross_extractor_disposition_does_not_attach_across_version_bump(tmp_path):
@@ -762,7 +767,7 @@ def test_cross_extractor_disposition_does_not_attach_across_version_bump(tmp_pat
 
     report = analyze_log(path)
 
-    assert "v3" in report
+    assert "v4" in report
     assert "interest_expense" in report
     assert "OPEN" in report
     assert "Open triage targets    : 1" in report
@@ -779,7 +784,7 @@ def test_cross_extractor_disposition_rejects_invalid_target(tmp_path):
             ticker="MISS",
             fiscal_year="FY2025",
             field="interest_expense",
-            checker_version="3",
+            checker_version="4",
             disposition="checker_error",
             rationale="No matching agreement exists.",
             log_path=path,
@@ -817,7 +822,7 @@ def test_cross_extractor_duplicate_dispositions_append_and_latest_wins(tmp_path)
             ticker="SLF",
             fiscal_year="FY2025",
             field="insurance_finance_result",
-            checker_version="3",
+            checker_version="4",
             disposition=disposition,
             rationale=rationale,
             timestamp=timestamp,
@@ -865,3 +870,164 @@ def test_cross_extractor_compares_native_units_without_fx_or_scale(monkeypatch, 
     assert result.fields[0].finlens_value == 1000.0
     assert result.fields[0].gemini_value == 1000.0
     assert "currency=CAD, scale=thousands" in captured["prompt"]
+
+
+def _derived_item(field: str, value: float) -> dict:
+    """A mapper-synthesized mapped entry, shaped like the real fixtures
+    (REI.UN net_operating_income / property_operating_costs, ATD gross_profit)."""
+    return {
+        "value": value,
+        "source_label": f"derived: {field} components",
+        "match_type": "derived",
+        "confidence": None,
+        "derived": True,
+    }
+
+
+def test_cb014_derived_fields_never_sent_to_gemini_and_marked_derived(monkeypatch, tmp_path):
+    """CB-014 ruling 1: derived fields are excluded from the Gemini prompt and
+    comparison, but appear in the record with explicit structural status
+    DERIVED / reason derived_by_construction — never silently dropped."""
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    captured = {}
+
+    def _run(_pdf_path, prompt, _api_key, _model):
+        captured["prompt"] = prompt
+        return _json([
+            {"canonical_field": "rental_revenue", "value": 1176428.0, "source_label": "Rental revenue"},
+        ])
+
+    monkeypatch.setattr(ce, "_run_gemini", _run)
+
+    result = ce.cross_check_filing(
+        _entry(ticker="REI.UN", fiscal_year="FY2025", filing_accession="REIUN_FY2025_sedar.json"),
+        {
+            "rental_revenue": {"value": 1176428.0, "source_label": "Rental revenue"},
+            "net_operating_income": _derived_item("net_operating_income", 720404.0),
+        },
+        api_key="key",
+        model="gemini-test",
+    )
+
+    assert "net_operating_income" not in captured["prompt"]
+    assert "rental_revenue" in captured["prompt"]
+    by_field = {field.canonical_field: field for field in result.fields}
+    derived = by_field["net_operating_income"]
+    assert derived.status == ce.FIELD_STATUS_DERIVED
+    assert derived.reason == ce.FIELD_REASON_DERIVED_BY_CONSTRUCTION
+    assert derived.gemini_value is None
+    assert derived.finlens_value == 720404.0
+    assert derived.to_dict()["status"] == "DERIVED"
+
+
+def test_cb014_derived_fields_do_not_cap_state_verified_reachable(monkeypatch, tmp_path):
+    """CB-014 ruling 2: aggregate state computes over line-item-backed fields
+    only — a filer whose checkable fields all AGREE is VERIFIED even with
+    derived fields present (the REI.UN case: no longer a permanent
+    PARTIAL/FLAGGED by our own design choice)."""
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
+        {"canonical_field": "rental_revenue", "value": 1176428.0, "source_label": "Rental revenue"},
+        {"canonical_field": "total_assets", "value": 14894392.0, "source_label": "Total assets"},
+    ]))
+
+    result = ce.cross_check_filing(
+        _entry(ticker="REI.UN", fiscal_year="FY2025", filing_accession="REIUN_FY2025_sedar.json"),
+        {
+            "rental_revenue": {"value": 1176428.0, "source_label": "Rental revenue"},
+            "total_assets": {"value": 14894392.0, "source_label": "Total assets"},
+            "net_operating_income": _derived_item("net_operating_income", 720404.0),
+            "property_operating_costs": _derived_item("property_operating_costs", 456024.0),
+        },
+        api_key="key",
+        model="gemini-test",
+    )
+
+    assert result.state == "VERIFIED"
+    statuses = sorted(field.status for field in result.fields)
+    assert statuses == ["AGREE", "AGREE", "DERIVED", "DERIVED"]
+
+
+def test_cb014_derived_fields_do_not_mask_real_conflicts(monkeypatch, tmp_path):
+    """A genuine CONFLICT on a line-item-backed field still flags the filer;
+    DERIVED rows change nothing about real disagreements."""
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
+        {"canonical_field": "rental_revenue", "value": 999999.0, "source_label": "Rental revenue"},
+    ]))
+
+    result = ce.cross_check_filing(
+        _entry(ticker="REI.UN", fiscal_year="FY2025", filing_accession="REIUN_FY2025_sedar.json"),
+        {
+            "rental_revenue": {"value": 1176428.0, "source_label": "Rental revenue"},
+            "net_operating_income": _derived_item("net_operating_income", 720404.0),
+        },
+        api_key="key",
+        model="gemini-test",
+    )
+
+    assert result.state == "FLAGGED"
+
+
+def test_cb014_all_derived_mapped_is_unchecked_not_vacuous_verified(monkeypatch, tmp_path):
+    """CB-014 edge guard: a mapping with ONLY derived fields makes no Gemini
+    call and returns honest UNCHECKED (no_line_item_backed_fields) — never a
+    vacuous VERIFIED with nothing compared."""
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+
+    def _must_not_run(*_args):
+        raise AssertionError("Gemini must not be called when no checkable fields exist")
+
+    monkeypatch.setattr(ce, "_run_gemini", _must_not_run)
+
+    result = ce.cross_check_filing(
+        _entry(ticker="REI.UN", fiscal_year="FY2025", filing_accession="REIUN_FY2025_sedar.json"),
+        {"net_operating_income": _derived_item("net_operating_income", 720404.0)},
+        api_key="key",
+        model="gemini-test",
+    )
+
+    assert result.state == "UNCHECKED"
+    assert result.reason == ce.UNCHECKED_NO_LINE_ITEM_BACKED_FIELDS
+
+
+def test_cb014_derived_label_detects_suffix_phrasing():
+    """CB-014 ruling 4 (the ATD mis-bucket fix): 'derived' anywhere in the
+    normalized label counts — Gemini phrases the marker both as a prefix
+    ('Derived from ...') and a suffix ('... (derived)') across runs."""
+    assert ce._derived_label("Derived from Revenues less Cost of sales")
+    assert ce._derived_label("Gross profit (derived)")
+    assert ce._derived_label("derived: revenue - cost_of_revenue")
+    assert not ce._derived_label("Gross profit")
+
+
+def test_cb014_gemini_suffix_derived_label_gets_deterministic_reason(monkeypatch, tmp_path):
+    """The live mis-bucket case: FinLens printed line vs Gemini suffix-derived
+    label, values in tolerance -> reason is derived_label_mismatch (was
+    scope_masked_agree under the prefix-only v3 check)."""
+    _patch_pdf_and_log(monkeypatch, tmp_path)
+    monkeypatch.setattr(ce, "_run_gemini", lambda *_args: _json([
+        {"canonical_field": "gross_profit", "value": 13021.3, "source_label": "Gross profit (derived)"},
+    ]))
+
+    result = ce.cross_check_filing(
+        _entry(ticker="ATD", filing_accession="ATD_FY2025_sedar.json"),
+        {"gross_profit": {"value": 13021.3, "source_label": "Gross profit"}},
+        api_key="key",
+        model="gemini-test",
+    )
+
+    assert result.fields[0].status == "CONFLICT"
+    assert result.fields[0].severity == "soft"
+    assert result.fields[0].reason == ce.FIELD_REASON_DERIVED_LABEL_MISMATCH
+
+
+def test_cb014_field_descriptions_cover_cb013_balance_sheet_fields():
+    """CB-014 ruling 5: the checker's concept definitions stay in lockstep
+    with the mapper's CB-013 rulings — without the NCI wording Gemini would
+    plausibly return SLF's attributable subtotal and re-introduce the exact
+    structurally-guaranteed conflict CB-013 designed out of the mapper."""
+    te = ce.FIELD_DESCRIPTIONS["total_equity"]
+    assert "INCLUDING" in te and "non-controlling" in te
+    assert "NOT the shareholders-only" in te
+    assert "total_liabilities" in ce.FIELD_DESCRIPTIONS

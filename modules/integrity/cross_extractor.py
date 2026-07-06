@@ -21,12 +21,22 @@ from modules.campaign_pdf import resolve_campaign_pdf
 
 
 DEFAULT_MODEL = "gemini-3.5-flash"
-CROSS_EXTRACTOR_VERSION = "3"
+CROSS_EXTRACTOR_VERSION = "4"
 UNCHECKED_PDF_UNRESOLVABLE = "pdf_unresolvable"
 UNCHECKED_NO_KEY = "no_key"
 UNCHECKED_NO_MAPPED_FIELDS = "no_mapped_fields"
+UNCHECKED_NO_LINE_ITEM_BACKED_FIELDS = "no_line_item_backed_fields"
 UNCHECKED_GEMINI_ERROR = "gemini_error"
 UNCHECKED_PARSE_ERROR = "parse_error"
+# CB-014 (ratified 2026-07-06): derived FinLens fields (synthetic values the
+# mapper computes, e.g. REI.UN rental-only NOI) are structurally unfindable by
+# an independent PDF extractor. They are never sent to Gemini; each appears in
+# the record with the explicit structural status DERIVED (never silently
+# dropped), is excluded from the aggregate-state computation, and needs no
+# triage disposition — so checker_version bumps no longer re-open
+# structurally-guaranteed mismatches.
+FIELD_STATUS_DERIVED = "DERIVED"
+FIELD_REASON_DERIVED_BY_CONSTRUCTION = "derived_by_construction"
 FIELD_REASON_SCOPE_MASKED_AGREE = "scope_masked_agree"
 FIELD_REASON_DERIVED_LABEL_MISMATCH = "derived_label_mismatch"
 FIELD_REASON_UNUSABLE_PEER_LABEL = "unusable_peer_label"
@@ -70,6 +80,13 @@ FIELD_DESCRIPTIONS = {
     ),
     "royalties": "Resource-sector royalties.",
     "total_assets": "Total assets from the consolidated balance sheet or statement of financial position.",
+    "total_equity": (
+        "Total equity GRAND TOTAL from the consolidated balance sheet, INCLUDING "
+        "non-controlling interests — the equity line that closes total assets = "
+        "total liabilities + total equity. NOT the shareholders-only or "
+        "attributable-to-unitholders subtotal when a grand-total equity line exists."
+    ),
+    "total_liabilities": "Total liabilities from the consolidated balance sheet or statement of financial position.",
 }
 
 
@@ -97,7 +114,16 @@ def _labels_match(finlens_label: str, gemini_label: str) -> bool:
 
 
 def _derived_label(label: str) -> bool:
-    return normalize_source_label(label).startswith("derived")
+    # CB-014: substring, not prefix — Gemini phrases derivation markers both
+    # ways across runs ("Derived from ..." and "... (derived)"); prefix-only
+    # matching mis-bucketed the reason code depending on phrasing.
+    return "derived" in normalize_source_label(label)
+
+
+def _is_derived_mapped_field(item: dict[str, Any]) -> bool:
+    """A mapper-synthesized value (mapped item carries derived: True) —
+    structurally unfindable by an independent extractor (CB-014)."""
+    return bool(isinstance(item, dict) and item.get("derived"))
 
 
 def _unusable_peer_label(label: str) -> bool:
@@ -336,7 +362,11 @@ def _status(
 def _masked_agree_reason(finlens_label: str, gemini_label: str) -> str:
     if _unusable_peer_label(gemini_label):
         return FIELD_REASON_UNUSABLE_PEER_LABEL
-    if _derived_label(finlens_label) and _derived_label(gemini_label):
+    # CB-014: EITHER label derived-marked (was: both). FinLens-side derived
+    # fields no longer reach the comparison at all, so the surviving real case
+    # is Gemini deriving a value (the prompt invites it for gross_profit)
+    # against a printed FinLens line — one-sided by construction.
+    if _derived_label(finlens_label) or _derived_label(gemini_label):
         return FIELD_REASON_DERIVED_LABEL_MISMATCH
     return FIELD_REASON_SCOPE_MASKED_AGREE
 
@@ -402,7 +432,18 @@ def _field_results(
 
 
 def _aggregate_state(fields: list[CrossExtractorField]) -> str:
-    statuses = {field.status for field in fields}
+    # CB-014: DERIVED rows are structural annotations, not comparison
+    # outcomes — the filer state is computed over line-item-backed fields
+    # only (VERIFIED stays reachable for filers carrying derived fields;
+    # the per-field DERIVED rows keep them visible in every record).
+    statuses = {
+        field.status for field in fields if field.status != FIELD_STATUS_DERIVED
+    }
+    if not statuses:
+        # No independently-checkable field reached comparison. Never emit a
+        # vacuous VERIFIED — the caller's no_line_item_backed_fields guard
+        # makes this unreachable in production; this is defense in depth.
+        return "UNCHECKED"
     if "CONFLICT" in statuses:
         return "FLAGGED"
     if "GEMINI_MISSING" in statuses:
@@ -473,7 +514,36 @@ def cross_check_filing(
             _unchecked_result(registry_entry, model, UNCHECKED_NO_MAPPED_FIELDS)
         )
 
-    prompt = _prompt(registry_entry, fields)
+    # CB-014: derived fields never reach Gemini — a synthetic value has no
+    # statement line for an independent extractor to find, so asking wastes
+    # the witness and produces structurally-guaranteed noise. Each derived
+    # field is recorded explicitly (status DERIVED), never silently dropped.
+    checkable_fields = {
+        field: item
+        for field, item in fields.items()
+        if not _is_derived_mapped_field(item)
+    }
+    derived_results = [
+        CrossExtractorField(
+            canonical_field=field,
+            finlens_value=_normalize_number(item.get("value")),
+            gemini_value=None,
+            status=FIELD_STATUS_DERIVED,
+            finlens_label=str(item.get("source_label", "")),
+            gemini_label="",
+            reason=FIELD_REASON_DERIVED_BY_CONSTRUCTION,
+        )
+        for field, item in fields.items()
+        if _is_derived_mapped_field(item)
+    ]
+    if not checkable_fields:
+        return _finalize_result(
+            _unchecked_result(
+                registry_entry, model, UNCHECKED_NO_LINE_ITEM_BACKED_FIELDS
+            )
+        )
+
+    prompt = _prompt(registry_entry, checkable_fields)
     try:
         raw = _run_gemini(pdf_path, prompt, api_key, model)
     except Exception:
@@ -488,8 +558,8 @@ def cross_check_filing(
             _unchecked_result(registry_entry, model, UNCHECKED_PARSE_ERROR)
         )
 
-    gemini_fields = _gemini_fields_by_name(parsed, set(fields))
-    field_results = _field_results(fields, gemini_fields)
+    gemini_fields = _gemini_fields_by_name(parsed, set(checkable_fields))
+    field_results = _field_results(checkable_fields, gemini_fields) + derived_results
     result = CrossCheckResult(
         state=_aggregate_state(field_results),
         fields=field_results,
