@@ -12,11 +12,13 @@ import json
 
 import pytest
 
+from config import MAX_FILING_CHARS
 from modules.claude_analyzer import (
     FabricatedExtractionError,
     _check_figure_presence,
     _figure_presence,
     _number_in_text,
+    is_truncated_excerpt,
 )
 from modules.integrity.log import append_figure_presence_to_log
 
@@ -190,3 +192,22 @@ def test_aggregate_behavior_unchanged():
     # rows list is additional output; aggregate fields are untouched
     assert "rows" in presence
     assert len(presence["rows"]) == 5
+
+
+# ---------------------------------------------------------------------------
+# Truncated-excerpt detection (fabrication fix (b))
+# ---------------------------------------------------------------------------
+# Stored library/cache text of exactly MAX_FILING_CHARS is the signature of a
+# legacy text[:MAX_FILING_CHARS] write. Re-Analyse must never feed such an
+# excerpt to extraction — it is routed to PDF re-extraction or an honest error.
+
+def test_truncated_excerpt_signature_detected():
+    assert is_truncated_excerpt("x" * MAX_FILING_CHARS)
+
+
+def test_full_documents_are_not_flagged_as_truncated():
+    assert not is_truncated_excerpt("x" * (MAX_FILING_CHARS + 1))   # full large doc
+    assert not is_truncated_excerpt("x" * (MAX_FILING_CHARS - 1))   # genuinely small doc
+    assert not is_truncated_excerpt("short filing text")
+    assert not is_truncated_excerpt("")
+    assert not is_truncated_excerpt(None)

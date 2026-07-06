@@ -39,6 +39,22 @@ def _has_unit_scale_word(value: object) -> bool:
     return any(word in text for word in _UNIT_SCALE_WORDS)
 
 
+def is_truncated_excerpt(text: str | None) -> bool:
+    """True when stored filing text is almost certainly a truncated excerpt.
+
+    Library entries and legacy text caches were historically written as
+    text[:MAX_FILING_CHARS], so a stored document of exactly that length is a
+    truncation signature, not a real document size. Excerpts that size were
+    cut for the analysis calls (2-4) and usually end mid-document with no
+    financial statements — feeding one to extraction (Call 1) yields either an
+    honest FabricatedExtractionError or, pre-guard, fabricated numbers
+    (reference incident: NVDA FY2026 re-analyse, 2026-07-03). A genuine
+    document of exactly MAX_FILING_CHARS chars is astronomically unlikely; the
+    cost of a false positive is only a PDF re-extraction or an honest error.
+    """
+    return text is not None and len(text) == MAX_FILING_CHARS
+
+
 def is_legacy_scaled_financial_data_stale(
     financial_data: dict,
     schema_version: object,

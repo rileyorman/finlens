@@ -39,6 +39,7 @@ from modules.claude_analyzer import (
     analyze_mda_sentiment,
     build_filing_context,
     is_legacy_scaled_financial_data_stale,
+    is_truncated_excerpt,
     is_per_share_line_item,
     normalize_financial_data,
     normalize_and_validate,
@@ -135,7 +136,11 @@ DEFAULT_MODEL_LABEL = next(
 def _get_filing_context(filing_text: str, ticker: str | None, period: str | None) -> list:
     ticker_key = (ticker or "unknown").strip().upper() or "unknown"
     period_key = re.sub(r"\s+", "_", (period or "unknown").strip()) or "unknown"
-    cache_key = f"filing_context::{ticker_key}::{period_key}"
+    # Text length in the key keeps contexts built from different text for the
+    # same filing apart — without it, a context built from empty or truncated
+    # text earlier in the session would be silently reused by Re-Analyse (and
+    # its blocks are exactly what Call 1's figure-presence guard checks).
+    cache_key = f"filing_context::{ticker_key}::{period_key}::{len(filing_text or '')}"
     if cache_key not in st.session_state:
         st.session_state[cache_key] = build_filing_context(filing_text)
     return st.session_state[cache_key]
@@ -457,6 +462,21 @@ def _library_text_for_entry(entry: dict) -> str | None:
         if text:
             return text
     return entry.get("raw_text")
+
+
+def _reanalyse_text_for_entry(entry: dict) -> str | None:
+    """Full-document text for Re-Analyse, or None when only a truncated excerpt exists.
+
+    Extraction (Call 1) needs the full document — its input windows and the
+    figure-presence guard assume the financial statements are present, and an
+    80K analysis excerpt usually ends before them. Returning None routes the
+    caller to PDF re-extraction or an honest error instead of a doomed
+    extraction call (fabrication fix (b), reference: NVDA FY2026 incident).
+    """
+    text = _library_text_for_entry(entry)
+    if is_truncated_excerpt(text):
+        return None
+    return text
 
 
 def _supabase_row_to_library_entry(row: dict) -> dict:
@@ -1922,7 +1942,8 @@ document.addEventListener('focusin', function(e) {
             )
             if st.session_state.get("al_no_text_warning"):
                 st.warning(
-                    f"No PDF stored for **{st.session_state.al_no_text_warning}** — "
+                    f"No full source document stored for **{st.session_state.al_no_text_warning}** "
+                    "(no cached PDF, and any stored text is only a truncated excerpt) — "
                     "switch to Single Analysis to re-upload."
                 )
                 st.session_state.al_no_text_warning = None
@@ -1962,11 +1983,11 @@ document.addEventListener('focusin', function(e) {
                             if st.button("Yes, re-analyse", key=f"al_ra_yes_{eid}",
                                          width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
-                                _entry_text = _library_text_for_entry(entry)
+                                _entry_text = _reanalyse_text_for_entry(entry)
                                 _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
-                                        "raw_text":     _entry_text[:MAX_FILING_CHARS],
+                                        "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
                                         "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                         "entry_id":     eid,
                                         "file_name":    entry.get("file_name", ""),
@@ -2013,7 +2034,7 @@ document.addEventListener('focusin', function(e) {
                                             else:
                                                 _extracted_text = extract_text_from_pdf(io.BytesIO(_pdf_bytes))
                                             st.session_state.pending_reanalyse = {
-                                                "raw_text":     _extracted_text[:MAX_FILING_CHARS],
+                                                "raw_text":     _extracted_text,  # full re-extracted document — do not pre-truncate extraction input
                                                 "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                                 "entry_id":     eid,
                                                 "file_name":    entry.get("file_name", ""),
@@ -2193,6 +2214,8 @@ document.addEventListener('focusin', function(e) {
                                         f"{_library_company_header(ticker, [entry])}"
                                         f"{' — ' + _entry_period if _entry_period else ''}"
                                     )
+                                    # Load path: excerpt-sized text is fine here — it only feeds
+                                    # analysis-sized calls (dashboard regen), never extraction.
                                     _entry_text = _library_text_for_entry(entry)
                                     st.session_state.cached_filing_text = _entry_text
                                     _cached_analysis = (
@@ -2322,11 +2345,11 @@ document.addEventListener('focusin', function(e) {
                                 if st.button("Yes, re-analyse", key=f"lib_ra_yes_{eid}",
                                              width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
-                                    _entry_text = _library_text_for_entry(entry)
+                                    _entry_text = _reanalyse_text_for_entry(entry)
                                     _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
-                                            "raw_text":     _entry_text[:MAX_FILING_CHARS],
+                                            "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
                                             "company_name": entry.get("company_name") or entry.get("file_name") or "Unknown",
                                             "entry_id":     eid,
                                             "file_name":    entry.get("file_name", ""),
@@ -2430,12 +2453,18 @@ if page == "Portfolio Manager":
             st.warning("Data integrity check could not run for this filing. Details were written to logs/service_stderr.log.")
         if ra.get("source") == "edgar" and ra.get("file_path"):
             try:
+                # _ra_text is the full document here (truncated excerpts are
+                # routed away before extraction), so this write heals any legacy
+                # cache an older re-analyse truncated. Never write excerpts here.
                 safe_write_text(ra["file_path"], _ra_text)
             except Exception:
                 pass
         try:
+            # Library JSON stores an analysis-sized excerpt (matches fresh
+            # upload); the full document lives in the on-disk text/PDF caches.
             lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                    _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                    _ra_fd, _ra_sd, _ra_bb, _ra_dd,
+                    raw_text=_ra_text[:MAX_FILING_CHARS],
                     mda_sentiment=_ra_mda,
                     source=ra.get("source", "pdf"),
                     file_path=ra.get("file_path"))
@@ -2447,7 +2476,7 @@ if page == "Portfolio Manager":
             _ra_sd,
             _ra_bb,
             _ra_dd,
-            raw_text=_ra_text,
+            raw_text=_ra_text[:MAX_FILING_CHARS],
             mda_sentiment=_ra_mda,
             file_name=ra.get("file_name", ""),
             file_size=ra.get("file_size", 0),
@@ -5631,9 +5660,21 @@ if st.session_state.get("reanalyse_no_text"):
     _pdf_info = st.session_state.get("reanalyse_pdf_info") or {}
     if _pdf_info.get("source") == "edgar":
         _restored_text = _read_text_cache(_pdf_info.get("file_path"))
+        if _restored_text and is_truncated_excerpt(_restored_text):
+            # Legacy corrupted cache: an earlier re-analyse wrote the 80K
+            # excerpt back over the full EDGAR text. Extraction would fail
+            # its figure-presence guard — fail honestly with the remedy.
+            st.info(
+                f"Cached EDGAR text for **{st.session_state.reanalyse_no_text}** is a truncated "
+                f"excerpt (the financial statements are missing). Load the filing from EDGAR "
+                f"again to re-fetch the full document, then re-analyse."
+            )
+            st.session_state.reanalyse_no_text = None
+            st.session_state.reanalyse_pdf_info = None
+            st.stop()
         if _restored_text:
             st.session_state.pending_reanalyse = {
-                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "raw_text":     _restored_text,  # full document — extraction needs the statements
                 "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
@@ -5681,7 +5722,7 @@ if st.session_state.get("reanalyse_no_text"):
             else:
                 _restored_text = extract_text_from_pdf(io.BytesIO(_cached_bytes))
             st.session_state.pending_reanalyse = {
-                "raw_text":     _restored_text[:MAX_FILING_CHARS],
+                "raw_text":     _restored_text,  # full re-extracted document — do not pre-truncate extraction input
                 "company_name": _pdf_info.get("company_name", st.session_state.reanalyse_no_text),
                 "entry_id":     _pdf_info.get("entry_id"),
                 "file_name":    _pdf_info.get("file_name", ""),
@@ -5940,13 +5981,19 @@ if st.session_state.get("pending_reanalyse"):
 
     if ra.get("source") == "edgar" and ra.get("file_path"):
         try:
+            # _ra_text is the full document here (truncated excerpts are routed
+            # away before extraction), so this write heals any legacy cache an
+            # older re-analyse truncated. Never write excerpts to this cache.
             safe_write_text(ra["file_path"], _ra_text)
         except Exception:
             pass
 
     try:
+        # Library JSON stores an analysis-sized excerpt (matches fresh upload);
+        # the full document lives in the on-disk text/PDF caches.
         lib_add(ra["entry_id"], ra["file_name"], ra["file_size"],
-                _ra_fd, _ra_sd, _ra_bb, _ra_dd, raw_text=_ra_text,
+                _ra_fd, _ra_sd, _ra_bb, _ra_dd,
+                raw_text=_ra_text[:MAX_FILING_CHARS],
                 mda_sentiment=_ra_mda,
                 source=ra.get("source", "pdf"),
                 file_path=ra.get("file_path"),
@@ -5959,7 +6006,7 @@ if st.session_state.get("pending_reanalyse"):
         _ra_sd,
         _ra_bb,
         _ra_dd,
-        raw_text=_ra_text,
+        raw_text=_ra_text[:MAX_FILING_CHARS],
         mda_sentiment=_ra_mda,
         file_name=ra.get("file_name", ""),
         file_size=ra.get("file_size", 0),
