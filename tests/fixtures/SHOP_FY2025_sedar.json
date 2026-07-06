@@ -827,7 +827,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash, cash equivalents and restricted cash \u2013 beginning of year",
+        "label": "Cash, cash equivalents and restricted cash – beginning of year",
         "values": {
           "December 31, 2025": 1498,
           "December 31, 2024": 1413,
@@ -836,7 +836,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash, cash equivalents and restricted cash \u2013 end of year",
+        "label": "Cash, cash equivalents and restricted cash – end of year",
         "values": {
           "December 31, 2025": 1545,
           "December 31, 2024": 1498,
@@ -1182,7 +1182,8 @@
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }

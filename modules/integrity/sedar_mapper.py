@@ -246,16 +246,21 @@ def _build_match_indexes(
     alias_table: dict[str, Any],
     accounting_standard: str,
     sector_profile: str | None,
-) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict]]:
-    """Return (exact_map, patterns, semantics_map).
+) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str]]:
+    """Return (exact_map, patterns, semantics_map, collision_rules).
 
-    exact_map     normalized_label -> canonical_field_name
-    patterns      list of (starts_with_prefix, canonical_field_name)
-    semantics_map normalized_label -> semantics dict (e.g. {"excludes_da": True})
+    exact_map       normalized_label -> canonical_field_name
+    patterns        list of (starts_with_prefix, canonical_field_name)
+    semantics_map   normalized_label -> semantics dict (e.g. {"excludes_da": True})
+    collision_rules canonical_field_name -> collision_resolution rule string.
+                    Per-field opt-in (CB-010): a field config may declare
+                    "collision_resolution": "prefer_specific_alias" to resolve
+                    distinct-label collisions instead of blocking them.
     """
     exact: dict[str, str] = {}
     patterns: list[tuple[str, str]] = []
     semantics_map: dict[str, dict] = {}
+    collision_rules: dict[str, str] = {}
 
     # First-write-wins on alias-label collisions: defaults are iterated before
     # sector-profile fields, so a default claims a collided label and the
@@ -263,6 +268,9 @@ def _build_match_indexes(
     # without it, profile total_revenue_bank ("total revenue") would steal
     # the label from default revenue when the financial_sector profile resolves.
     for field_name, config in _iter_target_fields(alias_table, sector_profile):
+        rule = config.get("collision_resolution")
+        if rule:
+            collision_rules[field_name] = rule
         for alias in config.get("aliases") or []:
             if _standard_allowed(alias, accounting_standard):
                 label = alias["label"]
@@ -280,7 +288,7 @@ def _build_match_indexes(
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
 
-    return exact, patterns, semantics_map
+    return exact, patterns, semantics_map, collision_rules
 
 
 def _unmapped_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -465,7 +473,7 @@ def map_line_items(
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
     sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
-    exact, patterns, semantics_map = _build_match_indexes(
+    exact, patterns, semantics_map, collision_rules = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
 
@@ -549,6 +557,7 @@ def map_line_items(
     # Two distinct normalized labels both matching the same canonical field → collision.
     mapped: dict[str, dict[str, Any]] = {}
     collisions: list[dict[str, Any]] = []
+    resolved_collisions: list[dict[str, Any]] = []
 
     for canonical_field, matches in candidates.items():
         distinct_labels = {match["normalized_label"] for match in matches}
@@ -567,6 +576,45 @@ def map_line_items(
                 for duplicate_match in matches[1:]:
                     unmapped.append(_unmapped_item(duplicate_match["item"]))
                 continue
+            # CB-010 (ratified 2026-07-06): per-field opt-in resolution.
+            # "prefer_specific_alias" — the match that arrived via the
+            # LONGEST normalized alias label wins (the concept's full name
+            # beats a note sub-component's bare label, e.g. SIG's
+            # "Cash and cash equivalents (Note 4)" 15,208,214 over the
+            # note-breakdown row "Cash" 1,883,531). Applies only when every
+            # match is an exact alias match (pattern-prefix lengths are not
+            # a specificity signal) and the longest label is unique — a
+            # length tie stays genuinely ambiguous and blocks as before.
+            # Resolutions are recorded in meta.resolved_collisions, never
+            # silent.
+            rule = collision_rules.get(canonical_field)
+            if rule == "prefer_specific_alias" and all(
+                match["match_type"] == "exact" for match in matches
+            ):
+                max_len = max(len(match["normalized_label"]) for match in matches)
+                longest = [
+                    match for match in matches
+                    if len(match["normalized_label"]) == max_len
+                ]
+                if len(longest) == 1:
+                    winner = longest[0]
+                    mapped[canonical_field] = _mapped_item(
+                        winner["item"], winner["match_type"], winner.get("semantics")
+                    )
+                    resolved_collisions.append({
+                        "canonical_field": canonical_field,
+                        "rule": rule,
+                        "chosen_label": winner["item"].get("label"),
+                        "rejected_labels": [
+                            match["item"].get("label")
+                            for match in matches
+                            if match is not winner
+                        ],
+                    })
+                    for match in matches:
+                        if match is not winner:
+                            unmapped.append(_unmapped_item(match["item"]))
+                    continue
             collisions.append({
                 "canonical_field": canonical_field,
                 "labels": [match["item"].get("label") for match in matches],
@@ -626,5 +674,6 @@ def map_line_items(
             "benign_duplicates": benign_duplicates_meta,
             "gross_profit_derived": gross_profit_derived,
             "collisions": collisions,
+            "resolved_collisions": resolved_collisions,
         },
     }

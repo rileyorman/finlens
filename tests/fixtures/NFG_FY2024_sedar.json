@@ -461,7 +461,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Loss per share \u2013 basic and diluted ($)",
+        "label": "Loss per share – basic and diluted ($)",
         "values": {
           "Year ended December 31, 2024": -0.26,
           "Year ended December 31, 2023": -0.45
@@ -469,7 +469,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "label": "Weighted average number of common shares outstanding – basic and diluted",
         "values": {
           "Year ended December 31, 2024": 194032544,
           "Year ended December 31, 2023": 178363103
@@ -998,11 +998,11 @@
         "value": 10048570
       },
       {
-        "label": "Loss per share \u2013 basic and diluted ($)",
+        "label": "Loss per share – basic and diluted ($)",
         "value": -0.26
       },
       {
-        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "label": "Weighted average number of common shares outstanding – basic and diluted",
         "value": 194032544
       },
       {
@@ -1302,7 +1302,8 @@
         }
       ],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }

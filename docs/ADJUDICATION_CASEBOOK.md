@@ -248,25 +248,50 @@ disagree, that is a defect: flag it, do not silently fix either side.
 - Enforced by: absence of the alias (deliberate); this entry.
 
 ### CB-010: cash collision — note sub-component must not beat the statement total
-- Status: OPEN
-- Date: opened 2026-07-05/06 (SIG FY2024 pilot review)
-- Decided by: pending (design task — mapper collision-resolution rule)
-- Scope: `cash` / mining_exploration_sector (likely general) / SIG
-- Decision (question): SIG's "Cash and cash equivalents (Note 4)"
-  15,208,214 (balance-sheet line) and bare "Cash" 1,883,531 (note
-  sub-component inside the cash-note breakdown) both alias-match `cash`;
-  the collision correctly blocked mapping. Design the resolution rule:
-  prefer-total, statement-scoping (cash maps from balance_sheet only), or
-  alias-priority ordering.
+- Status: DECIDED
+- Date: opened 2026-07-05/06 (SIG FY2024 pilot review); ratified 2026-07-06
+  (Riley+CC design session, same day as CB-011)
+- Decided by: Riley (both questions ratified as recommended)
+- Scope: `cash` / mining_exploration_sector (rule is per-field opt-in) / SIG
+- Decision (two rulings):
+  1. MECHANISM — prefer_specific_alias: when distinct labels collide on one
+     canonical field with different values, the match that arrived via the
+     LONGEST normalized alias wins ("cash and cash equivalents" — the
+     concept's full name — beats bare "cash", the note component).
+     Restrictions that keep it honest: applies only when every colliding
+     match is an exact alias match (pattern-prefix length is not a
+     specificity signal), and only when the longest label is unique — a
+     length tie stays ambiguous and blocks as before. Statement-scoping was
+     REJECTED on evidence: note-breakdown rows land inside the extracted
+     balance_sheet row list, so statement attribution cannot discriminate
+     total from component. Explicit priority ordering was rejected as a
+     hidden convention (Minimize-Human-Error).
+  2. SCOPE — per-field opt-in via a declarative
+     "collision_resolution": "prefer_specific_alias" flag on the canonical
+     field config in sedar_aliases.json; only `cash` carries it now (the
+     n=1 evidenced shape). A general rule was rejected: on income-statement
+     fields a different-values collision is often genuinely ambiguous
+     (blended vs segment revenue), and integrity-first prefers
+     honest-unmapped over a silently-wrong pick. Future fields opt in
+     through a casebook decision.
+  VISIBILITY: every resolution is recorded in mapping
+  meta.resolved_collisions (canonical_field, rule, chosen_label,
+  rejected_labels) — never silent; the rejected row stays in unmapped[].
 - Reasoning: the correct value is unambiguous (15,208,214 — the components
-  1,883,531 + 13,324,683 GICs sum to it exactly, both years); the open
-  question is the general RULE, because the same collision shape will
-  recur on any filer whose note detail lands in extracted rows.
-  Resting state is honest-unmapped — a correct fail, no urgency.
+  1,883,531 + 13,324,683 GICs sum to it exactly, both years); the rule
+  needed to capture WHY it's unambiguous (the total's label is the
+  concept's full name) without licensing silent winners on genuinely
+  ambiguous fields.
 - Evidence: SIG FY2024 mapping.json meta.collisions (identical in both
-  independent reads).
-- Enforced by: (once decided) a mapper collision rule + test; until then,
-  collision-blocks-mapping behavior.
+  independent reads); post-decision corpus re-map machine-confirmed zero
+  mapped-count changes and zero resolved collisions across all 14 fixtures
+  (no fixture carries the SIG shape — the rule fires only on the evidenced
+  collision).
+- Enforced by: sedar_mapper.py collision guard (CB-010 branch) +
+  sedar_aliases.json cash flag; tests
+  test_cb010_cash_collision_resolves_to_most_specific_alias (SIG values)
+  and test_cb010_fields_without_the_flag_still_block_on_collision
+  (opt-in boundary).
 
 ### CB-011: mining-producer profile extension — n=2 evidence in hand, design session unblocked
 - Status: DECIDED

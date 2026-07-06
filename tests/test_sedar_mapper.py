@@ -956,6 +956,58 @@ def test_mining_no_token_no_revenue_spine_routes_to_exploration_profile():
     assert result["mapped"]["net_cash_used_in_operating_activities"]["value"] == -55683060
 
 
+def test_cb010_cash_collision_resolves_to_most_specific_alias():
+    """CB-010 (ratified 2026-07-06): the SIG shape — the balance-sheet total
+    "Cash and cash equivalents (Note 4)" and the note-breakdown sub-component
+    "Cash" both alias-match `cash` with different values. The per-field
+    prefer_specific_alias rule resolves to the longest-alias match (the
+    concept's full name) instead of blocking; the resolution is recorded in
+    meta.resolved_collisions, and the rejected note row stays visible in
+    unmapped[]. Values are SIG FY2024's as recorded in the casebook."""
+    items = [
+        {"label": "Cash and cash equivalents (Note 4)", "value": 15208214, "confidence": 0.99},
+        {"label": "Cash", "value": 1883531, "confidence": 0.99},
+        {"label": "Exploration and evaluation expenditures", "value": 6927597, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["cash"]["source_label"] == "Cash and cash equivalents (Note 4)"
+    assert result["mapped"]["cash"]["value"] == 15208214
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Cash" in unmapped_labels
+    assert result["meta"]["collisions"] == []
+    assert result["meta"]["resolved_collisions"] == [
+        {
+            "canonical_field": "cash",
+            "rule": "prefer_specific_alias",
+            "chosen_label": "Cash and cash equivalents (Note 4)",
+            "rejected_labels": ["Cash"],
+        }
+    ]
+
+
+def test_cb010_fields_without_the_flag_still_block_on_collision():
+    """The resolution rule is per-field opt-in. A different-values collision
+    on a field WITHOUT collision_resolution (default `revenue`) must still
+    block: nothing maps, both rows stay honest-unmapped, and the collision
+    is recorded. Integrity-first: no silent winner on ambiguous fields."""
+    items = [
+        {"label": "Total revenue", "value": 100, "confidence": 0.99},
+        {"label": "Revenues", "value": 90, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS")
+
+    assert "revenue" not in result["mapped"]
+    assert result["meta"]["collisions"] == [
+        {"canonical_field": "revenue", "labels": ["Total revenue", "Revenues"]}
+    ]
+    assert result["meta"]["resolved_collisions"] == []
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Total revenue" in unmapped_labels
+    assert "Revenues" in unmapped_labels
+
+
 def test_mining_exploration_route_does_not_catch_producers_byte_identical():
     for fixture_name in ("AEM_FY2025_sedar.json", "TECKB_FY2025_sedar.json"):
         data = _load_fixture(fixture_name)

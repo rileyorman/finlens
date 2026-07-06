@@ -441,6 +441,7 @@
           "patterns": []
         },
         "cash": {
+          "collision_resolution": "prefer_specific_alias",
           "aliases": [
             {
               "label": "cash",
