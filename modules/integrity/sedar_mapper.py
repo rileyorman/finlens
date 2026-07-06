@@ -246,16 +246,30 @@ def _build_match_indexes(
     alias_table: dict[str, Any],
     accounting_standard: str,
     sector_profile: str | None,
-) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict]]:
-    """Return (exact_map, patterns, semantics_map).
+) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set]]:
+    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope).
 
-    exact_map     normalized_label -> canonical_field_name
-    patterns      list of (starts_with_prefix, canonical_field_name)
-    semantics_map normalized_label -> semantics dict (e.g. {"excludes_da": True})
+    exact_map       normalized_label -> canonical_field_name
+    patterns        list of (starts_with_prefix, canonical_field_name)
+    semantics_map   normalized_label -> semantics dict (e.g. {"excludes_da": True})
+    collision_rules canonical_field_name -> collision_resolution rule string.
+                    Per-field opt-in (CB-010): a field config may declare
+                    "collision_resolution": "prefer_specific_alias" to resolve
+                    distinct-label collisions instead of blocking them.
+    statement_scope normalized_label -> set of statement keys the alias may
+                    match in (CB-009): an alias may declare
+                    "statements": ["cash_flow"] when the same label names a
+                    DIFFERENT concept in another statement (SIG's cash-flow
+                    "Exploration and evaluation assets" is the period's
+                    capitalized additions; the identical balance-sheet label
+                    is the asset stock). Scoped aliases FAIL CLOSED: an item
+                    without statement attribution never matches them.
     """
     exact: dict[str, str] = {}
     patterns: list[tuple[str, str]] = []
     semantics_map: dict[str, dict] = {}
+    collision_rules: dict[str, str] = {}
+    statement_scope: dict[str, set] = {}
 
     # First-write-wins on alias-label collisions: defaults are iterated before
     # sector-profile fields, so a default claims a collided label and the
@@ -263,6 +277,9 @@ def _build_match_indexes(
     # without it, profile total_revenue_bank ("total revenue") would steal
     # the label from default revenue when the financial_sector profile resolves.
     for field_name, config in _iter_target_fields(alias_table, sector_profile):
+        rule = config.get("collision_resolution")
+        if rule:
+            collision_rules[field_name] = rule
         for alias in config.get("aliases") or []:
             if _standard_allowed(alias, accounting_standard):
                 label = alias["label"]
@@ -276,11 +293,16 @@ def _build_match_indexes(
                         semantics_map[label] = sem
                     else:
                         semantics_map.pop(label, None)
+                    statements = alias.get("statements")
+                    if statements:
+                        statement_scope[label] = set(statements)
+                    else:
+                        statement_scope.pop(label, None)
         for pattern in config.get("patterns") or []:
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
 
-    return exact, patterns, semantics_map
+    return exact, patterns, semantics_map, collision_rules, statement_scope
 
 
 def _unmapped_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -457,6 +479,37 @@ def _derive_reit_rental_noi(
         },
     }
 
+    # CB-012 (ratified 2026-07-06): property_operating_costs is RENTAL-ONLY —
+    # the same definition, same conditional shape, and same components as the
+    # NOI derivation above. This function only runs on blended REITs, so pure
+    # REITs keep lifting their printed rental-only line; here the printed
+    # blended subtotal (e.g. RioCan's "Total operating costs" 637,855, which
+    # includes residential inventory cost of sales) moves to unmapped[] and
+    # the field derives rental-only. The NOI identity then closes exactly:
+    # rental_revenue - property_operating_costs == net_operating_income.
+    printed_operating_costs = mapped.get("property_operating_costs")
+    if printed_operating_costs is not None and not printed_operating_costs.get("derived"):
+        unmapped.append({
+            "label": printed_operating_costs.get("source_label"),
+            "value": printed_operating_costs.get("value"),
+        })
+    mapped["property_operating_costs"] = {
+        "value": _clean_derived_number(rental_operating_costs),
+        "source_label": "derived: rental-only operating cost components (excluding development inventory costs)",
+        "match_type": "derived",
+        "confidence": None,
+        "derived": True,
+        "components": {
+            "rental_operating_costs": [
+                _line_component(item) for item in rental_cost_items
+            ],
+            "rental_operating_cost_source": rental_cost_source,
+            "excluded_development_costs": [
+                _line_component(item) for item in development_cost_items
+            ],
+        },
+    }
+
 
 def map_line_items(
     line_items: list[dict[str, Any]],
@@ -465,7 +518,7 @@ def map_line_items(
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
     sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
-    exact, patterns, semantics_map = _build_match_indexes(
+    exact, patterns, semantics_map, collision_rules, statement_scope = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
 
@@ -482,15 +535,24 @@ def map_line_items(
     # "Net earnings" repeated at the top of a Comprehensive Income section).
     # First occurrence proceeds normally; subsequent occurrences are silently skipped.
     # Same normalized label with different values = ambiguous; all go to unmapped.
-    label_index: dict[str, list[int]] = defaultdict(list)
+    # CB-009 (ratified 2026-07-06): grouped by (normalized_label, statement),
+    # not label alone — the same label in DIFFERENT statements is two different
+    # lines (SIG's balance-sheet "Exploration and evaluation assets" is the
+    # asset STOCK; its cash-flow twin is the period's capitalized additions),
+    # so cross-statement pairs must reach alias matching where statement-scoped
+    # aliases discriminate. Same label in the SAME statement keeps today's
+    # semantics. Items without statement attribution group under None,
+    # preserving the old behavior exactly.
+    label_index: dict[tuple, list[int]] = defaultdict(list)
     for i, row in enumerate(normalized_items):
-        label_index[row["normalized_label"]].append(i)
+        key = (row["normalized_label"], row["item"].get("statement"))
+        label_index[key].append(i)
 
     benign_skip: set[int] = set()
     ambiguous_indices: set[int] = set()
     benign_duplicates_meta: list[dict] = []
 
-    for normalized_label, indices in label_index.items():
+    for (normalized_label, _statement), indices in label_index.items():
         if len(indices) <= 1:
             continue
         values = [_coerce_number(normalized_items[i]["item"].get("value")) for i in indices]
@@ -527,6 +589,17 @@ def map_line_items(
         match_type = "exact"
         item_semantics = semantics_map.get(normalized_label)
 
+        # CB-009: statement-scoped alias enforcement. A scoped alias matches
+        # only items attributed to one of its declared statements; items
+        # without statement attribution fail closed (never match a scoped
+        # alias) — the scope exists precisely because the same label names a
+        # different concept elsewhere, so an unattributed row is unsafe.
+        if canonical_field is not None:
+            scope = statement_scope.get(normalized_label)
+            if scope is not None and item.get("statement") not in scope:
+                canonical_field = None
+                item_semantics = None
+
         if canonical_field is None:
             for prefix, field_name in patterns:
                 if normalized_label.startswith(prefix):
@@ -549,6 +622,7 @@ def map_line_items(
     # Two distinct normalized labels both matching the same canonical field → collision.
     mapped: dict[str, dict[str, Any]] = {}
     collisions: list[dict[str, Any]] = []
+    resolved_collisions: list[dict[str, Any]] = []
 
     for canonical_field, matches in candidates.items():
         distinct_labels = {match["normalized_label"] for match in matches}
@@ -567,6 +641,45 @@ def map_line_items(
                 for duplicate_match in matches[1:]:
                     unmapped.append(_unmapped_item(duplicate_match["item"]))
                 continue
+            # CB-010 (ratified 2026-07-06): per-field opt-in resolution.
+            # "prefer_specific_alias" — the match that arrived via the
+            # LONGEST normalized alias label wins (the concept's full name
+            # beats a note sub-component's bare label, e.g. SIG's
+            # "Cash and cash equivalents (Note 4)" 15,208,214 over the
+            # note-breakdown row "Cash" 1,883,531). Applies only when every
+            # match is an exact alias match (pattern-prefix lengths are not
+            # a specificity signal) and the longest label is unique — a
+            # length tie stays genuinely ambiguous and blocks as before.
+            # Resolutions are recorded in meta.resolved_collisions, never
+            # silent.
+            rule = collision_rules.get(canonical_field)
+            if rule == "prefer_specific_alias" and all(
+                match["match_type"] == "exact" for match in matches
+            ):
+                max_len = max(len(match["normalized_label"]) for match in matches)
+                longest = [
+                    match for match in matches
+                    if len(match["normalized_label"]) == max_len
+                ]
+                if len(longest) == 1:
+                    winner = longest[0]
+                    mapped[canonical_field] = _mapped_item(
+                        winner["item"], winner["match_type"], winner.get("semantics")
+                    )
+                    resolved_collisions.append({
+                        "canonical_field": canonical_field,
+                        "rule": rule,
+                        "chosen_label": winner["item"].get("label"),
+                        "rejected_labels": [
+                            match["item"].get("label")
+                            for match in matches
+                            if match is not winner
+                        ],
+                    })
+                    for match in matches:
+                        if match is not winner:
+                            unmapped.append(_unmapped_item(match["item"]))
+                    continue
             collisions.append({
                 "canonical_field": canonical_field,
                 "labels": [match["item"].get("label") for match in matches],
@@ -579,6 +692,12 @@ def map_line_items(
         mapped[canonical_field] = _mapped_item(
             match["item"], match["match_type"], match.get("semantics")
         )
+        # Same-label multi-match (possible since CB-009's per-statement
+        # duplicate grouping lets cross-statement same-label rows reach
+        # candidates): first occurrence maps, the rest stay visible in
+        # unmapped[] — conservation requires every row land somewhere.
+        for extra_match in matches[1:]:
+            unmapped.append(_unmapped_item(extra_match["item"]))
 
     # --- Part B: Derived gross profit ---
     # When gross_profit is not directly mapped but both revenue and cost_of_revenue are,
@@ -626,5 +745,6 @@ def map_line_items(
             "benign_duplicates": benign_duplicates_meta,
             "gross_profit_derived": gross_profit_derived,
             "collisions": collisions,
+            "resolved_collisions": resolved_collisions,
         },
     }

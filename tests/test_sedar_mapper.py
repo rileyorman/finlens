@@ -545,8 +545,22 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
         }
     ]
 
-    assert mapped["property_operating_costs"]["source_label"] == "Total operating costs"
-    assert mapped["property_operating_costs"]["value"] == _source_value(data, "Total operating costs")
+    # CB-012 (ratified 2026-07-06): property_operating_costs is RENTAL-ONLY.
+    # On the blended REIT the field derives from the same components as NOI;
+    # the printed blended "Total operating costs" (includes residential
+    # inventory cost of sales) is preserved in unmapped[] instead.
+    assert mapped["property_operating_costs"]["derived"] is True
+    assert mapped["property_operating_costs"]["value"] == (
+        _source_value(data, "Recoverable under tenant leases")
+        + _source_value(data, "Non-recoverable costs")
+    )
+    assert mapped["property_operating_costs"]["value"] == 456024
+    # the NOI identity closes exactly on the rental-only definition
+    assert (
+        mapped["rental_revenue"]["value"]
+        - mapped["property_operating_costs"]["value"]
+        == mapped["net_operating_income"]["value"]
+    )
 
     assert mapped["investment_property_fair_value_delta"]["source_label"] == (
         "Fair value loss on investment properties, net"
@@ -567,12 +581,14 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["revenue"]["value"] == _source_value(data, "Total revenue")
 
     assert result["meta"]["sector_profile"] == "reit_sector"
-    assert result["meta"]["mapped_count"] == 7
+    # CB-012: the printed "Total operating costs" line no longer counts as
+    # mapped (derived entries are excluded from mapped_count) — 7 -> 6.
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Rental revenue" not in unmapped_labels
-    assert "Total operating costs" not in unmapped_labels
+    assert "Total operating costs" in unmapped_labels  # CB-012: preserved, not mapped
     assert "Operating income" in unmapped_labels
     assert "Fair value loss on investment properties, net" not in unmapped_labels
     assert "Income (loss) from equity-accounted investments" in unmapped_labels
@@ -612,8 +628,13 @@ def test_resource_sector_maps_suncor_class_gross_revenues():
 def test_resource_sector_bare_net_revenue_stays_unmapped_by_design():
     """Negative guard for Task B: a bare net-of-royalties "Revenue" line must
     NOT map in resource_sector — canonical revenue = GROSS (2026-06-17 ground
-    truth). No bare "revenue" alias may exist in any profile; this test fails
-    if one is ever added."""
+    truth). No bare "revenue" alias may exist in DEFAULTS or resource_sector;
+    a defaults-level alias would collide with the gross line here and this
+    test fails if one is ever added. EXCEPTION (CB-011, ratified 2026-07-06):
+    mining_sector carries a bare "revenue" alias by design (TECK.B evidence)
+    — mining producers seen so far print a single revenue line with royalties
+    inside costs, so the gross/net split this guard protects doesn't arise
+    there. That alias is sector-scoped and can never fire in resource_sector."""
     items = [
         {"label": "Product sales", "value": 41509, "confidence": 0.99},
         {"label": "Less: royalties", "value": -5853, "confidence": 0.99},
@@ -778,9 +799,11 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     """
     TECK.B (Teck Resources, polymetallic miner, IFRS, CAD, December year-end).
 
-    This fixture is evidence for the mining_sector v1 review. The existing
-    profile resolves from sector_inferred but does not yet cover Teck's
-    polymetallic labels; those remain unmapped for the design session.
+    Originally pinned the pre-design-session state (2/78 mapped, "labels
+    remain unmapped for the design session"). CB-011 was ratified 2026-07-06:
+    bare "revenue" (mining_sector-scoped), "cost of sales" (default), and
+    "profit for the year" (default) now map — mapped_count 2 -> 5. Labels
+    with no ratified alias (e.g. bare "Exploration") stay unmapped.
     """
     data = _load_fixture("TECKB_FY2025_sedar.json")
     assert data["source"] == "sedar_pdf"
@@ -815,12 +838,13 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     assert mapped["gross_profit"]["value"] == _source_value(data, "Gross profit")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 2
+    assert result["meta"]["mapped_count"] == 5
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Gross profit" not in unmapped_labels
-    assert "Revenue (Note 6)" in unmapped_labels
-    assert "Cost of sales" in unmapped_labels
+    assert "Revenue (Note 6)" not in unmapped_labels
+    assert "Cost of sales" not in unmapped_labels
+    assert "Profit for the year" not in unmapped_labels
     assert "Exploration" in unmapped_labels
     assert "Provision for income taxes from continuing operations (Note 23(a))" in unmapped_labels
 
@@ -917,8 +941,18 @@ def test_nfg_fixture_maps_mining_exploration_sector_without_producer_spine():
         == _cash_flow_source_value(data, "Cash at end of year")
     )
 
+    # CB-009 (2026-07-06): the cash-flow "Purchases of exploration and
+    # evaluation assets" now maps to the minted capitalized_exploration_additions
+    # (statement-scoped, cash_flow only); the balance-sheet asset STOCK with
+    # the "Exploration and evaluation assets" label stays unmapped (asserted
+    # above). mapped_count 6 -> 7.
+    assert mapped["capitalized_exploration_additions"]["source_label"] == (
+        "Purchases of exploration and evaluation assets"
+    )
+    assert mapped["capitalized_exploration_additions"]["value"] == -3853119
+
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 7
     assert result["meta"]["collisions"] == []
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -948,6 +982,135 @@ def test_mining_no_token_no_revenue_spine_routes_to_exploration_profile():
     assert result["mapped"]["net_cash_used_in_operating_activities"]["value"] == -55683060
 
 
+def test_cb009_capitalized_ee_additions_map_from_cash_flow_only():
+    """CB-009 (ratified 2026-07-06): SIG shape — the cash-flow investing line
+    "Exploration and evaluation assets" (the period's capitalized additions,
+    real SIG FY2024 value) maps to the minted capitalized_exploration_additions;
+    the balance-sheet line with the IDENTICAL label (the asset STOCK, synthetic
+    value) stays unmapped. Requires both CB-009 mechanisms: per-statement
+    duplicate grouping (the two rows are no longer a same-label ambiguity) and
+    the cash_flow statement scope on the alias."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": 20_000_000,
+         "confidence": 0.99, "statement": "balance_sheet"},
+        {"label": "Exploration and evaluation assets", "value": -6_927_597,
+         "confidence": 0.99, "statement": "cash_flow"},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    field = result["mapped"]["capitalized_exploration_additions"]
+    assert field["value"] == -6_927_597  # as-presented negative outflow
+    assert field["source_label"] == "Exploration and evaluation assets"
+    unmapped_values = [item["value"] for item in result["unmapped"]]
+    assert 20_000_000 in unmapped_values  # the stock row, honestly unmapped
+    assert result["meta"]["collisions"] == []
+
+
+def test_cb009_scoped_alias_fails_closed_without_statement_attribution():
+    """A statement-scoped alias must NOT match an item that carries no
+    statement key — the scope exists because the same label names a different
+    concept elsewhere, so an unattributed row is unsafe to map."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": -6_927_597, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert "capitalized_exploration_additions" not in result["mapped"]
+    assert [item["value"] for item in result["unmapped"]] == [-6_927_597]
+
+
+def test_cb009_same_statement_same_label_different_values_still_ambiguous():
+    """Per-statement grouping must not weaken the original ambiguity guard:
+    the same label twice in the SAME statement with different values remains
+    ambiguous — both rows go to unmapped before alias matching."""
+    items = [
+        {"label": "Exploration and evaluation assets", "value": -6_927_597,
+         "confidence": 0.99, "statement": "cash_flow"},
+        {"label": "Exploration and evaluation assets", "value": -1_000_000,
+         "confidence": 0.99, "statement": "cash_flow"},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert "capitalized_exploration_additions" not in result["mapped"]
+    assert len(result["unmapped"]) == 2
+
+
+def test_cb009_nfg_purchases_line_maps_to_capitalized_additions():
+    """NFG capitalizes acquisition-type E&E while expensing exploration work —
+    both fields legitimately coexist on one filer, which is the pair design
+    working: exploration_expense (P&L) AND capitalized_exploration_additions
+    (investing outflow) both map. NFG fixture mapped_count 6 -> 7."""
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    field = result["mapped"]["capitalized_exploration_additions"]
+    assert field["source_label"] == "Purchases of exploration and evaluation assets"
+    assert field["value"] == -3853119
+    assert result["mapped"]["exploration_expense"]["value"] == 52563340
+    # the balance-sheet asset STOCK stays honestly unmapped
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Exploration and evaluation assets" in unmapped_labels
+    assert result["meta"]["mapped_count"] == 7
+
+
+def test_cb010_cash_collision_resolves_to_most_specific_alias():
+    """CB-010 (ratified 2026-07-06): the SIG shape — the balance-sheet total
+    "Cash and cash equivalents (Note 4)" and the note-breakdown sub-component
+    "Cash" both alias-match `cash` with different values. The per-field
+    prefer_specific_alias rule resolves to the longest-alias match (the
+    concept's full name) instead of blocking; the resolution is recorded in
+    meta.resolved_collisions, and the rejected note row stays visible in
+    unmapped[]. Values are SIG FY2024's as recorded in the casebook."""
+    items = [
+        {"label": "Cash and cash equivalents (Note 4)", "value": 15208214, "confidence": 0.99},
+        {"label": "Cash", "value": 1883531, "confidence": 0.99},
+        {"label": "Exploration and evaluation expenditures", "value": 6927597, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["cash"]["source_label"] == "Cash and cash equivalents (Note 4)"
+    assert result["mapped"]["cash"]["value"] == 15208214
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Cash" in unmapped_labels
+    assert result["meta"]["collisions"] == []
+    assert result["meta"]["resolved_collisions"] == [
+        {
+            "canonical_field": "cash",
+            "rule": "prefer_specific_alias",
+            "chosen_label": "Cash and cash equivalents (Note 4)",
+            "rejected_labels": ["Cash"],
+        }
+    ]
+
+
+def test_cb010_fields_without_the_flag_still_block_on_collision():
+    """The resolution rule is per-field opt-in. A different-values collision
+    on a field WITHOUT collision_resolution (default `revenue`) must still
+    block: nothing maps, both rows stay honest-unmapped, and the collision
+    is recorded. Integrity-first: no silent winner on ambiguous fields."""
+    items = [
+        {"label": "Total revenue", "value": 100, "confidence": 0.99},
+        {"label": "Revenues", "value": 90, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS")
+
+    assert "revenue" not in result["mapped"]
+    assert result["meta"]["collisions"] == [
+        {"canonical_field": "revenue", "labels": ["Total revenue", "Revenues"]}
+    ]
+    assert result["meta"]["resolved_collisions"] == []
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Total revenue" in unmapped_labels
+    assert "Revenues" in unmapped_labels
+
+
 def test_mining_exploration_route_does_not_catch_producers_byte_identical():
     for fixture_name in ("AEM_FY2025_sedar.json", "TECKB_FY2025_sedar.json"):
         data = _load_fixture(fixture_name)
@@ -959,6 +1122,55 @@ def test_mining_exploration_route_does_not_catch_producers_byte_identical():
 
         assert result["meta"]["sector_profile"] == "mining_sector"
         assert result["mapped"] == data["mapping"]["mapped"]
+
+
+def test_teckb_cb011_extension_maps_revenue_cost_of_sales_and_profit():
+    """CB-011 (ratified 2026-07-06): TECK.B's bare "Revenue (Note 6)" maps via
+    the mining_sector-scoped bare-"revenue" alias; "Cost of sales" maps via the
+    new DEFAULT alias; "Profit for the year" (consolidated, incl. NCI) maps via
+    the new DEFAULT net_income alias. mapped_count 2 -> 5."""
+    data = _load_fixture("TECKB_FY2025_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_sector"
+    assert result["mapped"]["revenue"]["source_label"] == "Revenue (Note 6)"
+    assert result["mapped"]["revenue"]["value"] == 10756
+    assert result["mapped"]["cost_of_revenue"]["source_label"] == "Cost of sales"
+    assert result["mapped"]["cost_of_revenue"]["value"] == -8099
+    # consolidated profit including NCI (1,072), NOT the attributable-to-
+    # shareholders line (1,401) — consistent with existing net_income semantics
+    assert result["mapped"]["net_income"]["source_label"] == "Profit for the year"
+    assert result["mapped"]["net_income"]["value"] == 1072
+    assert result["meta"]["mapped_count"] == 5
+    assert result["meta"]["collisions"] == []
+
+
+def test_k_producer_labels_map_in_mining_sector():
+    """CB-011 (ratified 2026-07-06): Kinross's labels map in the PRODUCTION
+    mining_sector profile — "Metal sales" -> revenue, "Production cost of
+    sales" -> production_costs, "Depreciation, depletion and amortization" ->
+    mine_development_amortization (augment-don't-mint: same concepts as AEM's
+    aliases in K's wording). Values here are synthetic; the test pins
+    label->field routing only. Note a2b2b4d shipped these labels to the pilot
+    COMPARATOR table (field_aliases.py) — this pins the production side."""
+    items = [
+        {"label": "Metal sales", "value": 1000, "confidence": 0.99},
+        {"label": "Production cost of sales", "value": -400, "confidence": 0.99},
+        {"label": "Depreciation, depletion and amortization", "value": -200, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Gold Mining")
+
+    assert result["meta"]["sector_profile"] == "mining_sector"
+    assert result["mapped"]["revenue"]["source_label"] == "Metal sales"
+    assert result["mapped"]["production_costs"]["source_label"] == "Production cost of sales"
+    assert (
+        result["mapped"]["mine_development_amortization"]["source_label"]
+        == "Depreciation, depletion and amortization"
+    )
 
 
 def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():

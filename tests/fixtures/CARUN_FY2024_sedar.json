@@ -1134,7 +1134,8 @@
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }

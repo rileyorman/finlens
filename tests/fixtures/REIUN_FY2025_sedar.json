@@ -834,10 +834,30 @@
         "confidence": 0.99
       },
       "property_operating_costs": {
-        "value": 637855,
-        "source_label": "Total operating costs",
-        "match_type": "exact",
-        "confidence": 0.99
+        "value": 456024,
+        "source_label": "derived: rental-only operating cost components (excluding development inventory costs)",
+        "match_type": "derived",
+        "confidence": null,
+        "derived": true,
+        "components": {
+          "rental_operating_costs": [
+            {
+              "source_label": "Recoverable under tenant leases",
+              "value": 414386
+            },
+            {
+              "source_label": "Non-recoverable costs",
+              "value": 41638
+            }
+          ],
+          "rental_operating_cost_source": "rental operating cost components",
+          "excluded_development_costs": [
+            {
+              "source_label": "Residential inventory cost of sales",
+              "value": 181831
+            }
+          ]
+        }
       },
       "net_operating_income": {
         "value": 720404,
@@ -1068,14 +1088,18 @@
       {
         "label": "Operating income",
         "value": 798716
+      },
+      {
+        "label": "Total operating costs",
+        "value": 637855
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 50,
-      "mapped_count": 7,
-      "unmapped_count": 42,
+      "mapped_count": 6,
+      "unmapped_count": 43,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
@@ -1085,7 +1109,8 @@
         }
       ],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }

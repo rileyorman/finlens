@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-02T15:25:47Z",
+  "generated_at": "2026-07-06T17:20:44Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -72,8 +72,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 7,
-      "resolved_field_count": 7,
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
       "filing_date": "2026-02-17",
       "commit": "d8dd41c",
       "notes": "filing_date resolved by cover-page extraction input; PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed); byte-identical duplicate removed during the same consolidation; only library-registered filer."
@@ -205,8 +205,8 @@
         "issuer_url": "https://www.teck.com/investors/financial-reports/",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
       },
-      "stored_field_count": 2,
-      "resolved_field_count": 2,
+      "stored_field_count": 5,
+      "resolved_field_count": 5,
       "filing_date": "2026-02-18",
       "commit": null,
       "notes": "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector resolves, but Teck currently maps only gross_profit pending profile-extension review."
@@ -262,8 +262,8 @@
         "issuer_url": "https://newfoundgold.ca/investors/ (manual download, FY2024 standalone financial statements)",
         "retrieval_method": "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17"
       },
-      "stored_field_count": 6,
-      "resolved_field_count": 6,
+      "stored_field_count": 7,
+      "resolved_field_count": 7,
       "filing_date": "2025-03-20",
       "commit": null,
       "notes": "Manual issuer-IR download; first pre-revenue mining exploration filer. Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."

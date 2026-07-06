@@ -34,6 +34,11 @@
           "standards": ["IFRS"],
           "source": "ATD_FY2025",
           "semantics": {"excludes_da": true}
+        },
+        {
+          "label": "cost of sales",
+          "standards": ["IFRS"],
+          "source": "TECKB_FY2025"
         }
       ],
       "patterns": []
@@ -89,6 +94,11 @@
           "label": "net income for the year",
           "standards": ["IFRS"],
           "source": "AEM_FY2025"
+        },
+        {
+          "label": "profit for the year",
+          "standards": ["IFRS"],
+          "source": "TECKB_FY2025"
         }
       ],
       "patterns": []
@@ -430,7 +440,25 @@
           ],
           "patterns": []
         },
+        "capitalized_exploration_additions": {
+          "aliases": [
+            {
+              "label": "exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "SIG_FY2024",
+              "statements": ["cash_flow"]
+            },
+            {
+              "label": "purchases of exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "NFG_FY2024",
+              "statements": ["cash_flow"]
+            }
+          ],
+          "patterns": []
+        },
         "cash": {
+          "collision_resolution": "prefer_specific_alias",
           "aliases": [
             {
               "label": "cash",
@@ -480,6 +508,16 @@
               "label": "revenues from mining operations",
               "standards": ["IFRS"],
               "source": "AEM_FY2025"
+            },
+            {
+              "label": "revenue",
+              "standards": ["IFRS"],
+              "source": "TECKB_FY2025"
+            },
+            {
+              "label": "metal sales",
+              "standards": ["IFRS"],
+              "source": "K_FY2024"
             }
           ],
           "patterns": []
@@ -490,6 +528,11 @@
               "label": "production",
               "standards": ["IFRS"],
               "source": "AEM_FY2025"
+            },
+            {
+              "label": "production cost of sales",
+              "standards": ["IFRS"],
+              "source": "K_FY2024"
             }
           ],
           "patterns": []
@@ -510,6 +553,11 @@
               "label": "amortization of property, plant and mine development",
               "standards": ["IFRS"],
               "source": "AEM_FY2025"
+            },
+            {
+              "label": "depreciation, depletion and amortization",
+              "standards": ["IFRS"],
+              "source": "K_FY2024"
             }
           ],
           "patterns": []

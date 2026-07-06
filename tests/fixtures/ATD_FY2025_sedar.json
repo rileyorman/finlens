@@ -1260,7 +1260,8 @@
         }
       ],
       "gross_profit_derived": true,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   },
   "sector_inferred": "Convenience Retail & Fuel"

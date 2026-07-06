@@ -461,7 +461,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Loss per share \u2013 basic and diluted ($)",
+        "label": "Loss per share – basic and diluted ($)",
         "values": {
           "Year ended December 31, 2024": -0.26,
           "Year ended December 31, 2023": -0.45
@@ -469,7 +469,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "label": "Weighted average number of common shares outstanding – basic and diluted",
         "values": {
           "Year ended December 31, 2024": 194032544,
           "Year ended December 31, 2023": 178363103
@@ -898,6 +898,12 @@
         "source_label": "Net cash used in operating activities",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "capitalized_exploration_additions": {
+        "value": -3853119,
+        "source_label": "Purchases of exploration and evaluation assets",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -998,11 +1004,11 @@
         "value": 10048570
       },
       {
-        "label": "Loss per share \u2013 basic and diluted ($)",
+        "label": "Loss per share – basic and diluted ($)",
         "value": -0.26
       },
       {
-        "label": "Weighted average number of common shares outstanding \u2013 basic and diluted",
+        "label": "Weighted average number of common shares outstanding – basic and diluted",
         "value": 194032544
       },
       {
@@ -1110,12 +1116,32 @@
         "value": -50268354
       },
       {
+        "label": "Depreciation",
+        "value": 813654
+      },
+      {
+        "label": "Gain on sale of exploration and evaluation assets",
+        "value": 0
+      },
+      {
         "label": "Loss from equity investment",
         "value": 1306722
       },
       {
         "label": "Loss on dilution of equity investment",
         "value": 28772
+      },
+      {
+        "label": "Impairment of equity investment",
+        "value": 0
+      },
+      {
+        "label": "Loss on disposal of property and equipment",
+        "value": 0
+      },
+      {
+        "label": "Impairment of exploration and evaluation assets",
+        "value": 0
       },
       {
         "label": "Revaluation of secured notes",
@@ -1144,6 +1170,10 @@
       {
         "label": "Settlement of legal claim",
         "value": 1750100
+      },
+      {
+        "label": "Share-based compensation",
+        "value": 889045
       },
       {
         "label": "Realized losses on disposal of investments",
@@ -1184,10 +1214,6 @@
       {
         "label": "Interest received on secured notes",
         "value": 378040
-      },
-      {
-        "label": "Purchases of exploration and evaluation assets",
-        "value": -3853119
       },
       {
         "label": "Transaction costs on sale of exploration and evaluation assets",
@@ -1266,43 +1292,13 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_exploration_sector",
       "total": 102,
-      "mapped_count": 6,
-      "unmapped_count": 90,
-      "benign_skipped_count": 6,
-      "benign_duplicates": [
-        {
-          "normalized_label": "depreciation",
-          "occurrence_count": 2,
-          "value": 813654.0
-        },
-        {
-          "normalized_label": "share-based compensation",
-          "occurrence_count": 2,
-          "value": 889045.0
-        },
-        {
-          "normalized_label": "gain on sale of exploration and evaluation assets",
-          "occurrence_count": 2,
-          "value": 0.0
-        },
-        {
-          "normalized_label": "impairment of equity investment",
-          "occurrence_count": 2,
-          "value": 0.0
-        },
-        {
-          "normalized_label": "loss on disposal of property and equipment",
-          "occurrence_count": 2,
-          "value": 0.0
-        },
-        {
-          "normalized_label": "impairment of exploration and evaluation assets",
-          "occurrence_count": 2,
-          "value": 0.0
-        }
-      ],
+      "mapped_count": 7,
+      "unmapped_count": 95,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }

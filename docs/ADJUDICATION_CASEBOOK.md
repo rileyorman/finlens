@@ -225,68 +225,195 @@ disagree, that is a defect: flag it, do not silently fix either side.
   re-analyse batch; prior-column continuity checker (shipped 7f0a65e line)
   as the future guard.
 
-### CB-009: capitalized E&E is NOT exploration_expense — alias rejected, mint decision pending
-- Status: OPEN (the rejection is settled; the mint decision is the open half)
-- Date: opened 2026-07-05/06 (SIG FY2024 pilot review)
-- Decided by: rejection CC (pilot disposition); mint decision pending (Riley)
-- Scope: `exploration_expense` + possible new field / mining_exploration_sector / SIG vs NFG
-- Decision: SIG's cash-flow investing line "Exploration and evaluation
-  assets" (−6,927,597) must NOT alias to `exploration_expense`. OPEN
-  question: mint a new canonical field for capitalized E&E additions
-  (e.g. exploration capex), or leave capitalized-explorer spend honestly
-  unmapped?
+### CB-009: capitalized E&E is NOT exploration_expense — alias rejected, field minted
+- Status: DECIDED
+- Date: opened 2026-07-05/06 (SIG FY2024 pilot review); mint ratified
+  2026-07-06 (Riley+CC design session, same day as CB-010/CB-011)
+- Decided by: rejection CC (pilot disposition); mint Riley (all four
+  session questions ratified as recommended)
+- Scope: `exploration_expense` + minted `capitalized_exploration_additions`
+  / mining_exploration_sector / SIG vs NFG
+- Decision (four rulings):
+  1. MINT `capitalized_exploration_additions`: capitalized E&E additions —
+     the investing cash outflow adding to exploration & evaluation assets.
+     Value stored AS-PRESENTED (negative outflow; royalties precedent).
+     DELIBERATELY a different concept from `exploration_expense` (P&L):
+     IFRS 6 lets explorers choose either policy, so the two fields are a
+     designed PAIR — comparing explorers requires both, and the policy
+     split staying visible is the point.
+  2. NAME: capitalized_exploration_additions — says capitalized (policy),
+     exploration (concept), additions (a flow, not the asset stock).
+  3. ALIASES (both, n=2): "exploration and evaluation assets" [SIG_FY2024]
+     + "purchases of exploration and evaluation assets" [NFG_FY2024], both
+     statement-scoped to cash_flow. NFG evidences the pair design live: it
+     expenses exploration work AND capitalizes acquisition-type E&E, so
+     both fields map on one filer (fixture mapped_count 6 -> 7).
+  4. MECHANISM (two pieces, both required): (a) statement-scoped aliases —
+     an alias may declare "statements": ["cash_flow"]; scoped aliases FAIL
+     CLOSED on items without statement attribution. Valid here where it was
+     rejected for CB-010: stock vs flow genuinely live in DIFFERENT
+     statements (NFG's balance sheet carries the IDENTICAL label
+     "Exploration and evaluation assets" for the asset STOCK 34,505,484 —
+     an unscoped alias would map the wrong concept). (b) Duplicate-ambiguity
+     grouping by (normalized_label, statement) instead of label alone —
+     without it, SIG's own stock/flow twin labels self-destruct as
+     "ambiguous" before aliases are consulted. Same label in the SAME
+     statement keeps the old ambiguity semantics; items without statement
+     info group under None (old behavior preserved). Conservation
+     side-effect handled: cross-statement same-label same-value pairs are
+     no longer silently benign-skipped — they stay visible in unmapped[]
+     (corpus effect confined to mining-family fixtures, the only ones whose
+     line_items include cash_flow: AEM/NFG/TECK.B benign counts fell,
+     unmapped rose, mapped counts unchanged except NFG's +1).
 - Reasoning: NFG EXPENSES exploration (income statement) — that is what
   `exploration_expense` means; SIG CAPITALIZES it (investing outflow onto
   the balance sheet). Mapping both to one field collapses the exact
   accounting-policy split an analyst comparing explorers needs to see.
   Augment-don't-mint requires a genuinely different concept for a new name
-  — this IS one, which is why it needs a mint decision rather than an
-  alias.
+  — this IS one.
 - Evidence: SIG FY2024 bundle (two-read agreement on the value); NFG
   precedent 41c08dc ("Capitalized E&E preserved in unmapped[], expensed
-  E&E maps"); alias rejection recorded in ba405b0 commit message.
-- Enforced by: absence of the alias (deliberate); this entry.
+  E&E maps"); alias rejection recorded in ba405b0 commit message; NFG
+  fixture post-mint maps BOTH fields (exploration_expense 52,563,340 and
+  capitalized_exploration_additions −3,853,119) with the balance-sheet
+  stock still honestly unmapped.
+- Enforced by: sedar_aliases.json (scoped aliases) + sedar_mapper.py
+  (statement_scope index, per-statement duplicate grouping,
+  conservation-safe multi-match tail) + _CANONICAL_SCALE_FIELDS
+  classification (the scaling-whitelist gate caught the missing entry —
+  machine enforcement working); tests
+  test_cb009_capitalized_ee_additions_map_from_cash_flow_only,
+  test_cb009_scoped_alias_fails_closed_without_statement_attribution,
+  test_cb009_same_statement_same_label_different_values_still_ambiguous,
+  test_cb009_nfg_purchases_line_maps_to_capitalized_additions.
 
 ### CB-010: cash collision — note sub-component must not beat the statement total
-- Status: OPEN
-- Date: opened 2026-07-05/06 (SIG FY2024 pilot review)
-- Decided by: pending (design task — mapper collision-resolution rule)
-- Scope: `cash` / mining_exploration_sector (likely general) / SIG
-- Decision (question): SIG's "Cash and cash equivalents (Note 4)"
-  15,208,214 (balance-sheet line) and bare "Cash" 1,883,531 (note
-  sub-component inside the cash-note breakdown) both alias-match `cash`;
-  the collision correctly blocked mapping. Design the resolution rule:
-  prefer-total, statement-scoping (cash maps from balance_sheet only), or
-  alias-priority ordering.
+- Status: DECIDED
+- Date: opened 2026-07-05/06 (SIG FY2024 pilot review); ratified 2026-07-06
+  (Riley+CC design session, same day as CB-011)
+- Decided by: Riley (both questions ratified as recommended)
+- Scope: `cash` / mining_exploration_sector (rule is per-field opt-in) / SIG
+- Decision (two rulings):
+  1. MECHANISM — prefer_specific_alias: when distinct labels collide on one
+     canonical field with different values, the match that arrived via the
+     LONGEST normalized alias wins ("cash and cash equivalents" — the
+     concept's full name — beats bare "cash", the note component).
+     Restrictions that keep it honest: applies only when every colliding
+     match is an exact alias match (pattern-prefix length is not a
+     specificity signal), and only when the longest label is unique — a
+     length tie stays ambiguous and blocks as before. Statement-scoping was
+     REJECTED on evidence: note-breakdown rows land inside the extracted
+     balance_sheet row list, so statement attribution cannot discriminate
+     total from component. Explicit priority ordering was rejected as a
+     hidden convention (Minimize-Human-Error).
+  2. SCOPE — per-field opt-in via a declarative
+     "collision_resolution": "prefer_specific_alias" flag on the canonical
+     field config in sedar_aliases.json; only `cash` carries it now (the
+     n=1 evidenced shape). A general rule was rejected: on income-statement
+     fields a different-values collision is often genuinely ambiguous
+     (blended vs segment revenue), and integrity-first prefers
+     honest-unmapped over a silently-wrong pick. Future fields opt in
+     through a casebook decision.
+  VISIBILITY: every resolution is recorded in mapping
+  meta.resolved_collisions (canonical_field, rule, chosen_label,
+  rejected_labels) — never silent; the rejected row stays in unmapped[].
 - Reasoning: the correct value is unambiguous (15,208,214 — the components
-  1,883,531 + 13,324,683 GICs sum to it exactly, both years); the open
-  question is the general RULE, because the same collision shape will
-  recur on any filer whose note detail lands in extracted rows.
-  Resting state is honest-unmapped — a correct fail, no urgency.
+  1,883,531 + 13,324,683 GICs sum to it exactly, both years); the rule
+  needed to capture WHY it's unambiguous (the total's label is the
+  concept's full name) without licensing silent winners on genuinely
+  ambiguous fields.
 - Evidence: SIG FY2024 mapping.json meta.collisions (identical in both
-  independent reads).
-- Enforced by: (once decided) a mapper collision rule + test; until then,
-  collision-blocks-mapping behavior.
+  independent reads); post-decision corpus re-map machine-confirmed zero
+  mapped-count changes and zero resolved collisions across all 14 fixtures
+  (no fixture carries the SIG shape — the rule fires only on the evidenced
+  collision).
+- Enforced by: sedar_mapper.py collision guard (CB-010 branch) +
+  sedar_aliases.json cash flag; tests
+  test_cb010_cash_collision_resolves_to_most_specific_alias (SIG values)
+  and test_cb010_fields_without_the_flag_still_block_on_collision
+  (opt-in boundary).
 
 ### CB-011: mining-producer profile extension — n=2 evidence in hand, design session unblocked
-- Status: OPEN
-- Date: opened 2026-07-03 (TECK.B deferral); evidence completed 2026-07-05 (K FY2024)
-- Decided by: pending (Riley+CC design session, fresh head)
-- Scope: `revenue`, production costs, DD&A / mining_sector / AEM, TECK.B, K
-- Decision (question): with two mining producers now evidenced (AEM + K),
-  decide the mining_sector coverage extension: TECK.B's bare
-  "Revenue (Note 6)" + "Profit for the year", and K's flagged candidates
-  "Production cost of sales" + "Depreciation, depletion and amortization".
-  Note the interaction with CB-004: mining_sector fills the default
-  `revenue` slot, and K's "Metal sales" alias already shipped (a2b2b4d) —
-  the open half is TECK.B's bare-"Revenue" form and the cost fields.
+- Status: DECIDED
+- Date: opened 2026-07-03 (TECK.B deferral); evidence completed 2026-07-05
+  (K FY2024); ratified 2026-07-06 (Riley+CC design session)
+- Decided by: Riley (all four questions ratified as recommended)
+- Scope: `revenue`, `cost_of_revenue`, `net_income`, production costs, DD&A
+  / mining_sector + defaults / AEM, TECK.B, K
+- Decision (four rulings):
+  1. mining_sector `revenue` gains bare "revenue" [TECKB_FY2025] AND
+     "metal sales" [K_FY2024]. Sector-scoped — the resource_sector royalty
+     NEGATIVE RULE is untouched; mining producers seen so far print a single
+     revenue line with royalties inside costs, so the gross/net split that
+     rule protects does not arise in mining_sector.
+  2. DEFAULT `net_income` gains "profit for the year" [TECKB_FY2025] —
+     generic IFRS wording, nothing mining-specific ("net earnings" [ATD]
+     precedent for a default alias with single-filer evidence). Maps the
+     CONSOLIDATED total incl. NCI (TECK.B 1,072, not the 1,401
+     attributable-to-shareholders line) per existing net_income semantics.
+  3. mining_sector `production_costs` gains "production cost of sales"
+     [K_FY2024]; `mine_development_amortization` gains "depreciation,
+     depletion and amortization" [K_FY2024] — augment-don't-mint: same
+     concepts as AEM's aliases in Kinross's wording. The AEM-flavored
+     canonical name stays (renames are breaking).
+  4. LABELED ADDITION beyond the original scope: DEFAULT `cost_of_revenue`
+     gains bare "cost of sales" [TECKB_FY2025] — the standard IFRS caption.
+     Values stay as-presented: TECK.B's includes D&A, ATD's variant
+     explicitly excludes it (semantics tag on the ATD alias records this).
+- CORRECTION recorded during the session: this entry previously said K's
+  "Metal sales" alias "already shipped (a2b2b4d)" — that commit touched
+  field_aliases.py, the PILOT COMPARATOR's table, not the production
+  mapper. The production-side alias ships with this decision; a pinning
+  test now covers the production route explicitly.
 - Reasoning: profile-extension review discipline required a second mining
   filer before claiming the sub-shape; K FY2024 was that mandatory
   validation event and PASSED (93/93 rows two-read agreement).
 - Evidence: AEM FY2025 (ground-truthed 2026-07-01); K FY2024 pilot bundle;
-  TECK.B fixture (maps gross_profit + total_assets only).
-- Enforced by: (once decided) mining_sector profile changes + registry
-  regen + full suite per the fixture-mapped_count rule.
+  TECK.B fixture. Post-decision re-map: TECK.B mapped_count 2 -> 5
+  (revenue 10,756 / cost_of_revenue -8,099 / net_income 1,072 join
+  gross_profit + total_assets); identity check 10,756 - 8,099 = 2,657 =
+  mapped gross_profit, closes exactly. All other fixtures unchanged
+  (machine-confirmed, zero collisions corpus-wide); CNQ still 6 with bare
+  net "Revenue" honest-unmapped.
+- Enforced by: sedar_aliases.json additions; registry regen (TECK.B
+  stored=resolved=5); tests test_teckb_cb011_extension_maps_revenue_cost_of_sales_and_profit,
+  test_k_producer_labels_map_in_mining_sector, updated
+  test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_aliases,
+  and the resource_sector negative guard's updated docstring stating the
+  mining_sector exception boundary.
+
+### CB-012: property_operating_costs is RENTAL-ONLY — the two-axis definition gap closed
+- Status: DECIDED
+- Date: opened 2026-06-17 (ground-truth pass, recorded in CLAUDE.md as an
+  OPEN definition question); ratified 2026-07-06 (Riley+CC design session —
+  the fourth and final decision of the clean-sweep session)
+- Decided by: Riley
+- Scope: `property_operating_costs` / reit_sector / REI.UN vs CAR.UN, DIR.UN
+- Decision: RENTAL-ONLY — rental property operations only, excluding
+  residential/development inventory cost of sales. Conditional rule
+  mirroring `net_operating_income` exactly: pure REITs LIFT their printed
+  rental-only line (CAR.UN -281,431; DIR.UN -110,786 — unchanged); blended
+  REITs DERIVE from the same rental-only components the NOI derivation uses
+  (REI.UN: 456,024 = 414,386 recoverable + 41,638 non-recoverable), with
+  the printed blended subtotal ("Total operating costs" 637,855, includes
+  181,831 residential inventory cost of sales) preserved in unmapped[].
+- Reasoning: (a) internal consistency — the blended value contradicted the
+  SAME filer's derived NOI on the SAME line family; with rental-only, the
+  identity closes exactly: 1,176,428 − 456,024 = 720,404. (b) Definition
+  uniformity — rental-only is already the field's de facto meaning on both
+  pure-REIT filers; blended-as-printed would have degraded the definition
+  to "whatever subtotal prints". (c) Comparability-to-filing is preserved,
+  not lost: the printed subtotal stays visible in unmapped[], the same
+  pattern the NOI rule set with RioCan's blended "Operating income" 798,716.
+- Evidence: REI.UN FY2025 fixture (post-decision re-map: mapped_count 7→6,
+  field now derived 456,024; only fixture that changed corpus-wide); CAR.UN
+  and DIR.UN pure lifts machine-confirmed unchanged.
+- Enforced by: `_derive_reit_rental_noi` extension in sedar_mapper.py
+  (derives both NOI and rental-only property_operating_costs from shared
+  components under the same blended-shape condition); CLAUDE.md
+  "Canonical Field Definitions" section updated from OPEN to DECIDED;
+  updated REI.UN fixture test pins the derived value, the identity closing
+  exactly, and the printed line's presence in unmapped[].
 
 ---
 

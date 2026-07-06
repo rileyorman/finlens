@@ -243,7 +243,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Common shares \u2013 Outstanding \u2013 500,768,400 common shares issued, less 721,800 shares held in trust",
+        "label": "Common shares – Outstanding – 500,768,400 common shares issued, less 721,800 shares held in trust",
         "values": {
           "December 31, 2025": 18699862,
           "December 31, 2024": 18675660
@@ -405,7 +405,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Net income per share \u2013 basic (Note 16)",
+        "label": "Net income per share – basic (Note 16)",
         "values": {
           "Year Ended December 31, 2025": 8.89,
           "Year Ended December 31, 2024": 3.79
@@ -413,7 +413,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Net income per share \u2013 diluted (Note 16)",
+        "label": "Net income per share – diluted (Note 16)",
         "values": {
           "Year Ended December 31, 2025": 8.86,
           "Year Ended December 31, 2024": 3.78
@@ -903,11 +903,11 @@
         "value": 2242450
       },
       {
-        "label": "Net income per share \u2013 basic (Note 16)",
+        "label": "Net income per share – basic (Note 16)",
         "value": 8.89
       },
       {
-        "label": "Net income per share \u2013 diluted (Note 16)",
+        "label": "Net income per share – diluted (Note 16)",
         "value": 8.86
       },
       {
@@ -1047,7 +1047,7 @@
         "value": 9728827
       },
       {
-        "label": "Common shares \u2013 Outstanding \u2013 500,768,400 common shares issued, less 721,800 shares held in trust",
+        "label": "Common shares – Outstanding – 500,768,400 common shares issued, less 721,800 shares held in trust",
         "value": 18699862
       },
       {
@@ -1069,14 +1069,166 @@
       {
         "label": "Total liabilities and equity",
         "value": 34471291
+      },
+      {
+        "label": "Deferred income and mining taxes (Note 25)",
+        "value": 162158
+      },
+      {
+        "label": "Unrealized (gain) loss on currency and commodity derivatives (Note 21)",
+        "value": -127585
+      },
+      {
+        "label": "Unrealized gain on warrants (Note 21)",
+        "value": -111203
+      },
+      {
+        "label": "Stock-based compensation (Note 17)",
+        "value": 97545
+      },
+      {
+        "label": "Impairment reversal (Note 24)",
+        "value": -229000
+      },
+      {
+        "label": "Foreign currency translation (gain) loss",
+        "value": -25654
+      },
+      {
+        "label": "Other",
+        "value": 139797
+      },
+      {
+        "label": "Income taxes",
+        "value": 886371
+      },
+      {
+        "label": "Inventories",
+        "value": -160744
+      },
+      {
+        "label": "Other current assets",
+        "value": -43969
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 122639
+      },
+      {
+        "label": "Cash provided by operating activities",
+        "value": 6817113
+      },
+      {
+        "label": "Additions to property, plant and mine development (Note 9)",
+        "value": -2418200
+      },
+      {
+        "label": "Purchase of O3 Mining, net of cash and cash equivalents acquired (Note 5)",
+        "value": -121960
+      },
+      {
+        "label": "Contributions for acquisition of mineral assets",
+        "value": -14972
+      },
+      {
+        "label": "Purchase of equity securities and other investments",
+        "value": -447494
+      },
+      {
+        "label": "Proceeds from sale of equity securities and other investments",
+        "value": 402720
+      },
+      {
+        "label": "Other investing activities",
+        "value": 1611
+      },
+      {
+        "label": "Cash used in investing activities",
+        "value": -2598295
+      },
+      {
+        "label": "Proceeds from Credit Facility (Note 14)",
+        "value": 0
+      },
+      {
+        "label": "Repayment of Credit Facility (Note 14)",
+        "value": 0
+      },
+      {
+        "label": "Repayment of Term Loan Facility (Note 14)",
+        "value": 0
+      },
+      {
+        "label": "Repayment of Senior Notes (Note 14)",
+        "value": -950000
+      },
+      {
+        "label": "Debt financing and extinguishment costs (Note 14)",
+        "value": -8245
+      },
+      {
+        "label": "Repayment of lease obligations",
+        "value": -36043
+      },
+      {
+        "label": "Dividends paid",
+        "value": -728077
+      },
+      {
+        "label": "Repurchase of common shares (Notes 16 and 17)",
+        "value": -682890
+      },
+      {
+        "label": "Proceeds from exercise of stock options (Note 17A)",
+        "value": 75749
+      },
+      {
+        "label": "Common shares issued (Note 16)",
+        "value": 42363
+      },
+      {
+        "label": "Cash used in financing activities",
+        "value": -2287143
+      },
+      {
+        "label": "Effect of exchange rate changes on cash and cash equivalents",
+        "value": 7947
+      },
+      {
+        "label": "Net increase in cash and cash equivalents during the year",
+        "value": 1939622
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of year",
+        "value": 926431
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "value": 2866053
+      },
+      {
+        "label": "Interest paid",
+        "value": 46875
+      },
+      {
+        "label": "Income and mining taxes paid",
+        "value": 1177927
+      },
+      {
+        "label": "Amortization of property, plant and mine development (Note 9)",
+        "value": 1645297
+      },
+      {
+        "label": "Net income for the year",
+        "value": 4461461
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "mining_sector",
-      "total": 58,
+      "total": 96,
       "mapped_count": 7,
-      "unmapped_count": 50,
+      "unmapped_count": 88,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
@@ -1086,7 +1238,8 @@
         }
       ],
       "gross_profit_derived": false,
-      "collisions": []
+      "collisions": [],
+      "resolved_collisions": []
     }
   }
 }
