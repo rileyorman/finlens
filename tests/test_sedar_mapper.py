@@ -1193,3 +1193,66 @@ def test_ambiguous_duplicate_different_values_still_blocks(monkeypatch):
     assert result["meta"].get("benign_skipped_count", 0) == 0
     meta = result["meta"]
     assert meta["mapped_count"] + meta["unmapped_count"] + meta.get("benign_skipped_count", 0) == meta["total"]
+
+
+# ---------------------------------------------------------------------------
+# Token-ladder precedence: mining-family before resource_sector.
+# Pins the sibling-shadowing fix (queue item 2026-07-03): resource_sector's
+# broad "exploration and production" token must not capture mining filers —
+# "Mineral Exploration and Production" previously routed to resource_sector
+# (O&G royalty semantics) because resource was checked first.
+# ---------------------------------------------------------------------------
+
+def test_mineral_exploration_and_production_routes_to_exploration_not_resource():
+    # Explorer-shaped statements (NFG) under the shadowing sector string:
+    # must reach the mining branch, not O&G royalty semantics.
+    data = _load_fixture("NFG_FY2024_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector="Mineral Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["exploration_expense"]["value"] == 52563340
+
+
+def test_mineral_exploration_string_wins_on_explicit_token_even_for_producer_shape():
+    # Existing design pinned: an explicit exploration token in the sector text
+    # routes to the exploration profile regardless of statement shape
+    # (explicit token OR loss shape). AEM's producer statements under the
+    # shadowing string still land mining-family, never resource_sector.
+    data = _load_fixture("AEM_FY2025_sedar.json")
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector="Mineral Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+
+
+def test_oil_and_gas_exploration_and_production_still_routes_resource():
+    # Non-regression: O&G phrasings contain no mining tokens, so the
+    # mining-first precedence must not move them.
+    data = _load_fixture("cnq_fy2024_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector="Oil and Gas Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
+
+
+def test_bare_exploration_and_production_still_routes_resource():
+    # Non-regression: the broad token's remaining coverage (E&P strings with
+    # no oil/gas and no mining words) keeps its resource_sector routing.
+    data = _load_fixture("cnq_fy2024_sedar.json")
+    result = map_line_items(
+        _line_items(data),
+        data["accounting_standard"],
+        sector="Exploration and Production",
+    )
+
+    assert result["meta"]["sector_profile"] == "resource_sector"
