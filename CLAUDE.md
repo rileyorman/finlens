@@ -223,34 +223,45 @@ REI.UN RECONCILIATION:
 Rental-only NOI excludes BOTH the residential margin AND the service-fee income.
 That is why it will not match RioCan's printed operating-income line by design.
 
-### `property_operating_costs` (REIT sector, OPEN definition question)
+### `property_operating_costs` (REIT sector, conditional lift/derive field)
 
-CURRENT STATE / INCONSISTENCY: `property_operating_costs` currently maps
-REI.UN's "Total operating costs" 637,855, which INCLUDES "Residential inventory
-cost of sales" 181,831. In the same fixture, `net_operating_income` EXCLUDES
-that same residential cost. Same filer, same line family, opposite treatment
-across two fields.
+DEFINITION (decided by Riley 2026-07-06, casebook CB-012): RENTAL-ONLY
+property operating costs — rental property operations only, EXCLUDING
+residential/development inventory cost of sales. Same definition family,
+same conditional shape, and same components as `net_operating_income`.
 
-OPEN HUMAN DECISION: should `property_operating_costs` be:
-- (i) blended total including residential inventory cost of sales: 637,855
-  (current REI.UN value; strongest comparability to the filing's printed
-  subtotal), or
-- (ii) rental-only operating costs: 456,024 = 414,386 "Recoverable under tenant
-  leases" + 41,638 "Non-recoverable costs" (strongest internal consistency with
-  the rental-only NOI derivation)?
+RULE: conditional on filer shape, mirroring the NOI rule exactly:
+- PURE REIT: lift the printed rental-only operating-cost line
+  (CAR.UN, DIR.UN pattern — unchanged by this decision).
+- BLENDED REIT: DERIVE rental-only costs from the rental operating cost
+  components (recoverable + non-recoverable); the filer's printed blended
+  operating-cost subtotal is deliberately NOT taken and is preserved in
+  `mapping.unmapped[]`. The derivation fires under the same condition as
+  the NOI derivation (a development/inventory line exists).
 
-Tradeoff: comparability-to-filing vs internal-consistency-with-NOI. This is a
-definition gap, not a wrong number. Leave the current value untouched until
-Riley decides the canonical definition.
+WHY: (a) internal consistency — the NOI identity closes exactly:
+rental_revenue − property_operating_costs = net_operating_income
+(REI.UN: 1,176,428 − 456,024 = 720,404); the old blended value contradicted
+the same filer's own NOI on the same line family. (b) Definition uniformity
+— rental-only is already what the field means on the pure-REIT filers.
+Comparability to the filing is preserved because the printed blended
+subtotal stays visible in unmapped[] (same pattern as RioCan's blended
+"Operating income" 798,716 under the NOI rule).
 
 CURRENT FILERS:
-- REI.UN: `property_operating_costs` = 637,855 from "Total operating costs";
-  OPEN as described above because the line includes residential inventory cost
-  of sales.
+- REI.UN: `property_operating_costs` = 456,024 DERIVED = 414,386
+  "Recoverable under tenant leases" + 41,638 "Non-recoverable costs".
+  RioCan's printed blended "Total operating costs" 637,855 (which includes
+  181,831 "Residential inventory cost of sales") is deliberately NOT taken;
+  it is preserved in `mapping.unmapped[]`.
 - CAR.UN: `property_operating_costs` = -281,431 from "Property operating
-  costs".
+  costs" (pure lift, as-presented sign).
 - DIR.UN: `property_operating_costs` = -110,786 from "Investment properties
-  operating expenses".
+  operating expenses" (pure lift, as-presented sign).
+
+SIGN NOTE: lifted values keep the filer's as-presented sign; the derived
+blended-REIT value is a positive cost magnitude (sum of component
+magnitudes), matching REI.UN's positive presentation.
 
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 

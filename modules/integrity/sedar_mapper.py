@@ -479,6 +479,37 @@ def _derive_reit_rental_noi(
         },
     }
 
+    # CB-012 (ratified 2026-07-06): property_operating_costs is RENTAL-ONLY —
+    # the same definition, same conditional shape, and same components as the
+    # NOI derivation above. This function only runs on blended REITs, so pure
+    # REITs keep lifting their printed rental-only line; here the printed
+    # blended subtotal (e.g. RioCan's "Total operating costs" 637,855, which
+    # includes residential inventory cost of sales) moves to unmapped[] and
+    # the field derives rental-only. The NOI identity then closes exactly:
+    # rental_revenue - property_operating_costs == net_operating_income.
+    printed_operating_costs = mapped.get("property_operating_costs")
+    if printed_operating_costs is not None and not printed_operating_costs.get("derived"):
+        unmapped.append({
+            "label": printed_operating_costs.get("source_label"),
+            "value": printed_operating_costs.get("value"),
+        })
+    mapped["property_operating_costs"] = {
+        "value": _clean_derived_number(rental_operating_costs),
+        "source_label": "derived: rental-only operating cost components (excluding development inventory costs)",
+        "match_type": "derived",
+        "confidence": None,
+        "derived": True,
+        "components": {
+            "rental_operating_costs": [
+                _line_component(item) for item in rental_cost_items
+            ],
+            "rental_operating_cost_source": rental_cost_source,
+            "excluded_development_costs": [
+                _line_component(item) for item in development_cost_items
+            ],
+        },
+    }
+
 
 def map_line_items(
     line_items: list[dict[str, Any]],

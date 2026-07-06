@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-06T17:13:29Z",
+  "generated_at": "2026-07-06T17:20:44Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -72,8 +72,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 7,
-      "resolved_field_count": 7,
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
       "filing_date": "2026-02-17",
       "commit": "d8dd41c",
       "notes": "filing_date resolved by cover-page extraction input; PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed); byte-identical duplicate removed during the same consolidation; only library-registered filer."

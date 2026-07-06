@@ -545,8 +545,22 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
         }
     ]
 
-    assert mapped["property_operating_costs"]["source_label"] == "Total operating costs"
-    assert mapped["property_operating_costs"]["value"] == _source_value(data, "Total operating costs")
+    # CB-012 (ratified 2026-07-06): property_operating_costs is RENTAL-ONLY.
+    # On the blended REIT the field derives from the same components as NOI;
+    # the printed blended "Total operating costs" (includes residential
+    # inventory cost of sales) is preserved in unmapped[] instead.
+    assert mapped["property_operating_costs"]["derived"] is True
+    assert mapped["property_operating_costs"]["value"] == (
+        _source_value(data, "Recoverable under tenant leases")
+        + _source_value(data, "Non-recoverable costs")
+    )
+    assert mapped["property_operating_costs"]["value"] == 456024
+    # the NOI identity closes exactly on the rental-only definition
+    assert (
+        mapped["rental_revenue"]["value"]
+        - mapped["property_operating_costs"]["value"]
+        == mapped["net_operating_income"]["value"]
+    )
 
     assert mapped["investment_property_fair_value_delta"]["source_label"] == (
         "Fair value loss on investment properties, net"
@@ -567,12 +581,14 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["revenue"]["value"] == _source_value(data, "Total revenue")
 
     assert result["meta"]["sector_profile"] == "reit_sector"
-    assert result["meta"]["mapped_count"] == 7
+    # CB-012: the printed "Total operating costs" line no longer counts as
+    # mapped (derived entries are excluded from mapped_count) — 7 -> 6.
+    assert result["meta"]["mapped_count"] == 6
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Rental revenue" not in unmapped_labels
-    assert "Total operating costs" not in unmapped_labels
+    assert "Total operating costs" in unmapped_labels  # CB-012: preserved, not mapped
     assert "Operating income" in unmapped_labels
     assert "Fair value loss on investment properties, net" not in unmapped_labels
     assert "Income (loss) from equity-accounted investments" in unmapped_labels

@@ -382,6 +382,39 @@ disagree, that is a defect: flag it, do not silently fix either side.
   and the resource_sector negative guard's updated docstring stating the
   mining_sector exception boundary.
 
+### CB-012: property_operating_costs is RENTAL-ONLY — the two-axis definition gap closed
+- Status: DECIDED
+- Date: opened 2026-06-17 (ground-truth pass, recorded in CLAUDE.md as an
+  OPEN definition question); ratified 2026-07-06 (Riley+CC design session —
+  the fourth and final decision of the clean-sweep session)
+- Decided by: Riley
+- Scope: `property_operating_costs` / reit_sector / REI.UN vs CAR.UN, DIR.UN
+- Decision: RENTAL-ONLY — rental property operations only, excluding
+  residential/development inventory cost of sales. Conditional rule
+  mirroring `net_operating_income` exactly: pure REITs LIFT their printed
+  rental-only line (CAR.UN -281,431; DIR.UN -110,786 — unchanged); blended
+  REITs DERIVE from the same rental-only components the NOI derivation uses
+  (REI.UN: 456,024 = 414,386 recoverable + 41,638 non-recoverable), with
+  the printed blended subtotal ("Total operating costs" 637,855, includes
+  181,831 residential inventory cost of sales) preserved in unmapped[].
+- Reasoning: (a) internal consistency — the blended value contradicted the
+  SAME filer's derived NOI on the SAME line family; with rental-only, the
+  identity closes exactly: 1,176,428 − 456,024 = 720,404. (b) Definition
+  uniformity — rental-only is already the field's de facto meaning on both
+  pure-REIT filers; blended-as-printed would have degraded the definition
+  to "whatever subtotal prints". (c) Comparability-to-filing is preserved,
+  not lost: the printed subtotal stays visible in unmapped[], the same
+  pattern the NOI rule set with RioCan's blended "Operating income" 798,716.
+- Evidence: REI.UN FY2025 fixture (post-decision re-map: mapped_count 7→6,
+  field now derived 456,024; only fixture that changed corpus-wide); CAR.UN
+  and DIR.UN pure lifts machine-confirmed unchanged.
+- Enforced by: `_derive_reit_rental_noi` extension in sedar_mapper.py
+  (derives both NOI and rental-only property_operating_costs from shared
+  components under the same blended-shape condition); CLAUDE.md
+  "Canonical Field Definitions" section updated from OPEN to DECIDED;
+  updated REI.UN fixture test pins the derived value, the identity closing
+  exactly, and the printed line's presence in unmapped[].
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
