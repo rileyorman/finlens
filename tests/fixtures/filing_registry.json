@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-06T17:20:44Z",
+  "generated_at": "2026-07-06T19:04:04Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -267,6 +267,25 @@
       "filing_date": "2025-03-20",
       "commit": null,
       "notes": "Manual issuer-IR download; first pre-revenue mining exploration filer. Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."
+    },
+    {
+      "ticker": "SIG",
+      "company_name": "Sitka Gold Corp.",
+      "fiscal_year": "FY2024",
+      "source": "sedar",
+      "sector": "mining_exploration_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/SIG_FY2024_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\SIG_FY2024.pdf",
+      "provenance": {
+        "issuer_url": "https://wp-sitkagold-2024.s3.ca-central-1.amazonaws.com/media/2025/04/2024-12-31-sig-fs.pdf",
+        "retrieval_method": "Sterling ingest worker v1 (httpx.get, 2026-07-06T03:19Z, pilot slot 5); CC independent re-fetch 2026-07-06 \u2014 sha256 byte-identical"
+      },
+      "stored_field_count": 6,
+      "resolved_field_count": 6,
+      "filing_date": "2025-04-22",
+      "commit": null,
+      "notes": "Explorer-shape n=2 (the boring TSXV junior); promoted 2026-07-06 from the Sterling pilot bundle (two-read agreement 51/51 rows; provenance sha256 independently re-verified by CC on promotion). Capitalizes E&E where NFG expenses it \u2014 first live carrier of CB-009 capitalized_exploration_additions and CB-010 cash collision resolution (prefer_specific_alias). HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-06, transcription protocol) \u2014 all 6 mapped fields + 8 unmapped majors tie to source, both identities close, CB-009/CB-010 verified against the filing."
     }
   ],
   "registry_notes": [

@@ -1059,6 +1059,77 @@ def test_cb009_nfg_purchases_line_maps_to_capitalized_additions():
     assert result["meta"]["mapped_count"] == 7
 
 
+def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
+    """
+    SIG (Sitka Gold, TSXV pre-revenue explorer, IFRS, CAD actual dollars) —
+    fixture #15, the explorer-shape n=2 (the boring TSXV junior the shape
+    verification required). Promoted 2026-07-06 from the Sterling pilot
+    bundle: two-read agreement 51/51 rows; provenance sha256 independently
+    re-verified byte-identical on promotion. HUMAN GROUND-TRUTH: PASS
+    (Riley, 2026-07-06, transcription protocol) — all 6 mapped fields and
+    8 unmapped majors tie to the source PDF, both statement identities
+    close, and the CB-009/CB-010 behaviors were verified against the
+    filing itself. This test freezes that verified state.
+
+    SIG is the first live carrier of two clean-sweep rulings:
+    - CB-010: "Cash and cash equivalents (Note 4)" vs the note sub-component
+      "Cash" resolves via prefer_specific_alias instead of blocking.
+    - CB-009: SIG capitalizes E&E (NFG expenses it) — the cash-flow
+      "Exploration and evaluation assets" maps to the minted
+      capitalized_exploration_additions via its statement-scoped alias,
+      while the identically-labeled balance-sheet asset STOCK stays unmapped.
+    """
+    data = _load_fixture("SIG_FY2024_sedar.json")
+    assert data["accounting_standard"] == "IFRS"
+    assert data["currency"] == "CAD"
+    assert data["scale"] == "ones"
+    assert data["fiscal_year_end"] == "2024-12-31"
+    assert data["sector_inferred"] == "Mining Exploration"
+    provenance = data["source_provenance"]
+    assert provenance["sha256"] == (
+        "f34c5e885e477b594006684a73e6e763541992083de773f90ff7c52746524c83"
+    )
+    assert "CC independent re-fetch" in provenance["retrieval_method"]
+
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert mapped["net_loss"]["value"] == -3417435
+    assert mapped["operating_loss"]["value"] == -3856178
+    assert mapped["total_assets"]["value"] == 50130571
+    assert mapped["net_cash_used_in_operating_activities"]["value"] == -2146563
+
+    # CB-010 live: the statement total wins, the note sub-component is
+    # rejected visibly, and the resolution is on record.
+    assert mapped["cash"]["source_label"] == "Cash and cash equivalents (Note 4)"
+    assert mapped["cash"]["value"] == 15208214
+    assert result["meta"]["resolved_collisions"] == [
+        {
+            "canonical_field": "cash",
+            "rule": "prefer_specific_alias",
+            "chosen_label": "Cash and cash equivalents (Note 4)",
+            "rejected_labels": ["Cash"],
+        }
+    ]
+
+    # CB-009 live: capitalized additions map from the cash flow only; the
+    # balance-sheet stock with the identical label stays honestly unmapped.
+    assert mapped["capitalized_exploration_additions"]["value"] == -6927597
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert any("xploration and evaluation assets" in label for label in unmapped_labels)
+
+    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["collisions"] == []
+    assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_cb010_cash_collision_resolves_to_most_specific_alias():
     """CB-010 (ratified 2026-07-06): the SIG shape — the balance-sheet total
     "Cash and cash equivalents (Note 4)" and the note-breakdown sub-component
