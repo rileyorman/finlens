@@ -2419,7 +2419,16 @@ if page == "Portfolio Manager":
                 st.session_state.pending_reanalyse = None
                 st.stop()
             with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
-                _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+                try:
+                    _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+                except SedarExtractionError as e:
+                    st.error(f"SEDAR+ extraction failed: {e}")
+                    st.stop()
+                except Exception as e:
+                    # pending_reanalyse stays set so a rerun retries —
+                    # transient API errors (e.g. 529 Overloaded) usually succeed on retry.
+                    st.error(f"SEDAR+ extraction failed: {e} — click Re-Analyse again to retry.")
+                    st.stop()
                 _ra_fd = _sedar_extraction_to_financial_data(
                     _sedar_result,
                     ra.get("file_name", ""),
@@ -5937,7 +5946,16 @@ if st.session_state.get("pending_reanalyse"):
             st.session_state.pending_reanalyse = None
             st.stop()
         with st.spinner("Call 1: Extracting SEDAR+ financial statements..."):
-            _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+            try:
+                _sedar_result = extract_sedar_filing(_sedar_pdf_path)
+            except SedarExtractionError as e:
+                st.error(f"SEDAR+ extraction failed: {e}")
+                st.stop()
+            except Exception as e:
+                # pending_reanalyse stays set so a rerun retries —
+                # transient API errors (e.g. 529 Overloaded) usually succeed on retry.
+                st.error(f"SEDAR+ extraction failed: {e} — click Re-Analyse again to retry.")
+                st.stop()
             _ra_fd = _sedar_extraction_to_financial_data(
                 _sedar_result,
                 ra.get("file_name", ""),
