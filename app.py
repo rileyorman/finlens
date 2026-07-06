@@ -625,10 +625,11 @@ def _analysis_cache_payload(
     except Exception as e:
         logger.warning(f"detect_flags failed: {e}")
 
-    try:
-        payload["ratio_data"] = _calc_summary_metrics(financial_data)
-    except Exception as e:
-        logger.warning(f"_calc_summary_metrics failed: {e}")
+    # Derived metrics are deliberately NOT stored: every consumer recomputes
+    # _calc_summary_metrics(financial_data) at render time, so a stored copy
+    # can only drift from the live derivation (a pre-1cc9fd9 snapshot would
+    # still carry the OCF-mislabelled-as-FCF value). financial_data is the
+    # stored source of truth; derivations stay live.
 
     return payload
 
