@@ -942,6 +942,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 42032,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 20836,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1194,10 +1206,6 @@
         "value": 4126
       },
       {
-        "label": "Total liabilities",
-        "value": 42032
-      },
-      {
         "label": "Common shares",
         "value": 8089
       },
@@ -1222,10 +1230,6 @@
         "value": 322
       },
       {
-        "label": "Total equity",
-        "value": 20836
-      },
-      {
         "label": "Total liabilities and equity",
         "value": 62868
       }
@@ -1234,8 +1238,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "insurance_sector",
       "total": 79,
-      "mapped_count": 7,
-      "unmapped_count": 71,
+      "mapped_count": 9,
+      "unmapped_count": 69,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

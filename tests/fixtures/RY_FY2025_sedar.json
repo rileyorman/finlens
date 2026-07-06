@@ -1160,6 +1160,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 2185855,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 139151,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1432,10 +1444,6 @@
         "value": 13961
       },
       {
-        "label": "Total liabilities",
-        "value": 2185855
-      },
-      {
         "label": "Preferred shares and other equity instruments",
         "value": 11675
       },
@@ -1460,10 +1468,6 @@
         "value": 59
       },
       {
-        "label": "Total equity",
-        "value": 139151
-      },
-      {
         "label": "Total liabilities and equity",
         "value": 2325006
       }
@@ -1472,8 +1476,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "financial_sector",
       "total": 81,
-      "mapped_count": 5,
-      "unmapped_count": 76,
+      "mapped_count": 7,
+      "unmapped_count": 74,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

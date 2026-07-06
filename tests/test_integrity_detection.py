@@ -221,6 +221,74 @@ def test_sedar_total_assets_identity_logs_skip_when_combined_line_missing():
     assert check.skip_reason == "field_unavailable"
 
 
+def test_sedar_balance_sheet_identity_passes_on_canonical_components():
+    """CB-013: assets == liabilities + equity from the canonical mapped
+    components (RY FY2025 values, identity-verified against source)."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "mapping": {"mapped": {
+            "total_assets": {"value": 2325006},
+            "total_liabilities": {"value": 2185855},
+            "total_equity": {"value": 139151},
+        }},
+    }
+
+    result = validate_filing(data, "RY", "Financial Services", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_balance_sheet_identity")
+    assert check.severity == "warn"
+    assert check.passed
+    assert not check.skipped
+    assert check.observed_value == 0
+
+
+def test_sedar_balance_sheet_identity_flags_wrong_concept_equity_pick():
+    """CB-013 backstop: if total_equity ever carries an attributable-only /
+    NCI-excluding subtotal instead of the grand total (the SLF/DIR.UN trap
+    class), the identity fails by exactly the excluded amount — a flagged
+    conflict, never a silent error. Uses RY's real attributable subtotal
+    139,092 vs grand total 139,151 (NCI 59)."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "mapping": {"mapped": {
+            "total_assets": {"value": 2325006},
+            "total_liabilities": {"value": 2185855},
+            "total_equity": {"value": 139092},
+        }},
+    }
+
+    result = validate_filing(data, "RY", "Financial Services", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_balance_sheet_identity")
+    assert not check.passed
+    assert not check.skipped
+    assert check.observed_value == 59
+    assert "sedar_balance_sheet_identity" in _warn_failures(result)
+
+
+def test_sedar_balance_sheet_identity_skips_honestly_when_component_missing():
+    """CB-013 ruling 2: a filer with no printed total-liabilities subtotal
+    (SHOP class) gets an honest field_unavailable skip — the component is
+    deliberately NOT derived from the identity (that would be circular)."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2025",
+        "mapping": {"mapped": {
+            "total_assets": {"value": 15189},
+            "total_equity": {"value": 13473},
+        }},
+    }
+
+    result = validate_filing(data, "SHOP", "Technology", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_balance_sheet_identity")
+    assert check.passed
+    assert check.skipped
+    assert check.skip_reason == "field_unavailable"
+
+
 def test_unresolved_ticker_uses_company_name_and_runs_available_rules(tmp_path):
     """Filings without a resolvable ticker log under company name with ticker_unresolved=True,
     rules fire on available fields, and two different company entries don't collide on dedup."""

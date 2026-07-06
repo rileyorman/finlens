@@ -246,8 +246,8 @@ def _build_match_indexes(
     alias_table: dict[str, Any],
     accounting_standard: str,
     sector_profile: str | None,
-) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set]]:
-    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope).
+) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set], dict[str, int]]:
+    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope, alias_order).
 
     exact_map       normalized_label -> canonical_field_name
     patterns        list of (starts_with_prefix, canonical_field_name)
@@ -256,6 +256,12 @@ def _build_match_indexes(
                     Per-field opt-in (CB-010): a field config may declare
                     "collision_resolution": "prefer_specific_alias" to resolve
                     distinct-label collisions instead of blocking them.
+                    CB-013 adds "prefer_primary_alias": the match whose alias
+                    is declared EARLIEST in the field's alias list wins — the
+                    declared order encodes a documented semantic tiering
+                    (total_equity: a printed grand-total "Total equity" line
+                    supersedes shareholder/unitholder-scoped lines, which are
+                    NCI-excluding or attributable-only on some filers).
     statement_scope normalized_label -> set of statement keys the alias may
                     match in (CB-009): an alias may declare
                     "statements": ["cash_flow"] when the same label names a
@@ -264,12 +270,17 @@ def _build_match_indexes(
                     capitalized additions; the identical balance-sheet label
                     is the asset stock). Scoped aliases FAIL CLOSED: an item
                     without statement attribution never matches them.
+    alias_order     normalized_label -> declared position in its field's
+                    alias list (CB-013). Positions use the field's FULL
+                    declared list, so they are stable under standards
+                    filtering. Consulted only by "prefer_primary_alias".
     """
     exact: dict[str, str] = {}
     patterns: list[tuple[str, str]] = []
     semantics_map: dict[str, dict] = {}
     collision_rules: dict[str, str] = {}
     statement_scope: dict[str, set] = {}
+    alias_order: dict[str, int] = {}
 
     # First-write-wins on alias-label collisions: defaults are iterated before
     # sector-profile fields, so a default claims a collided label and the
@@ -280,7 +291,7 @@ def _build_match_indexes(
         rule = config.get("collision_resolution")
         if rule:
             collision_rules[field_name] = rule
-        for alias in config.get("aliases") or []:
+        for position, alias in enumerate(config.get("aliases") or []):
             if _standard_allowed(alias, accounting_standard):
                 label = alias["label"]
                 # Rare explicit sector-profile override for labels whose
@@ -288,6 +299,7 @@ def _build_match_indexes(
                 # Defaults still claim ordinary collisions first (RY trap).
                 if label not in exact or alias.get("prefer_profile"):
                     exact[label] = field_name
+                    alias_order[label] = position
                     sem = alias.get("semantics")
                     if sem:
                         semantics_map[label] = sem
@@ -302,7 +314,7 @@ def _build_match_indexes(
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
 
-    return exact, patterns, semantics_map, collision_rules, statement_scope
+    return exact, patterns, semantics_map, collision_rules, statement_scope, alias_order
 
 
 def _unmapped_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -518,7 +530,7 @@ def map_line_items(
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
     sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
-    exact, patterns, semantics_map, collision_rules, statement_scope = _build_match_indexes(
+    exact, patterns, semantics_map, collision_rules, statement_scope, alias_order = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
 
@@ -663,6 +675,49 @@ def map_line_items(
                 ]
                 if len(longest) == 1:
                     winner = longest[0]
+                    mapped[canonical_field] = _mapped_item(
+                        winner["item"], winner["match_type"], winner.get("semantics")
+                    )
+                    resolved_collisions.append({
+                        "canonical_field": canonical_field,
+                        "rule": rule,
+                        "chosen_label": winner["item"].get("label"),
+                        "rejected_labels": [
+                            match["item"].get("label")
+                            for match in matches
+                            if match is not winner
+                        ],
+                    })
+                    for match in matches:
+                        if match is not winner:
+                            unmapped.append(_unmapped_item(match["item"]))
+                    continue
+            # CB-013 (ratified 2026-07-06): "prefer_primary_alias" — the match
+            # whose alias is declared EARLIEST in the field's alias list wins.
+            # The declared order encodes documented judgment, not an arbitrary
+            # tiebreak: for total_equity, a printed grand-total "Total equity"
+            # line supersedes shareholder/unitholder-scoped lines, which are
+            # the NCI-excluding subtotal on SLF and the attributable-only line
+            # on DIR.UN. Note prefer_specific_alias (longest label) would pick
+            # the WRONG line here — SLF's "total shareholders' equity" is
+            # longer than "total equity" but is the subtotal — which is why
+            # this is a distinct strategy. Exact alias matches only; every
+            # matched label must carry a declared position and the earliest
+            # position must be unique, else the collision blocks as before.
+            # Resolutions are recorded in meta.resolved_collisions, never
+            # silent; rejected rows stay visible in unmapped[].
+            if rule == "prefer_primary_alias" and all(
+                match["match_type"] == "exact"
+                and match["normalized_label"] in alias_order
+                for match in matches
+            ):
+                min_pos = min(alias_order[match["normalized_label"]] for match in matches)
+                primary = [
+                    match for match in matches
+                    if alias_order[match["normalized_label"]] == min_pos
+                ]
+                if len(primary) == 1:
+                    winner = primary[0]
                     mapped[canonical_field] = _mapped_item(
                         winner["item"], winner["match_type"], winner.get("semantics")
                     )

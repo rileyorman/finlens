@@ -149,6 +149,47 @@
         }
       ],
       "patterns": []
+    },
+    "total_liabilities": {
+      "aliases": [
+        {
+          "label": "total liabilities",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-013 default_balance_sheet (14/15 corpus filers; SHOP prints no standalone subtotal and stays honestly unmapped)"
+        }
+      ],
+      "patterns": []
+    },
+    "total_equity": {
+      "collision_resolution": "prefer_primary_alias",
+      "aliases": [
+        {
+          "label": "total equity",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-013 primary grand-total form (AEM ATD DIR.UN IFC NFG RY SLF TECK.B)"
+        },
+        {
+          "label": "total shareholders' equity",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-013 grand total where no 'Total equity' line exists (CNQ CNR SHOP SIG); NCI-excluding subtotal on SLF, superseded there by the primary alias"
+        },
+        {
+          "label": "total unitholders' equity",
+          "standards": ["IFRS"],
+          "source": "CB-013 CAR.UN grand total"
+        },
+        {
+          "label": "unitholders' equity",
+          "standards": ["IFRS"],
+          "source": "CB-013 REI.UN grand total; attributable-only on DIR.UN, superseded there by the primary alias"
+        },
+        {
+          "label": "shareholders' equity total",
+          "standards": ["IFRS"],
+          "source": "CB-013 CSU grand total (includes NCI, identity-verified)"
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {

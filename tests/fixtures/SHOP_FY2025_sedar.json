@@ -941,6 +941,12 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 13473,
+        "source_label": "Total shareholders' equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1165,10 +1171,6 @@
         "value": 2860
       },
       {
-        "label": "Total shareholders' equity",
-        "value": 13473
-      },
-      {
         "label": "Total liabilities and shareholders' equity",
         "value": 15189
       }
@@ -1177,8 +1179,8 @@
       "accounting_standard": "U.S. GAAP",
       "sector_profile": null,
       "total": 62,
-      "mapped_count": 5,
-      "unmapped_count": 57,
+      "mapped_count": 6,
+      "unmapped_count": 56,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

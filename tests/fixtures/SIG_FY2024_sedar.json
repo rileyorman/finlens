@@ -518,6 +518,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "total_liabilities": {
+        "value": 6250396,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
+      "total_equity": {
+        "value": 43880175,
+        "source_label": "Total shareholders' equity",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
       "net_cash_used_in_operating_activities": {
         "value": -2146563,
         "source_label": "Cash flows from operating activities",
@@ -629,10 +641,6 @@
         "value": 3708000
       },
       {
-        "label": "Total liabilities",
-        "value": 6250396
-      },
-      {
         "label": "Share Capital (Note 7 and 9)",
         "value": 50553611
       },
@@ -643,10 +651,6 @@
       {
         "label": "Deficit",
         "value": -11265002
-      },
-      {
-        "label": "Total shareholders' equity",
-        "value": 43880175
       },
       {
         "label": "TOTAL SHAREHOLDERS' EQUITY AND LIABILITIES",
@@ -741,8 +745,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_exploration_sector",
       "total": 57,
-      "mapped_count": 6,
-      "unmapped_count": 51,
+      "mapped_count": 8,
+      "unmapped_count": 49,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

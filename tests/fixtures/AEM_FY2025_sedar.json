@@ -867,6 +867,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 9728827,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 24742464,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -1043,10 +1055,6 @@
         "value": 250221
       },
       {
-        "label": "Total liabilities",
-        "value": 9728827
-      },
-      {
         "label": "Common shares – Outstanding – 500,768,400 common shares issued, less 721,800 shares held in trust",
         "value": 18699862
       },
@@ -1061,10 +1069,6 @@
       {
         "label": "Other reserves (Note 18)",
         "value": 411921
-      },
-      {
-        "label": "Total equity",
-        "value": 24742464
       },
       {
         "label": "Total liabilities and equity",
@@ -1227,8 +1231,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_sector",
       "total": 96,
-      "mapped_count": 7,
-      "unmapped_count": 88,
+      "mapped_count": 9,
+      "unmapped_count": 86,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

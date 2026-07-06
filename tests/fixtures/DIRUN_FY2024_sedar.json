@@ -736,6 +736,18 @@
         "source_label": "Total assets",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_liabilities": {
+        "value": 3391481,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_equity": {
+        "value": 4731073,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
@@ -884,14 +896,6 @@
         "value": 1168009
       },
       {
-        "label": "Total liabilities",
-        "value": 3391481
-      },
-      {
-        "label": "Unitholders' equity",
-        "value": 3399261
-      },
-      {
         "label": "Retained earnings",
         "value": 1256934
       },
@@ -900,25 +904,34 @@
         "value": 74878
       },
       {
-        "label": "Total equity",
-        "value": 4731073
-      },
-      {
         "label": "Total liabilities and equity",
         "value": 8122554
+      },
+      {
+        "label": "Unitholders' equity",
+        "value": 3399261
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 48,
-      "mapped_count": 6,
-      "unmapped_count": 42,
+      "mapped_count": 8,
+      "unmapped_count": 40,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
       "collisions": [],
-      "resolved_collisions": []
+      "resolved_collisions": [
+        {
+          "canonical_field": "total_equity",
+          "rule": "prefer_primary_alias",
+          "chosen_label": "Total equity",
+          "rejected_labels": [
+            "Unitholders' equity"
+          ]
+        }
+      ]
     }
   }
 }

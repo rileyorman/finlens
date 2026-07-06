@@ -219,6 +219,15 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
     total_assets = _coerce_number(normalized_data.get("total_assets"))
     if total_assets is None:
         total_assets = _mapped_value(mapping, "total_assets")
+    # CB-013 canonical balance-sheet components -- same top-level-then-mapped
+    # resolution as total_assets (app.py promotes mapped fields to top level
+    # for SEDAR filings; the mapped fallback covers direct engine callers).
+    total_liabilities = _coerce_number(normalized_data.get("total_liabilities"))
+    if total_liabilities is None:
+        total_liabilities = _mapped_value(mapping, "total_liabilities")
+    total_equity = _coerce_number(normalized_data.get("total_equity"))
+    if total_equity is None:
+        total_equity = _mapped_value(mapping, "total_equity")
     gross_profit_derived = False
     cost_of_revenue_excludes_da = False
 
@@ -247,6 +256,8 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         "cost_of_revenue_excludes_da": cost_of_revenue_excludes_da,
         "net_income":                 _line_item(income, "net_income"),
         "total_assets":               total_assets,
+        "total_liabilities":          total_liabilities,
+        "total_equity":               total_equity,
         "total_liabilities_and_equity": _line_item_from_labels(
             balance,
             _TOTAL_LIABILITIES_AND_EQUITY_LABELS,
@@ -456,6 +467,27 @@ def _check_total_assets_identity(rule: dict, ctx: dict) -> tuple:
     )
 
 
+def _check_balance_sheet_identity(rule: dict, ctx: dict) -> tuple:
+    """CB-013: total_assets == total_liabilities + total_equity from the
+    canonical mapped components. A wrong-concept equity pick (NCI-excluding
+    subtotal, attributable-only line) fails this by exactly the excluded
+    amount, converting the silent-error class into a flagged conflict."""
+    total_assets = ctx.get("total_assets")
+    total_liabilities = ctx.get("total_liabilities")
+    total_equity = ctx.get("total_equity")
+    absolute_tolerance = rule["params"].get("absolute_tolerance", 0.5)
+
+    combined = total_liabilities + total_equity
+    diff = abs(total_assets - combined)
+    passed = diff <= absolute_tolerance
+    direction = "<=" if passed else ">"
+    return round(diff, 6), {"absolute_tolerance": absolute_tolerance}, passed, (
+        "SEDAR total_assets vs total_liabilities + total_equity: "
+        f"{total_assets} vs {total_liabilities} + {total_equity} = {combined}; "
+        f"absolute difference {diff} ({direction} {absolute_tolerance})"
+    )
+
+
 # Registry: check_type ? handler
 _CHECKS = {
     "ratio_range":               _check_ratio_range,
@@ -466,6 +498,7 @@ _CHECKS = {
     "mapping_pattern_info":      _check_mapping_pattern_info,
     "accounting_standard_info":  _check_accounting_standard_info,
     "total_assets_identity":     _check_total_assets_identity,
+    "balance_sheet_identity":    _check_balance_sheet_identity,
 }
 
 

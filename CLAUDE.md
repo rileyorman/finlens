@@ -189,7 +189,7 @@ map.
 
 ### `net_operating_income` (REIT sector, conditional lift/derive field)
 
-DEFINITION: rental-only NOI - rental property operations only, EXCLUDING
+DEFINITION: rental-only NOI — rental property operations only, EXCLUDING
 residential/development revenue and cost.
 
 RULE: conditional on filer shape:
@@ -262,6 +262,53 @@ CURRENT FILERS:
 SIGN NOTE: lifted values keep the filer's as-presented sign; the derived
 blended-REIT value is a positive cost magnitude (sum of component
 magnitudes), matching REI.UN's positive presentation.
+
+### `total_equity` (default balance-sheet field, priority-ordered aliases)
+
+DEFINITION (decided by Riley 2026-07-06, casebook CB-013): the filer's
+printed GRAND-TOTAL equity line — consolidated, INCLUDING NCI where the
+filer presents NCI within equity. Operationally: the equity line that
+closes the balance-sheet identity assets ≡ liabilities + equity.
+Consistent with CB-011's `net_income` ruling (consolidated incl. NCI).
+
+RULE: the attributable-to-shareholders / NCI-excluding / unitholder-scoped
+subtotal is deliberately NOT taken when a grand-total line exists; it stays
+visible in `mapping.unmapped[]`. Five aliases in declared PRIORITY ORDER
+("total equity" > "total shareholders' equity" > "total unitholders'
+equity" > "unitholders' equity" > "shareholders' equity total"); when two
+alias forms collide on one filer, the per-field `prefer_primary_alias`
+rule resolves to the earliest-declared alias and records the resolution in
+`meta.resolved_collisions`. The declared order is the ruling, not a
+tiebreak: a printed grand-total "Total equity" line supersedes
+shareholder/unitholder-scoped lines. NOTE: CB-010's `prefer_specific_alias`
+(longest label wins) must NEVER be applied to this field — it would pick
+SLF's NCI-excluding subtotal.
+
+KNOWN TRAPS (the evidence for the priority order):
+- SLF: "Total shareholders' equity" 24,532 is the NCI-EXCLUDING subtotal
+  (grand "Total equity" = 25,492 incl. NCI 264 + participating account
+  696) — while the SAME label IS the grand total on CNQ/CNR/SHOP/SIG.
+- DIR.UN: "Unitholders' equity" 3,399,261 is attributable-only (grand
+  "Total equity" = 4,731,073) — while the SAME label IS the grand total
+  on REI.UN (7,157,263).
+
+RESIDUAL RISK (accepted, backstopped): a future filer printing ONLY an
+NCI-excluding subtotal and no grand total would map the wrong concept;
+the `sedar_balance_sheet_identity` integrity rule then fails by exactly
+the excluded amount — flagged conflict, never a silent error.
+
+### `total_liabilities` (default balance-sheet field)
+
+DEFINITION (decided by Riley 2026-07-06, casebook CB-013): the filer's
+printed "Total liabilities" subtotal, as-presented. Identity-verified on
+14 of 15 corpus filers.
+
+NEGATIVE RULE: when a filer prints NO standalone total-liabilities
+subtotal (SHOP: only current + long-term subtotals), the field stays
+HONESTLY UNMAPPED and is deliberately NOT derived as
+total_assets − total_equity: a derived value would make the
+`sedar_balance_sheet_identity` check circular (pass by construction).
+Honest absence > vacuous validation. Pinned by test.
 
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 

@@ -982,6 +982,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "total_liabilities": {
+        "value": 23208.6,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_equity": {
+        "value": 15093.3,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "gross_profit": {
         "value": 13021.3,
         "source_label": "derived: revenue - cost_of_revenue",
@@ -1209,10 +1221,6 @@
         "value": 1659.9
       },
       {
-        "label": "Total liabilities",
-        "value": 23208.6
-      },
-      {
         "label": "Capital stock (Note 25)",
         "value": 642.5
       },
@@ -1237,10 +1245,6 @@
         "value": 146.5
       },
       {
-        "label": "Total equity",
-        "value": 15093.3
-      },
-      {
         "label": "Total liabilities and equity",
         "value": 38301.9
       }
@@ -1249,8 +1253,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": null,
       "total": 70,
-      "mapped_count": 6,
-      "unmapped_count": 63,
+      "mapped_count": 8,
+      "unmapped_count": 61,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {
