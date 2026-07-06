@@ -1065,9 +1065,11 @@ def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
     fixture #15, the explorer-shape n=2 (the boring TSXV junior the shape
     verification required). Promoted 2026-07-06 from the Sterling pilot
     bundle: two-read agreement 51/51 rows; provenance sha256 independently
-    re-verified byte-identical on promotion. PILOT-GRADE evidence — the
-    human ground-truth stamp (Riley, transcription protocol) is pending and
-    tracked in the handoff; this test pins consistency, not correctness.
+    re-verified byte-identical on promotion. HUMAN GROUND-TRUTH: PASS
+    (Riley, 2026-07-06, transcription protocol) — all 6 mapped fields and
+    8 unmapped majors tie to the source PDF, both statement identities
+    close, and the CB-009/CB-010 behaviors were verified against the
+    filing itself. This test freezes that verified state.
 
     SIG is the first live carrier of two clean-sweep rulings:
     - CB-010: "Cash and cash equivalents (Note 4)" vs the note sub-component

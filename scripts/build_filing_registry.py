@@ -193,8 +193,10 @@ FILING_MANIFEST = {
             "Sterling pilot bundle (two-read agreement 51/51 rows; provenance sha256 "
             "independently re-verified by CC on promotion). Capitalizes E&E where NFG "
             "expenses it — first live carrier of CB-009 capitalized_exploration_additions "
-            "and CB-010 cash collision resolution (prefer_specific_alias). Pilot-grade "
-            "evidence; human ground-truth stamp pending (Riley, transcription protocol)."
+            "and CB-010 cash collision resolution (prefer_specific_alias). HUMAN "
+            "GROUND-TRUTH: PASS (Riley, 2026-07-06, transcription protocol) — all 6 "
+            "mapped fields + 8 unmapped majors tie to source, both identities close, "
+            "CB-009/CB-010 verified against the filing."
         ),
     },
 }
