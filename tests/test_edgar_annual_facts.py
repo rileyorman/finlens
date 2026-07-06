@@ -79,6 +79,36 @@ def test_filers_without_quarterly_tagging_unchanged():
     assert prior["val"] == 280_000_000_000
 
 
+def test_capex_falls_through_to_productive_assets_when_ppe_tag_absent():
+    """NVDA capex tag coverage (open-queue item, closed 2026-07-06): NVIDIA
+    tags its combined PP&E + intangibles capex under
+    PaymentsToAcquireProductiveAssets; the PP&E-only concept has NO facts in
+    its 10-K accessions (live-API probed). The alias list must fall through
+    to the combined tag and return the filed pair (FY2026 6,042M / prior
+    3,236M). Values mirror the real NVDA facts."""
+    accn = "0001045810-26-000021"
+    facts = {"facts": {"us-gaap": {
+        # PP&E concept exists for OTHER accessions only — must not match
+        "PaymentsToAcquirePropertyPlantAndEquipment": {"units": {"USD": [
+            _fact("2015-01-26", "2016-01-31", 86_000_000, "old-accn", "2016-03-12"),
+        ]}},
+        "PaymentsToAcquireProductiveAssets": {"units": {"USD": [
+            _fact("2025-01-27", "2026-01-25", 6_042_000_000, accn, "2026-02-26"),
+            _fact("2024-01-29", "2025-01-26", 3_236_000_000, accn, "2026-02-26"),
+        ]}},
+    }}}
+
+    current, prior = _annual_facts(
+        facts,
+        ["PaymentsToAcquirePropertyPlantAndEquipment",
+         "CapitalExpenditureDiscontinuedOperations",
+         "PaymentsToAcquireProductiveAssets"],
+        accn,
+    )
+    assert current["val"] == 6_042_000_000
+    assert prior["val"] == 3_236_000_000
+
+
 def test_is_annual_duration_boundaries():
     # quarters and half-years are not annual
     assert not _is_annual_duration({"start": "2025-10-01", "end": "2025-12-31"})

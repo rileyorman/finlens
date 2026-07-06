@@ -842,7 +842,11 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
                 _section("OPERATING ACTIVITIES"),
                 _row(facts, "Net Cash Provided by Operating Activities", ["NetCashProvidedByUsedInOperatingActivities"], accession_number, "total"),
                 _section("INVESTING ACTIVITIES"),
-                _row(facts, "Capital Expenditures", ["PaymentsToAcquirePropertyPlantAndEquipment", "CapitalExpenditureDiscontinuedOperations"], accession_number),
+                # PaymentsToAcquireProductiveAssets: combined PP&E + intangibles
+                # purchases — NVDA's capex line (FY2026 6,042M; the PP&E-only tag
+                # has NO facts in NVDA's 10-K accessions, so it falls through).
+                # Ordered last: PP&E-tagging filers (e.g. PLD) match earlier.
+                _row(facts, "Capital Expenditures", ["PaymentsToAcquirePropertyPlantAndEquipment", "CapitalExpenditureDiscontinuedOperations", "PaymentsToAcquireProductiveAssets"], accession_number),
                 _row(facts, "Net Cash Provided by Investing Activities", ["NetCashProvidedByUsedInInvestingActivities"], accession_number, "total"),
                 _section("FINANCING ACTIVITIES"),
                 _row(facts, "Net Cash Provided by Financing Activities", ["NetCashProvidedByUsedInFinancingActivities"], accession_number, "total"),
