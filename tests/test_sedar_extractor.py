@@ -11,6 +11,22 @@ def _page(heading: str) -> str:
     return f"{heading}\nFor the years ended December 31\n{numbers}\nAssets 1 2 3"
 
 
+class _FakeStream:
+    """Context manager mimicking client.messages.stream(...)."""
+
+    def __init__(self, response):
+        self._response = response
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def get_final_message(self):
+        return self._response
+
+
 def test_page_locator_matches_core_statement_headings_and_following_pages():
     page_texts = [
         _page("Consolidated Statement of Financial Position"),
@@ -120,8 +136,8 @@ def test_extract_sedar_filing_contract_shape_with_mocked_claude(monkeypatch):
     )
 
     class FakeMessages:
-        def create(self, **kwargs):
-            return SimpleNamespace(content=[SimpleNamespace(type="text", text=raw_response)])
+        def stream(self, **kwargs):
+            return _FakeStream(SimpleNamespace(content=[SimpleNamespace(type="text", text=raw_response)]))
 
     fake_client = SimpleNamespace(messages=FakeMessages())
 
@@ -167,8 +183,8 @@ def test_extract_sedar_filing_leaves_filing_date_null_when_absent(monkeypatch):
     )
 
     class FakeMessages:
-        def create(self, **kwargs):
-            return SimpleNamespace(content=[SimpleNamespace(type="text", text=raw_response)])
+        def stream(self, **kwargs):
+            return _FakeStream(SimpleNamespace(content=[SimpleNamespace(type="text", text=raw_response)]))
 
     fake_client = SimpleNamespace(messages=FakeMessages())
 
@@ -906,3 +922,98 @@ def test_atd_fy2025_atd_watch_items():
     # Cash dividends paid is present in CF (ATD does pay dividends, unlike SHOP).
     cf_labels = [item["label"] for item in cf_items]
     assert "Cash dividends paid" in cf_labels
+
+
+# --- Output-budget truncation guard (TD FY2025 cold-slot finding, 2026-07-06) ---
+# A bank-scale filing's extraction JSON exceeded the old 8,000-token cap and the
+# truncated response surfaced as a misleading JSON-parse error after TWO paid
+# calls (the same-cap retry can never succeed). These pin the honest failure.
+
+
+def _truncation_test_client(stop_reasons_and_texts, call_log):
+    """Fake client returning queued (stop_reason, text) responses in order."""
+    queue = list(stop_reasons_and_texts)
+
+    class FakeMessages:
+        def stream(self, **kwargs):
+            call_log.append(kwargs)
+            stop_reason, text = queue.pop(0)
+            return _FakeStream(
+                SimpleNamespace(
+                    stop_reason=stop_reason,
+                    content=[SimpleNamespace(type="text", text=text)],
+                )
+            )
+
+    return SimpleNamespace(messages=FakeMessages())
+
+
+def test_truncated_extraction_raises_honest_budget_error_without_retry(monkeypatch):
+    truncated = '{"statements": {"income_statement": [{"label": "Net interest inco'
+    calls = []
+    fake_client = _truncation_test_client([("max_tokens", truncated)], calls)
+
+    monkeypatch.setattr(sedar_extractor, "_extract_located_page_text", lambda pdf_path, pages: "text")
+    monkeypatch.setattr(sedar_extractor, "_api_key", lambda: "test-key")
+    monkeypatch.setattr(sedar_extractor, "_make_client", lambda api_key: fake_client)
+
+    with pytest.raises(sedar_extractor.SedarExtractionError) as excinfo:
+        sedar_extractor.extract_statements("dummy.pdf", {"income_statement": [1]})
+
+    # Honest cause named, not a JSON-parse misdiagnosis.
+    assert "output budget" in str(excinfo.value)
+    assert "max_tokens" in str(excinfo.value)
+    # Truncated raw preserved for diagnostics.
+    assert excinfo.value.raw_response == truncated
+    # No same-cap retry: exactly ONE paid call.
+    assert len(calls) == 1
+
+
+def test_truncated_retry_response_also_raises_budget_error(monkeypatch):
+    # First response: malformed JSON (end_turn) -> retry allowed.
+    # Retry response: truncated -> budget error, not a second parse error.
+    calls = []
+    fake_client = _truncation_test_client(
+        [("end_turn", "not json at all"), ("max_tokens", '{"statements": {')], calls
+    )
+
+    monkeypatch.setattr(sedar_extractor, "_extract_located_page_text", lambda pdf_path, pages: "text")
+    monkeypatch.setattr(sedar_extractor, "_api_key", lambda: "test-key")
+    monkeypatch.setattr(sedar_extractor, "_make_client", lambda api_key: fake_client)
+
+    with pytest.raises(sedar_extractor.SedarExtractionError) as excinfo:
+        sedar_extractor.extract_statements("dummy.pdf", {"income_statement": [1]})
+
+    assert "output budget" in str(excinfo.value)
+    assert len(calls) == 2
+
+
+def test_complete_response_with_end_turn_parses_normally(monkeypatch):
+    payload = json.dumps(
+        {
+            "accounting_standard": "IFRS",
+            "currency": "CAD",
+            "scale": "millions",
+            "fiscal_year_end": "October 31",
+            "filing_date": None,
+            "statements": {
+                "income_statement": [
+                    {"label": "Net income", "values": {"2025": "100"}, "confidence": 0.9}
+                ]
+            },
+        }
+    )
+    calls = []
+    fake_client = _truncation_test_client([("end_turn", payload)], calls)
+
+    monkeypatch.setattr(sedar_extractor, "_extract_located_page_text", lambda pdf_path, pages: "text")
+    monkeypatch.setattr(sedar_extractor, "_api_key", lambda: "test-key")
+    monkeypatch.setattr(sedar_extractor, "_make_client", lambda api_key: fake_client)
+
+    result = sedar_extractor.extract_statements("dummy.pdf", {"income_statement": [1]})
+
+    assert result["statements"]["income_statement"][0]["values"]["2025"] == 100
+    assert len(calls) == 1
+    # The raised budget now rides on every extraction call.
+    assert calls[0]["max_tokens"] == sedar_extractor.MAX_EXTRACTION_OUTPUT_TOKENS
+    assert sedar_extractor.MAX_EXTRACTION_OUTPUT_TOKENS == 32_000
