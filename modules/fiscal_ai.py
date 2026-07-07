@@ -8,6 +8,22 @@ import urllib3
 FISCAL_AI_KEY = os.environ.get("FISCAL_AI_KEY", "").strip()
 
 
+def _company_key(ticker, exchange="NASDAQ"):
+    """Build the fiscal.ai companyKey: EXCHANGE_SYMBOL with the bare symbol.
+
+    fiscal.ai's catalog keys TSX names on the bare symbol (TSX_RY), not the
+    yfinance-style suffixed form: TSX_RY.TO returns 404 "data not yet
+    available" while TSX_RY resolves (403 plan-gated on the free tier).
+    Verified live 2026-07-07 against /v2/company/logo. Suffixed tickers are
+    what the app carries everywhere (yfinance convention), so the strip
+    happens here at the boundary — callers keep passing tickers as-is.
+    """
+    symbol = str(ticker or "").strip().upper()
+    if symbol.endswith(".TO") or symbol.endswith(".V"):
+        symbol = symbol.rsplit(".", 1)[0]
+    return f"{exchange}_{symbol}"
+
+
 def _make_session():
     session = requests.Session()
     session.trust_env = False
@@ -40,7 +56,7 @@ def get_company_profile(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/profile"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -57,7 +73,7 @@ def get_shares_outstanding(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/shares-outstanding"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -97,7 +113,7 @@ def get_company_logo(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         session = _make_session()
         urls = [
             (
@@ -124,7 +140,7 @@ def get_earnings_calendar(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         session = _make_session()
         urls = [
             (
@@ -152,7 +168,7 @@ def get_company_news(ticker, exchange="NASDAQ", limit=5):
         if not api_key:
             return []
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/news"
             f"?companyKey={company_key}&apiKey={api_key}&limit={limit}"
@@ -187,7 +203,7 @@ def get_company_filings(ticker, exchange="NASDAQ", limit=5):
         if not api_key:
             return []
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v2/company/filings"
             f"?companyKey={company_key}&apiKey={api_key}&limit={limit}"
@@ -248,7 +264,7 @@ def get_income_statement(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/income-statement"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -266,7 +282,7 @@ def get_balance_sheet(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/balance-sheet"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -284,7 +300,7 @@ def get_cash_flow(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/cash-flow-statement"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -302,7 +318,7 @@ def get_ratios(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/ratios"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -330,7 +346,7 @@ def get_ratios_with_values(ticker, exchange="NASDAQ"):
         if not api_key:
             return {}
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/ratios"
             f"?companyKey={company_key}&apiKey={api_key}&includeValues=true&period=latest"
@@ -362,7 +378,7 @@ def get_segments_and_kpis(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v2/company/segments-and-kpis"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -415,7 +431,7 @@ def get_segments_with_values(ticker, exchange="NASDAQ"):
         if not segment_metrics:
             return []
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v2/company/segments-and-kpis"
             f"?companyKey={company_key}&apiKey={api_key}&period=annual&includeValues=true"
@@ -460,7 +476,7 @@ def get_adjusted_metrics(ticker, exchange="NASDAQ"):
         if not api_key:
             return None
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/adjusted-metrics"
             f"?companyKey={company_key}&apiKey={api_key}"
@@ -490,7 +506,7 @@ def get_adjusted_metrics_with_values(ticker, exchange="NASDAQ"):
         if not api_key:
             return {}
 
-        company_key = f"{exchange}_{ticker}"
+        company_key = _company_key(ticker, exchange)
         url = (
             "https://api.fiscal.ai/v1/company/adjusted-metrics"
             f"?companyKey={company_key}&apiKey={api_key}&includeValues=true&period=annual"

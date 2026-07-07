@@ -6519,7 +6519,32 @@ if st.session_state.financial_data:
     if _just_loaded:
         st.toast(f"Loaded {_just_loaded}", icon="📂")
 
-    st.subheader(company)
+    # Company logo beside the name when a ticker is known (Allied dry-run
+    # credibility finding #2). fiscal.ai returns None quietly for names the
+    # plan doesn't cover — TSX logos are plan-gated on the free tier
+    # (verified 2026-07-07), so SEDAR filers render name-only for now and
+    # light up automatically if the plan changes. Cache key matches Stock
+    # Tracker's so the two pages share one fetch per session.
+    _logo_bytes = None
+    if ticker:
+        from modules.fiscal_ai import get_company_logo as _hdr_logo
+        from modules.stock_tracker import (
+            _fiscal_ai_exchange_for_ticker as _hdr_exchange_for,
+        )
+        _logo_cache_key = f"fiscal_get_company_logo_{ticker}"
+        if _logo_cache_key not in st.session_state:
+            st.session_state[_logo_cache_key] = _hdr_logo(
+                ticker, _hdr_exchange_for(str(ticker))
+            )
+        _logo_bytes = st.session_state[_logo_cache_key]
+    if _logo_bytes:
+        _logo_col, _name_col = st.columns([1, 12])
+        with _logo_col:
+            st.image(io.BytesIO(_logo_bytes), width=44)
+        with _name_col:
+            st.subheader(company)
+    else:
+        st.subheader(company)
     _period_str = period or "Unknown period"
     # Fiscal period and reporting currency, promoted from a buried caption
     # to the header proper (Allied dry-run credibility finding #3): a
