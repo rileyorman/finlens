@@ -799,6 +799,56 @@ disagree, that is a defect: flag it, do not silently fix either side.
 
 ---
 
+### CB-019: sector-aware red-flag suppression — explorer-only v1, visible suppressed[] records, suppressed flags never drive the signal
+
+- Date/status: 2026-07-07, DECIDED (ratified by Riley). PROVENANCE NOTE:
+  first ruling produced by the three-agent pipeline pilot — designed by
+  Fable via API (full session record with spec and acceptance tests:
+  docs/design_sessions/2026-07-07-sector-aware-red-flags__fable.md, from
+  brief docs/design_briefs/2026-07-07-sector-aware-red-flags.md);
+  implementation assigned to Sterling (sandbox); CC reviews/wires/commits.
+- Questions: (1) should detect_flags be sector-aware? (2) which flags
+  suppress for which sector profiles? (3) do suppressed flags still count
+  toward the DECLINE/INVESTIGATE override? (4) suppress by profile alone or
+  gate on revenue absence? (5) REIT current-ratio and bank/insurer
+  balance-sheet-metric doctrine?
+- Rulings: (1) YES, but evidence-gated — v1 covers exactly ONE profile:
+  `mining_exploration_sector` suppresses operating_income, net_income, and
+  free_cash_flow negatives ("the expected shape of a pre-revenue explorer",
+  NGEx cold-load finding #3); liquidity and leverage checks KEEP FIRING
+  (cash runway is the primary explorer distress axis). All other profiles:
+  insufficient evidence — default behavior, no invented doctrine.
+  (2) Suppression is POST-evaluation and every suppression produces a
+  visible `suppressed[]` record (value, breached threshold, would-be
+  severity, sector rationale) — the unmapped[] pattern; SKIP ≠ SUPPRESS
+  (None metric = skip, as today, never a suppression record).
+  (3) NO — suppressed flags never count toward the override; NGEx-shaped
+  input flips from false INVESTIGATE to honest None BY DESIGN.
+  (4) Profile-only (Riley, Q4): the mapper routes revenue-booking miners to
+  mining_sector; revisit on a counterexample. (5) DELIBERATELY DEFAULT
+  (Riley, Q1+Q2): REIT current-ratio red (Allied 0.53x) stays until n≥2–3
+  REITs; bank/insurer current-ratio/ND-EBITDA/interest-coverage stay until
+  one actually FIRES on a bank (today they None-skip; accepted residual:
+  the first bank where they compute may ship a nonsense red before the
+  revisit — watch item, not doctrine). EDGAR filers stay sector-unknown →
+  default flags (Q6). Return shape: additive keys only (`suppressed`,
+  `sector_profile`); all three consumers verified non-strict
+  (app.py:689, app.py:6859, portfolio_manager.py:108).
+- Reasoning: the false-signal evidence (NGEx #3) and the working-flag
+  counter-evidence (Allied's HONEST net-loss yellow; TD's correct CLEAN)
+  both bind — so suppress only where the false read is evidenced, keep
+  everything else firing, and make every suppression as visible as the
+  flags themselves. The design session (Fable-API) notably REFUSED to
+  encode REIT/bank doctrine off n=1 evidence and escalated to Riley —
+  who chose to wait for evidence on both.
+- Enforced by: PENDING IMPLEMENTATION — Sterling sandbox branch per the
+  design session's spec §2 (SECTOR_FLAG_RULES table, _resolve_sector_profile,
+  additive return keys) with acceptance tests T1–T11; CC wires app.py
+  rendering (R7 "Sector-adjusted flags" strip) and updates this line with
+  commit + test references at merge time.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added
