@@ -400,3 +400,32 @@ def test_printed_operating_income_preferred_over_ebit_derivation():
     m = _calc_summary_metrics(fd)
     assert m["ebitda_c"] == 6_000_000_000    # printed OI 5.0B + D&A 1.0B, NOT derived 4.5B
     assert m["calcs"].get("ebit") is None    # not derived -> no derivation caption
+
+
+# ---------------------------------------------------------------------------
+# CB-024: operating netback margin — the O&G analog to gross margin from the
+# income statement (net revenue after royalties, less field operating costs).
+# Resource-only; the Key Metrics card shows Netback instead of Gross Margin.
+# ---------------------------------------------------------------------------
+
+def test_netback_margin_for_resource_filer():
+    fd = _fd()
+    fd["revenue"] = 41_509_000_000            # gross product sales
+    fd["royalties"] = -5_853_000_000
+    fd["operating_expense"] = 8_093_000_000   # production
+    fd["transportation_costs"] = 9_984_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    # net revenue 35,656; netback 17,579; margin over net revenue = 49.3%
+    assert round(m["netback_margin"], 1) == 49.3
+    assert m["calcs"]["netback_margin"] == "netback 17.58B ÷ net revenue 35.66B"
+
+
+def test_netback_margin_none_without_transportation():
+    # Non-O&G (no transportation cost) -> no netback; card falls back to Gross Margin.
+    fd = _fd()
+    fd["revenue"] = 100_000_000_000
+    fd["royalties"] = -1_000_000_000
+    fd["operating_expense"] = 20_000_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["netback_margin"] is None

@@ -161,6 +161,7 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "total_equity",
     "total_liabilities",
     "total_revenue_bank",
+    "transportation_costs",
 })
 
 # SEDAR canonical fields that are NOT dollar magnitudes (ratios/margins) and must

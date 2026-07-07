@@ -874,6 +874,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "transportation_costs": {
+        "value": 9984,
+        "source_label": "Transportation, blending and feedstock",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "depletion_depreciation_amortization": {
         "value": 6681,
         "source_label": "Depletion, depreciation and amortization",
@@ -951,10 +957,6 @@
       {
         "label": "Revenue",
         "value": 35656
-      },
-      {
-        "label": "Transportation, blending and feedstock",
-        "value": 9984
       },
       {
         "label": "Administration",
@@ -1233,8 +1235,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "resource_sector",
       "total": 86,
-      "mapped_count": 15,
-      "unmapped_count": 70,
+      "mapped_count": 16,
+      "unmapped_count": 69,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

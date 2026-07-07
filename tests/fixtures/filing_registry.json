@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-07T23:29:36Z",
+  "generated_at": "2026-07-07T23:49:32Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -129,8 +129,8 @@
         "issuer_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 15,
-      "resolved_field_count": 15,
+      "stored_field_count": 16,
+      "resolved_field_count": 16,
       "filing_date": "2025-03-05",
       "commit": "be3c4c0",
       "notes": "Fixture filename is lowercase (predates casing convention). The CID-unreadable annual-report wrapper was moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical CNQ_FY2024.pdf is now the Q4 financial statements used for extraction."

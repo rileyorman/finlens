@@ -450,6 +450,17 @@
             }
           ],
           "patterns": []
+        },
+        "transportation_costs": {
+          "aliases": [
+            {
+              "label": "transportation, blending and feedstock",
+              "standards": ["IFRS"],
+              "source": "CB-024 CNQ_FY2024 — field transportation cost; netback component",
+              "statements": ["income_statement"]
+            }
+          ],
+          "patterns": []
         }
       }
     },

@@ -416,6 +416,19 @@ Interest-Cover composition are disclosed in captions. Ground-truthed on CNQ:
 EBIT 8,651, EBITDA 15,332, EBITDA Margin 36.9%, Interest Cover 14.6×, Leverage
 1.22×.
 
+### `transportation_costs` — Netback Margin input (resource, O&G gross-margin analog)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-024): `transportation_costs`
+= "transportation, blending and feedstock", resource-scoped, income-statement.
+Gross Margin is genuinely N/A for O&G (no cost-of-goods line), so the Key Metrics
+card shows the operating NETBACK MARGIN instead for resource filers. Operating
+netback = net revenue (gross revenue − royalties) − production (operating_expense)
+− transportation; netback margin = netback / NET revenue (after royalties).
+CNQ: 17,579 / 35,656 = 49.3%. Excludes D&A, G&A, financing, taxes (field-level
+margin). Sector-aware card: Netback Margin for resource, Gross Margin otherwise;
+composition disclosed. The per-barrel netback ($/boe) is DEFERRED — it needs
+production volumes from the MD&A (Tier-2 / MD&A-fetcher), not the financials.
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped

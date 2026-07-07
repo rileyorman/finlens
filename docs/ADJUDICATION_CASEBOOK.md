@@ -1120,6 +1120,42 @@ Metrics (Gross Margin stays N/A — O&G has no COGS).
   income as an alternative EBIT; per-filer interest_expense aliases; a
   bank/insurer-appropriate coverage metric.
 
+## CB-024: Netback Margin — the O&G gross-margin analog; `transportation_costs`; sector-aware Key Metrics card
+
+DECIDED 2026-07-07 (Riley). Gross Margin is genuinely N/A for O&G (no
+cost-of-goods line), so rather than fake it, the Key Metrics card shows the
+operating NETBACK MARGIN for resource filers — the standard O&G profitability
+measure, computed from the income statement.
+
+RULINGS:
+1. MINT resource-scoped income-statement `transportation_costs`
+   ("transportation, blending and feedstock").
+2. Operating netback = net revenue (gross revenue − royalties) − production
+   (operating_expense) − transportation. Netback margin = netback / NET revenue
+   (after royalties — Riley's denominator choice, the stricter post-royalty
+   convention). CNQ: 35,656 − 8,093 − 9,984 = 17,579; margin 17,579 / 35,656 =
+   49.3%.
+3. SECTOR-AWARE CARD: for resource filers the "Gross Margin" Key Metrics card
+   becomes "Netback Margin" (the O&G-correct analog); non-resource filers keep
+   Gross Margin. Netback excludes D&A, G&A, financing, taxes (field-level
+   operating margin). Composition disclosed ("netback X / net revenue Y").
+4. PER-BARREL NETBACK ($/boe) is DEFERRED — it needs production VOLUMES, which
+   live in the MD&A, not the financial statements; that is the Tier-2 /
+   MD&A-fetcher build (scoped in the handoff), not this income-statement metric.
+
+Resource-only: gated on transportation_costs, which maps only for O&G filers
+(presence is the signal). Ground-truthed on CNQ: netback 17,579, margin 49.3%.
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (transportation_costs
+  resource alias); claude_analyzer.py (_CANONICAL_SCALE_FIELDS +=
+  transportation_costs); excel_exporter.py (netback + netback_margin + caption);
+  app.py (sector-aware Key Metrics card: Netback Margin for O&G, Gross Margin
+  otherwise). Tests: 2 in test_summary_metrics.py; CNQ fixture assertion updated;
+  CNQ re-stored (mapped_count 16) + registry regenerated. GATES: full suite
+  463->465 green; ruff clean. Integrity-log gate not triggered. CB-024 casebook
+  + CLAUDE.md same commit. Deferred: per-barrel netback (MD&A volumes);
+  transportation aliases for other O&G filers as ground-truthed.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

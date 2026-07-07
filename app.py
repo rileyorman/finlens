@@ -7937,9 +7937,18 @@ if st.session_state.financial_data:
             if _calcs.get("rev"):
                 st.caption(_calcs["rev"])
         with m2:
-            st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
-            if _calcs.get("gp_margin"):
-                st.caption(_calcs["gp_margin"])
+            # CB-024: sector-aware — O&G producers have no cost-of-goods line, so
+            # the card shows the operating Netback Margin (the O&G analog) instead
+            # of a faked Gross Margin. Non-resource filers keep Gross Margin.
+            _nb_m = metrics.get("netback_margin")
+            if _nb_m is not None:
+                st.metric("Netback Margin", _fmt_pct(_nb_m))
+                if _calcs.get("netback_margin"):
+                    st.caption(_calcs["netback_margin"])
+            else:
+                st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
+                if _calcs.get("gp_margin"):
+                    st.caption(_calcs["gp_margin"])
         with m3:
             st.metric("EBITDA Margin", _fmt_pct(ebitda_m) or "—")
             if _calcs.get("ebitda_margin"):

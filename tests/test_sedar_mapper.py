@@ -727,9 +727,11 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     # interest, since CNQ prints no operating-income line.
     assert mapped["interest_expense"]["value"] == 592
     assert mapped["pretax_income"]["value"] == 8059
+    # CB-024: transportation cost for the operating netback margin.
+    assert mapped["transportation_costs"]["value"] == 9984
 
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 12
+    assert result["meta"]["mapped_count"] == 13
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

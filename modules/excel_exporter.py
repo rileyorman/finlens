@@ -856,6 +856,23 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     fcf_conv      = _pct(_safe_div(fcf_c, ni_c)) if (ni_c and ni_c != 0) else None
     int_cover     = _safe_div(oi_c, int_exp_c)
 
+    # CB-024: operating netback margin — the O&G analog to gross margin, from the
+    # income statement. Net revenue (after royalties) less field operating costs
+    # (production + transportation), over net revenue. Resource-only: gated on
+    # transportation_costs, which maps only for O&G filers. The per-barrel
+    # netback (vs production volumes) is deliberately Tier-2 / MD&A-gated.
+    def _num2(v):
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+    _nb_roy = _num2(financial_data.get("royalties"))
+    _nb_prod = _num2(financial_data.get("operating_expense"))
+    _nb_trans = _num2(financial_data.get("transportation_costs"))
+    net_revenue_c = netback_c = netback_margin = None
+    if (rev_c is not None and _nb_roy is not None
+            and _nb_prod is not None and _nb_trans is not None):
+        net_revenue_c = rev_c - abs(_nb_roy)
+        netback_c = net_revenue_c - abs(_nb_prod) - abs(_nb_trans)
+        netback_margin = _pct(_safe_div(netback_c, net_revenue_c))
+
     # CB-021: human-readable calculation strings for the Key Metrics cards —
     # every derived number shows its formula + inputs (the receipts principle,
     # applied to ratios). None where the metric is honestly unavailable.
@@ -864,6 +881,9 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
                 if (rev_c is not None and rev_p) else None),
         "gp_margin": (f"gross profit {_fmt_compact(gp_c)} ÷ revenue {_fmt_compact(rev_c)}"
                       if gp_margin is not None else None),
+        "netback_margin": (
+            f"netback {_fmt_compact(netback_c)} ÷ net revenue {_fmt_compact(net_revenue_c)}"
+            if netback_margin is not None else None),
         "ebitda_margin": (
             f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
             + (" (EBIT + D&A)" if ebit_derived else "")
@@ -887,6 +907,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     return {
         "rev_c": rev_c,       "yoy_rev": yoy_rev,
         "gp_c": gp_c,         "gp_margin": gp_margin,
+        "netback_margin": netback_margin,
         "ebitda_c": ebitda_c, "ebitda_margin": ebitda_margin,
         "ni_c": ni_c,         "ni_margin": ni_margin,
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
