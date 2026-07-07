@@ -827,6 +827,22 @@ def _sedar_currency_label(extraction_result: dict) -> str:
     return str(extraction_result.get("currency") or "").strip()
 
 
+def _prettify_currency_label(currency: str) -> str:
+    """Display-only polish for the header's currency label.
+
+    Extraction labels echo the filing's scale wording ("CAD, in actual",
+    "CAD, in ones") which reads awkwardly in the header. Only the display
+    changes — the stored label stays verbatim because downstream consumers
+    (resource_economics currency guard) parse the raw form.
+    """
+    label = str(currency or "").strip()
+    lowered = label.lower()
+    for suffix in (", in actual", ", in ones", ", in units"):
+        if lowered.endswith(suffix):
+            return f"{label[: -len(suffix)]}, actual dollars"
+    return label
+
+
 def _sedar_extraction_to_financial_data(
     extraction_result: dict,
     file_name: str,
@@ -6550,13 +6566,14 @@ if st.session_state.financial_data:
     # to the header proper (Allied dry-run credibility finding #3): a
     # skeptical reader's first two questions are "as of when?" and "in
     # what currency?" — they should never have to hunt for the answers.
+    _currency_display = _prettify_currency_label(currency)
     st.markdown(
         f'<div style="color:#CBD5E1;font-size:15px;font-weight:600;'
         f'margin:-6px 0 12px">{escape(_period_str)}'
         + (
             f' <span style="color:#64748B;font-weight:400">·</span> '
-            f'<span style="color:#94A3B8">{escape(currency)}</span>'
-            if currency else ""
+            f'<span style="color:#94A3B8">{escape(_currency_display)}</span>'
+            if _currency_display else ""
         )
         + '</div>',
         unsafe_allow_html=True,
