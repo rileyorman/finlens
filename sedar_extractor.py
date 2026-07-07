@@ -85,6 +85,7 @@ For each line item, return:
 
 Top-level fields required:
 {
+  "company_name": str or null,
   "accounting_standard": str,
   "currency": str,
   "scale": str,
@@ -97,6 +98,11 @@ Top-level fields required:
     "cash_flow": []
   }
 }
+
+Rules for company_name:
+- Use the issuer's name exactly as printed on the cover page or statement headers (e.g. "The Toronto-Dominion Bank", "RioCan Real Estate Investment Trust").
+- Do NOT abbreviate, translate, or normalize the name; do NOT append ticker symbols.
+- Return null if no issuer name is visible in the supplied pages. Do NOT guess.
 
 Rules for sector_inferred:
 - Infer the primary sector or industry from the filing text (issuer description, segment headings, business overview snippets on the supplied pages).
@@ -353,7 +359,14 @@ def _normalize_extraction_payload(data: dict) -> dict:
         "cash_flow": _normalize_statement_items(statements.get("cash_flow")),
     }
 
+    # company_name is additive (2026-07-07): absent on all pre-existing
+    # cached extractions, and every consumer reads it with .get plus a
+    # filename fallback — honest absence, no schema bump (CB-011/012/013
+    # reasoning). None (not "") when missing, matching filing_date.
+    company_name = str(data.get("company_name") or "").strip() or None
+
     return {
+        "company_name": company_name,
         "accounting_standard": str(data.get("accounting_standard") or ""),
         "currency": str(data.get("currency") or ""),
         "scale": str(data.get("scale") or ""),
@@ -512,6 +525,7 @@ def extract_sedar_filing(pdf_path) -> SedarExtraction:
     result = {
         "source": "sedar_pdf",
         "schema_version": SCHEMA_VERSION,
+        "company_name": extracted.get("company_name"),
         "accounting_standard": extracted.get("accounting_standard", ""),
         "currency": extracted.get("currency", ""),
         "scale": extracted.get("scale", ""),

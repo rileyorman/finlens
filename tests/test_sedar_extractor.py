@@ -92,6 +92,29 @@ def test_number_parsing_parentheses_commas_and_scale_preserved():
     assert result["scale"] == "thousands"
 
 
+def test_company_name_passes_through_and_absence_is_none():
+    # company_name is additive (2026-07-07): a real name passes through
+    # verbatim; a missing/blank one normalizes to None so the app-side
+    # fallback chain (explicit name > extraction > filename) stays honest.
+    base = {
+        "accounting_standard": "IFRS",
+        "currency": "CAD",
+        "scale": "thousands",
+        "fiscal_year_end": "December 31, 2025",
+        "statements": {"balance_sheet": [], "income_statement": [], "cash_flow": []},
+    }
+
+    named = sedar_extractor._normalize_extraction_payload(
+        {**base, "company_name": "The Toronto-Dominion Bank"}
+    )
+    assert named["company_name"] == "The Toronto-Dominion Bank"
+
+    assert sedar_extractor._normalize_extraction_payload(base)["company_name"] is None
+    assert sedar_extractor._normalize_extraction_payload(
+        {**base, "company_name": "  "}
+    )["company_name"] is None
+
+
 def test_sector_normalization_preserves_human_readable_sector_text():
     assert sedar_extractor._normalize_sector_inferred("Upstream Oil & Gas") == "Upstream Oil & Gas"
     assert sedar_extractor._normalize_sector_inferred("Crude oil and natural gas production") == (
