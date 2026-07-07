@@ -1030,6 +1030,55 @@ so OCF − CapEx on the chart reconciles to the card's FCF.
 
 ---
 
+## CB-022: Debt/Equity leverage — `long_term_debt` + `short_term_debt` canonical fields; interest-bearing borrowings only (leases & M&A excluded); suppressed for banks/insurers; composition disclosed
+
+DECIDED 2026-07-07 (Riley). Complements CB-021: cash generation (FCF) and
+balance-sheet risk (leverage) are the two halves of a value investor's core
+read. CNQ's "Leverage" tile was N/A (net-debt/EBITDA needs EBITDA); Debt/Equity
+is broadly computable and reuses the already-mapped total_equity (CB-013).
+
+RULINGS:
+1. MINT two DEFAULT balance-sheet-scoped canonical fields: `long_term_debt`
+   ("long-term debt") + `short_term_debt` ("current portion of long-term
+   debt") — interest-bearing borrowings, presented positive.
+2. TOTAL DEBT = long_term_debt + short_term_debt. EXCLUDES leases (filers break
+   lease obligations out separately — AEM/CNR/CNQ all do — and the aliases
+   don't match lease labels) and operating liabilities. Debt/Equity = total
+   debt / total_equity.
+3. SUPPRESSED FOR BANKS/INSURERS: financial_sector / insurance_sector filers
+   get honest N/A — deposits and policy liabilities make D/E a different
+   concept (integrity-first, same spirit as the economics-panel gating).
+4. DISCLOSURE: the ratio states its composition ("LT debt + current portion")
+   in a caption under the Financial Health panel, and it joins that panel as a
+   6th RAG check (thresholds ≤1.0 GREEN, ≤2.0 AMBER, >2.0 RED) feeding the
+   Quality score (rescaled to available checks).
+
+CANONICAL-FIRST: total debt prefers the mapped fields (feeding BOTH net_debt
+and D/E so they never disagree); the balance-sheet debt scrape is the fallback
+for non-mapped EDGAR/manual paths.
+
+GROUND-TRUTH (all three drifted fixtures verified against their balance sheets,
+leases correctly excluded): CNQ D/E 0.48 (LT 16,419 + current 2,400 / equity
+39,468); AEM 0.008 (a genuinely low-debt miner — LT 196,271, current 0, equity
+24.7B; lease obligations broken out separately); CNR 0.98 (capital-intensive
+railway — LT 20,300 + current 906 / equity 21,568).
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (long_term_debt +
+  short_term_debt default fields, balance-sheet-scoped); claude_analyzer.py
+  (_CANONICAL_SCALE_FIELDS += both); excel_exporter.py (canonical-first total
+  debt feeding net_debt + de_ratio; sector gating; debt_equity calc caption);
+  app.py (_quality_score + _dash_rag debt_equity thresholds; 6th RAG tile;
+  disclosure caption; "5 checks" → "6 checks"); CLAUDE.md Canonical Field
+  Definitions (same commit). Tests: 3 in test_summary_metrics.py; AEM/CNR/CNQ
+  fixture assertions updated; 3 fixtures re-stored + registry regenerated.
+  GATES: full suite 457→460 green; ruff clean; empirically verified (D/E 0.48 /
+  0.008 / 0.98 against source balance sheets). Integrity-log gate not triggered
+  (canonical coverage + render-layer disclosure; engine wiring unchanged).
+  Deferred: lease-inclusive leverage variant; debt aliases for other filers as
+  ground-truthed; a bank/insurer-appropriate leverage metric.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added

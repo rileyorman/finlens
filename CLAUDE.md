@@ -381,6 +381,23 @@ Gemini cross-check, never a self-check. Canonical-first in both
 `_calc_summary_metrics` and `two_year_statement_pairs`; the label scrape (with
 CB-017 interest guards) is the fallback for non-mapped EDGAR/manual paths.
 
+### `long_term_debt` + `short_term_debt` — Debt/Equity inputs (default, balance-sheet-scoped)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-022): interest-bearing
+borrowings. `long_term_debt` = "long-term debt"; `short_term_debt` = "current
+portion of long-term debt". Both DEFAULT, balance-sheet-scoped, presented
+positive.
+
+TOTAL DEBT = long_term_debt + short_term_debt → Debt/Equity = total_debt /
+total_equity. EXCLUDES leases (filers break lease obligations out under
+separate labels the aliases don't match — AEM/CNR/CNQ all do) and operating
+liabilities. SUPPRESSED for financial_sector / insurance_sector (deposits and
+policy liabilities make D/E a different concept — honest N/A). Canonical-first,
+feeding BOTH net_debt and Debt/Equity so they never disagree; balance-sheet
+debt scrape is the fallback for non-mapped paths. Composition disclosed on the
+Financial Health panel; D/E is the 6th RAG check (≤1.0 GREEN, ≤2.0 AMBER, >2.0
+RED). Ground-truthed: CNQ 0.48, AEM 0.008 (low-debt miner), CNR 0.98 (railway).
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped

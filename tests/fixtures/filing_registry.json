@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-07T22:29:20Z",
+  "generated_at": "2026-07-07T23:04:30Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -34,8 +34,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 7,
-      "resolved_field_count": 7,
+      "stored_field_count": 9,
+      "resolved_field_count": 9,
       "filing_date": "2026-02-04",
       "commit": "49f14d0",
       "notes": "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed)."
@@ -129,8 +129,8 @@
         "issuer_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 11,
-      "resolved_field_count": 11,
+      "stored_field_count": 13,
+      "resolved_field_count": 13,
       "filing_date": "2025-03-05",
       "commit": "be3c4c0",
       "notes": "Fixture filename is lowercase (predates casing convention). The CID-unreadable annual-report wrapper was moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical CNQ_FY2024.pdf is now the Q4 financial statements used for extraction."
@@ -186,8 +186,8 @@
         "issuer_url": "https://www.agnicoeagle.com/English/investor-relations/financial-reports/default.aspx",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
       },
-      "stored_field_count": 9,
-      "resolved_field_count": 9,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2026-02-12",
       "commit": "60cfff3",
       "notes": "Tier-3 manual issuer download; superseded FY2024 mirror moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical is AEM_FY2025.pdf."

@@ -868,6 +868,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "short_term_debt": {
+        "value": 0,
+        "source_label": "Current portion of long-term debt (Note 14)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "long_term_debt": {
+        "value": 196271,
+        "source_label": "Long-term debt (Note 14)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_liabilities": {
         "value": 9728827,
         "source_label": "Total liabilities",
@@ -1011,10 +1023,6 @@
         "value": 1226347
       },
       {
-        "label": "Current portion of long-term debt (Note 14)",
-        "value": 0
-      },
-      {
         "label": "Reclamation provision (Note 12)",
         "value": 144537
       },
@@ -1029,10 +1037,6 @@
       {
         "label": "Total current liabilities",
         "value": 2472206
-      },
-      {
-        "label": "Long-term debt (Note 14)",
-        "value": 196271
       },
       {
         "label": "Reclamation provision (Note 12)",
@@ -1231,8 +1235,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_sector",
       "total": 96,
-      "mapped_count": 9,
-      "unmapped_count": 86,
+      "mapped_count": 11,
+      "unmapped_count": 84,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

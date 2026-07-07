@@ -892,6 +892,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "short_term_debt": {
+        "value": 2400,
+        "source_label": "Current portion of long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "long_term_debt": {
+        "value": 16419,
+        "source_label": "Long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_liabilities": {
         "value": 45891,
         "source_label": "Total liabilities",
@@ -1065,20 +1077,12 @@
         "value": 92
       },
       {
-        "label": "Current portion of long-term debt",
-        "value": 2400
-      },
-      {
         "label": "Current portion of other long-term liabilities",
         "value": 1535
       },
       {
         "label": "Total current liabilities",
         "value": 9631
-      },
-      {
-        "label": "Long-term debt",
-        "value": 16419
       },
       {
         "label": "Other long-term liabilities",
@@ -1225,8 +1229,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "resource_sector",
       "total": 86,
-      "mapped_count": 11,
-      "unmapped_count": 74,
+      "mapped_count": 13,
+      "unmapped_count": 72,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

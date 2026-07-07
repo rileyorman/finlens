@@ -312,3 +312,43 @@ def test_two_year_capex_chart_matches_card_ppe_plus_ee():
     assert pairs["Capital Expenditures"]["current"] == 5_383_000_000  # PP&E + E&E
     assert pairs["Capital Expenditures"]["prior"] == 4_080_000_000    # 4,000 + 80
     assert pairs["Operating Cash Flow"]["current"] == 13_386_000_000
+
+
+# ---------------------------------------------------------------------------
+# CB-022: Debt/Equity leverage ratio — canonical-first total debt (LT +
+# current portion; leases and acquisitions excluded), disclosed composition,
+# suppressed for banks/insurers (deposits/policy liabilities != leverage debt).
+# ---------------------------------------------------------------------------
+
+def test_debt_equity_canonical_first_with_disclosure():
+    fd = _fd()
+    fd["long_term_debt"] = 16_419_000_000
+    fd["short_term_debt"] = 2_400_000_000
+    fd["total_equity"] = 39_468_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert round(m["de_ratio"], 4) == 0.4768   # 18,819 / 39,468
+    assert m["calcs"]["debt_equity"] == (
+        "total debt 18.82B ÷ equity 39.47B (LT debt + current portion)")
+
+
+def test_debt_equity_suppressed_for_financial_sector():
+    fd = _fd()
+    fd["long_term_debt"] = 100_000
+    fd["total_equity"] = 500_000
+    fd["mapping"] = {"meta": {"sector_profile": "financial_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["de_ratio"] is None            # deposits != leverage debt -> honest N/A
+    assert m["calcs"]["debt_equity"] is None
+
+
+def test_debt_equity_scrape_fallback_when_not_mapped():
+    # Non-mapped path (EDGAR/manual): total debt from the balance-sheet scrape,
+    # equity still read canonically.
+    fd = _fd(bs_rows=[
+        _row("Long-term debt", 16_419),
+        _row("Current portion of long-term debt", 2_400),
+    ])
+    fd["total_equity"] = 39_468
+    m = _calc_summary_metrics(fd)
+    assert round(m["de_ratio"], 4) == 0.4768

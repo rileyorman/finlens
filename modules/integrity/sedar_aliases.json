@@ -217,6 +217,28 @@
         }
       ],
       "patterns": []
+    },
+    "long_term_debt": {
+      "aliases": [
+        {
+          "label": "long-term debt",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-022 CNQ_FY2024 — interest-bearing long-term borrowings",
+          "statements": ["balance_sheet"]
+        }
+      ],
+      "patterns": []
+    },
+    "short_term_debt": {
+      "aliases": [
+        {
+          "label": "current portion of long-term debt",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-022 CNQ_FY2024 — current portion of interest-bearing borrowings",
+          "statements": ["balance_sheet"]
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {

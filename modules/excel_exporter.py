@@ -784,15 +784,44 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
                      ["cash and cash equivalents", "cash and equivalents",
                       "cash, cash equivalents and short-term investments"],
                      "value")
-    ltd_c = _lookup(bs_rows,
-                    ["long-term debt", "long-term notes payable", "long-term borrowings",
-                     "senior notes", "term loan"],
-                    "value") or 0
-    std_c = _lookup(bs_rows,
-                    ["short-term debt", "current portion of long-term debt",
-                     "current maturities of long-term debt", "commercial paper"],
-                    "value") or 0
+    # CB-022: canonical-first total debt = long-term debt + current portion of
+    # long-term debt (interest-bearing borrowings). Balance-sheet debt is
+    # presented positive; prefer the mapped fields, fall back to the label
+    # scrape for non-mapped (EDGAR/manual) paths. Feeds BOTH net_debt and the
+    # Debt/Equity leverage ratio so they never disagree.
+    def _pos(v):
+        return abs(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+    ltd_canon = _pos(financial_data.get("long_term_debt"))
+    std_canon = _pos(financial_data.get("short_term_debt"))
+    if ltd_canon is not None or std_canon is not None:
+        ltd_c, std_c, _debt_found = (ltd_canon or 0), (std_canon or 0), True
+    else:
+        ltd_c = _lookup(bs_rows,
+                        ["long-term debt", "long-term notes payable", "long-term borrowings",
+                         "senior notes", "term loan"],
+                        "value") or 0
+        std_c = _lookup(bs_rows,
+                        ["short-term debt", "current portion of long-term debt",
+                         "current maturities of long-term debt", "commercial paper"],
+                        "value") or 0
+        _debt_found = (ltd_c + std_c) != 0
     net_debt_c = ((ltd_c + std_c) - (cash_c or 0)) if cash_c is not None else None
+    total_debt_c = (ltd_c + std_c) if _debt_found else None
+    _debt_basis = None
+    if _debt_found:
+        _debt_basis = ("LT debt + current portion" if (ltd_c and std_c)
+                       else ("LT debt" if ltd_c else "current portion"))
+
+    # Debt/Equity leverage ratio (CB-022). Canonical total_equity; suppressed
+    # for banks/insurers, whose deposit/policy liabilities make D/E a different
+    # concept (honest N/A rather than a misleading number).
+    te_c = financial_data.get("total_equity")
+    te_c = te_c if isinstance(te_c, (int, float)) and not isinstance(te_c, bool) else None
+    _sector_profile = ((financial_data.get("mapping") or {}).get("meta") or {}).get("sector_profile")
+    _de_suppressed = _sector_profile in ("financial_sector", "insurance_sector")
+    de_ratio = (total_debt_c / te_c
+                if (total_debt_c is not None and te_c and not _de_suppressed) else None)
 
     int_raw   = _lookup(is_rows, ["interest expense"], "value")
     int_exp_c = abs(int_raw) if int_raw is not None else None
@@ -821,6 +850,9 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
                       if ni_margin is not None else None),
         "fcf": (f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
                 if fcf_c is not None else None),
+        "debt_equity": (
+            f"total debt {_fmt_compact(total_debt_c)} ÷ equity {_fmt_compact(te_c)} ({_debt_basis})"
+            if de_ratio is not None else None),
     }
 
     return {
@@ -832,6 +864,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
+        "de_ratio": de_ratio,
         "rev_growth": yoy_rev,
         "fcf_conv": fcf_conv,
         "int_cover": int_cover,

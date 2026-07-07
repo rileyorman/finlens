@@ -883,6 +883,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "short_term_debt": {
+        "value": 906,
+        "source_label": "Current portion of long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "long_term_debt": {
+        "value": 20300,
+        "source_label": "Long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_liabilities": {
         "value": 36987,
         "source_label": "Total liabilities",
@@ -1038,10 +1050,6 @@
         "value": 2790
       },
       {
-        "label": "Current portion of long-term debt",
-        "value": 906
-      },
-      {
         "label": "Total current liabilities",
         "value": 3696
       },
@@ -1056,10 +1064,6 @@
       {
         "label": "Pension and other postretirement benefits",
         "value": 453
-      },
-      {
-        "label": "Long-term debt",
-        "value": 20300
       },
       {
         "label": "Operating lease liabilities",
@@ -1094,8 +1098,8 @@
       "accounting_standard": "US GAAP",
       "sector_profile": null,
       "total": 56,
-      "mapped_count": 7,
-      "unmapped_count": 48,
+      "mapped_count": 9,
+      "unmapped_count": 46,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

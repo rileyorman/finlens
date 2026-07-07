@@ -120,7 +120,11 @@ def test_cnr_fixture_maps_required_income_statement_fields():
     assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
     assert mapped["interest_expense"]["value"] == _source_value(data, "Interest expense")
     assert mapped["net_income"]["value"] == _source_value(data, "Net income")
-    assert result["meta"]["mapped_count"] == 7
+    # CB-022: debt fields for Debt/Equity (leases excluded — CNR breaks them out).
+    assert mapped["long_term_debt"]["value"] == _balance_source_value(data, "Long-term debt")
+    assert mapped["short_term_debt"]["value"] == _balance_source_value(
+        data, "Current portion of long-term debt")
+    assert result["meta"]["mapped_count"] == 9
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -712,8 +716,13 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["value"] == 6106
     assert "exploration_expense" not in mapped
 
+    # CB-022: Debt/Equity components (income+balance path here — no cash flow,
+    # so the CB-021 FCF fields are absent; those show in the fixture snapshot).
+    assert mapped["long_term_debt"]["value"] == 16419
+    assert mapped["short_term_debt"]["value"] == 2400
+
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 10
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -794,8 +803,15 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income for the year"
     assert mapped["net_income"]["value"] == _source_value(data, "Net income for the year")
 
+    # CB-022: Debt/Equity components. AEM is a low-debt miner — long-term debt
+    # 196,271, current portion 0; lease obligations are broken out separately
+    # and correctly excluded from total debt.
+    assert mapped["long_term_debt"]["value"] == _balance_source_value(data, "Long-term debt (Note 14)")
+    assert mapped["short_term_debt"]["value"] == _balance_source_value(
+        data, "Current portion of long-term debt (Note 14)")
+
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 9
+    assert result["meta"]["mapped_count"] == 11
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

@@ -415,11 +415,13 @@ def _quality_score(m: dict) -> tuple[int | None, int]:
         if metric == "rev_growth": return 20 if value >= 5.0 else (10 if value >= 0.0 else 0)
         if metric == "fcf_conv":   return 20 if value >= 100.0 else (10 if value >= 50.0 else 0)
         if metric == "int_cover":  return 20 if value >= 3.0 else (10 if value >= 1.5 else 0)
+        if metric == "debt_equity": return 20 if value <= 1.0 else (10 if value <= 2.0 else 0)
         return 0
 
     checks = [
         ("liquidity",  m.get("current_ratio")),
         ("leverage",   m.get("nd_ebitda")),
+        ("debt_equity", m.get("de_ratio")),
         ("rev_growth", m.get("rev_growth")),
         ("fcf_conv",   m.get("fcf_conv")),
         ("int_cover",  m.get("int_cover")),
@@ -445,6 +447,7 @@ def _dash_rag(metric: str, value) -> tuple:
     elif metric == "rev_growth": c = "G" if value >= 5.0 else ("A" if value >= 0.0 else "R")
     elif metric == "fcf_conv": c = "G" if value >= 100.0 else ("A" if value >= 50.0 else "R")
     elif metric == "int_cover": c = "G" if value >= 3.0 else ("A" if value >= 1.5 else "R")
+    elif metric == "debt_equity": c = "G" if value <= 1.0 else ("A" if value <= 2.0 else "R")
     else: return "#D9D9D9", "N/A"
     return {"G": ("#70AD47", "GREEN"), "A": ("#FFC000", "AMBER"), "R": ("#C00000", "RED")}[c]
 
@@ -6642,8 +6645,8 @@ if st.session_state.financial_data:
         _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
         _hero_qs, _hero_qs_n = _quality_score(_calc_summary_metrics(financial_data))
         _hero_qs_chip = (
-            f'<span title="Scored from the five Financial Health checks (Dashboard tab): '
-            f'Liquidity · Leverage · Revenue growth · FCF conversion · Interest coverage" '
+            f'<span title="Scored from the six Financial Health checks (Dashboard tab): '
+            f'Liquidity · Leverage · Debt/equity · Revenue growth · FCF conversion · Interest coverage" '
             f'style="background:rgba(255,255,255,0.06);color:#F1F5F9;cursor:help;'
             f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
             f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
@@ -7539,7 +7542,7 @@ if st.session_state.financial_data:
                 f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
                 f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs if qs is not None else "—"}</div>'
                 f'<div style="font-size:10px;color:#64748B">'
-                f'{f"/ 100 · {qs_n} of 5 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
+                f'{f"/ 100 · {qs_n} of 6 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -8146,6 +8149,7 @@ if st.session_state.financial_data:
                 rag_items = [
                     ("Liquidity",      "liquidity",  metrics.get("current_ratio")),
                     ("Leverage",       "leverage",   metrics.get("nd_ebitda")),
+                    ("Debt / Equity",  "debt_equity", metrics.get("de_ratio")),
                     ("Revenue Growth", "rev_growth", metrics.get("rev_growth")),
                     ("FCF Conversion", "fcf_conv",   metrics.get("fcf_conv")),
                     ("Interest Cover", "int_cover",  metrics.get("int_cover")),
@@ -8175,6 +8179,11 @@ if st.session_state.financial_data:
                         f'</span></div>',
                         unsafe_allow_html=True,
                     )
+                # CB-022: disclose the Debt/Equity composition (the receipts
+                # principle applied to the leverage ratio).
+                _de_calc = (metrics.get("calcs") or {}).get("debt_equity")
+                if _de_calc:
+                    st.caption(_de_calc)
 
         with cap_col:
             with st.container(border=True):
