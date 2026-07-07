@@ -482,6 +482,22 @@ _OI_LABELS  = ["income (loss) from operations", "income from operations", "opera
                "operating profit", "operating earnings", "earnings from operations"]
 _NI_LABELS  = ["net income", "net earnings", "net loss", "net income (loss)",
                "net earnings (loss)", "profit for the period", "profit for the year", "net profit"]
+# CB-017 (AP.UN dry-run): component rows must never outrank the bottom line —
+# the substring matcher hit "Net income from joint venture" (value 0) before
+# "Net loss and comprehensive loss" and the Key Metrics card displayed 0
+# against a filed $(1,327,532)K net loss.
+_NI_EXCLUDE = ["joint venture"]
+# CB-017 (AP.UN dry-run): the stemmed fallback ({capit, expen}) matched
+# "Interest expense (net of the impact of capitalization)" as capex and the
+# FCF card displayed OCF - interest expense. No legitimate capex line is an
+# interest line; genuine capex labels with "(including capitalized interest)"
+# suffixes are NOT excluded by these tokens. "investment properties" is also
+# excluded: REIT capex is deliberately UNCLAIMED (definitional — additions to
+# investment properties vs leasing costs vs improvement allowances needs a
+# REIT-FCF design session; mirrors the PLD XBRL non-claim), so REIT FCF
+# renders an honest "—" rather than any confident number.
+_CAPEX_EXCLUDE = ["interest expense", "interest paid", "interest received", "interest income",
+                  "investment properties"]
 _DA_LABELS  = ["depreciation and amortization", "depreciation & amortization",
                "depreciation, depletion and amortization",
                "depreciation", "amortization"]
@@ -529,13 +545,21 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
             "prior":   lookup_fn(rows, labels, "value_prior"),
         }
 
+    # CB-017: the charts share the summary cards' matchers, so the component
+    # and interest-row exclusions apply here too (same defect family).
+    def _pair_excl(rows, labels, lookup_fn, exclude):
+        return {
+            "current": lookup_fn(rows, labels, "value", exclude=exclude),
+            "prior":   lookup_fn(rows, labels, "value_prior", exclude=exclude),
+        }
+
     return {
         "Revenue":              _pair(is_rows, _REV_LABELS, _lookup2),
         "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
         "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
-        "Net Income":           _pair(is_rows, _NI_LABELS,  _lookup2),
+        "Net Income":           _pair_excl(is_rows, _NI_LABELS, _lookup2, _NI_EXCLUDE),
         "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
-        "Capital Expenditures": _pair(cf_rows, _CAPEX_LABELS, _lookup),
+        "Capital Expenditures": _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE),
         "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
         "Dividends":            _pair(cf_rows, _DIVIDEND_LABELS, _lookup),
         "Investing Cash Flow":  _pair(cf_rows, _ICF_LABELS, _lookup2),
@@ -553,7 +577,13 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
     gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
     oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
-    ni_c  = _lookup2(is_rows, _NI_LABELS,  "value")
+    # CB-017: canonical-first — SEDAR filings promote the mapped net_income
+    # to the top level (raw dollars, same basis as the scaled rows); the
+    # label scrape is the fallback for non-mapped paths, guarded so component
+    # rows ("Net income from joint venture") never outrank the bottom line.
+    ni_c = financial_data.get("net_income")
+    if not isinstance(ni_c, (int, float)) or isinstance(ni_c, bool):
+        ni_c = _lookup2(is_rows, _NI_LABELS, "value", exclude=_NI_EXCLUDE)
 
     da_c = _lookup(cf_rows, _DA_LABELS, "value")
     if da_c is not None:
@@ -568,7 +598,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
 
     ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
 
-    capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value")
+    capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value", exclude=_CAPEX_EXCLUDE)
     capex_c = abs(capex_raw) if capex_raw is not None else None
 
     fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None

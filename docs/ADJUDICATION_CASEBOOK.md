@@ -696,6 +696,55 @@ disagree, that is a defect: flag it, do not silently fix either side.
   detection tests (drift caught / agree passes / CB-009 twin labels no
   false-fire / honest skip without unit-consistent reference).
 
+### CB-017: "net loss and comprehensive loss" is DEFAULT net_income (explorers keep net_loss via prefer_profile); summary-card scrape guards
+- Status: DECIDED
+- Date: ratified 2026-07-06 (Riley+CC, from the Allied AP.UN FY2025 REIT
+  cold-load dry-run FAIL — the fifth ruling of the fifteenth session)
+- Decided by: Riley
+- Scope: default `net_income` aliases / mining_exploration_sector
+  `net_loss` / excel_exporter summary-card + dashboard-chart matchers
+- Decision: (1) DEFAULT net_income gains alias "net loss and comprehensive
+  loss" — the IFRS combined-SCI bottom line on loss-year filers,
+  as-presented negative, consolidated (CB-011-consistent); same generality
+  class as "profit for the year" (also added off n=1). (2) The exploration
+  profile's SAME-label net_loss alias gets prefer_profile: true — explorers
+  keep their net_loss spine; the prefer_profile whitelist deliberately
+  widens to two uses (was REIT NOI only; pinned by test). (3) Summary
+  cards: net_income reads the promoted canonical value FIRST (SEDAR),
+  scrape as guarded fallback with component-row exclusion ("joint
+  venture"); capex lookup excludes interest rows AND "investment
+  properties" — REIT capex stays deliberately UNCLAIMED (definitional:
+  property additions vs leasing costs vs improvement allowances needs its
+  own design session; mirrors the PLD XBRL non-claim), so REIT FCF renders
+  an honest "—". Exclusions live at module level and apply to
+  two_year_statement_pairs (dashboard charts) too — same matchers, same
+  defect family. BUILD-TIME DEVIATION CAUGHT AND RESOLVED FAITHFULLY: with
+  interest rows excluded, the pre-existing stem fallback then claimed
+  "Additions to investment properties" as capex (FCF would show 68.2M);
+  the ratified honest-"—" required the additional "investment properties"
+  exclusion — the test caught the gap between ruling text and legacy
+  matcher behavior before it shipped.
+- Reasoning: the Allied dry-run displayed two confident wrong numbers from
+  the legacy label scrapes (Net Income 0 via the "Net income from joint
+  venture" substring hit vs filed (1,327,532); FCF 119.8M via the
+  {capit,expen} stem hit on "Interest expense (net of the impact of
+  capitalization)"), and net_income failed the amended spine bar as
+  honestly-unmapped. Canonical-first is the Normalize-at-the-Boundary
+  principle applied to the summary layer; the scrape guards protect the
+  non-mapped paths the canonical fields don't reach yet.
+- Evidence: Allied AP.UN FY2025 dry-run slot record (SESSION_HANDOFF.md,
+  2026-07-06) — both defects reproduced in code from the cached analysis;
+  corpus re-map zero drift (SIG/NFG net_loss intact via prefer_profile,
+  value-snapshot + registry-sync machine-confirmed).
+- Enforced by: sedar_aliases.json (default alias + prefer_profile flag);
+  excel_exporter.py (_NI_EXCLUDE / _CAPEX_EXCLUDE at module level,
+  canonical-first ni_c); tests test_cb017_* (mapper: bottom line → default
+  net_income, explorer keeps net_loss) +
+  test_prefer_profile_escape_hatch_is_limited_to_ratified_uses (widened
+  whitelist pin) + four test_summary_metrics pins (component-row,
+  canonical-first, interest-exclusion honest-None, genuine-capex-suffix
+  still matches).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
