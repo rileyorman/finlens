@@ -221,6 +221,26 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # Layer period agreement (CB-016): statement rows and mapping.mapped
+    # pick period columns independently; on mixed-period Q4 packs a
+    # divergence renders a flagged-wrong quarterly figure in an annual
+    # analysis (CNQ FY2024 incident). Every line-item-backed mapped field
+    # must agree with a statement row carrying its verbatim source_label.
+    # ------------------------------------------------------------------
+    {
+        "id": "sedar_layer_period_agreement",
+        "description": "SEDAR statement rows should agree with mapping.mapped values (mixed-period drift guard)",
+        "severity": "warn",
+        "check_type": "layer_period_agreement",
+        "params": {
+            "absolute_tolerance": 0.5,
+        },
+        "sector_skip": (),
+        "requires_fields": ["mapping"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
     # Document class (CB-015): the ingest-time structural classification
     # (statements_audited / statements_unaudited / ...) is recorded in the
     # moat log. Info-severity in v1 — the user-facing warn/refusal lives at

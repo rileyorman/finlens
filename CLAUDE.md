@@ -587,6 +587,7 @@ Current files in `modules/`:
 - `mda_sentiment.py` - MD&A sentiment analysis.
 - `memo_exporter.py` - Word investment memo generation.
 - `pdf_extractor.py` - PDF text extraction with `pdfplumber`.
+- `sedar_periods.py` - CB-016 SEDAR period-column selection (annual-preference picker + statement-row builder, extracted from app.py for testability); keeps the row layer, fiscal_year label, and mapping.mapped on the same period column for mixed-period Q4 packs.
 - `peer_comparison.py` - peer group and competitor comparison data.
 - `polymarket.py` - Polymarket macro-event probability helpers (experimental).
 - `portfolio_manager.py` - portfolio-level analysis display data.

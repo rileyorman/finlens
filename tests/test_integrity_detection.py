@@ -221,6 +221,106 @@ def test_sedar_total_assets_identity_logs_skip_when_combined_line_missing():
     assert check.skip_reason == "field_unavailable"
 
 
+def test_layer_period_agreement_catches_mixed_period_drift():
+    """CB-016: the CNQ FY2024 incident shape — statement rows carry the
+    quarterly column (Product sales 11,064) while mapping.mapped and its
+    promoted top-level copy stay annual (41,509). The rule flags it."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "Three Months Ended Dec 31 2024",
+        "revenue": 41509.0,  # promoted from mapping.mapped (annual)
+        "mapping": {"mapped": {
+            "revenue": {"value": 41509, "source_label": "Product sales"},
+        }},
+        "income_statement": [
+            {"line_item": "Product sales", "value": 11064.0},  # quarterly column
+        ],
+    }
+
+    result = validate_filing(data, "CNQ", "Oil & Gas", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_layer_period_agreement")
+    assert check.severity == "warn"
+    assert not check.passed
+    assert not check.skipped
+    assert check.observed_value == 1
+    assert "Mixed-period layer drift" in check.message
+    assert "revenue" in check.message
+
+
+def test_layer_period_agreement_passes_when_layers_agree():
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2024",
+        "revenue": 41509.0,
+        "mapping": {"mapped": {
+            "revenue": {"value": 41509, "source_label": "Product sales"},
+        }},
+        "income_statement": [
+            {"line_item": "Product sales", "value": 41509.0},
+        ],
+    }
+
+    result = validate_filing(data, "CNQ", "Oil & Gas", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_layer_period_agreement")
+    assert check.passed
+    assert not check.skipped
+    assert check.observed_value == 0
+
+
+def test_layer_period_agreement_twin_labels_pass_when_one_row_agrees():
+    """CB-009 cross-statement twin labels (SIG shape): the same label names
+    the balance-sheet STOCK and the cash-flow FLOW. Agreement with ANY
+    same-label row passes — the twin must not false-fire the drift rule."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2024",
+        "capitalized_exploration_additions": -6927597.0,
+        "mapping": {"mapped": {
+            "capitalized_exploration_additions": {
+                "value": -6927597,
+                "source_label": "Exploration and evaluation assets",
+            },
+        }},
+        "balance_sheet": [
+            {"line_item": "Exploration and evaluation assets", "value": 34086419.0},
+        ],
+        "cash_flow_statement": [
+            {"line_item": "Exploration and evaluation assets", "value": -6927597.0},
+        ],
+    }
+
+    result = validate_filing(data, "SIG", "Mining Exploration", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_layer_period_agreement")
+    assert check.passed
+    assert check.observed_value == 0
+
+
+def test_layer_period_agreement_skips_fields_without_promoted_copy():
+    """mapping.mapped values are stored in filing units; without the promoted
+    (unit-consistent) top-level copy the field skips honestly rather than
+    comparing across unit scales."""
+    data = {
+        "accounting_standard": "IFRS",
+        "fiscal_year": "FY2024",
+        "mapping": {"mapped": {
+            "revenue": {"value": 41509, "source_label": "Product sales"},
+        }},
+        "income_statement": [
+            {"line_item": "Product sales", "value": 41509000000.0},
+        ],
+    }
+
+    result = validate_filing(data, "CNQ", "Oil & Gas", {"source": "sedar_pdf"})
+
+    check = _check(result, "sedar_layer_period_agreement")
+    assert check.passed
+    assert not check.skipped
+    assert "skipped: 1" in check.message
+
+
 def test_document_class_recorded_as_info_only():
     """CB-015: the ingest document class lands in the validation record as an
     info-severity note — never a warning in v1."""
