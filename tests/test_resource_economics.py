@@ -612,6 +612,47 @@ def test_cost_structure_scales_mapped_sector_fields(monkeypatch):
     assert cs["operating_expense"] is None
 
 
+def test_og_filer_missing_inputs_excludes_mining_named_cost_fields(monkeypatch):
+    # Re-audit 2026-07-07 (Option B / finding F4): an O&G (resource_sector)
+    # filer maps its Production cost + D&A under operating_expense /
+    # depletion_depreciation_amortization, NOT production_costs /
+    # mine_development_amortization. Those two mining-named fields must NOT
+    # appear as false "missing inputs" — they are cost-structure-only and no
+    # displayed ratio consumes them. The waterfall must still carry the
+    # O&G-named cost fields. (CNQ FY2024 shape; ticker is incidental here.)
+    monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 41_509,
+            "net_income": 6_106,
+            "royalties": -5_853,
+            "operating_expense": 8_000,
+            "depletion_depreciation_amortization": 7_000,
+            "sector_inferred": "Upstream Oil & Gas",
+            "currency": "USD",
+            "scale": "millions",
+            "fiscal_year_end": "2024-12-31",
+        },
+        "AEM.TO",
+        cache={},
+    )
+
+    missing = result["metadata"]["missing_inputs"]
+    assert "production_costs" not in missing
+    assert "mine_development_amortization" not in missing
+    # The Tier-1 ratio inputs still map, so the intra-filing ratio computes.
+    assert result["metrics"]["net_margin"] == 6_106_000_000 / 41_509_000_000
+    # O&G-named cost fields still reach the waterfall, correctly scaled.
+    cs = result["cost_structure"]
+    assert cs["operating_expense"] == 8_000_000_000
+    assert cs["depletion_depreciation_amortization"] == 7_000_000_000
+    assert cs["royalties"] == -5_853_000_000
+    # The mining-named fields are simply absent (None), not "missing inputs".
+    assert cs["production_costs"] is None
+    assert cs["mine_development_amortization"] is None
+
+
 def test_gold_mining_selects_gold_primary_proxy(monkeypatch):
     monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
 

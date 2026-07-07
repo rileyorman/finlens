@@ -483,13 +483,17 @@ def build_resource_economics_snapshot(
     scale = _extract_text(fundamentals, "scale")
     factor = _scale_factor(scale)
 
+    # raw_values holds ONLY the Tier-1 ratio inputs — the fields that feed a
+    # displayed ratio (earnings_yield, revenue_to_market_cap, net_margin) and
+    # therefore the missing_inputs list scoped to them. production_costs and
+    # mine_development_amortization are cost-structure-only (no displayed ratio
+    # consumes them) and are read below with the other cost fields, so they no
+    # longer surface as false "missing inputs" on a filer that maps the same
+    # concept under a different sector name (O&G: operating_expense /
+    # depletion_depreciation_amortization). Re-audit 2026-07-07 (Option B).
     raw_values = {
         "revenue": _extract_field(fundamentals, "revenue"),
-        "production_costs": _extract_field(fundamentals, "production_costs"),
         "net_income": _extract_field(fundamentals, "net_income"),
-        "mine_development_amortization": _extract_field(
-            fundamentals, "mine_development_amortization"
-        ),
     }
     values = {
         field: (value * factor if value is not None else None)
@@ -500,22 +504,21 @@ def build_resource_economics_snapshot(
     fiscal_year_end = _extract_text(fundamentals, "fiscal_year_end")
 
     # Statement-level cost fields for the cost-structure waterfall. The
-    # mining and resource sector profiles map different canonical names;
-    # extract them all and let the UI render whichever are present.
-    # Kept separate from raw_values so missing_inputs semantics stay
-    # scoped to the Tier 1 ratio inputs.
-    _extra_cost_fields = (
+    # mining and resource sector profiles map different canonical names
+    # (production_costs vs operating_expense; mine_development_amortization
+    # vs depletion_depreciation_amortization), so extract them all and let
+    # the UI render whichever are present. Kept OUT of raw_values so
+    # missing_inputs semantics stay scoped to the Tier 1 ratio inputs.
+    _cost_fields = (
+        "production_costs",
+        "mine_development_amortization",
         "exploration_expense",
         "royalties",
         "operating_expense",
         "depletion_depreciation_amortization",
     )
-    cost_structure = {
-        "revenue": None,  # filled after scaling below
-        "production_costs": None,
-        "mine_development_amortization": None,
-    }
-    for field in _extra_cost_fields:
+    cost_structure = {"revenue": None}  # filled after scaling below
+    for field in _cost_fields:
         value = _extract_field(fundamentals, field)
         cost_structure[field] = value * factor if value is not None else None
 
@@ -534,10 +537,10 @@ def build_resource_economics_snapshot(
     if company_symbol:
         company_trend_points = _fetch_proxy_data(company_symbol, cache).get("trend", [])
 
-    # Fill the scaled statement values shared with the Tier 1 ratios.
+    # Fill the scaled revenue shared with the Tier 1 ratios (revenue is both a
+    # ratio input and the waterfall's opening bar). production_costs and
+    # mine_development_amortization are already filled by the cost-field loop.
     cost_structure["revenue"] = values["revenue"]
-    cost_structure["production_costs"] = values["production_costs"]
-    cost_structure["mine_development_amortization"] = values["mine_development_amortization"]
 
     correlation_stats = _daily_return_stats(
         company_trend_points, commodity_market.get("trend", [])
