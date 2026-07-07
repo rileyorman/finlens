@@ -352,3 +352,51 @@ def test_debt_equity_scrape_fallback_when_not_mapped():
     fd["total_equity"] = 39_468
     m = _calc_summary_metrics(fd)
     assert round(m["de_ratio"], 4) == 0.4768
+
+
+# ---------------------------------------------------------------------------
+# CB-023: EBIT = pre-tax income + interest (add-back) when no printed operating
+# income; feeds EBITDA margin, interest cover, and leverage — with the EBIT
+# derivation disclosed. Suppressed for banks/insurers.
+# ---------------------------------------------------------------------------
+
+def test_ebit_derived_from_pretax_plus_interest_feeds_ebitda_and_coverage():
+    # CNQ shape: no operating-income line, so EBIT = pretax + interest.
+    fd = _fd(cf_rows=[_row("Depletion, depreciation and amortization", 6_681_000_000)])
+    fd["revenue"] = 41_509_000_000
+    fd["interest_expense"] = 592_000_000
+    fd["pretax_income"] = 8_059_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] == 15_332_000_000       # EBIT 8,651 + D&A 6,681
+    assert round(m["ebitda_margin"], 1) == 36.9   # 15,332 / 41,509
+    assert round(m["int_cover"], 1) == 14.6        # EBIT 8,651 / interest 592
+    assert m["calcs"]["int_cover"] == "EBIT 8.65B ÷ interest 592.0M"
+    assert m["calcs"]["ebit"] == "EBIT 8.65B = pretax 8.06B + interest 592.0M"
+    assert m["calcs"]["ebitda_margin"] == "EBITDA 15.33B ÷ revenue 41.51B (EBIT + D&A)"
+
+
+def test_ebit_derivation_suppressed_for_financial_sector():
+    # Banks/insurers: interest is core, not a financing add-back — honest N/A.
+    fd = _fd(cf_rows=[_row("Depreciation and amortization", 1_000_000_000)])
+    fd["revenue"] = 100_000_000_000
+    fd["interest_expense"] = 50_000_000_000
+    fd["pretax_income"] = 20_000_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "financial_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] is None
+    assert m["ebitda_margin"] is None
+    assert m["int_cover"] is None
+    assert m["calcs"]["ebit"] is None
+
+
+def test_printed_operating_income_preferred_over_ebit_derivation():
+    fd = _fd(
+        is_rows=[_row("Operating income", 5_000_000_000, "total")],
+        cf_rows=[_row("Depreciation and amortization", 1_000_000_000)],
+    )
+    fd["interest_expense"] = 500_000_000
+    fd["pretax_income"] = 4_000_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] == 6_000_000_000    # printed OI 5.0B + D&A 1.0B, NOT derived 4.5B
+    assert m["calcs"].get("ebit") is None    # not derived -> no derivation caption

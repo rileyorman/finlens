@@ -715,7 +715,31 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         rev_c = _lookup2(is_rows, _REV_LABELS, "value")
         rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
     gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
-    oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
+    # CB-023: EBIT for the EBITDA / interest-cover / leverage family. Prefer a
+    # printed operating-income line (canonical, then scrape); otherwise DERIVE
+    # EBIT = pre-tax income + interest expense (the standard add-back), which
+    # computes for O&G filers like CNQ that go straight from expenses to
+    # "Earnings before taxes" with no operating-income subtotal. Interest is
+    # canonical-first too (resource maps "Interest and other financing expense").
+    _int_raw = financial_data.get("interest_expense")
+    if not isinstance(_int_raw, (int, float)) or isinstance(_int_raw, bool):
+        _int_raw = _lookup(is_rows, ["interest expense"], "value")
+    int_exp_c = abs(_int_raw) if _int_raw is not None else None
+    pretax_c = financial_data.get("pretax_income")
+    pretax_c = pretax_c if isinstance(pretax_c, (int, float)) and not isinstance(pretax_c, bool) else None
+    oi_c = financial_data.get("operating_income")
+    if not isinstance(oi_c, (int, float)) or isinstance(oi_c, bool):
+        oi_c = _lookup(is_rows, _OI_LABELS, "value")
+    # EBIT/EBITDA/interest-cover are not meaningful for banks/insurers (interest
+    # is core to their business, not a financing add-back), so the derivation is
+    # gated off those sectors — they get honest N/A on this whole metric family.
+    _sector_profile = ((financial_data.get("mapping") or {}).get("meta") or {}).get("sector_profile")
+    _financial_or_insurance = _sector_profile in ("financial_sector", "insurance_sector")
+    ebit_derived = False
+    if (oi_c is None and pretax_c is not None and int_exp_c is not None
+            and not _financial_or_insurance):
+        oi_c = pretax_c + int_exp_c
+        ebit_derived = True
     # CB-017/CB-018: canonical-first — SEDAR filings promote the mapped
     # net_income to the top level (raw dollars, same basis as the scaled rows).
     # CB-020: the explorer bottom line maps to the separate net_loss field
@@ -818,14 +842,10 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     # concept (honest N/A rather than a misleading number).
     te_c = financial_data.get("total_equity")
     te_c = te_c if isinstance(te_c, (int, float)) and not isinstance(te_c, bool) else None
-    _sector_profile = ((financial_data.get("mapping") or {}).get("meta") or {}).get("sector_profile")
-    _de_suppressed = _sector_profile in ("financial_sector", "insurance_sector")
     de_ratio = (total_debt_c / te_c
-                if (total_debt_c is not None and te_c and not _de_suppressed) else None)
+                if (total_debt_c is not None and te_c and not _financial_or_insurance) else None)
 
-    int_raw   = _lookup(is_rows, ["interest expense"], "value")
-    int_exp_c = abs(int_raw) if int_raw is not None else None
-
+    # int_exp_c already computed canonical-first above (CB-023).
     yoy_rev       = _pct(_safe_div(rev_c - rev_p, abs(rev_p))) if (rev_c is not None and rev_p) else None
     gp_margin     = _pct(_safe_div(gp_c,     rev_c))
     ebitda_margin = _pct(_safe_div(ebitda_c, rev_c))
@@ -844,8 +864,10 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
                 if (rev_c is not None and rev_p) else None),
         "gp_margin": (f"gross profit {_fmt_compact(gp_c)} ÷ revenue {_fmt_compact(rev_c)}"
                       if gp_margin is not None else None),
-        "ebitda_margin": (f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
-                          if ebitda_margin is not None else None),
+        "ebitda_margin": (
+            f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
+            + (" (EBIT + D&A)" if ebit_derived else "")
+            if ebitda_margin is not None else None),
         "ni_margin": (f"net income {_fmt_compact(ni_c)} ÷ revenue {_fmt_compact(rev_c)}"
                       if ni_margin is not None else None),
         "fcf": (f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
@@ -853,6 +875,13 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "debt_equity": (
             f"total debt {_fmt_compact(total_debt_c)} ÷ equity {_fmt_compact(te_c)} ({_debt_basis})"
             if de_ratio is not None else None),
+        "int_cover": (f"EBIT {_fmt_compact(oi_c)} ÷ interest {_fmt_compact(int_exp_c)}"
+                      if int_cover is not None else None),
+        # CB-023: disclose the EBIT derivation when EBIT was computed as an
+        # add-back (pre-tax + interest) rather than lifted from a printed line.
+        "ebit": (
+            f"EBIT {_fmt_compact(oi_c)} = pretax {_fmt_compact(pretax_c)} + interest {_fmt_compact(int_exp_c)}"
+            if ebit_derived else None),
     }
 
     return {

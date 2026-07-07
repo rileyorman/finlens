@@ -871,6 +871,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 6264,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 4720,
         "source_label": "Net income",
@@ -948,10 +954,6 @@
       {
         "label": "Other income",
         "value": 88
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 6264
       },
       {
         "label": "Income tax expense",
@@ -1098,8 +1100,8 @@
       "accounting_standard": "US GAAP",
       "sector_profile": null,
       "total": 56,
-      "mapped_count": 9,
-      "unmapped_count": 46,
+      "mapped_count": 10,
+      "unmapped_count": 45,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

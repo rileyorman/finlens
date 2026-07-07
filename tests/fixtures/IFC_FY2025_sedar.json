@@ -931,6 +931,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 4307,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 3365,
         "source_label": "Net income",
@@ -1012,10 +1018,6 @@
       {
         "label": "Acquisition, integration and restructuring costs",
         "value": -396
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 4307
       },
       {
         "label": "Income tax benefit (expense)",
@@ -1238,8 +1240,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "insurance_sector",
       "total": 79,
-      "mapped_count": 9,
-      "unmapped_count": 69,
+      "mapped_count": 10,
+      "unmapped_count": 68,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

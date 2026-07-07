@@ -398,6 +398,24 @@ debt scrape is the fallback for non-mapped paths. Composition disclosed on the
 Financial Health panel; D/E is the 6th RAG check (≤1.0 GREEN, ≤2.0 AMBER, >2.0
 RED). Ground-truthed: CNQ 0.48, AEM 0.008 (low-debt miner), CNR 0.98 (railway).
 
+### `pretax_income` + `interest_expense` — EBIT/EBITDA/Interest-Cover inputs
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-023): `pretax_income` =
+the pre-tax earnings subtotal ("earnings before taxes" / "income before income
+taxes"), DEFAULT, income-statement-scoped. `interest_expense` gains the
+resource alias "interest and other financing expense".
+
+EBIT = pre-tax income + interest expense (standard add-back), used when the
+filer prints NO operating-income line (O&G like CNQ); a printed operating
+income is preferred where present. EBITDA = EBIT + D&A → EBITDA Margin,
+Interest Cover (= EBIT / interest), and Leverage (= net-debt / EBITDA).
+GATED OFF financial_sector / insurance_sector — interest is core to a
+bank/insurer, so EBIT/EBITDA/interest-cover are honest N/A there (pretax_income
+still maps; only the derived metrics are withheld). The EBIT add-back and the
+Interest-Cover composition are disclosed in captions. Ground-truthed on CNQ:
+EBIT 8,651, EBITDA 15,332, EBITDA Margin 36.9%, Interest Cover 14.6×, Leverage
+1.22×.
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped

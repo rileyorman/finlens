@@ -8179,11 +8179,14 @@ if st.session_state.financial_data:
                         f'</span></div>',
                         unsafe_allow_html=True,
                     )
-                # CB-022: disclose the Debt/Equity composition (the receipts
-                # principle applied to the leverage ratio).
-                _de_calc = (metrics.get("calcs") or {}).get("debt_equity")
-                if _de_calc:
-                    st.caption(_de_calc)
+                # CB-022/CB-023: disclose the composition of the derived
+                # leverage/coverage ratios (receipts principle) — Debt/Equity,
+                # Interest Cover (EBIT ÷ interest), and the EBIT add-back when
+                # EBIT was derived rather than lifted from a printed line.
+                _fh_calcs = metrics.get("calcs") or {}
+                for _ck in ("debt_equity", "int_cover", "ebit"):
+                    if _fh_calcs.get(_ck):
+                        st.caption(_fh_calcs[_ck])
 
         with cap_col:
             with st.container(border=True):

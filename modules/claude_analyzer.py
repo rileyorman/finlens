@@ -148,6 +148,7 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "operating_expense",
     "operating_income",
     "operating_loss",
+    "pretax_income",
     "production_costs",
     "property_operating_costs",
     "provision_for_credit_losses",

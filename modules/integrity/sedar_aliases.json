@@ -239,6 +239,29 @@
         }
       ],
       "patterns": []
+    },
+    "pretax_income": {
+      "aliases": [
+        {
+          "label": "earnings before taxes",
+          "standards": ["IFRS"],
+          "source": "CB-023 CNQ_FY2024 — pre-tax earnings; EBIT = this + interest",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "income before income taxes",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-023 standard pre-tax subtotal",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "income before taxes",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-023 standard pre-tax subtotal",
+          "statements": ["income_statement"]
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {
@@ -413,6 +436,17 @@
               "standards": ["IFRS"],
               "source": "CB-021 CNQ_FY2024 — E&E capex; summed into capex for O&G/mining per ruling",
               "statements": ["cash_flow"]
+            }
+          ],
+          "patterns": []
+        },
+        "interest_expense": {
+          "aliases": [
+            {
+              "label": "interest and other financing expense",
+              "standards": ["IFRS"],
+              "source": "CB-023 CNQ_FY2024 — financing expense; used in EBIT add-back + interest cover",
+              "statements": ["income_statement"]
             }
           ],
           "patterns": []

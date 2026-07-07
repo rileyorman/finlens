@@ -1077,6 +1077,49 @@ railway — LT 20,300 + current 906 / equity 21,568).
   Deferred: lease-inclusive leverage variant; debt aliases for other filers as
   ground-truthed; a bank/insurer-appropriate leverage metric.
 
+## CB-023: EBIT / EBITDA / Interest-Cover — `pretax_income` + `interest_expense`; EBIT = pre-tax income + interest (add-back); gated off banks/insurers
+
+DECIDED 2026-07-07 (Riley). CNQ's EBITDA Margin + Interest Cover were N/A
+because CNQ prints no operating-income line (straight from expenses to
+"Earnings before taxes"), so EBITDA (= OI + D&A) and interest cover (=
+EBIT / interest) had no numerator. Both unlock from the same derivation.
+
+RULINGS:
+1. MINT default income-statement-scoped `pretax_income` ("earnings before
+   taxes", "income before income taxes", "income before taxes"); map
+   `interest_expense` for resource ("interest and other financing expense").
+2. EBIT = pre-tax income + interest expense (the standard add-back), used when
+   no printed operating-income line exists; a printed operating income is
+   preferred where present. Includes non-operating items in EBT (FX, risk-mgmt)
+   — the accepted standard-EBIT tradeoff for comparability.
+3. EBITDA = EBIT + D&A. Unlocks EBITDA Margin (Key Metrics), Interest Cover =
+   EBIT / interest, and Leverage = net-debt / EBITDA (Financial Health).
+4. GATED OFF BANKS/INSURERS: EBIT/EBITDA/interest-cover are not meaningful for
+   financial_sector / insurance_sector (interest is core to their business) —
+   honest N/A. `pretax_income` still MAPS on those filers (a real line); only
+   the derived metrics are withheld.
+5. DISCLOSURE: the EBITDA-margin caption notes "(EBIT + D&A)"; Interest Cover
+   shows "EBIT / interest"; and when EBIT is an add-back, a caption discloses
+   "EBIT = pretax + interest".
+
+GROUND-TRUTH (CNQ): interest 592, pretax 8,059 -> EBIT 8,651; DD&A 6,681 ->
+EBITDA 15,332. EBITDA Margin 36.9% (/ gross revenue 41,509), Interest Cover
+14.6x, Leverage 1.22x. CNQ now has all 6 Financial Health checks and 4 of 5 Key
+Metrics (Gross Margin stays N/A — O&G has no COGS).
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (pretax_income
+  default; interest_expense resource alias); claude_analyzer.py
+  (_CANONICAL_SCALE_FIELDS += pretax_income); excel_exporter.py (canonical-first
+  interest; EBIT derivation gated off financials; int_cover + ebit captions);
+  app.py (Financial Health discloses int_cover + the EBIT add-back). Tests: 3
+  in test_summary_metrics.py; 6 fixture assertions updated; 7 fixtures re-stored
+  (all gained pretax_income; CNQ + interest_expense) + registry regenerated.
+  GATES: full suite 460->463 green; ruff clean. Empirically verified (EBITDA
+  margin 36.9%, interest cover 14.6x, leverage 1.22x on CNQ; suppressed on
+  RY/IFC). CB-023 casebook + CLAUDE.md same commit. Deferred: strict operating
+  income as an alternative EBIT; per-filer interest_expense aliases; a
+  bank/insurer-appropriate coverage metric.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

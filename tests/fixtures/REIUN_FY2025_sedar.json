@@ -907,6 +907,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 69295,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 69295,
         "source_label": "Net income",
@@ -984,10 +990,6 @@
       {
         "label": "Total other expenses",
         "value": 384271
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 69295
       },
       {
         "label": "Current income tax recovery",
@@ -1102,8 +1104,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 50,
-      "mapped_count": 8,
-      "unmapped_count": 41,
+      "mapped_count": 9,
+      "unmapped_count": 40,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

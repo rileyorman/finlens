@@ -880,6 +880,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "interest_expense": {
+        "value": 592,
+        "source_label": "Interest and other financing expense",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "pretax_income": {
+        "value": 8059,
+        "source_label": "Earnings before taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 6106,
         "source_label": "Net earnings",
@@ -957,10 +969,6 @@
         "value": 389
       },
       {
-        "label": "Interest and other financing expense",
-        "value": 592
-      },
-      {
         "label": "Risk management loss (gain)",
         "value": 177
       },
@@ -975,10 +983,6 @@
       {
         "label": "Total expenses",
         "value": 27597
-      },
-      {
-        "label": "Earnings before taxes",
-        "value": 8059
       },
       {
         "label": "Current income tax expense",
@@ -1229,8 +1233,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "resource_sector",
       "total": 86,
-      "mapped_count": 13,
-      "unmapped_count": 72,
+      "mapped_count": 15,
+      "unmapped_count": 70,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

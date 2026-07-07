@@ -1149,6 +1149,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 25651,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 20369,
         "source_label": "Net income",
@@ -1302,10 +1308,6 @@
       {
         "label": "Non-interest expense – Total",
         "value": 36592
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 25651
       },
       {
         "label": "Income taxes",
@@ -1476,8 +1478,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "financial_sector",
       "total": 81,
-      "mapped_count": 7,
-      "unmapped_count": 74,
+      "mapped_count": 8,
+      "unmapped_count": 73,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
