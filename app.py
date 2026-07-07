@@ -6650,7 +6650,7 @@ if st.session_state.financial_data:
             f'style="background:rgba(255,255,255,0.06);color:#F1F5F9;cursor:help;'
             f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
             f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
-            f'/ 100 · {_hero_qs_n} of 5 metrics</span></span>'
+            f'/ 100 · {_hero_qs_n} of 6 metrics</span></span>'
             if _hero_qs is not None else ""
         )
         _hero_badge = (
