@@ -29,7 +29,7 @@ from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
-from sedar_extractor import SedarExtractionError, extract_sedar_filing
+from sedar_extractor import SedarExtractionError, attach_mapping, extract_sedar_filing
 from modules.claude_analyzer import (
     FabricatedExtractionError,
     analyze_financials,
@@ -45,6 +45,7 @@ from modules.claude_analyzer import (
     normalize_and_validate,
 )
 from modules.integrity import cross_validate_filing
+from modules.integrity.sedar_mapper import mapper_version, sedar_mapping_is_stale
 from modules.integrity.receipts import (
     integrity_receipt_rows,
     integrity_status_badge,
@@ -747,7 +748,7 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
         return False
     if _legacy_scaled_stale(financial_data, cached.get("schema_version")):
         return False
-    financial_data = normalize_financial_data(financial_data)
+    financial_data = normalize_financial_data(_heal_sedar_mapping(financial_data))
 
     summary_data = cached.get("summary_data") or cached.get("summary")
     bear_bull_data = cached.get("bear_bull_data") or cached.get("bear_bull")
@@ -892,7 +893,36 @@ def _sedar_extraction_to_financial_data(
         if isinstance(mapped, dict):
             financial_data[field] = mapped.get("value")
 
+    # Stamp the mapper version so a later load can tell whether this analysis's
+    # mapping predates a mapper/alias improvement and heal it for free.
+    financial_data["_mapper_version"] = mapper_version()
+
     return financial_data
+
+
+def _heal_sedar_mapping(financial_data: dict) -> dict:
+    """Re-map a stored SEDAR analysis with the CURRENT mapper when its cached
+    mapping predates a mapper/alias improvement.
+
+    Deterministic and FREE — no Claude call — because the full extraction (with
+    statements) rides along in financial_data['sedar_extraction']. Rebuilds
+    financial_data exactly as a fresh extraction would (un-normalized), so the
+    caller's normalize_financial_data scales it on the same basis. Returns the
+    input unchanged when it is not a stale, re-mappable SEDAR analysis, and never
+    raises — a heal failure must never break a load.
+    """
+    if not sedar_mapping_is_stale(financial_data, mapper_version()):
+        return financial_data
+    try:
+        healed_extraction = attach_mapping(financial_data["sedar_extraction"])
+        return _sedar_extraction_to_financial_data(
+            healed_extraction,
+            file_name=financial_data.get("company_name") or "",
+            company_name=financial_data.get("company_name"),
+            ticker=financial_data.get("ticker"),
+        )
+    except Exception:
+        return financial_data
 
 
 # --- Registry-backed library load -------------------------------------------
@@ -2281,7 +2311,7 @@ document.addEventListener('focusin', function(e) {
                                         st.session_state.confirm_delete = None
                                         st.rerun()
 
-                                    fd = normalize_financial_data(entry["financial_data"])
+                                    fd = normalize_financial_data(_heal_sedar_mapping(entry["financial_data"]))
                                     sd = entry.get("summary_data")
                                     bb = entry.get("bear_bull_data")
                                     st.session_state.financial_data      = fd
@@ -6163,11 +6193,30 @@ if uploaded_file:
             cached = None
 
         if cached:
-            financial_data = normalize_financial_data(cached["financial_data"])
+            # Heal a stale mapping (mapper/alias improved since this was cached)
+            # for free from the stored extraction, BEFORE normalize scales it.
+            _healed_stale = sedar_mapping_is_stale(cached.get("financial_data"), mapper_version())
+            financial_data = normalize_financial_data(_heal_sedar_mapping(cached["financial_data"]))
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
             dashboard_data = cached.get("dashboard_data")
             mda_sentiment  = cached.get("mda_sentiment")
+            if _healed_stale:
+                # Persist the free re-map so future loads are instant and the
+                # stored artifact carries the improved mapping (delivery, not
+                # just display). Best-effort — a save failure must not block.
+                try:
+                    save_cache(
+                        cache_key,
+                        uploaded_file.name,
+                        financial_data,
+                        summary_data,
+                        bear_bull_data,
+                        dashboard_data,
+                        mda_sentiment=mda_sentiment,
+                    )
+                except Exception:
+                    pass
             if _is_docx:
                 try:
                     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:

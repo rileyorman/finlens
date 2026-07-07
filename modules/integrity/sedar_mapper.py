@@ -6,6 +6,7 @@ data-only alias table in sedar_aliases.json.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections import defaultdict
@@ -67,6 +68,57 @@ _TRAILING_FOOTNOTE_MARKER_RE = re.compile(
 def _load_alias_table() -> dict[str, Any]:
     with _ALIAS_FILE.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+# Bump ONLY on mapper LOGIC changes that leave sedar_aliases.json unchanged
+# (a new derivation, routing rule, or collision mechanism). Alias/sector-profile
+# edits are versioned automatically by the file hash below, so they need no bump.
+_MAPPER_LOGIC_REV = "1"
+
+
+@lru_cache(maxsize=1)
+def mapper_version() -> str:
+    """Content version of the SEDAR mapper — changes whenever its output could.
+
+    Combines a hash of the alias table (sedar_aliases.json) with a manual
+    logic-rev constant. The alias-hash half changes automatically on ANY
+    alias/sector-profile edit (Task A, CB-011, CB-017, CB-018, …), so no one
+    has to remember to bump a version — the common case is machine-enforced.
+    The manual rev covers pure-logic changes and lives next to the code it
+    versions. Used to detect and heal cached analyses whose stored mapping
+    predates a mapper improvement (re-map is deterministic and free).
+
+    lru_cached: the alias file does not change at runtime. Tests that mutate
+    _ALIAS_FILE must call mapper_version.cache_clear() first.
+    """
+    try:
+        digest = hashlib.sha256(_ALIAS_FILE.read_bytes()).hexdigest()[:12]
+    except OSError:
+        digest = "nofile"
+    return f"{_MAPPER_LOGIC_REV}-{digest}"
+
+
+def sedar_mapping_is_stale(financial_data: Any, current_version: str | None = None) -> bool:
+    """True when a stored SEDAR analysis can AND should be re-mapped for free.
+
+    All three must hold: (a) it is a SEDAR analysis (source == 'sedar_pdf');
+    (b) the raw extraction with statements is still on hand to re-map from at
+    zero API cost (financial_data['sedar_extraction']['statements']); (c) the
+    stored mapper version differs from the current one — or none is stored
+    (legacy caches predating this stamp). Everything else returns False (no-op):
+    non-SEDAR analyses, already-current analyses, and analyses with no
+    re-mappable extraction are all left untouched.
+    """
+    if not isinstance(financial_data, dict):
+        return False
+    if financial_data.get("source") != "sedar_pdf":
+        return False
+    extraction = financial_data.get("sedar_extraction")
+    if not isinstance(extraction, dict) or not extraction.get("statements"):
+        return False
+    if current_version is None:
+        current_version = mapper_version()
+    return financial_data.get("_mapper_version") != current_version
 
 
 def _normalize_label(label: str) -> str:
