@@ -562,6 +562,26 @@ _FIN_CF_LABELS = ["net cash provided by financing", "net cash used in financing"
                   "cash flows from financing", "cash used in financing activities"]
 
 
+def _fmt_compact(v) -> str:
+    """Compact K/M/B/T money formatter for the calculation captions.
+
+    Full magnitude range per the FinLens number-formatter rule (a producer's
+    multi-billion capex and a microcap's thousands must both read correctly).
+    """
+    if v is None:
+        return "—"
+    n = abs(v)
+    if n >= 1_000_000_000_000:
+        return f"{v / 1_000_000_000_000:,.2f}T"
+    if n >= 1_000_000_000:
+        return f"{v / 1_000_000_000:,.2f}B"
+    if n >= 1_000_000:
+        return f"{v / 1_000_000:,.1f}M"
+    if n >= 1_000:
+        return f"{v / 1_000:,.0f}K"
+    return f"{v:,.0f}"
+
+
 def _canonical_pair(financial_data: dict, canonical_key: str, rows: list):
     """Current value from the promoted canonical field; prior from the SAME
     statement row, found via the mapping's verbatim source_label.
@@ -645,6 +665,21 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
         return {"current": _signed_bottom_line(label, row.get("value")),
                 "prior":   _signed_bottom_line(label, row.get("value_prior"))}
 
+    # CB-021: the CapEx chart mirrors the FCF card's CapEx — canonical PP&E
+    # additions plus E&E for O&G/mining (positive magnitude), so a reader who
+    # subtracts CapEx from OCF on the chart reconciles to the card's FCF.
+    # Scrape fallback (as-presented) for non-mapped filers, unchanged.
+    def _capex_pair():
+        ppe_v, ppe_p = _canonical_pair(financial_data, "capex", cf_rows)
+        if ppe_v is None:
+            return _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE)
+        ee_v, ee_p = _canonical_pair(
+            financial_data, "capitalized_exploration_additions", cf_rows)
+        cur = abs(ppe_v) + (abs(ee_v) if ee_v is not None else 0)
+        pri = (abs(ppe_p) + (abs(ee_p) if ee_p is not None else 0)
+               if ppe_p is not None else None)
+        return {"current": cur, "prior": pri}
+
     return {
         "Revenue":              _pair_canonical_first(
                                     "revenue", is_rows,
@@ -652,8 +687,10 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
         "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
         "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
         "Net Income":           _net_income_pair(),
-        "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
-        "Capital Expenditures": _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE),
+        "Operating Cash Flow":  _pair_canonical_first(
+                                    "operating_cash_flow", cf_rows,
+                                    lambda: _pair(cf_rows, _OCF_LABELS, _lookup2)),
+        "Capital Expenditures": _capex_pair(),
         "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
         "Dividends":            _pair(cf_rows, _DIVIDEND_LABELS, _lookup),
         "Investing Cash Flow":  _pair(cf_rows, _ICF_LABELS, _lookup2),
@@ -707,10 +744,37 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     # ≈96.6B when capex was missing).
     ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else None
 
-    ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
+    # CB-021: canonical-first Operating Cash Flow (producers/miners map it from
+    # the cash-flow statement); scrape fallback for non-mapped paths.
+    ocf_c = financial_data.get("operating_cash_flow")
+    if not isinstance(ocf_c, (int, float)) or isinstance(ocf_c, bool):
+        ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
 
-    capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value", exclude=_CAPEX_EXCLUDE)
-    capex_c = abs(capex_raw) if capex_raw is not None else None
+    # CB-021: canonical-first CapEx. The `capex` canonical field is PP&E
+    # additions (stored negative as-presented; acquisitions/M&A deliberately
+    # UNMAPPED so a buyout never lands in FCF). For O&G / mining filers, CapEx
+    # ALSO includes capitalized E&E — carried by capitalized_exploration_
+    # additions, which only maps in those sectors, so its PRESENCE is the
+    # sector signal (Riley's CB-021 ruling: general = PP&E; O&G/mining =
+    # PP&E + E&E). The composition is disclosed via capex_basis.
+    capex_ppe = financial_data.get("capex")
+    if isinstance(capex_ppe, (int, float)) and not isinstance(capex_ppe, bool):
+        capex_ppe = abs(capex_ppe)
+    else:
+        capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value", exclude=_CAPEX_EXCLUDE)
+        capex_ppe = abs(capex_raw) if capex_raw is not None else None
+
+    ee_capex = financial_data.get("capitalized_exploration_additions")
+    ee_capex = (abs(ee_capex)
+                if isinstance(ee_capex, (int, float)) and not isinstance(ee_capex, bool)
+                else None)
+
+    if capex_ppe is None:
+        capex_c, capex_basis = None, None
+    elif ee_capex is not None:
+        capex_c, capex_basis = capex_ppe + ee_capex, "PP&E + E&E"
+    else:
+        capex_c, capex_basis = capex_ppe, "PP&E"
 
     fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None
 
@@ -743,17 +807,35 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     fcf_conv      = _pct(_safe_div(fcf_c, ni_c)) if (ni_c and ni_c != 0) else None
     int_cover     = _safe_div(oi_c, int_exp_c)
 
+    # CB-021: human-readable calculation strings for the Key Metrics cards —
+    # every derived number shows its formula + inputs (the receipts principle,
+    # applied to ratios). None where the metric is honestly unavailable.
+    calcs = {
+        "rev": (f"{_fmt_compact(rev_p)} → {_fmt_compact(rev_c)} YoY"
+                if (rev_c is not None and rev_p) else None),
+        "gp_margin": (f"gross profit {_fmt_compact(gp_c)} ÷ revenue {_fmt_compact(rev_c)}"
+                      if gp_margin is not None else None),
+        "ebitda_margin": (f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
+                          if ebitda_margin is not None else None),
+        "ni_margin": (f"net income {_fmt_compact(ni_c)} ÷ revenue {_fmt_compact(rev_c)}"
+                      if ni_margin is not None else None),
+        "fcf": (f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
+                if fcf_c is not None else None),
+    }
+
     return {
         "rev_c": rev_c,       "yoy_rev": yoy_rev,
         "gp_c": gp_c,         "gp_margin": gp_margin,
         "ebitda_c": ebitda_c, "ebitda_margin": ebitda_margin,
         "ni_c": ni_c,         "ni_margin": ni_margin,
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
+        "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
         "rev_growth": yoy_rev,
         "fcf_conv": fcf_conv,
         "int_cover": int_cover,
+        "calcs": calcs,
     }
 
 

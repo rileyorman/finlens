@@ -343,6 +343,44 @@ presentation (negative "Interest income") is deliberately NOT handled (n=1,
 deferred). Prerequisite for CB-019's explorer suppression to fire on real
 data.
 
+### `operating_cash_flow` + `capex` — Free Cash Flow inputs (default, cash-flow-scoped)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-021):
+- `operating_cash_flow` = the filer's "cash flows from operating activities"
+  subtotal (indirect method). Default field, cash-flow-statement-scoped.
+- `capex` = additions to property, plant & equipment, stored NEGATIVE
+  as-presented. Default field, cash-flow-scoped.
+
+CAPEX EXCLUDES ACQUISITIONS / M&A by design — a buyout must never enter FCF.
+CNQ's "Acquisition of Chevron's assets" (−9,163) stays UNMAPPED (no alias);
+capex maps only the −5,291 "Net expenditures on property, plant and equipment".
+
+SECTOR-AWARE CAPEX for Free Cash Flow (the FCF card): general filers → CapEx =
+PP&E only; OIL & GAS / MINING filers → CapEx = PP&E + E&E (full
+capital-investment lifecycle). E&E is `capitalized_exploration_additions`
+(CB-009), extended to resource_sector; its PRESENCE is the sector signal (that
+field maps only in resource/mining/explorer sectors), so FCF needs no separate
+sector check. The composition is DISCLOSED on the card ("(PP&E)" vs
+"(PP&E + E&E)") and, generalized, every Key Metric card carries a calculation
+caption. FCF = operating_cash_flow − |CapEx|. CNQ: 13,386 − (5,291 + 92) =
+8,003.
+
+FEED SCOPE: `sedar_mapper.mapper_statement_keys` is the SINGLE SOURCE OF TRUTH
+for which statements feed the mapper (mining-family + resource include cash
+flow); attach_mapping, build_filing_registry, and test_filing_registry all
+delegate to it — do NOT reintroduce a local copy (the mining-only rule was
+triplicated and drifted).
+
+EXPLORER COLLISION: pre-revenue explorers keep
+`net_cash_used_in_operating_activities` over the new default
+`operating_cash_flow` via `prefer_profile` (SIG shares the exact label).
+
+CORRECTNESS: the cash-flow statement has no single-filing identity (unlike
+assets ≡ liabilities + equity), so these fields lean on ground-truth + the
+Gemini cross-check, never a self-check. Canonical-first in both
+`_calc_summary_metrics` and `two_year_statement_pairs`; the label scrape (with
+CB-017 interest guards) is the fallback for non-mapped EDGAR/manual paths.
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped

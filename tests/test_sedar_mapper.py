@@ -313,8 +313,11 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
     """The prefer_profile override whitelist is deliberate and pinned:
     reit_sector NOI (original use) + CB-017's exploration net_loss (the
     same label became a DEFAULT net_income alias for loss-year corporates;
-    explorers keep their net_loss spine via the override). Any new use is a
-    ruling-level decision, not a convenience."""
+    explorers keep their net_loss spine via the override) + CB-021's explorer
+    operating cash flow (the same label became a DEFAULT operating_cash_flow
+    alias for producers/miners; explorers keep net_cash_used_in_operating_
+    activities via the override). Any new use is a ruling-level decision, not a
+    convenience."""
     alias_table = sedar_mapper._load_alias_table()
     uses = []
     for profile_name, profile in (alias_table.get("sector_profiles") or {}).items():
@@ -324,6 +327,8 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
                     uses.append((profile_name, field_name, alias["label"]))
 
     assert sorted(uses) == [
+        ("mining_exploration_sector", "net_cash_used_in_operating_activities",
+         "cash flows from operating activities"),
         ("mining_exploration_sector", "net_loss", "net loss and comprehensive loss"),
         ("reit_sector", "net_operating_income", "operating income"),
     ]

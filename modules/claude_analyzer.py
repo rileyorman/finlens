@@ -122,6 +122,7 @@ _MARKET_DERIVED_SCALE_FIELDS = frozenset({
 
 # SEDAR canonical fields that are dollar magnitudes -- scaled by the unit factor.
 _CANONICAL_SCALE_FIELDS = frozenset({
+    "capex",
     "capitalized_exploration_additions",
     "cash",
     "cost_of_revenue",
@@ -142,6 +143,7 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "net_investment_result",
     "net_loss",
     "net_operating_income",
+    "operating_cash_flow",
     "operating_expense",
     "operating_income",
     "operating_loss",

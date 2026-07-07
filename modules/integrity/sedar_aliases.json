@@ -195,6 +195,28 @@
         }
       ],
       "patterns": []
+    },
+    "operating_cash_flow": {
+      "aliases": [
+        {
+          "label": "cash flows from operating activities",
+          "standards": ["IFRS"],
+          "source": "CB-021 CNQ_FY2024 — operating-activities subtotal (indirect method)",
+          "statements": ["cash_flow"]
+        }
+      ],
+      "patterns": []
+    },
+    "capex": {
+      "aliases": [
+        {
+          "label": "net expenditures on property, plant and equipment",
+          "standards": ["IFRS"],
+          "source": "CB-021 CNQ_FY2024 — PP&E additions; acquisitions/M&A EXCLUDED by design (see negative rule)",
+          "statements": ["cash_flow"]
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {
@@ -358,6 +380,17 @@
               "label": "production",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "capitalized_exploration_additions": {
+          "aliases": [
+            {
+              "label": "net expenditures on exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "CB-021 CNQ_FY2024 — E&E capex; summed into capex for O&G/mining per ruling",
+              "statements": ["cash_flow"]
             }
           ],
           "patterns": []
@@ -546,7 +579,9 @@
             {
               "label": "cash flows from operating activities",
               "standards": ["IFRS"],
-              "source": "SIG_FY2024"
+              "source": "SIG_FY2024",
+              "prefer_profile": true,
+              "prefer_profile_note": "CB-021: the same label is now a DEFAULT operating_cash_flow alias (producers/miners); pre-revenue explorers keep their net_cash_used_in_operating_activities spine via this override"
             }
           ],
           "patterns": []

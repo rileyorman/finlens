@@ -7926,16 +7926,29 @@ if st.session_state.financial_data:
         def _fmt_pct(v):
             return f"{v:.1f}%" if v is not None else None
 
+        # CB-021: a small calculation caption under each card shows the formula
+        # + inputs behind the number (receipts principle applied to ratios).
+        _calcs = metrics.get("calcs") or {}
         with m1:
             st.metric("Revenue", _fmt_num(rev_c), _fmt_pct(yoy_rev))
+            if _calcs.get("rev"):
+                st.caption(_calcs["rev"])
         with m2:
             st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
+            if _calcs.get("gp_margin"):
+                st.caption(_calcs["gp_margin"])
         with m3:
             st.metric("EBITDA Margin", _fmt_pct(ebitda_m) or "—")
+            if _calcs.get("ebitda_margin"):
+                st.caption(_calcs["ebitda_margin"])
         with m4:
             st.metric("Net Income", _fmt_num(ni_c), _fmt_pct(ni_m))
+            if _calcs.get("ni_margin"):
+                st.caption(_calcs["ni_margin"])
         with m5:
             st.metric("Free Cash Flow", _fmt_num(fcf_c))
+            if _calcs.get("fcf"):
+                st.caption(_calcs["fcf"])
 
         st.divider()
 

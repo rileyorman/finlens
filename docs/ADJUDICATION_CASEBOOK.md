@@ -952,6 +952,84 @@ disagree, that is a defect: flag it, do not silently fix either side.
 
 ---
 
+## CB-021: Free Cash Flow — `operating_cash_flow` + `capex` canonical fields; sector-aware CapEx (PP&E, or PP&E + E&E for O&G/mining); acquisitions excluded; composition disclosed
+
+DECIDED 2026-07-07 (Riley). Motivation: CNQ's Key Metrics showed only 2 of 5
+(Revenue, Net Income); Free Cash Flow rendered an honest "—" because the capex
+label scrape did not recognize CNQ's "Net expenditures on property, plant and
+equipment" line (OCF scraped fine at 13,386; capex None → FCF None). FCF is a
+core value-investing metric, so map it the governed way rather than patch the
+scrape.
+
+RULINGS:
+1. MINT two DEFAULT canonical fields, both cash_flow-statement-scoped:
+   `operating_cash_flow` = the "cash flows from operating activities" subtotal
+   (indirect method; CNQ = 13,386); `capex` = additions to property, plant &
+   equipment, stored NEGATIVE as-presented (CNQ = −5,291 from "Net
+   expenditures on property, plant and equipment").
+2. CAPEX EXCLUDES ACQUISITIONS / M&A by design — a buyout must never enter
+   FCF. CNQ's "Acquisition of Chevron's assets" (−9,163) is deliberately
+   UNMAPPED (no alias matches it); pinned by the CNQ value snapshot.
+3. SECTOR-AWARE CAPEX (Riley's finance-expert ruling): general filers → CapEx
+   = PP&E only; OIL & GAS / MINING filers → CapEx = PP&E + E&E (the full
+   capital-investment lifecycle). E&E is carried by
+   `capitalized_exploration_additions` (CB-009), extended to resource_sector
+   with CNQ's "Net expenditures on exploration and evaluation assets" (−92).
+   Its PRESENCE is the sector signal (that field only maps in
+   resource/mining/explorer sectors), so no separate sector check is needed.
+   CNQ CapEx = 5,291 + 92 = 5,383; FCF = 13,386 − 5,383 = 8,003.
+4. FULL DISCLOSURE (Riley): the metric states what CapEx includes — "(PP&E)"
+   vs "(PP&E + E&E)". Generalized to a calculation caption under EVERY Key
+   Metric card (the receipts principle applied to ratios): FCF "OCF 13.39B −
+   CapEx 5.38B (PP&E + E&E)", Net Income "net income 6.11B ÷ revenue 41.51B";
+   metrics that are genuinely N/A (O&G has no gross-profit line) carry no
+   caption (honest silence).
+5. FEED SCOPE: the cash-flow statement is fed to the mapper for mining-family
+   AND resource (O&G) filers via a SINGLE SOURCE OF TRUTH
+   `sedar_mapper.mapper_statement_keys` — the prior mining-only rule was
+   DUPLICATED in three places (attach_mapping, build_filing_registry,
+   test_filing_registry) and drifted the moment this shipped; all three now
+   delegate (Minimize Human Error, rule-of-three met).
+6. EXPLORER COLLISION: the new default `operating_cash_flow` alias "cash flows
+   from operating activities" collided with the explorer field
+   `net_cash_used_in_operating_activities` (SIG's exact label). Pre-revenue
+   explorers keep their own OCF spine via `prefer_profile: true` (same
+   mechanism as CB-017's net_loss and the REIT NOI); pinned by the
+   ratified-uses whitelist test.
+
+CORRECTNESS NOTE: unlike the balance sheet (assets ≡ liabilities + equity), the
+cash-flow statement has no single-filing identity, so these fields lean on
+ground-truth + the Gemini cross-check, not a self-check.
+
+CANONICAL-FIRST: `_calc_summary_metrics` and `two_year_statement_pairs` prefer
+the mapped operating_cash_flow / capex over the label scrape; the scrape (with
+its CB-017 interest-exclusion guards) stays the fallback for non-mapped
+(EDGAR/manual) paths. The CapEx chart mirrors the card's PP&E+E&E composition
+so OCF − CapEx on the chart reconciles to the card's FCF.
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (operating_cash_flow
+  + capex default fields; capitalized_exploration_additions on resource_sector;
+  explorer OCF prefer_profile); sedar_mapper.py (`mapper_statement_keys` single
+  source of truth); sedar_extractor.py + scripts/build_filing_registry.py +
+  tests/test_filing_registry.py (all delegate); claude_analyzer.py
+  (`_CANONICAL_SCALE_FIELDS` += operating_cash_flow, capex); excel_exporter.py
+  (`_fmt_compact`, canonical-first + sector-aware capex + capex_basis + calcs,
+  in `_calc_summary_metrics` AND `two_year_statement_pairs`); app.py (calc
+  captions under each Key Metric card); CLAUDE.md Canonical Field Definitions
+  (same commit). Tests: 5 in test_summary_metrics.py; prefer_profile whitelist
+  updated; CNQ value snapshot re-stored (8→11) + registry regenerated (only CNQ
+  changed). GATES: full suite 452→457 green; ruff clean; empirically verified
+  on the real CNQ fixture (OCF 13,386 / CapEx 5,383 / FCF 8,003, acquisition
+  excluded, mapped_count 8→11, zero collisions). INTEGRITY-LOG EVIDENCE GATE
+  NOT TRIGGERED — new mapped fields flow through the existing
+  `_run_integrity_checks` on load (engine wiring unchanged); the change is
+  canonical coverage + render-layer disclosure. Deferred: operating_cash_flow /
+  capex aliases for non-CNQ filers as each is ground-truthed (labels differ);
+  EBITDA-margin for O&G (needs an operating_income definition); full-corpus FCF
+  widening.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added

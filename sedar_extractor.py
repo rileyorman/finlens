@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from config import LIBRARY_DIR
 from modules.claude_analyzer import _make_client
-from modules.integrity.sedar_mapper import _is_mining_family_sector, map_line_items
+from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
 
 
 SEDAR_MODEL = "claude-sonnet-4-6"
@@ -488,9 +488,10 @@ def _first_statement_value(item: dict) -> int | float | None:
 
 def attach_mapping(extraction_result: dict) -> dict:
     statements = extraction_result.get("statements") or {}
-    statement_keys = ["income_statement", "balance_sheet"]
-    if _is_mining_family_sector(extraction_result.get("sector_inferred")):
-        statement_keys.append("cash_flow")
+    # Single source of truth (shared with the fixture/registry path) for which
+    # statements feed the mapper — mining-family + resource include cash flow
+    # so operating_cash_flow / capex map (CB-021).
+    statement_keys = list(mapper_statement_keys(extraction_result.get("sector_inferred")))
 
     line_items = []
     if isinstance(statements, dict):

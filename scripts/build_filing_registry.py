@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from modules.integrity.sedar_mapper import _is_mining_family_sector, map_line_items
+from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
 
 
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
@@ -245,9 +245,9 @@ def _mapper_source_value(values: dict) -> int | float | None:
 
 
 def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:
-    if _is_mining_family_sector(sector):
-        return ("income_statement", "balance_sheet", "cash_flow")
-    return ("income_statement", "balance_sheet")
+    # Delegates to the mapper's single source of truth so the fixture/registry
+    # path can never drift from production attach_mapping (CB-021).
+    return mapper_statement_keys(sector)
 
 
 def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[dict]:

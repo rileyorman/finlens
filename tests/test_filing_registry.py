@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from modules.integrity.sedar_mapper import _is_mining_family_sector, map_line_items
+from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
 from scripts.build_filing_registry import FILING_MANIFEST
 
 
@@ -43,9 +43,8 @@ def _mapper_source_value(values: dict) -> int | float | None:
 
 
 def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:
-    if _is_mining_family_sector(sector):
-        return ("income_statement", "balance_sheet", "cash_flow")
-    return ("income_statement", "balance_sheet")
+    # Single source of truth in the mapper (CB-021) — no local copy to drift.
+    return mapper_statement_keys(sector)
 
 
 def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[dict]:

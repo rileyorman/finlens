@@ -228,3 +228,87 @@ def test_two_year_pairs_use_canonical_revenue_and_net_income():
     assert pairs["Revenue"] == {"current": 67_777e6, "prior": 57_223e6}
     # Pre-fix the chart matched "Net interest income" by row order:
     assert pairs["Net Income"] == {"current": 20_538e6, "prior": 8_842e6}
+
+
+# ---------------------------------------------------------------------------
+# CB-021: canonical-first Operating Cash Flow + CapEx, sector-aware CapEx basis
+# (general = PP&E; O&G/mining = PP&E + E&E), acquisitions excluded, composition
+# disclosed, every ratio carrying a calculation caption. (− = minus sign,
+# ÷ = division sign, matching the app's captions.)
+# ---------------------------------------------------------------------------
+
+def test_fcf_canonical_first_capex_basis_ppe_only():
+    fd = _fd(is_rows=[_row("Total revenue", 41_509_000_000, "total")])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000  # PP&E additions, stored negative as-presented
+    m = _calc_summary_metrics(fd)
+    assert m["ocf_c"] == 13_386_000_000
+    assert m["capex_c"] == 5_291_000_000
+    assert m["capex_basis"] == "PP&E"
+    assert m["fcf_c"] == 13_386_000_000 - 5_291_000_000
+    assert m["calcs"]["fcf"] == "OCF 13.39B − CapEx 5.29B (PP&E)"
+
+
+def test_fcf_capex_includes_ee_for_resource_mining():
+    # CNQ shape: an O&G filer maps E&E capex, so CapEx = PP&E + E&E (disclosed).
+    # The Chevron-style acquisition never enters — it is not mapped to capex.
+    fd = _fd(is_rows=[_row("Total revenue", 41_509_000_000, "total")])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000
+    fd["capitalized_exploration_additions"] = -92_000_000
+    fd["net_income"] = 6_106_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["capex_c"] == 5_383_000_000        # 5,291 + 92
+    assert m["capex_basis"] == "PP&E + E&E"
+    assert m["fcf_c"] == 8_003_000_000          # 13,386 - 5,383
+    assert m["calcs"]["fcf"] == "OCF 13.39B − CapEx 5.38B (PP&E + E&E)"
+    assert m["calcs"]["ni_margin"] == "net income 6.11B ÷ revenue 41.51B"
+
+
+def test_capex_canonical_outranks_scrape():
+    # A cash-flow row the scrape would match must not override the mapped capex.
+    fd = _fd(cf_rows=[_row("Purchases of property, plant and equipment", -9_999)])
+    fd["operating_cash_flow"] = 100
+    fd["capex"] = -40
+    m = _calc_summary_metrics(fd)
+    assert m["capex_c"] == 40   # canonical, not the 9,999 scrape row
+    assert m["fcf_c"] == 60
+
+
+def test_capex_scrape_fallback_unchanged_without_canonical_field():
+    # Non-mapped paths (EDGAR/manual) keep the pre-existing scrape + PP&E basis.
+    fd = _fd(cf_rows=[
+        _row("Net cash provided by operating activities", 102_720, "total"),
+        _row("Purchases of property, plant and equipment", -6_100),
+    ])
+    m = _calc_summary_metrics(fd)
+    assert m["fcf_c"] == 102_720 - 6_100
+    assert m["capex_basis"] == "PP&E"
+
+
+def test_two_year_capex_chart_matches_card_ppe_plus_ee():
+    # The chart's CapEx mirrors the card (PP&E + E&E), so OCF - CapEx on the
+    # chart reconciles to the card's FCF (Change Propagation).
+    fd = _fd(cf_rows=[
+        {"line_item": "Net expenditures on property, plant and equipment",
+         "value": -5_291_000_000, "value_prior": -4_000_000_000, "row_type": "data"},
+        {"line_item": "Net expenditures on exploration and evaluation assets",
+         "value": -92_000_000, "value_prior": -80_000_000, "row_type": "data"},
+        {"line_item": "Cash flows from operating activities",
+         "value": 13_386_000_000, "value_prior": 12_000_000_000, "row_type": "total"},
+    ])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000
+    fd["capitalized_exploration_additions"] = -92_000_000
+    fd["mapping"] = {"mapped": {
+        "operating_cash_flow": {"value": 13_386,
+                                "source_label": "Cash flows from operating activities"},
+        "capex": {"value": -5_291,
+                  "source_label": "Net expenditures on property, plant and equipment"},
+        "capitalized_exploration_additions": {"value": -92,
+                  "source_label": "Net expenditures on exploration and evaluation assets"},
+    }}
+    pairs = two_year_statement_pairs(fd)
+    assert pairs["Capital Expenditures"]["current"] == 5_383_000_000  # PP&E + E&E
+    assert pairs["Capital Expenditures"]["prior"] == 4_080_000_000    # 4,000 + 80
+    assert pairs["Operating Cash Flow"]["current"] == 13_386_000_000
