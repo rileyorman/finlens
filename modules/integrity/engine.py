@@ -212,6 +212,9 @@ def _parse_iso_year(date_str: str) -> int | None:
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
     balance = normalized_data.get("balance_sheet", [])
+    cash_flow = normalized_data.get("cash_flow_statement", [])
+    if not isinstance(cash_flow, list):
+        cash_flow = []
     mapping = normalized_data.get("mapping")
     revenue = _line_item(income, "revenue")
     cost_of_revenue = _line_item(income, "cost_of_revenue")
@@ -264,6 +267,21 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         ),
         "mapping":                    mapping,
         "has_mapping":                "mapping" in normalized_data,
+        # CB-016: raw statement rows across all three statements, plus the
+        # PROMOTED top-level copies of the mapped canonical fields. The
+        # comparison reference is the promoted copy, NOT mapping.mapped
+        # directly: normalize_financial_data scales rows and top-level
+        # canonical fields to raw dollars but leaves mapping.mapped values
+        # in filing units — comparing rows to mapped directly would false-
+        # fire by the unit scale on every scaled filer. The promoted copy
+        # equals the mapped value by construction (app.py promotion loop)
+        # and shares the rows' scaling.
+        "all_statement_rows":         list(income) + list(balance) + list(cash_flow),
+        "promoted_canonical_values":  {
+            field: _coerce_number(normalized_data.get(field))
+            for field in ((mapping or {}).get("mapped") or {})
+            if isinstance(mapping, dict)
+        },
         "accounting_standard":        normalized_data.get("accounting_standard"),
         "document_class":             normalized_data.get("document_class"),
         "fiscal_year":                normalized_data.get("fiscal_year", ""),
@@ -476,6 +494,63 @@ def _check_total_assets_identity(rule: dict, ctx: dict) -> tuple:
     )
 
 
+def _check_layer_period_agreement(rule: dict, ctx: dict) -> tuple:
+    """CB-016: every line-item-backed mapped field must agree with a
+    statement row carrying its verbatim source_label. The two layers pick
+    period columns independently; on a mixed-period Q4 pack a divergence
+    puts a quarterly figure in the row layer while mapped[] stays annual
+    (CNQ FY2024: Product sales 11,064 vs 41,509). The comparison reference
+    is the PROMOTED top-level canonical value (unit-consistent with the
+    rows — see the ctx note), which equals mapping.mapped by construction;
+    fields without a promoted copy skip honestly. Same-label rows can
+    legitimately coexist (cross-statement pairs, CB-009), so agreement with
+    ANY same-label row passes — drift means the chosen-column value differs
+    on EVERY row carrying the label."""
+    absolute_tolerance = rule["params"].get("absolute_tolerance", 0.5)
+    mapped = ((ctx.get("mapping") or {}).get("mapped") or {})
+    promoted = ctx.get("promoted_canonical_values") or {}
+    rows = ctx.get("all_statement_rows") or []
+
+    checked = 0
+    skipped_fields: list[str] = []
+    conflicts: list[tuple[str, float, list[float]]] = []
+    for field, item in mapped.items():
+        if not isinstance(item, dict) or item.get("derived"):
+            continue
+        source_label = item.get("source_label")
+        mapped_value = promoted.get(field)
+        if not source_label or mapped_value is None:
+            skipped_fields.append(field)
+            continue
+        row_values = [
+            _coerce_number(row.get("value"))
+            for row in rows
+            if row.get("line_item") == source_label
+        ]
+        numeric = [value for value in row_values if value is not None]
+        if not numeric:
+            skipped_fields.append(field)
+            continue
+        checked += 1
+        if not any(abs(value - mapped_value) <= absolute_tolerance for value in numeric):
+            conflicts.append((field, mapped_value, numeric))
+
+    threshold = {"absolute_tolerance": absolute_tolerance}
+    if conflicts:
+        details = "; ".join(
+            f"{field}: mapped={mapped_value} rows={row_values}"
+            for field, mapped_value, row_values in conflicts
+        )
+        return float(len(conflicts)), threshold, False, (
+            "Mixed-period layer drift: statement rows disagree with "
+            f"mapping.mapped for {len(conflicts)} field(s) — {details}"
+        )
+    return 0.0, threshold, True, (
+        f"Statement rows agree with mapping.mapped for all {checked} "
+        f"line-item-backed field(s) (skipped: {len(skipped_fields)})"
+    )
+
+
 def _check_balance_sheet_identity(rule: dict, ctx: dict) -> tuple:
     """CB-013: total_assets == total_liabilities + total_equity from the
     canonical mapped components. A wrong-concept equity pick (NCI-excluding
@@ -509,6 +584,7 @@ _CHECKS = {
     "document_class_info":       _check_document_class_info,
     "total_assets_identity":     _check_total_assets_identity,
     "balance_sheet_identity":    _check_balance_sheet_identity,
+    "layer_period_agreement":    _check_layer_period_agreement,
 }
 
 

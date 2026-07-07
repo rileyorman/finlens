@@ -96,6 +96,11 @@
           "source": "AEM_FY2025"
         },
         {
+          "label": "net loss and comprehensive loss",
+          "standards": ["IFRS"],
+          "source": "CB-017 AP.UN FY2025 dry-run — IFRS combined-SCI bottom line on loss-year filers; as-presented negative; exploration profile keeps this label for net_loss via prefer_profile"
+        },
+        {
           "label": "profit for the year",
           "standards": ["IFRS"],
           "source": "TECKB_FY2025"
@@ -451,7 +456,9 @@
             {
               "label": "net loss and comprehensive loss",
               "standards": ["IFRS"],
-              "source": "SIG_FY2024"
+              "source": "SIG_FY2024",
+              "prefer_profile": true,
+              "prefer_profile_note": "CB-017: the same label is now a DEFAULT net_income alias (loss-year corporates, AP.UN evidence); explorers keep their net_loss spine via this override"
             }
           ],
           "patterns": []

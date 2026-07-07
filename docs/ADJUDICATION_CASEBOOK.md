@@ -633,6 +633,118 @@ disagree, that is a defect: flag it, do not silently fix either side.
   test_document_class_recorded_as_info_only /
   test_document_class_skips_honestly_when_absent (detection).
 
+### CB-016: mixed-period drift — annual-preference period picker (root cause) + layer-agreement guard rule (the class)
+- Status: DECIDED
+- Date: opened 2026-07-03 (MIXED-PERIOD EXTRACTION DRIFT, surfaced by the
+  CNQ re-analyse); ratified 2026-07-06 (Riley+CC design session, all five
+  rulings as recommended — the fourth decision of the fifteenth session)
+- Decided by: Riley
+- Scope: app.py SEDAR financial_data construction / new module
+  modules/sedar_periods.py / new integrity rule
+  sedar_layer_period_agreement / all SEDAR ingest paths
+- Decision: (1) ROOT-CAUSE FIX — the app-layer period picker
+  (sedar_period_keys) carries the same annual preference as the canonical
+  mapper ("year(s) ended"/"year "-labeled columns win; newest year =
+  current, second-newest = prior; prior comes ONLY from annual columns —
+  a single annual column yields prior=None rather than a quarterly
+  prior). Columns with no annual labels (balance-sheet instant dates,
+  bare labels) keep the original behavior. (2) TESTABILITY EXTRACTION —
+  the picker + row builder move from app.py to modules/sedar_periods.py
+  (app.py imports them); the fix could not be test-pinned where it lived
+  (importing app.py executes the Streamlit script; no test imported it).
+  (3) GUARD RULE for the class — sedar_layer_period_agreement (warn,
+  sedar_only): every line-item-backed mapped field must agree (abs tol
+  0.5) with a statement row carrying its verbatim source_label; agreement
+  with ANY same-label row passes (CB-009 cross-statement twins must not
+  false-fire); derived fields, unmatched labels, and fields without a
+  unit-consistent reference skip honestly with counts. (4) Severity warn,
+  zero API cost. (5) Scope boundaries: the historical mixed-period CV
+  record stays (append-only); CNQ's cached analysis heals on next
+  re-analyse; the quarterly-keyed cache entry will miss after the fix —
+  accepted, that key was itself the bug; CB-015's unaudited warning on
+  the same pack is complementary.
+- Reasoning: two consumers of the same extracted statements picked period
+  columns independently — the app layer sorted by (year, -index) so
+  quarterly columns sorted first on Q4 packs, while the mapper preferred
+  year-ended columns. Reproduction from the fixture showed the incident
+  was WORSE than recorded: prior resolved to "Year Ended Dec 31 2024" —
+  the SAME fiscal year as current (the degenerate-prior shape of the PLD
+  XBRL bug, now on the SEDAR path). Fix-the-instance AND guard-the-class:
+  the rule outlives the picker (any future path reintroducing layer
+  divergence — new picker, new ingest route, the ingestion worker — is
+  caught). IMPLEMENTATION SUBTLETY (found during build, recorded so it is
+  not "simplified" away): normalize_financial_data scales statement rows
+  and promoted top-level canonical fields to raw dollars but leaves
+  mapping.mapped values in filing units — the rule therefore compares
+  rows against the PROMOTED top-level copies (equal to mapped by
+  construction, unit-consistent with rows); comparing rows to
+  mapping.mapped directly would false-fire by the unit scale on every
+  scaled filer.
+- Evidence: deterministic reproduction from the CNQ fixture (pre-fix pick:
+  current="Three Months Ended Dec 31 2024", prior="Year Ended Dec 31
+  2024"; row Product sales 11,064 vs mapped 41,509). LIVE post-fix replay
+  (moat-log record 185): pick = annual/annual, row layer 41,509/40,835,
+  sedar_layer_period_agreement PASSED on all 8 line-item-backed fields
+  (0 skipped), revenue_growth_sanity computes −0.9% YoY (the incident
+  flagged −73.4%), fiscal_year label annual (heals the cache-key drift),
+  CNQ overall_status clean.
+- Enforced by: modules/sedar_periods.py (annual-preference picker, pinned
+  by tests/test_sedar_periods.py — 7 pins incl. the CNQ pick, annual-only
+  and instant-date non-regression, single-annual → prior=None); engine.py
+  _check_layer_period_agreement + promoted_canonical_values /
+  all_statement_rows ctx + rules.py sedar_layer_period_agreement;
+  detection tests (drift caught / agree passes / CB-009 twin labels no
+  false-fire / honest skip without unit-consistent reference).
+
+### CB-017: "net loss and comprehensive loss" is DEFAULT net_income (explorers keep net_loss via prefer_profile); summary-card scrape guards
+- Status: DECIDED
+- Date: ratified 2026-07-06 (Riley+CC, from the Allied AP.UN FY2025 REIT
+  cold-load dry-run FAIL — the fifth ruling of the fifteenth session)
+- Decided by: Riley
+- Scope: default `net_income` aliases / mining_exploration_sector
+  `net_loss` / excel_exporter summary-card + dashboard-chart matchers
+- Decision: (1) DEFAULT net_income gains alias "net loss and comprehensive
+  loss" — the IFRS combined-SCI bottom line on loss-year filers,
+  as-presented negative, consolidated (CB-011-consistent); same generality
+  class as "profit for the year" (also added off n=1). (2) The exploration
+  profile's SAME-label net_loss alias gets prefer_profile: true — explorers
+  keep their net_loss spine; the prefer_profile whitelist deliberately
+  widens to two uses (was REIT NOI only; pinned by test). (3) Summary
+  cards: net_income reads the promoted canonical value FIRST (SEDAR),
+  scrape as guarded fallback with component-row exclusion ("joint
+  venture"); capex lookup excludes interest rows AND "investment
+  properties" — REIT capex stays deliberately UNCLAIMED (definitional:
+  property additions vs leasing costs vs improvement allowances needs its
+  own design session; mirrors the PLD XBRL non-claim), so REIT FCF renders
+  an honest "—". Exclusions live at module level and apply to
+  two_year_statement_pairs (dashboard charts) too — same matchers, same
+  defect family. BUILD-TIME DEVIATION CAUGHT AND RESOLVED FAITHFULLY: with
+  interest rows excluded, the pre-existing stem fallback then claimed
+  "Additions to investment properties" as capex (FCF would show 68.2M);
+  the ratified honest-"—" required the additional "investment properties"
+  exclusion — the test caught the gap between ruling text and legacy
+  matcher behavior before it shipped.
+- Reasoning: the Allied dry-run displayed two confident wrong numbers from
+  the legacy label scrapes (Net Income 0 via the "Net income from joint
+  venture" substring hit vs filed (1,327,532); FCF 119.8M via the
+  {capit,expen} stem hit on "Interest expense (net of the impact of
+  capitalization)"), and net_income failed the amended spine bar as
+  honestly-unmapped. Canonical-first is the Normalize-at-the-Boundary
+  principle applied to the summary layer; the scrape guards protect the
+  non-mapped paths the canonical fields don't reach yet.
+- Evidence: Allied AP.UN FY2025 dry-run slot record (SESSION_HANDOFF.md,
+  2026-07-06) — both defects reproduced in code from the cached analysis;
+  corpus re-map zero drift (SIG/NFG net_loss intact via prefer_profile,
+  value-snapshot + registry-sync machine-confirmed).
+- Enforced by: sedar_aliases.json (default alias + prefer_profile flag);
+  excel_exporter.py (_NI_EXCLUDE / _CAPEX_EXCLUDE at module level,
+  canonical-first ni_c); tests test_cb017_* (mapper: bottom line → default
+  net_income, explorer keeps net_loss) +
+  test_prefer_profile_escape_hatch_is_limited_to_ratified_uses (widened
+  whitelist pin) + four test_summary_metrics pins (component-row,
+  canonical-first, interest-exclusion honest-None, genuine-capex-suffix
+  still matches).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

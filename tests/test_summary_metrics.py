@@ -94,3 +94,65 @@ def test_ebitda_none_when_da_missing():
     assert m["ebitda_c"] is None
     assert m["ebitda_margin"] is None
     assert m["nd_ebitda"] is None
+
+
+# ---------------------------------------------------------------------------
+# CB-017 (AP.UN FY2025 dry-run): component rows and interest rows must never
+# masquerade as the bottom line / capex in the summary cards.
+# ---------------------------------------------------------------------------
+
+def test_ni_component_row_never_outranks_bottom_line():
+    """The Allied incident: "Net income from joint venture" (0) appeared
+    BEFORE "Net loss and comprehensive loss" and the substring matcher
+    displayed Net Income 0 against a filed $(1,327,532)K loss."""
+    fd = _fd(
+        is_rows=[
+            _row("Rental revenue", 592_379_000),
+            _row("Net income from joint venture", 0),
+            _row("Net loss and comprehensive loss", -1_327_532_000),
+        ],
+    )
+    m = _calc_summary_metrics(fd)
+    assert m["ni_c"] == -1_327_532_000
+
+
+def test_ni_canonical_promoted_value_wins_over_scrape():
+    """SEDAR filings promote mapped net_income to the top level — the card
+    reads the canonical value first, regardless of row ordering quirks."""
+    fd = _fd(
+        is_rows=[
+            _row("Net income from joint venture", 0),
+        ],
+    )
+    fd["net_income"] = -1_327_532_000.0
+    m = _calc_summary_metrics(fd)
+    assert m["ni_c"] == -1_327_532_000.0
+
+
+def test_capex_interest_row_excluded_fcf_honest_none():
+    """The Allied incident: the stemmed fallback matched "Interest expense
+    (net of the impact of capitalization)" as capex and the FCF card showed
+    OCF - interest expense (119.8M vs defensible ~68.2M). Interest rows are
+    excluded; with no genuine capex line matched, FCF is an honest None."""
+    fd = _fd(
+        cf_rows=[
+            _row("Cash provided by operating activities", 255_288_000, "total"),
+            _row("Interest expense (net of the impact of capitalization)", 135_453_000),
+            _row("Additions to investment properties (including capitalized interest)", -187_090_000),
+        ],
+    )
+    m = _calc_summary_metrics(fd)
+    assert m["fcf_c"] is None  # REIT capex deliberately unclaimed -> honest dash
+
+
+def test_capex_genuine_line_with_capitalized_interest_suffix_still_matches():
+    """The exclusion is narrow: a real capex label carrying an
+    "(including capitalized interest)" suffix must still match."""
+    fd = _fd(
+        cf_rows=[
+            _row("Cash provided by operating activities", 255_288_000, "total"),
+            _row("Purchases of property, plant and equipment (including capitalized interest)", -6_100_000),
+        ],
+    )
+    m = _calc_summary_metrics(fd)
+    assert m["fcf_c"] == 255_288_000 - 6_100_000

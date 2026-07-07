@@ -809,40 +809,13 @@ def _financial_data_to_text(financial_data: dict) -> str:
     return "\n".join(lines)
 
 
-def _sedar_period_keys(items: list[dict]) -> tuple[str, str | None]:
-    for item in items or []:
-        values = item.get("values") or {}
-        if isinstance(values, dict) and values:
-            keys = list(values.keys())
-            years = []
-            for idx, key in enumerate(keys):
-                match = re.search(r"(\d{4})", str(key))
-                years.append((int(match.group(1)) if match else None, idx, key))
-            parseable = [row for row in years if row[0] is not None]
-            if parseable:
-                ordered = sorted(parseable, key=lambda row: (row[0], -row[1]), reverse=True)
-                current = ordered[0][2]
-                prior = ordered[1][2] if len(ordered) > 1 else None
-                return current, prior
-            current = keys[0]
-            prior = keys[1] if len(keys) > 1 else None
-            return current, prior
-    return "Current", None
-
-
-def _sedar_statement_rows(items: list[dict], current_period: str, prior_period: str | None) -> list[dict]:
-    rows = []
-    for item in items or []:
-        values = item.get("values") or {}
-        if not isinstance(values, dict):
-            values = {}
-        rows.append({
-            "line_item": item.get("label", ""),
-            "value": values.get(current_period),
-            "value_prior": values.get(prior_period) if prior_period else None,
-            "row_type": "data",
-        })
-    return rows
+# CB-016: period-column selection extracted to modules/sedar_periods.py so
+# it is testable and carries the same annual preference as the canonical
+# mapper (the mixed-period drift fix).
+from modules.sedar_periods import (  # noqa: E402
+    sedar_period_keys as _sedar_period_keys,
+    sedar_statement_rows as _sedar_statement_rows,
+)
 
 
 def _sedar_currency_label(extraction_result: dict) -> str:

@@ -309,7 +309,12 @@ def test_standard_normalization_maps_accounting_family_variants():
     assert sedar_mapper._normalize_standard("United States GAAP") == "usgaap"
 
 
-def test_prefer_profile_escape_hatch_is_limited_to_reit_operating_income():
+def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
+    """The prefer_profile override whitelist is deliberate and pinned:
+    reit_sector NOI (original use) + CB-017's exploration net_loss (the
+    same label became a DEFAULT net_income alias for loss-year corporates;
+    explorers keep their net_loss spine via the override). Any new use is a
+    ruling-level decision, not a convenience."""
     alias_table = sedar_mapper._load_alias_table()
     uses = []
     for profile_name, profile in (alias_table.get("sector_profiles") or {}).items():
@@ -318,7 +323,10 @@ def test_prefer_profile_escape_hatch_is_limited_to_reit_operating_income():
                 if alias.get("prefer_profile"):
                     uses.append((profile_name, field_name, alias["label"]))
 
-    assert uses == [("reit_sector", "net_operating_income", "operating income")]
+    assert sorted(uses) == [
+        ("mining_exploration_sector", "net_loss", "net loss and comprehensive loss"),
+        ("reit_sector", "net_operating_income", "operating income"),
+    ]
 
 
 def test_operating_income_maps_under_ifrs():
@@ -1657,3 +1665,36 @@ def test_cb013_balance_sheet_identity_closes_on_all_mapped_fixtures():
         assert abs(assets - combined) <= 0.5, path.name
         closed += 1
     assert closed == 14
+
+
+def test_cb017_net_loss_bottom_line_maps_to_default_net_income():
+    """CB-017 (ratified 2026-07-06, AP.UN dry-run): "Net loss and
+    comprehensive loss" — the IFRS combined-SCI bottom line on loss-year
+    filers — maps to DEFAULT net_income, as-presented negative. Allied
+    FY2025 values."""
+    items = [
+        {"label": "Rental revenue", "value": 592379, "confidence": 0.99},
+        {"label": "Net income from joint venture", "value": 0, "confidence": 0.99},
+        {"label": "Net loss and comprehensive loss", "value": -1327532, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Real Estate (REIT)")
+
+    assert result["mapped"]["net_income"]["value"] == -1327532
+    assert result["mapped"]["net_income"]["source_label"] == "Net loss and comprehensive loss"
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Net income from joint venture" in unmapped_labels  # component stays unmapped
+
+
+def test_cb017_explorers_keep_net_loss_spine_via_prefer_profile():
+    """The SAME label on an exploration-shape filer still maps to net_loss
+    (the explorer spine field), not net_income — the prefer_profile override
+    protects the profile's claim against the new default alias."""
+    items = [
+        {"label": "Net loss and comprehensive loss", "value": -3417435, "confidence": 0.99},
+        {"label": "Exploration and evaluation expenditures", "value": 6927597, "confidence": 0.99},
+    ]
+    result = map_line_items(items, "IFRS", sector="Mining Exploration")
+
+    assert result["meta"]["sector_profile"] == "mining_exploration_sector"
+    assert result["mapped"]["net_loss"]["value"] == -3417435
+    assert "net_income" not in result["mapped"]
