@@ -87,10 +87,20 @@ def is_legacy_scaled_financial_data_stale(
 # "share" so variants are not missed (a missed exemption 1000x-scales the value).
 _PER_SHARE_RE = re.compile(r"\bper\b[\w\s\-,]{0,24}?\bshares?\b|\beps\b")
 
+# Bank statements print an "Earnings per share (Canadian dollars)" HEADER with
+# bare "Basic" / "Diluted" sub-rows; extraction stores the bare sub-labels, so
+# the regex alone misses them (TD FY2025 cold slot: $11.57 basic EPS scaled
+# x1M and rendered "$11.6M"). Exact-match only — longer labels such as "basic
+# weighted average number of shares" are deliberately NOT exempted here.
+_BARE_EPS_LABELS = {"basic", "diluted", "basic and diluted"}
+
 
 def is_per_share_line_item(label) -> bool:
     """Return True when a statement line item is a per-share figure (EPS, DPS)."""
-    return bool(_PER_SHARE_RE.search(str(label or "").lower()))
+    text = str(label or "").lower()
+    if _PER_SHARE_RE.search(text):
+        return True
+    return re.sub(r"[\s.,;:]+$", "", text).strip() in _BARE_EPS_LABELS
 
 
 # Top-level scalar fields that carry the filing's unit scale and must be scaled

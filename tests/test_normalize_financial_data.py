@@ -136,3 +136,44 @@ def test_is_per_share_line_item_detection():
     assert not is_per_share_line_item("Revenue")
     assert not is_per_share_line_item("Total assets")
     assert not is_per_share_line_item(None)
+
+
+def test_bare_basic_diluted_eps_rows_are_per_share_exempt():
+    # TD FY2025 cold slot: banks print an "Earnings per share (Canadian
+    # dollars)" HEADER with bare "Basic" / "Diluted" sub-rows; extraction
+    # stores the bare labels, and $11.57 basic EPS was scaled x1M and
+    # rendered "$11.6M". Bare labels are per-share, exact-match only.
+    assert is_per_share_line_item("Basic")
+    assert is_per_share_line_item("Diluted")
+    assert is_per_share_line_item("Basic and diluted")
+    assert is_per_share_line_item("Basic ")  # trailing whitespace tolerated
+    # Exact-match boundary: longer labels are NOT exempted by this rule.
+    assert not is_per_share_line_item("Basic weighted average number of shares")
+    assert not is_per_share_line_item("Diluted shares outstanding")
+
+
+def test_normalize_does_not_scale_bare_eps_rows_td_shape():
+    financial_data = {
+        "company_name": "TD-shaped bank filer",
+        "currency": "CAD",
+        "scale": "millions",
+        "income_statement": [
+            {"line_item": "Net income", "value": 20_538, "value_prior": 8_842},
+            {"line_item": "Basic", "value": 11.57, "value_prior": 4.73},
+            {"line_item": "Diluted", "value": 11.56, "value_prior": 4.72},
+            {"line_item": "Dividends per common share (Canadian dollars)",
+             "value": 4.20, "value_prior": 4.08},
+        ],
+        "balance_sheet": [],
+        "cash_flow_statement": [],
+    }
+
+    normalized = normalize_financial_data(deepcopy(financial_data))
+
+    rows = {r["line_item"]: r for r in normalized["income_statement"]}
+    assert rows["Net income"]["value"] == 20_538_000_000
+    # EPS sub-rows keep raw dollars-per-share, both years:
+    assert rows["Basic"]["value"] == 11.57
+    assert rows["Basic"]["value_prior"] == 4.73
+    assert rows["Diluted"]["value"] == 11.56
+    assert rows["Dividends per common share (Canadian dollars)"]["value"] == 4.20

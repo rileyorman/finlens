@@ -156,3 +156,75 @@ def test_capex_genuine_line_with_capitalized_interest_suffix_still_matches():
     )
     m = _calc_summary_metrics(fd)
     assert m["fcf_c"] == 255_288_000 - 6_100_000
+
+
+# ---------------------------------------------------------------------------
+# Canonical-first revenue/net-income (TD FY2025 financial-or-insurer cold slot)
+# ---------------------------------------------------------------------------
+# The revenue label scrape matched "Repurchase agreements and short sales
+# (Interest expense)" via the bare "sales" alias while the mapper had "Total
+# revenue" correctly mapped; the wrong value cascaded into the YoY delta, a
+# false revenue-decline red flag, Quality 0/100, and a 177% "net margin".
+# Canonical mapped values must outrank any label scrape wherever they exist.
+
+from modules.excel_exporter import two_year_statement_pairs
+
+
+def _td_shaped_fd():
+    return {
+        "income_statement": [
+            # Decoy rows precede the real ones in statement order:
+            {"line_item": "Repurchase agreements and short sales (Interest expense)",
+             "value": 11_602e6, "value_prior": 13_322e6, "row_type": "data"},
+            {"line_item": "Net interest income",
+             "value": 33_062e6, "value_prior": 30_472e6, "row_type": "data"},
+            {"line_item": "Total revenue",
+             "value": 67_777e6, "value_prior": 57_223e6, "row_type": "data"},
+            {"line_item": "Net income",
+             "value": 20_538e6, "value_prior": 8_842e6, "row_type": "data"},
+        ],
+        "balance_sheet": [],
+        "cash_flow_statement": [],
+        # Promoted canonical fields (raw dollars, as app.py promotes them):
+        "revenue": 67_777e6,
+        "net_income": 20_538e6,
+        "mapping": {"mapped": {
+            "revenue": {"value": 67_777, "source_label": "Total revenue"},
+            "net_income": {"value": 20_538, "source_label": "Net income"},
+        }},
+    }
+
+
+def test_revenue_card_prefers_canonical_over_label_scrape():
+    m = _calc_summary_metrics(_td_shaped_fd())
+    assert m["rev_c"] == 67_777e6           # NOT 11_602e6 (the scrape decoy)
+    assert round(m["yoy_rev"], 1) == 18.4   # prior from the SAME row (57,223)
+    assert round(m["ni_margin"], 1) == 30.3  # NOT 177.0
+
+
+def test_revenue_prior_none_when_source_label_row_missing():
+    # Canonical current with no matching statement row -> honest None prior,
+    # never a differently-matched scrape row.
+    fd = _td_shaped_fd()
+    fd["income_statement"] = [r for r in fd["income_statement"]
+                              if r["line_item"] != "Total revenue"]
+    m = _calc_summary_metrics(fd)
+    assert m["rev_c"] == 67_777e6
+    assert m["yoy_rev"] is None
+
+
+def test_revenue_scrape_fallback_unchanged_without_canonical_field():
+    fd = _td_shaped_fd()
+    for key in ("revenue", "net_income", "mapping"):
+        fd.pop(key)
+    m = _calc_summary_metrics(fd)
+    # Pre-existing scrape behaviour is the deliberate fallback for non-mapped
+    # paths (EDGAR/manual uploads): row order wins, warts and all.
+    assert m["rev_c"] == 11_602e6
+
+
+def test_two_year_pairs_use_canonical_revenue_and_net_income():
+    pairs = two_year_statement_pairs(_td_shaped_fd())
+    assert pairs["Revenue"] == {"current": 67_777e6, "prior": 57_223e6}
+    # Pre-fix the chart matched "Net interest income" by row order:
+    assert pairs["Net Income"] == {"current": 20_538e6, "prior": 8_842e6}

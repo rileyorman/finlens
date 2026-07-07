@@ -529,6 +529,34 @@ _FIN_CF_LABELS = ["net cash provided by financing", "net cash used in financing"
                   "cash flows from financing", "cash used in financing activities"]
 
 
+def _canonical_pair(financial_data: dict, canonical_key: str, rows: list):
+    """Current value from the promoted canonical field; prior from the SAME
+    statement row, found via the mapping's verbatim source_label.
+
+    TD FY2025 dry-run (financial-or-insurer cold slot): the revenue label
+    scrape matched "Repurchase agreements and short sales (Interest expense)"
+    through the bare "sales" alias while the mapper had "Total revenue"
+    correctly mapped — the canonical value must outrank any scrape whenever
+    it exists. Returns (None, None) when the canonical field is absent so
+    callers fall back to the label scrape (non-mapped paths unchanged).
+    """
+    value = financial_data.get(canonical_key)
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None, None
+    label = (((financial_data.get("mapping") or {}).get("mapped") or {})
+             .get(canonical_key) or {}).get("source_label")
+    prior = None
+    if label:
+        target = str(label).strip().lower()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("line_item") or "").strip().lower() == target:
+                prior = row.get("value_prior")
+                break
+    return value, prior
+
+
 def two_year_statement_pairs(financial_data: dict) -> dict:
     """Current/prior values for the dashboard's two-year charts.
 
@@ -553,11 +581,23 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
             "prior":   lookup_fn(rows, labels, "value_prior", exclude=exclude),
         }
 
+    # TD FY2025 dry-run: canonical-first for the fields the mapper owns —
+    # the label scrape stays as the fallback for non-mapped paths.
+    def _pair_canonical_first(canonical_key, rows, scrape_pair):
+        value, prior = _canonical_pair(financial_data, canonical_key, rows)
+        if value is not None:
+            return {"current": value, "prior": prior}
+        return scrape_pair()
+
     return {
-        "Revenue":              _pair(is_rows, _REV_LABELS, _lookup2),
+        "Revenue":              _pair_canonical_first(
+                                    "revenue", is_rows,
+                                    lambda: _pair(is_rows, _REV_LABELS, _lookup2)),
         "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
         "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
-        "Net Income":           _pair_excl(is_rows, _NI_LABELS, _lookup2, _NI_EXCLUDE),
+        "Net Income":           _pair_canonical_first(
+                                    "net_income", is_rows,
+                                    lambda: _pair_excl(is_rows, _NI_LABELS, _lookup2, _NI_EXCLUDE)),
         "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
         "Capital Expenditures": _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE),
         "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
@@ -573,8 +613,16 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     bs_rows = financial_data.get("balance_sheet", [])
     cf_rows = financial_data.get("cash_flow_statement", [])
 
-    rev_c = _lookup2(is_rows, _REV_LABELS, "value")
-    rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
+    # TD FY2025 dry-run: canonical-first — the scrape matched "short sales"
+    # interest expense (11,602) while the mapper had "Total revenue" (67,777),
+    # and the wrong value cascaded into the YoY, the revenue-decline red flag,
+    # the quality score, and the net-margin display. Prior comes from the
+    # same statement row as the canonical value (verbatim source_label),
+    # never from a differently-matched scrape row.
+    rev_c, rev_p = _canonical_pair(financial_data, "revenue", is_rows)
+    if rev_c is None:
+        rev_c = _lookup2(is_rows, _REV_LABELS, "value")
+        rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
     gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
     oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
     # CB-017: canonical-first — SEDAR filings promote the mapped net_income
