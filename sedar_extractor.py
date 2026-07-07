@@ -376,13 +376,39 @@ def _api_key() -> str:
     return api_key
 
 
+# Output budget for the extraction response. Bank-scale filings (TD FY2025)
+# legitimately need more than the old 8,000-token cap: their statement JSON
+# alone exceeded it and the response was truncated mid-string.
+MAX_EXTRACTION_OUTPUT_TOKENS = 32_000
+
+
 def _call_claude(client, user_prompt: str):
-    return client.messages.create(
+    # The 32k output budget exceeds the SDK's non-streaming 10-minute request
+    # ceiling, so the call streams and returns the accumulated final message —
+    # the same Message shape (content, stop_reason, usage) a create() returns.
+    with client.messages.stream(
         model=SEDAR_MODEL,
-        max_tokens=8000,
+        max_tokens=MAX_EXTRACTION_OUTPUT_TOKENS,
         system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
         messages=[{"role": "user", "content": user_prompt}],
-    )
+    ) as stream:
+        return stream.get_final_message()
+
+
+def _raise_if_truncated(response) -> None:
+    """Fail honestly when the model ran out of output budget.
+
+    A truncated response is not malformed JSON — retrying with the same
+    budget can never succeed, so raise the real cause instead of letting
+    the JSON parser report a misleading 'unterminated string' error.
+    """
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise SedarExtractionError(
+            "SEDAR+ extraction response exceeded the model output budget "
+            f"({MAX_EXTRACTION_OUTPUT_TOKENS} tokens, stop_reason=max_tokens). "
+            "The filing's statements are larger than one extraction response can hold.",
+            _response_text(response),
+        )
 
 
 def extract_statements(pdf_path, pages: dict) -> dict:
@@ -396,6 +422,7 @@ def extract_statements(pdf_path, pages: dict) -> dict:
     )
 
     response = _call_claude(client, user_prompt)
+    _raise_if_truncated(response)
     raw = _response_text(response)
 
     try:
@@ -406,6 +433,7 @@ def extract_statements(pdf_path, pages: dict) -> dict:
             "Return the same extraction again as valid JSON only, with no markdown fences or prose."
         )
         retry_response = _call_claude(client, fix_prompt)
+        _raise_if_truncated(retry_response)
         retry_raw = _response_text(retry_response)
         try:
             return _parse_extraction_json(retry_raw)

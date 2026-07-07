@@ -1698,3 +1698,20 @@ def test_cb017_explorers_keep_net_loss_spine_via_prefer_profile():
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
     assert result["mapped"]["net_loss"]["value"] == -3417435
     assert "net_income" not in result["mapped"]
+
+
+def test_td_parenthetical_pcl_alias_maps_under_financial_sector():
+    # TD FY2025 cold slot: TD prints "Provision for (recovery of) credit
+    # losses" where RY prints the plain form — a within-shape label variant
+    # (financial_sector evidence n=2: RY plain + TD parenthetical). Ratified
+    # by Riley 2026-07-06 with the slot's fix queue.
+    result = map_line_items(
+        [{"label": "Provision for (recovery of) credit losses",
+          "value": 4506, "confidence": 0.99}],
+        "IFRS",
+        sector="Diversified Banking",
+    )
+    assert result["mapped"]["provision_for_credit_losses"]["value"] == 4506
+    assert (result["mapped"]["provision_for_credit_losses"]["source_label"]
+            == "Provision for (recovery of) credit losses")
+    _assert_conservation(result)

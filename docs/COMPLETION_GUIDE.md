@@ -42,19 +42,24 @@ model, any tool — must keep them holding:
 
 ### Phase 1 — Close the correctness gate (the current phase)
 The #1 gate: FinLens is shown to no one until extraction is provably
-correct and cold loads degrade honestly. Status: 3 of 5 dry-run slots
-resolved (producer PASS, REIT PASS, edge partial).
-1. **Financial-or-insurer cold slot** — the last mandatory slot (candidate:
-   a cold bank tests financial_sector where anchoring is thinnest, n=1 RY).
-   Full transcription protocol; FAIL is a fine outcome if honest.
-2. **Explorer slot decision** — Riley's call whether SIG's human
-   ground-truth stamp serves, or a true cold explorer is still required.
-3. **NGEx edge-slot residuals** — column order (corpus-wide cosmetic) and
-   explorer red-flag sector-awareness, or explicitly accept as
-   non-blocking.
+correct and cold loads degrade honestly. Status: **the five-slot dry-run
+set is CLOSED (2026-07-06)** — producer / REIT / financial-or-insurer
+PASS, edge resolved-with-accepted-residuals, explorer served. Remaining:
+item 4 only.
+1. ~~**Financial-or-insurer cold slot**~~ — **DONE (TD FY2025, FAIL →
+   PASS same session 2026-07-06; slot record in SESSION_HANDOFF.md,
+   rulings in CB-018).**
+2. ~~**Explorer slot decision**~~ — **DONE (ratified 2026-07-06): SERVED
+   by SIG's human ground-truth stamp (mapping layer, shape n=2) + NGEx's
+   cold app-path run (display layer).**
+3. ~~**NGEx edge-slot residuals**~~ — **DONE (ratified 2026-07-06):
+   explicitly accepted as non-blocking** (column order → Phase 2.2
+   header/receipts UI work; explorer red-flag sector-awareness → small
+   design decision, queued).
 4. **Founder cold-load gate** — Riley narrates CNQ + Suncor panel-by-panel
    unaided (FOUNDER_COLDLOAD_PREP; his gate on himself). No external
-   conversation before this passes.
+   conversation before this passes. **This is now the ONLY remaining
+   Phase-1 item.**
 
 ### Phase 2 — Post-gate hardening (converts craft into a compounding asset)
 Order ratified in the moat notes: ingestion scale jumps the feature queue.

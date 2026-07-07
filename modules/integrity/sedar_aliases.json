@@ -290,6 +290,11 @@
               "label": "provision for credit losses",
               "standards": ["IFRS"],
               "source": "RY_FY2025"
+            },
+            {
+              "label": "provision for (recovery of) credit losses",
+              "standards": ["IFRS"],
+              "source": "TD_FY2025_dryrun"
             }
           ],
           "patterns": []
