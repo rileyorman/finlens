@@ -45,6 +45,11 @@ from modules.claude_analyzer import (
     normalize_and_validate,
 )
 from modules.integrity import cross_validate_filing
+from modules.integrity.receipts import (
+    integrity_receipt_rows,
+    integrity_status_badge,
+    mapping_receipt_rows,
+)
 from modules.integrity.document_class import (
     DOC_CLASS_EXTRACTION_EMPTY,
     DOC_CLASS_NO_STATEMENTS,
@@ -820,6 +825,22 @@ from modules.sedar_periods import (  # noqa: E402
 
 def _sedar_currency_label(extraction_result: dict) -> str:
     return str(extraction_result.get("currency") or "").strip()
+
+
+def _prettify_currency_label(currency: str) -> str:
+    """Display-only polish for the header's currency label.
+
+    Extraction labels echo the filing's scale wording ("CAD, in actual",
+    "CAD, in ones") which reads awkwardly in the header. Only the display
+    changes — the stored label stays verbatim because downstream consumers
+    (resource_economics currency guard) parse the raw form.
+    """
+    label = str(currency or "").strip()
+    lowered = label.lower()
+    for suffix in (", in actual", ", in ones", ", in units"):
+        if lowered.endswith(suffix):
+            return f"{label[: -len(suffix)]}, actual dollars"
+    return label
 
 
 def _sedar_extraction_to_financial_data(
@@ -6438,9 +6459,21 @@ if st.session_state.financial_data:
     dashboard_data  = st.session_state.dashboard_data
     mda_sentiment   = st.session_state.get("mda_sentiment")
     _integrity_flags = _integrity_flag_names(financial_data)
-    if _integrity_flags:
+    _integrity_badge = integrity_status_badge(financial_data.get("_integrity"))
+    if _integrity_flags or _integrity_badge:
         # Chip row, not a warning slab: flags are the audit trail (the
-        # product's moat), not an error state.
+        # product's moat), not an error state. The overall verdict pill
+        # renders whenever a validation ran — a visible CLEAN is part of
+        # the trust surface, not just the failures.
+        _verdict_pill = ""
+        if _integrity_badge:
+            _b_label, _b_rgb, _b_hex = _integrity_badge
+            _verdict_pill = (
+                f'<span style="background:rgba({_b_rgb},0.12);color:{_b_hex};'
+                f'border:1px solid rgba({_b_rgb},0.35);padding:2px 10px;'
+                f'border-radius:999px;font-size:11px;font-weight:700;'
+                f'letter-spacing:0.5px;margin-right:6px">{escape(_b_label)}</span>'
+            )
         _flag_pills = "".join(
             f'<span style="background:rgba(252,211,77,0.12);color:#FCD34D;'
             f'border:1px solid rgba(252,211,77,0.30);padding:2px 10px;'
@@ -6450,8 +6483,8 @@ if st.session_state.financial_data:
         )
         st.markdown(
             f'<div style="margin:2px 0 8px"><span style="color:#64748B;'
-            f'font-size:11px;margin-right:8px">INTEGRITY FLAGS</span>'
-            f'{_flag_pills}</div>',
+            f'font-size:11px;margin-right:8px">INTEGRITY</span>'
+            f'{_verdict_pill}{_flag_pills}</div>',
             unsafe_allow_html=True,
         )
 
@@ -6502,8 +6535,49 @@ if st.session_state.financial_data:
     if _just_loaded:
         st.toast(f"Loaded {_just_loaded}", icon="📂")
 
-    st.subheader(company)
+    # Company logo beside the name when a ticker is known (Allied dry-run
+    # credibility finding #2). fiscal.ai returns None quietly for names the
+    # plan doesn't cover — TSX logos are plan-gated on the free tier
+    # (verified 2026-07-07), so SEDAR filers render name-only for now and
+    # light up automatically if the plan changes. Cache key matches Stock
+    # Tracker's so the two pages share one fetch per session.
+    _logo_bytes = None
+    if ticker:
+        from modules.fiscal_ai import get_company_logo as _hdr_logo
+        from modules.stock_tracker import (
+            _fiscal_ai_exchange_for_ticker as _hdr_exchange_for,
+        )
+        _logo_cache_key = f"fiscal_get_company_logo_{ticker}"
+        if _logo_cache_key not in st.session_state:
+            st.session_state[_logo_cache_key] = _hdr_logo(
+                ticker, _hdr_exchange_for(str(ticker))
+            )
+        _logo_bytes = st.session_state[_logo_cache_key]
+    if _logo_bytes:
+        _logo_col, _name_col = st.columns([1, 12])
+        with _logo_col:
+            st.image(io.BytesIO(_logo_bytes), width=44)
+        with _name_col:
+            st.subheader(company)
+    else:
+        st.subheader(company)
     _period_str = period or "Unknown period"
+    # Fiscal period and reporting currency, promoted from a buried caption
+    # to the header proper (Allied dry-run credibility finding #3): a
+    # skeptical reader's first two questions are "as of when?" and "in
+    # what currency?" — they should never have to hunt for the answers.
+    _currency_display = _prettify_currency_label(currency)
+    st.markdown(
+        f'<div style="color:#CBD5E1;font-size:15px;font-weight:600;'
+        f'margin:-6px 0 12px">{escape(_period_str)}'
+        + (
+            f' <span style="color:#64748B;font-weight:400">·</span> '
+            f'<span style="color:#94A3B8">{escape(_currency_display)}</span>'
+            if _currency_display else ""
+        )
+        + '</div>',
+        unsafe_allow_html=True,
+    )
 
     # --- Verdict hero strip -------------------------------------------
     # The moment of arrival: signal, quality, and the thesis in one
@@ -6534,7 +6608,6 @@ if st.session_state.financial_data:
             f'letter-spacing:1.2px">{escape(_hero_signal)}</span>'
             if _hero_signal else ""
         )
-        _hero_meta = f"{_period_str}  ·  {currency}" if currency else _period_str
         st.markdown(
             f'<div style="border-radius:14px;padding:16px 20px;margin:2px 0 14px;'
             f'background:linear-gradient(135deg,rgba({_hero_rgb},0.10) 0%,#1E2840 60%);'
@@ -6544,7 +6617,6 @@ if st.session_state.financial_data:
             f'margin-bottom:{"10px" if _hero_thesis else "0"}">'
             f'{_hero_badge}'
             f'{_hero_qs_chip}'
-            f'<span style="color:#64748B;font-size:12px">{escape(_hero_meta)}</span>'
             f'</div>'
             + (
                 f'<div style="color:#CBD5E1;font-size:14px;line-height:1.55">'
@@ -6566,8 +6638,6 @@ if st.session_state.financial_data:
                     st.session_state["nav_mode"] = "Stock Tracker"
                     st.query_params["page"] = "stocks"
                     st.rerun()
-    else:
-        st.caption(f"{_period_str}  ·  {currency}" if currency else _period_str)
 
     if (
         st.session_state.get("analysis_loaded_from_cache")
@@ -6631,6 +6701,22 @@ if st.session_state.financial_data:
                 f'</span></div>',
                 unsafe_allow_html=True,
             )
+            # The receipt: every mapped canonical field with its verbatim
+            # source label and as-filed value, so each number can be tied
+            # back to the printed filing line-by-line. This is the mapped
+            # counterpart to the unmapped list below — before this, only
+            # what FAILED to map was inspectable.
+            with st.expander("SEDAR+ mapped fields — the receipt", expanded=False):
+                _receipt_rows = mapping_receipt_rows(_mapping)
+                if _receipt_rows:
+                    st.dataframe(_receipt_rows, width='stretch', hide_index=True)
+                    st.caption(
+                        "Values shown as filed (the filing's own scale and sign) "
+                        "so each row ties directly to the source PDF. Derived "
+                        "rows are computed from the printed lines listed in Notes."
+                    )
+                else:
+                    st.caption("No line items mapped to canonical fields.")
             with st.expander("SEDAR+ unmapped line items", expanded=False):
                 _unmapped = _mapping.get("unmapped") or []
                 if _unmapped:
@@ -6641,6 +6727,15 @@ if st.session_state.financial_data:
                     )
                 else:
                     st.caption("No unmapped line items.")
+
+        # Per-rule integrity receipt — rendered for any analysis that carries
+        # an engine validation (SEDAR and EDGAR alike), not only SEDAR
+        # mappings. Honest skips are listed with their reasons: an engine
+        # that says "couldn't check this" is evidence, not noise.
+        _integrity_rows = integrity_receipt_rows(financial_data.get("_integrity"))
+        if _integrity_rows:
+            with st.expander("Integrity checks — every rule the engine ran", expanded=False):
+                st.dataframe(_integrity_rows, width='stretch', hide_index=True)
 
         # --- Market data fetch (always visible) and display ---
         # Pre-populate the ticker input the first time results appear, or after a
@@ -6767,10 +6862,15 @@ if st.session_state.financial_data:
         yellow_count = flag_result["yellow_count"]
         override     = flag_result["signal_override"]
 
+        # CB-019: suppressed flags are visible, never silent — the count
+        # rides the panel label so "Clean" never hides a sector adjustment.
+        _suppressed_flags = flag_result.get("suppressed") or []
         if red_count or yellow_count:
             exp_label = f"🚩 Red Flag Analysis  —  {red_count} red · {yellow_count} yellow"
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
+        if _suppressed_flags:
+            exp_label += f"  ·  {len(_suppressed_flags)} sector-adjusted"
 
         if st.button("Learn more about Red Flag Analysis →", key="lm_red_flags"):
             st.session_state["nav_mode"] = "Education"
@@ -6797,6 +6897,32 @@ if st.session_state.financial_data:
                     st.error(f"🔴 **{flag['label']}** — {flag['detail']}")
                 for flag in [f for f in flags if f["severity"] == "yellow"]:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
+
+            # CB-019 sector-adjusted strip (R7): flags that FIRED but are
+            # suppressed for this sector render as a deliberate, visible
+            # absence — each with the value, the threshold it breached, and
+            # the sector rationale. Nothing suppressed → nothing rendered.
+            if _suppressed_flags:
+                st.caption(
+                    f"Sector-adjusted flags ({len(_suppressed_flags)}) — "
+                    f"evaluated and breached, suppressed for this sector, "
+                    f"not counted toward the signal:"
+                )
+                for s in _suppressed_flags:
+                    _s_val = s.get("metric_value")
+                    _s_val_txt = (
+                        f"{_s_val:,.2f}" if isinstance(_s_val, float) and not float(_s_val).is_integer()
+                        else f"{_s_val:,.0f}" if isinstance(_s_val, (int, float))
+                        else str(_s_val)
+                    )
+                    st.markdown(
+                        f'<div style="color:#94A3B8;font-size:13px;margin:2px 0 6px">'
+                        f'⚪ <b>{escape(str(s.get("check", "")).replace("_", " "))}</b> '
+                        f'(would be {escape(str(s.get("severity_suppressed", "")))}) — '
+                        f'value {escape(_s_val_txt)} breached {escape(str(s.get("threshold", "")))}. '
+                        f'{escape(str(s.get("rationale") or ""))}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         # --- Munger Inversion (value-investing pre-mortem) ---
         # PAID Claude call. Pay-once guard: a saved inversion loads free from disk;
@@ -7151,11 +7277,14 @@ if st.session_state.financial_data:
                     else:
                         prior = _fmt_edgar_value(row.get("value_prior")) or "—"
                         current = _fmt_edgar_value(row.get("value")) or "—"
+                    # Current year left, prior right — matching how filings
+                    # present their columns (NGEx dry-run finding #2: the
+                    # reversed order forced a skeptic to reconcile).
                     body += (
                         f'<tr>'
                         f'<td>{line_item}</td>'
-                        f'<td style="text-align:right">{prior}</td>'
                         f'<td style="text-align:right">{current}</td>'
+                        f'<td style="text-align:right">{prior}</td>'
                         f'</tr>'
                     )
             st.markdown(
@@ -7187,8 +7316,8 @@ if st.session_state.financial_data:
                     <thead>
                         <tr>
                             <th>Line Item</th>
-                            <th>{_html.escape(str(fy_prior))}</th>
                             <th>{_html.escape(str(fy))}</th>
+                            <th>{_html.escape(str(fy_prior))}</th>
                         </tr>
                     </thead>
                     <tbody>{body}</tbody>

@@ -799,6 +799,159 @@ disagree, that is a defect: flag it, do not silently fix either side.
 
 ---
 
+### CB-019: sector-aware red-flag suppression — explorer-only v1, visible suppressed[] records, suppressed flags never drive the signal
+
+- Date/status: 2026-07-07, DECIDED (ratified by Riley). PROVENANCE NOTE:
+  first ruling produced by the three-agent pipeline pilot — designed by
+  Fable via API (full session record with spec and acceptance tests:
+  docs/design_sessions/2026-07-07-sector-aware-red-flags__fable.md, from
+  brief docs/design_briefs/2026-07-07-sector-aware-red-flags.md);
+  implementation assigned to Sterling (sandbox); CC reviews/wires/commits.
+- Questions: (1) should detect_flags be sector-aware? (2) which flags
+  suppress for which sector profiles? (3) do suppressed flags still count
+  toward the DECLINE/INVESTIGATE override? (4) suppress by profile alone or
+  gate on revenue absence? (5) REIT current-ratio and bank/insurer
+  balance-sheet-metric doctrine?
+- Rulings: (1) YES, but evidence-gated — v1 covers exactly ONE profile:
+  `mining_exploration_sector` suppresses operating_income, net_income, and
+  free_cash_flow negatives ("the expected shape of a pre-revenue explorer",
+  NGEx cold-load finding #3); liquidity and leverage checks KEEP FIRING
+  (cash runway is the primary explorer distress axis). All other profiles:
+  insufficient evidence — default behavior, no invented doctrine.
+  (2) Suppression is POST-evaluation and every suppression produces a
+  visible `suppressed[]` record (value, breached threshold, would-be
+  severity, sector rationale) — the unmapped[] pattern; SKIP ≠ SUPPRESS
+  (None metric = skip, as today, never a suppression record).
+  (3) NO — suppressed flags never count toward the override; NGEx-shaped
+  input flips from false INVESTIGATE to honest None BY DESIGN.
+  (4) Profile-only (Riley, Q4): the mapper routes revenue-booking miners to
+  mining_sector; revisit on a counterexample. (5) DELIBERATELY DEFAULT
+  (Riley, Q1+Q2): REIT current-ratio red (Allied 0.53x) stays until n≥2–3
+  REITs; bank/insurer current-ratio/ND-EBITDA/interest-coverage stay until
+  one actually FIRES on a bank (today they None-skip; accepted residual:
+  the first bank where they compute may ship a nonsense red before the
+  revisit — watch item, not doctrine). EDGAR filers stay sector-unknown →
+  default flags (Q6). Return shape: additive keys only (`suppressed`,
+  `sector_profile`); all three consumers verified non-strict
+  (app.py:689, app.py:6859, portfolio_manager.py:108).
+- Reasoning: the false-signal evidence (NGEx #3) and the working-flag
+  counter-evidence (Allied's HONEST net-loss yellow; TD's correct CLEAN)
+  both bind — so suppress only where the false read is evidenced, keep
+  everything else firing, and make every suppression as visible as the
+  flags themselves. The design session (Fable-API) notably REFUSED to
+  encode REIT/bank doctrine off n=1 evidence and escalated to Riley —
+  who chose to wait for evidence on both.
+- Enforced by: modules/red_flag_detector.py (SECTOR_FLAG_RULES,
+  _resolve_sector_profile, 4-step detect_flags — implemented by Sterling on
+  feature/cb-019-sector-aware-red-flags, reviewed and merged by CC same
+  day); tests/test_red_flag_sector_rules.py (20 tests: T1–T11 + profile
+  resolution edges + rules-table structural pin); app.py Red Flag panel
+  (CB-019 sector-adjusted strip + "N sector-adjusted" on the panel label so
+  Clean never hides an adjustment). Suite 425 green at merge. Sterling's
+  one flagged ambiguity (parallel rationale strings for net_income /
+  free_cash_flow) accepted as written at review. REAL-DATA NOTE: the NGEx
+  7/2 cache resolves the profile correctly but fires ZERO flags — its
+  loss-sign convention means ni_c reads +123.3M from the "Net loss" row
+  (stale pre-CB-017 cache, no canonical net field); the suppression
+  mechanics are therefore evidenced by the pinned T1 fixture, and the sign
+  finding is queued separately (CB-020 candidate).
+
+### CB-020: loss-form net-income sign convention — loss-declaring label ⇒ −abs(value); scrape is load-bearing; net-income-only scope
+
+- Date/status: 2026-07-07, DECIDED (ratified by Riley). PROVENANCE NOTE:
+  first ruling produced by CC directly (Opus 4.8) rather than Fable via
+  ask_fable.py — the CC-first workflow test Riley opened 2026-07-07 (CC takes
+  well-evidenced/deterministic/prior-ruling-constrained calls in-house; Fable
+  reserved for high-powered/ambiguous ones; Riley stays ratifier). Full
+  session record with spec + acceptance tests:
+  docs/design_sessions/2026-07-07-explorer-loss-sign-convention__cc.md, from
+  brief docs/design_briefs/2026-07-07-explorer-loss-sign-convention.md.
+- Questions: (1) what is the canonical net-income sign convention? (2) the
+  deterministic rule to sign a loss-form bottom line without double-negating
+  a parenthetical loss or flipping a genuine profit? (3) does the summary
+  scrape negate a loss-form match or render "—"? (4) old-cache handling —
+  heal-in-place vs schema bump? (5) scope — net-income-only or a
+  statement-wide inversion detector? (6) CB-019 interaction? (7) card
+  display?
+- Rulings: (1) net_income is SIGNED — profit positive, loss negative,
+  consolidated incl. NCI (CB-011-consistent); the explorer `net_loss` field
+  holds the same concept under a loss-year name and is stored NEGATIVE (same
+  as royalties). (2) LOSS-DECLARING label = normalized label contains "loss"
+  AND none of {"income","profit","earnings"} → store −abs(value); otherwise
+  as-presented. The profit-word exclusion protects the "Net income (loss)"
+  template (value's own sign authoritative); −abs (not plain negate) prevents
+  double-negating a parenthetical loss. Verified against all 8 corpus/dry-run
+  labels. (3) The rule lives at TWO sites: the summary-scrape fallback in
+  _calc_summary_metrics (LOAD-BEARING — NGEx's bare "Net loss" matches no
+  mapper alias, so its bottom line is unmapped and the scrape feeds the card)
+  and the mapper boundary for net_income/net_loss assignment (defense-in-depth,
+  no current firing filer — all corpus losses present parenthetically so −abs
+  is a no-op). Plus the summary layer reads financial_data["net_loss"] as a
+  canonical fallback before the scrape (CB-018 canonical-first extended to the
+  explorer field). (4) Scrape NEGATES the loss-form match; does NOT render "—"
+  (the loss is knowable — printed on the statement; honest absence is for
+  genuinely-unknowable values). (5) NO schema bump — ni_c is computed at
+  render time from unchanged stored rows; the fix corrects the derivation
+  (wrong→right), same class as prior _fmt_num/PLD heals; the schema principle
+  governs stored SHAPE, which is stable. (6) NET-INCOME-ONLY scope: NGEx's
+  negative "Interest income" (−5,898,385) hints at a statement-wide
+  loss-buildup presentation but is insufficient evidence (n=1) for a
+  statement-wide inversion detector — DEFERRED (revisit on a second inverted
+  filer or a full NGEx re-transcription); the n=1 refusal mirrors CB-019's
+  discipline. (7) CB-019 unchanged — once ni_c reads −123.3M for
+  mining_exploration_sector, CB-019 suppresses net_income + FCF negatives with
+  visible suppressed[] records and the false INVESTIGATE → honest None,
+  exactly as its T1 fixture models. (8) Card: signed is sufficient — _fmt_num
+  already renders "-123.3M"; accounting-parentheses "(123.3M)" an optional
+  polish at CC wiring.
+- Reasoning: the codebase investigation (not brief-only) CORRECTED the brief's
+  "likely live in the mapper" hedge — bare "Net loss" matches no alias, so
+  the bug lives entirely in the scrape — and found that SIG/NFG display
+  correctly only by coincidence (parenthetical presentation → negative row →
+  scrape happens to get the right sign). NGEx's positive-magnitude "Net loss"
+  is the mirror case the same scrape signs wrong. A sign-normalization rule
+  keyed on label semantics neutralizes the presentation-format difference.
+  This depth is the CC-first value: a brief-only architect (Fable) could not
+  have read the aliases/tests to find the net_loss-separate-field mechanism.
+- Evidence: NGEx FY2025 cached analysis (~/.finlens/analysis, schema 6,
+  2026-07-02): net_income empty, mapping.mapped = {cash, total_assets,
+  interest_expense}, income row "Net loss" = 123,335,862 POSITIVE,
+  "Interest income" = −5,898,385. Code: excel_exporter.py:632-634 (ni_c
+  scrape fallback), :483-484 (_NI_LABELS has "net loss"), :210-255 (_lookup
+  no sign transform); red_flag_detector.py:154-159 (if ni_c < 0);
+  sedar_aliases.json:71-108 (default net_income aliases — no bare "net loss"),
+  :454-468 (explorer net_loss long-form aliases); test_sedar_mapper.py:905-906
+  /:1110/:1699 (net_loss stored negative for NFG/SIG — parenthetical filers).
+- Enforced by: CC-implemented directly (Riley chose CC-direct over Sterling
+  to minimize metered cost on a small deterministic change; Sterling reserved
+  for work where an independent implementer adds value). modules/integrity/
+  sedar_mapper.py (`_is_loss_declaring_label` shared predicate + CB-020
+  post-pass signing net_income/net_loss); modules/excel_exporter.py
+  (`_signed_bottom_line` + `_find_row`/`_find_row2` row-returning lookups;
+  sign-corrected scrape with net_income → net_loss → signed-scrape ordering in
+  BOTH `_calc_summary_metrics` AND `two_year_statement_pairs` — the charts
+  sibling path was caught by the Change Propagation Rule and fixed in the same
+  pass so card and chart never disagree); CLAUDE.md net_income/net_loss
+  sign-convention note (same commit). Tests: tests/test_cb020_loss_sign.py
+  (17 tests: predicate T1, scrape T2–T8, canonical-first T6/T7, mapper
+  defense-in-depth T9/T9b, no-drift T10, CB-019 interaction T11/T11b, plus 3
+  charts sibling-path guards). GATES: full suite 425→442 green; /detection-test
+  18 green (gate still catches poison); registry-sync tests confirm ZERO
+  fixture drift (the mapper post-pass fires only on positive-magnitude loss
+  labels, which no corpus filer has — value-snapshot + resolved-count machine
+  checks pass, no registry regen needed). INTEGRITY-LOG EVIDENCE GATE NOT
+  TRIGGERED — the load-bearing fix is a render-layer summary/chart derivation
+  (not engine input), and the mapper post-pass is a proven no-op on all
+  current data (engine behavior unchanged); same reasoning as CB-019. Live
+  evidence: the real NGEx 7/2 cache now renders ni_c = −123,335,862 (was
+  +123.3M) through both the card and the charts, healing in-place with NO
+  schema bump (R6 — the stored "Net loss" row is unchanged; only the buggy
+  render-time derivation is corrected). Deferred follow-ups: bare "net loss"
+  as a canonical explorer alias + NGEx fixture (OQ2); statement-wide inversion
+  detection (OQ1/R7).
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added
