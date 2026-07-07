@@ -564,6 +564,75 @@ disagree, that is a defect: flag it, do not silently fix either side.
   UNCHECKED, substring detection, deterministic suffix reason,
   description lockstep).
 
+### CB-015: document-class validation at ingest — deterministic structural classifier, one honest stop, warn on unaudited, info-recorded in the moat log
+- Status: DECIDED
+- Date: opened 2026-07-02 (gate-adjacent open-queue item, from the cold
+  Suncor near-miss resolved by a manual structural check); ratified
+  2026-07-06 (Riley+CC design session, all five rulings as recommended —
+  the third design decision of the fifteenth session)
+- Decided by: Riley
+- Scope: all PDF/docx analysis ingest flows (fresh upload incl. the SEDAR
+  toggle, Single Analysis re-analyse, Portfolio Manager re-analyse,
+  Filing Comparison warn-only); new module
+  modules/integrity/document_class.py; new engine rule
+  document_class_recorded
+- Decision: (1) DETECTOR = deterministic structural heuristics on
+  already-extracted text, zero API cost (statement-family headings ×4,
+  notes-to-FS, auditor's report, corroboration markers). A Claude
+  classification call was REJECTED for v1 (per-upload cost,
+  non-determinism, and the lexical signals proved decisive); escalate
+  only on an observed real misclassification. (2) CLASSES:
+  statements_audited (≥3/4 families + notes + auditor),
+  statements_unaudited (≥3/4 + notes, no auditor — the CNQ signature),
+  no_statements_detected, extraction_empty. (3) ENFORCEMENT: flag-not-
+  block with ONE honest stop — no_statements_detected refuses on analysis
+  flows BEFORE any Claude spend, with a message naming what was looked
+  for; statements_unaudited warns and proceeds (hard-blocking would have
+  blocked the sanctioned CNQ FY2024 fixture); audited passes silently.
+  (4) SCOPING: NOT applied to the 8-K fetcher (press releases are
+  deliberate — wrong class is contextual), the EDGAR 10-K synthetic path
+  (no PDF), registry loads (pre-validated), or cached loads; the
+  ingestion worker reuses the module later. (5) MOAT-LOG: class recorded
+  via info-severity engine rule document_class_recorded (deliberately
+  NOT warn in v1 — a warn-tier rule would flip CNQ's cached validation
+  status as a side effect; severity escalation is a future decision made
+  with recorded evidence). NOT sedar_only (plain uploads are classified
+  too); legacy caches skip honestly. No schema bump (additive field,
+  absence honest).
+- Reasoning: the app performed ZERO validation that an uploaded PDF is
+  the document class the analysis assumes — a silent-error class UPSTREAM
+  of every extraction guard, invisible during the curated era and
+  immediate the moment real users upload. An honest "this doesn't look
+  like financial statements" is a PASS under the cold-load gate; a
+  confident analysis of an MD&A is exactly the FAIL class. The one hard
+  stop is justified because analysis of a statements-less document is
+  wrong by construction AND wastes API spend; everything else stays
+  flag-not-block per integrity-first.
+- Evidence: calibration 2026-07-06 over 18 real corpus PDFs — 17/18
+  statements_audited, CNQ FY2024 uniquely statements_unaudited (the one
+  genuinely unaudited pack; the auditor's report is a clean discriminator
+  while bare unaudited/interim/condensed markers are noisy: audited ATD
+  says "unaudited" ×6 in prose, RY "condensed" ×5); synthetic negatives
+  (press release, MD&A-only) land no_statements_detected — MD&A refused
+  DESPITE citing "financial statements" because the structural signature
+  (headings + notes) is required, not the phrase. Live evidence gate:
+  moat-log record 184 (SIG FY2024 replay — the classifier's own verdict
+  on the real PDF recorded as document_class_recorded:
+  statements_audited). KNOWN LIMITATION recorded: English-only markers —
+  a French filing lands no_statements_detected with an honest refusal
+  until French markers are added (the gate's French edge-slot, queued
+  separately).
+- Enforced by: modules/integrity/document_class.py (classifier +
+  refusal/warning message builders); app.py _gate_document_class at the
+  four ingest sites (gate BEFORE Claude spend; class attached to
+  financial_data["document_class"] + signals); engine.py
+  _check_document_class_info + rules.py document_class_recorded (info);
+  tests tests/test_document_class.py (12 pins incl. the CNQ signature,
+  MD&A-refused-despite-the-phrase, ATD unaudited-marker noise immunity,
+  3/4 tolerance, notes requirement, curly-apostrophe fold) +
+  test_document_class_recorded_as_info_only /
+  test_document_class_skips_honestly_when_absent (detection).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

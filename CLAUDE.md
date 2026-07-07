@@ -608,6 +608,7 @@ Subpackage `modules/integrity/` — the Data Integrity Engine (the product's moa
 - `analyze.py` - integrity analysis entry points, including `/integrity-log` cross-extractor review output.
 - `cross_validate.py` - four-headline cross-check of extracted figures against FMP.
 - `cross_extractor.py` - Gemini second-extractor cross-check for campaign/library filers; writes `cross_extractor_agreement` integrity-log records; v3 AGREE requires value and normalized-label agreement; v4 (CB-014) gives mapper-derived fields structural DERIVED status outside the comparison denominator.
+- `document_class.py` - CB-015 ingest document-class classifier (deterministic structural heuristics, zero API cost): statements_audited / statements_unaudited / no_statements_detected / extraction_empty. app.py gates analysis flows on it BEFORE any Claude spend (honest refusal on no-statements, warn on unaudited); the class is recorded in the moat log via the `document_class_recorded` info rule.
 
 Subpackage `modules/economics/`:
 
