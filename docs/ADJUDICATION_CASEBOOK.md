@@ -841,11 +841,20 @@ disagree, that is a defect: flag it, do not silently fix either side.
   flags themselves. The design session (Fable-API) notably REFUSED to
   encode REIT/bank doctrine off n=1 evidence and escalated to Riley —
   who chose to wait for evidence on both.
-- Enforced by: PENDING IMPLEMENTATION — Sterling sandbox branch per the
-  design session's spec §2 (SECTOR_FLAG_RULES table, _resolve_sector_profile,
-  additive return keys) with acceptance tests T1–T11; CC wires app.py
-  rendering (R7 "Sector-adjusted flags" strip) and updates this line with
-  commit + test references at merge time.
+- Enforced by: modules/red_flag_detector.py (SECTOR_FLAG_RULES,
+  _resolve_sector_profile, 4-step detect_flags — implemented by Sterling on
+  feature/cb-019-sector-aware-red-flags, reviewed and merged by CC same
+  day); tests/test_red_flag_sector_rules.py (20 tests: T1–T11 + profile
+  resolution edges + rules-table structural pin); app.py Red Flag panel
+  (CB-019 sector-adjusted strip + "N sector-adjusted" on the panel label so
+  Clean never hides an adjustment). Suite 425 green at merge. Sterling's
+  one flagged ambiguity (parallel rationale strings for net_income /
+  free_cash_flow) accepted as written at review. REAL-DATA NOTE: the NGEx
+  7/2 cache resolves the profile correctly but fires ZERO flags — its
+  loss-sign convention means ni_c reads +123.3M from the "Net loss" row
+  (stale pre-CB-017 cache, no canonical net field); the suppression
+  mechanics are therefore evidenced by the pinned T1 fixture, and the sign
+  finding is queued separately (CB-020 candidate).
 
 ---
 

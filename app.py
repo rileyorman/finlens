@@ -6862,10 +6862,15 @@ if st.session_state.financial_data:
         yellow_count = flag_result["yellow_count"]
         override     = flag_result["signal_override"]
 
+        # CB-019: suppressed flags are visible, never silent — the count
+        # rides the panel label so "Clean" never hides a sector adjustment.
+        _suppressed_flags = flag_result.get("suppressed") or []
         if red_count or yellow_count:
             exp_label = f"🚩 Red Flag Analysis  —  {red_count} red · {yellow_count} yellow"
         else:
             exp_label = "🟢 Red Flag Analysis  —  Clean"
+        if _suppressed_flags:
+            exp_label += f"  ·  {len(_suppressed_flags)} sector-adjusted"
 
         if st.button("Learn more about Red Flag Analysis →", key="lm_red_flags"):
             st.session_state["nav_mode"] = "Education"
@@ -6892,6 +6897,32 @@ if st.session_state.financial_data:
                     st.error(f"🔴 **{flag['label']}** — {flag['detail']}")
                 for flag in [f for f in flags if f["severity"] == "yellow"]:
                     st.warning(f"🟡 **{flag['label']}** — {flag['detail']}")
+
+            # CB-019 sector-adjusted strip (R7): flags that FIRED but are
+            # suppressed for this sector render as a deliberate, visible
+            # absence — each with the value, the threshold it breached, and
+            # the sector rationale. Nothing suppressed → nothing rendered.
+            if _suppressed_flags:
+                st.caption(
+                    f"Sector-adjusted flags ({len(_suppressed_flags)}) — "
+                    f"evaluated and breached, suppressed for this sector, "
+                    f"not counted toward the signal:"
+                )
+                for s in _suppressed_flags:
+                    _s_val = s.get("metric_value")
+                    _s_val_txt = (
+                        f"{_s_val:,.2f}" if isinstance(_s_val, float) and not float(_s_val).is_integer()
+                        else f"{_s_val:,.0f}" if isinstance(_s_val, (int, float))
+                        else str(_s_val)
+                    )
+                    st.markdown(
+                        f'<div style="color:#94A3B8;font-size:13px;margin:2px 0 6px">'
+                        f'⚪ <b>{escape(str(s.get("check", "")).replace("_", " "))}</b> '
+                        f'(would be {escape(str(s.get("severity_suppressed", "")))}) — '
+                        f'value {escape(_s_val_txt)} breached {escape(str(s.get("threshold", "")))}. '
+                        f'{escape(str(s.get("rationale") or ""))}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         # --- Munger Inversion (value-investing pre-mortem) ---
         # PAID Claude call. Pay-once guard: a saved inversion loads free from disk;
