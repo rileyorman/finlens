@@ -42,11 +42,12 @@ model, any tool — must keep them holding:
 
 ### Phase 1 — Close the correctness gate (the current phase)
 The #1 gate: FinLens is shown to no one until extraction is provably
-correct and cold loads degrade honestly. Status: 3 of 5 dry-run slots
-resolved (producer PASS, REIT PASS, edge partial).
-1. **Financial-or-insurer cold slot** — the last mandatory slot (candidate:
-   a cold bank tests financial_sector where anchoring is thinnest, n=1 RY).
-   Full transcription protocol; FAIL is a fine outcome if honest.
+correct and cold loads degrade honestly. Status: 4 of 5 dry-run slots
+resolved (producer PASS, REIT PASS, financial-or-insurer PASS, edge
+partial).
+1. ~~**Financial-or-insurer cold slot**~~ — **DONE (TD FY2025, FAIL →
+   PASS same session 2026-07-06; slot record in SESSION_HANDOFF.md,
+   rulings in CB-018).**
 2. **Explorer slot decision** — Riley's call whether SIG's human
    ground-truth stamp serves, or a true cold explorer is still required.
 3. **NGEx edge-slot residuals** — column order (corpus-wide cosmetic) and

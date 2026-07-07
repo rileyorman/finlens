@@ -745,6 +745,58 @@ disagree, that is a defect: flag it, do not silently fix either side.
   canonical-first, interest-exclusion honest-None, genuine-capex-suffix
   still matches).
 
+### CB-018: canonical-first extended to revenue (same-row prior rule); bare-EPS scale exemption; financial_sector PCL parenthetical alias
+
+- Date/status: 2026-07-06, DECIDED (ratified by Riley in-session with the
+  TD FY2025 financial-or-insurer cold-slot fix queue; commit 56cb4fd).
+- Questions: (1) does the summary layer's revenue read get the CB-017
+  canonical-first treatment, and where does its PRIOR-year value come from?
+  (2) are bare "Basic"/"Diluted" statement rows per-share figures exempt
+  from unit scaling? (3) does financial_sector `provision_for_credit_losses`
+  cover TD's parenthetical label form?
+- Rulings: (1) YES — `_canonical_pair` reads the promoted canonical field
+  first in BOTH _calc_summary_metrics and two_year_statement_pairs
+  (Revenue + Net Income), with the label scrape kept as the fallback for
+  non-mapped paths. PRIOR RULE: the prior comes from the SAME statement row
+  as the canonical value, located by the mapping's verbatim source_label
+  (the CB-016 layer-agreement invariant makes that row exist); when the row
+  is absent the prior is an honest None — never a differently-matched
+  scrape row (a canonical current against a scraped prior is a
+  mixed-basis YoY, a confident-wrong-number generator). (2) YES —
+  exact-match exemption for bare {basic, diluted, basic and diluted}
+  labels; longer labels ("basic weighted average number of shares")
+  deliberately NOT exempted. (3) YES — augment-don't-mint: "provision for
+  (recovery of) credit losses" added as a second alias (evidence n=2:
+  RY plain form + TD parenthetical form).
+- Reasoning: the TD dry-run displayed FIVE wrong figures from ONE root —
+  the revenue scrape matched "Repurchase agreements and short sales
+  (Interest expense)" via the bare "sales" alias (11,602/13,322) while the
+  mapper held "Total revenue" (67,777/57,223): wrong Revenue card, false
+  −12.9% YoY, false "Revenue declining sharply" red flag, Quality 0/100,
+  and a 177.0% net-margin display (20,538/11,602). The engine layer was
+  simultaneously CORRECT (growth +18.4%, margin 30.3%) because it reads
+  canonical fields — proof the defect class lives only in the legacy
+  scrape layer (doctrine rule 1; the Phase-2 legacy-scrape retirement
+  stays queued). The EPS defect: banks print an "Earnings per share"
+  header with bare sub-row labels, so the per-share regex missed them and
+  $11.57 rendered "$11.6M".
+- Evidence: TD FY2025 slot record (SESSION_HANDOFF.md, 2026-07-06) —
+  FAIL adjudication with all three mechanisms code-confirmed, then re-run
+  PASS with Riley's delta transcription (Revenue 67.78B +18.4%, NI margin
+  30.3%, EPS $11.57/$4.73, red flags Clean, mapping 7 fields). Corpus:
+  zero fixture drift machine-confirmed (value snapshot + registry sync,
+  no regen). The same slot also surfaced the extraction OUTPUT-BUDGET
+  truncation (engineering fix, commit 5700002: 32k budget + honest
+  stop_reason=max_tokens error, no same-cap retry) — recorded here for
+  the slot's completeness, not as a judgment ruling.
+- Enforced by: excel_exporter.py (_canonical_pair; canonical-first rev in
+  _calc_summary_metrics; _pair_canonical_first in
+  two_year_statement_pairs), claude_analyzer.py (_BARE_EPS_LABELS
+  exact-match in is_per_share_line_item), sedar_aliases.json (PCL second
+  alias, source TD_FY2025_dryrun); tests: 4 canonical-first pins
+  (test_summary_metrics), 2 bare-EPS pins (test_normalize_financial_data),
+  1 alias pin (test_sedar_mapper).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
