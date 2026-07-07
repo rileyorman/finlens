@@ -310,6 +310,39 @@ total_assets − total_equity: a derived value would make the
 `sedar_balance_sheet_identity` check circular (pass by construction).
 Honest absence > vacuous validation. Pinned by test.
 
+### `net_income` / `net_loss` sign convention (default + explorer bottom line)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-020): `net_income` is a
+SIGNED field — profit POSITIVE, loss NEGATIVE, consolidated including NCI
+(consistent with CB-011's `net_income` = TECK.B "profit for the year" +1,072).
+The explorer-profile `net_loss` field holds the SAME concept under a
+loss-year name and is likewise stored NEGATIVE (the field name describes the
+expected year, not a positive magnitude — same discipline as `royalties`).
+
+SIGN RULE (loss-declaring label): a label that contains "loss" AND NONE of
+{income, profit, earnings} unambiguously declares a loss → store −abs(value),
+regardless of the filer's presented sign. Otherwise store as-presented. The
+profit-word exclusion protects the "Net income (loss)" TEMPLATE (used in both
+profit and loss years, where the value's own sign is authoritative); the
+−abs form (not a plain negate) prevents double-negating a parenthetical loss.
+
+WHY: filers present losses two ways — parenthetically negative ("Net loss and
+comprehensive loss" $(1,327,532) on AP.UN/SIG/NFG) OR as a positive magnitude
+under a loss label ("Net loss" 123,335,862 on NGEx). The as-presented rule is
+correct for the first and WRONG for the second (it would display a $123.3M
+profit on a $123.3M loss year), so the label semantics — not the value's
+sign — decide.
+
+ENFORCED AT TWO SITES: excel_exporter's summary-card scrape / two-year charts
+(`_signed_bottom_line`, the LOAD-BEARING path — NGEx's bare "Net loss" matches
+no mapper alias, so its bottom line reaches the scrape) and the mapper
+boundary (`_is_loss_declaring_label` post-pass on net_income/net_loss,
+defense-in-depth — a no-op on all current corpus filers, which present losses
+parenthetically). SCOPE: net-income only; NGEx's statement-wide loss-buildup
+presentation (negative "Interest income") is deliberately NOT handled (n=1,
+deferred). Prerequisite for CB-019's explorer suppression to fire on real
+data.
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped

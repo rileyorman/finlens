@@ -207,13 +207,15 @@ def _words_stem(s: str) -> frozenset:
     )
 
 
-def _lookup(rows: list, keywords: list, field: str,
-            row_types: list = None, exclude: list = None):
-    """Return the value of the first matching row.
+def _find_row(rows: list, keywords: list,
+              row_types: list = None, exclude: list = None):
+    """Return the first matching ROW dict (or None).
     Pass 1 — exact substring match (original behaviour).
     Pass 2 — stemmed-word-set fallback: all 5-char stems of the keyword must appear
               in the line item's stems. Handles suffix variants like
               'operations' vs 'operating', 'revenues' vs 'revenue'.
+    Extracted from _lookup so callers that need the matched label (CB-020
+    net-income sign) can reach the row, not just the value.
     """
     def _ok(row):
         li = row.get("line_item", "").lower().strip()
@@ -229,7 +231,7 @@ def _lookup(rows: list, keywords: list, field: str,
             continue
         li = row.get("line_item", "").lower().strip()
         if any(kw.lower() in li for kw in keywords):
-            return row.get(field)
+            return row
 
     # Pass 2: stemmed word-set fallback
     kw_stem_sets = [_words_stem(kw) for kw in keywords]
@@ -239,9 +241,17 @@ def _lookup(rows: list, keywords: list, field: str,
         li_stems = _words_stem(row.get("line_item", ""))
         for kw_stems in kw_stem_sets:
             if kw_stems and kw_stems.issubset(li_stems):
-                return row.get(field)
+                return row
 
     return None
+
+
+def _lookup(rows: list, keywords: list, field: str,
+            row_types: list = None, exclude: list = None):
+    """Return the value of the first matching row (see _find_row for the
+    two-pass matching semantics). Unchanged public behaviour."""
+    row = _find_row(rows, keywords, row_types=row_types, exclude=exclude)
+    return row.get(field) if row is not None else None
 
 
 def _lookup2(rows: list, keywords: list, field: str, exclude: list = None):
@@ -253,6 +263,29 @@ def _lookup2(rows: list, keywords: list, field: str, exclude: list = None):
     """
     v = _lookup(rows, keywords, field, row_types=["subtotal", "total"], exclude=exclude)
     return v if v is not None else _lookup(rows, keywords, field, exclude=exclude)
+
+
+def _find_row2(rows: list, keywords: list, exclude: list = None):
+    """Subtotal/total-preferring row lookup (mirrors _lookup2) that returns the
+    matched ROW so the caller can read its label — used for the CB-020
+    net-income sign correction."""
+    row = _find_row(rows, keywords, row_types=["subtotal", "total"], exclude=exclude)
+    return row if row is not None else _find_row(rows, keywords, exclude=exclude)
+
+
+def _signed_bottom_line(label, value):
+    """CB-020: apply the canonical net-income sign convention to a SCRAPED
+    bottom line. A loss-declaring label (contains 'loss', none of
+    income/profit/earnings) carrying a positive magnitude is a loss stored
+    positive → negate it (NGEx 'Net loss' +123.3M → −123.3M); a parenthetical
+    loss (already negative) and any profit are left unchanged. Lazy-imports the
+    shared predicate so excel_exporter's module load does not pull the
+    integrity engine (and its optional deps) into every export/red-flag path.
+    """
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return value
+    from modules.integrity.sedar_mapper import _is_loss_declaring_label
+    return -abs(value) if _is_loss_declaring_label(label) else value
 
 
 def _safe_div(num, den):
@@ -589,15 +622,36 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
             return {"current": value, "prior": prior}
         return scrape_pair()
 
+    def _mapped_source_label(canonical_key):
+        return (((financial_data.get("mapping") or {}).get("mapped") or {})
+                .get(canonical_key) or {}).get("source_label")
+
+    # CB-020: Net Income mirrors _calc_summary_metrics exactly so the charts
+    # never disagree with the card — net_income → net_loss (explorer canonical
+    # field) → SIGN-CORRECTED scrape. The canonical CURRENT is already signed
+    # by the mapper; the prior column (raw value_prior) is signed with the same
+    # row label so a loss row's two columns stay consistent (NGEx's chart must
+    # show −123.3M, not +123.3M).
+    def _net_income_pair():
+        for key in ("net_income", "net_loss"):
+            value, prior = _canonical_pair(financial_data, key, is_rows)
+            if value is not None:
+                return {"current": value,
+                        "prior":   _signed_bottom_line(_mapped_source_label(key), prior)}
+        row = _find_row2(is_rows, _NI_LABELS, exclude=_NI_EXCLUDE)
+        if row is None:
+            return {"current": None, "prior": None}
+        label = row.get("line_item")
+        return {"current": _signed_bottom_line(label, row.get("value")),
+                "prior":   _signed_bottom_line(label, row.get("value_prior"))}
+
     return {
         "Revenue":              _pair_canonical_first(
                                     "revenue", is_rows,
                                     lambda: _pair(is_rows, _REV_LABELS, _lookup2)),
         "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
         "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
-        "Net Income":           _pair_canonical_first(
-                                    "net_income", is_rows,
-                                    lambda: _pair_excl(is_rows, _NI_LABELS, _lookup2, _NI_EXCLUDE)),
+        "Net Income":           _net_income_pair(),
         "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
         "Capital Expenditures": _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE),
         "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
@@ -625,13 +679,22 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
     gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
     oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
-    # CB-017: canonical-first — SEDAR filings promote the mapped net_income
-    # to the top level (raw dollars, same basis as the scaled rows); the
-    # label scrape is the fallback for non-mapped paths, guarded so component
-    # rows ("Net income from joint venture") never outrank the bottom line.
+    # CB-017/CB-018: canonical-first — SEDAR filings promote the mapped
+    # net_income to the top level (raw dollars, same basis as the scaled rows).
+    # CB-020: the explorer bottom line maps to the separate net_loss field
+    # (already signed by the mapper), so read it as the second source; then a
+    # SIGN-CORRECTED scrape as the last fallback. NGEx's bare "Net loss"
+    # matches no alias, so it reaches the scrape — where a positive-magnitude
+    # loss label must be negated (else the Net Income card shows a profit on a
+    # loss year, and CB-019's explorer suppression has nothing to suppress).
+    # The scrape stays guarded so component rows ("Net income from joint
+    # venture") never outrank the bottom line.
     ni_c = financial_data.get("net_income")
     if not isinstance(ni_c, (int, float)) or isinstance(ni_c, bool):
-        ni_c = _lookup2(is_rows, _NI_LABELS, "value", exclude=_NI_EXCLUDE)
+        ni_c = financial_data.get("net_loss")
+    if not isinstance(ni_c, (int, float)) or isinstance(ni_c, bool):
+        ni_row = _find_row2(is_rows, _NI_LABELS, exclude=_NI_EXCLUDE)
+        ni_c = _signed_bottom_line(ni_row.get("line_item"), ni_row.get("value")) if ni_row else None
 
     da_c = _lookup(cf_rows, _DA_LABELS, "value")
     if da_c is not None:

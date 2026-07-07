@@ -95,6 +95,27 @@ def _coerce_number(value: Any) -> float | None:
         return None
 
 
+# CB-020 (ratified 2026-07-07): canonical net-income sign convention. A label
+# that UNAMBIGUOUSLY declares a loss — contains "loss" and NONE of the profit
+# words {income, profit, earnings} — carries a loss and must be stored
+# NEGATIVE, regardless of the filer's presented sign. The profit-word
+# exclusion protects the "Net income (loss)" TEMPLATE (used in both profit and
+# loss years, where the value's own sign is authoritative). NGEx prints a
+# positive-magnitude "Net loss"; AP.UN/SIG/NFG print the loss parenthetically
+# (already negative). The rule signs the first and no-ops the others.
+# Shared with excel_exporter's summary-card scrape (the load-bearing consumer);
+# defined here in the lean mapper layer to keep a single source of truth for
+# the exclusion set (see CB-020 OQ3).
+_PROFIT_WORDS = ("income", "profit", "earnings")
+
+
+def _is_loss_declaring_label(label: str | None) -> bool:
+    li = (label or "").lower()
+    if "loss" not in li:
+        return False
+    return not any(word in li for word in _PROFIT_WORDS)
+
+
 def _standard_allowed(rule: dict[str, Any], accounting_standard: str) -> bool:
     standards = rule.get("standards") or []
     norm = _normalize_standard(accounting_standard)
@@ -753,6 +774,22 @@ def map_line_items(
         # unmapped[] — conservation requires every row land somewhere.
         for extra_match in matches[1:]:
             unmapped.append(_unmapped_item(extra_match["item"]))
+
+    # --- CB-020: net-income sign normalization (defense-in-depth) ---
+    # A loss-declaring bottom-line label carrying a POSITIVE magnitude is
+    # stored negative (profit +, loss −). Only fires when the value is
+    # positive, so parenthetical losses (already negative on SIG/NFG/AP.UN)
+    # are left byte-identical — no fixture drift. No current corpus filer
+    # triggers this at the mapper (all present losses parenthetically); it
+    # guards the canonical path against a positive-magnitude long-form loss.
+    for _ni_field in ("net_income", "net_loss"):
+        _entry = mapped.get(_ni_field)
+        if _entry is None:
+            continue
+        if _is_loss_declaring_label(_entry.get("source_label")):
+            _num = _coerce_number(_entry.get("value"))
+            if _num is not None and _num > 0:
+                _entry["value"] = _clean_derived_number(-_num)
 
     # --- Part B: Derived gross profit ---
     # When gross_profit is not directly mapped but both revenue and cost_of_revenue are,
