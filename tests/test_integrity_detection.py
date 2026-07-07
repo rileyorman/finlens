@@ -221,6 +221,35 @@ def test_sedar_total_assets_identity_logs_skip_when_combined_line_missing():
     assert check.skip_reason == "field_unavailable"
 
 
+def test_document_class_recorded_as_info_only():
+    """CB-015: the ingest document class lands in the validation record as an
+    info-severity note — never a warning in v1."""
+    data = _load_csu_sedar_with_mapping()
+    data["document_class"] = "statements_audited"
+
+    result = validate_filing(data, "CSU", "Technology", {"source": "sedar_pdf"})
+
+    check = _check(result, "document_class_recorded")
+    assert check.severity == "info"
+    assert check.passed
+    assert not check.skipped
+    assert "statements_audited" in check.message
+    assert "document_class_recorded" not in _warn_failures(result)
+
+
+def test_document_class_skips_honestly_when_absent():
+    """Legacy caches and EDGAR-synthetic analyses carry no document_class —
+    honest field_unavailable skip, no fabricated value."""
+    data = _load_csu_sedar_with_mapping()
+
+    result = validate_filing(data, "CSU", "Technology", {"source": "sedar_pdf"})
+
+    check = _check(result, "document_class_recorded")
+    assert check.passed
+    assert check.skipped
+    assert check.skip_reason == "field_unavailable"
+
+
 def test_sedar_balance_sheet_identity_passes_on_canonical_components():
     """CB-013: assets == liabilities + equity from the canonical mapped
     components (RY FY2025 values, identity-verified against source)."""

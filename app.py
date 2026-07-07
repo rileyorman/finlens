@@ -45,6 +45,14 @@ from modules.claude_analyzer import (
     normalize_and_validate,
 )
 from modules.integrity import cross_validate_filing
+from modules.integrity.document_class import (
+    DOC_CLASS_EXTRACTION_EMPTY,
+    DOC_CLASS_NO_STATEMENTS,
+    DOC_CLASS_STATEMENTS_UNAUDITED,
+    classify_document_text,
+    refusal_message,
+    unaudited_warning_message,
+)
 from modules.filing_comparison import compare_filings
 from modules.scenario_simulator import run_scenario
 from modules.excel_exporter import create_excel_file, _calc_summary_metrics, two_year_statement_pairs
@@ -164,6 +172,39 @@ def _selected_model_cache_part() -> str:
 
 def get_mda_model():
     return EXTRACTION_MODEL
+
+
+def _gate_document_class(raw_text: str | None, *, warn_only: bool = False) -> dict:
+    """CB-015 ingest gate: classify extracted document text BEFORE any Claude
+    spend. no_statements_detected / extraction_empty -> honest refusal
+    (st.error + st.stop) on analysis flows — analyzing a statements-less
+    document guarantees a confident wrong-class analysis. statements_unaudited
+    -> warn banner and proceed (interim packs are sanctioned: CNQ FY2024 is a
+    corpus fixture). warn_only=True (Filing Comparison) downgrades the refusal
+    to a warning. Returns the classification dict for attachment to
+    financial_data["document_class"]."""
+    result = classify_document_text(raw_text)
+    doc_class = result["document_class"]
+    signals = result["signals"]
+
+    if doc_class == DOC_CLASS_EXTRACTION_EMPTY:
+        if warn_only:
+            st.warning("Very little text was extracted from this document — the comparison may be unreliable.")
+        else:
+            st.error(
+                "Very little text was extracted — the file may be scanned/image-based or empty. "
+                "Try a text-based PDF or a Word document with readable text content."
+            )
+            st.stop()
+    elif doc_class == DOC_CLASS_NO_STATEMENTS:
+        if warn_only:
+            st.warning(refusal_message(signals))
+        else:
+            st.error(refusal_message(signals))
+            st.stop()
+    elif doc_class == DOC_CLASS_STATEMENTS_UNAUDITED:
+        st.warning(unaudited_warning_message(signals))
+    return result
 
 
 def _run_integrity_checks(
@@ -2404,6 +2445,8 @@ if page == "Portfolio Manager":
         ra = st.session_state.pending_reanalyse
         st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
         _ra_text = ra["raw_text"]
+        # CB-015: gate before the Claude calls — sibling path of fresh upload.
+        _ra_doc_class = _gate_document_class(_ra_text)
         _ra_context = _get_filing_context(
             _ra_text,
             ra.get("ticker") or ra.get("company_name"),
@@ -2442,6 +2485,9 @@ if page == "Portfolio Manager":
                 except FabricatedExtractionError as _fab_err:
                     st.error(f"🛑 {_fab_err}")
                     st.stop()
+        if isinstance(_ra_fd, dict):
+            _ra_fd["document_class"] = _ra_doc_class["document_class"]
+            _ra_fd["document_class_signals"] = _ra_doc_class["signals"]
         with st.spinner("Call 2: Generating investment signal..."):
             _ra_sd = analyze_summary(_ra_text, _ra_fd, API_KEY, model=get_model(), filing_context=_ra_context)
         with st.spinner("Call 3: Generating bull/bear case..."):
@@ -3450,6 +3496,11 @@ if page == "Filing Comparison":
             _text1 = extract_text_from_pdf(fc_file1)
         with st.spinner(f"Extracting text from {fc_file2.name}..."):
             _text2 = extract_text_from_pdf(fc_file2)
+
+        # CB-015: warn-only on the comparison flow (comparison of prose
+        # documents is a legitimate use; a wrong class still deserves a flag).
+        _gate_document_class(_text1, warn_only=True)
+        _gate_document_class(_text2, warn_only=True)
 
         with st.spinner(f"Scoring MD&A sentiment — {_lbl1}..."):
             pass  # compare_filings handles all three calls internally
@@ -5930,6 +5981,8 @@ if st.session_state.get("pending_reanalyse"):
     st.info(f"Re-analysing **{ra['company_name']}** — running all 4 Claude calls fresh...")
 
     _ra_text = ra["raw_text"]
+    # CB-015: gate before the Claude calls — sibling path of fresh upload.
+    _ra_doc_class = _gate_document_class(_ra_text)
     _ra_context = _get_filing_context(
         _ra_text,
         ra.get("ticker") or ra.get("company_name"),
@@ -5969,6 +6022,10 @@ if st.session_state.get("pending_reanalyse"):
             except FabricatedExtractionError as _fab_err:
                 st.error(f"🛑 {_fab_err}")
                 st.stop()
+
+    if isinstance(_ra_fd, dict):
+        _ra_fd["document_class"] = _ra_doc_class["document_class"]
+        _ra_fd["document_class_signals"] = _ra_doc_class["signals"]
 
     _ra_sd = None
     with st.spinner("Call 2: Generating investment signal..."):
@@ -6190,6 +6247,11 @@ if uploaded_file:
                 st.stop()
 
             st.success(f"Extracted {char_count:,} characters from **{uploaded_file.name}**")
+
+            # CB-015: classify the document BEFORE any Claude spend — refuses
+            # honestly when no financial statements are detected.
+            _doc_class_result = _gate_document_class(raw_text)
+
             _upload_context = _get_filing_context(raw_text, uploaded_file.name, cache_key)
 
             # Step 2 — Call 1: extract structured financials
@@ -6230,6 +6292,12 @@ if uploaded_file:
                     except Exception as e:
                         st.error(f"Claude analysis failed: {e}")
                         st.stop()
+
+            # CB-015: record the ingest document class on the analysis so the
+            # integrity engine logs it (document_class_recorded rule).
+            if isinstance(financial_data, dict):
+                financial_data["document_class"] = _doc_class_result["document_class"]
+                financial_data["document_class_signals"] = _doc_class_result["signals"]
 
             # Step 3 — Call 2: generate investment signal
             summary_data = None

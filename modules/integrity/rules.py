@@ -221,6 +221,26 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # Document class (CB-015): the ingest-time structural classification
+    # (statements_audited / statements_unaudited / ...) is recorded in the
+    # moat log. Info-severity in v1 — the user-facing warn/refusal lives at
+    # the ingest gate; escalating this rule's severity (e.g. warn when a
+    # cached analysis carries an unaudited class) is a future decision to
+    # be made with recorded evidence. NOT sedar_only: plain PDF uploads
+    # (no mapping) are gated and classified too. Legacy caches without the
+    # field skip honestly (field_unavailable).
+    # ------------------------------------------------------------------
+    {
+        "id": "document_class_recorded",
+        "description": "Ingest document class is recorded for future class-aware checks",
+        "severity": "info",
+        "check_type": "document_class_info",
+        "params": {},
+        "sector_skip": (),
+        "requires_fields": ["document_class"],
+    },
+
+    # ------------------------------------------------------------------
     # Accounting standard is informational only. The engine records it so
     # future cross-validation thresholds can become standard-aware.
     # ------------------------------------------------------------------

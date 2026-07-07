@@ -265,6 +265,7 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         "mapping":                    mapping,
         "has_mapping":                "mapping" in normalized_data,
         "accounting_standard":        normalized_data.get("accounting_standard"),
+        "document_class":             normalized_data.get("document_class"),
         "fiscal_year":                normalized_data.get("fiscal_year", ""),
         "fiscal_year_int":            _parse_fy_year(normalized_data.get("fiscal_year", "")),
         "filing_year_int":            _parse_iso_year(filing_metadata.get("filing_date", "")),
@@ -452,6 +453,14 @@ def _check_accounting_standard_info(rule: dict, ctx: dict) -> tuple:
     return None, {}, True, f"Accounting standard recorded: {standard or 'unknown'}"
 
 
+def _check_document_class_info(rule: dict, ctx: dict) -> tuple:
+    """CB-015: record the ingest-time document class in the moat log.
+    Deliberately info-severity in v1 — escalating (e.g. warn on unaudited)
+    is its own future decision, to be made with recorded-class evidence."""
+    document_class = ctx.get("document_class")
+    return None, {}, True, f"Document class recorded: {document_class}"
+
+
 def _check_total_assets_identity(rule: dict, ctx: dict) -> tuple:
     total_assets = ctx.get("total_assets")
     combined = ctx.get("total_liabilities_and_equity")
@@ -497,6 +506,7 @@ _CHECKS = {
     "extraction_confidence":     _check_extraction_confidence,
     "mapping_pattern_info":      _check_mapping_pattern_info,
     "accounting_standard_info":  _check_accounting_standard_info,
+    "document_class_info":       _check_document_class_info,
     "total_assets_identity":     _check_total_assets_identity,
     "balance_sheet_identity":    _check_balance_sheet_identity,
 }
