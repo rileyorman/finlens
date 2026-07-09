@@ -1,13 +1,35 @@
 # FinLens Roadmap Addendum — Curriculum-Driven & Commercial Expansion
 
-## Moat Thesis (June 2026)
+## Moat Thesis (June 2026; sharpened 2026-07-09)
 
-The Data Integrity Engine is not a feature — it is the foundation of a compounding data asset. SEDAR+ is PDF-only with no XBRL, meaning no machine-readable validated fundamentals dataset exists for Canadian filings. Phase 2 (SEDAR+ PDF extraction + Integrity Engine validation on IFRS data) therefore builds the only validated Canadian fundamentals dataset in existence.
+**The canonical statement of the commercial thesis lives in CLAUDE.md
+("Commercial Thesis — The Corpus Flywheel"). This section is the roadmap-facing
+framing; on any conflict, CLAUDE.md wins.**
+
+The opportunity is real and present: SEDAR+ is PDF-only with no XBRL, so **no
+machine-readable, validated Canadian IFRS fundamentals dataset exists.** The Data
+Integrity Engine is not a feature — it is the machine that builds that dataset
+and keeps it trustworthy.
+
+**What is true today (stated honestly):** the validated corpus is wide-and-thin
+— ~15 filers across 6 sector profiles, most shapes anchored one filer deep. That
+is an *embryo, not a moat yet* (Riley's own framing). What is already genuinely
+scarce is not the data volume but the **adjudication casebook** — CB-009→024,
+real analyst judgment encoded as machine-checkable rules with reasoning attached.
+Data is re-scrapable; that judgment history is not.
+
+**How it becomes a moat (the compounding engine):** the corpus flywheel — usage
+drives ingestion. When a client searches a company, an agent fetches the filing
+once, FinLens analyzes it, and it joins the validated corpus; the more clients
+search, the more robust the corpus (data network effect). Agent-fetch has
+empirically worked on issuer IR pages; the hand-downloaded campaign is the
+PRE-commercial bootstrap, NOT the ceiling — post-launch the corpus scales with
+demand, not with hands. Full mechanism + caveats in CLAUDE.md.
 
 Three compounding layers:
-1. Error-correction flywheel — engine findings feed extraction improvements (aliases, derivations, sector rules); every filing processed makes the next more accurate. The JSONL log is the embryo of this asset.
-2. Data-as-product — once Canadian coverage matures, the validated fundamentals API is sellable to Canadian fund managers, fintechs, and academics independently of the app.
-3. Trust layer as brand — "every number validated, every correction logged, audit trail shown." No retail competitor holds this positioning; it is the value-investor sensibility applied to the product itself.
+1. **Error-correction flywheel** — engine findings feed extraction improvements (aliases, derivations, sector rules); every filing processed makes the next more accurate. The JSONL log is the embryo of this asset.
+2. **Data-as-product (future, coverage-gated)** — once Canadian coverage matures via the usage flywheel, the validated fundamentals API is sellable to Canadian fund managers, fintechs, and academics independently of the app. NOT sellable at today's 15-filer breadth — this layer is a destination, not a current state.
+3. **Trust layer as brand** — "every number validated, every correction logged, audit trail shown." No retail competitor holds this positioning; it is the value-investor sensibility applied to the product itself. The Integrity Engine is also what makes the flywheel trustworthy at scale (human review only on flagged exceptions) — so the moat work and the commercial product are one bet, not two.
 
 Strategic implication: the fetch campaign, rule tuning, and SEDAR+ extraction layer ARE the moat construction. No sequence change — only framing.
 

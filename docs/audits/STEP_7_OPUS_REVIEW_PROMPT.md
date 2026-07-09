@@ -2,7 +2,7 @@
 
 **How to use:** Sunday, after CC Audit Steps 1-6 complete. Open new claude.ai chat, set model to Claude Opus 4.8 (most capable available). Attach:
 - docs/FinLens_Roadmap_Addendum.md (AUTHORITATIVE roadmap)
-- docs/SESSION_HANDOFF.md (campaign state: 13 filers, 5 sector profiles — what's actually shipped)
+- docs/SESSION_HANDOFF.md (campaign state: 15 filers, 6 sector profiles — what's actually shipped)
 - docs/FETCH_CAMPAIGN_LOG.md (the moat corpus)
 - docs/audits/WEEKLY_AUDIT_2026-06-15.md (this week's audit findings; for future weeks, attach that week's dated WEEKLY_AUDIT file)
 - docs/FinLens_Mastery_Curriculum.html
@@ -27,7 +27,7 @@ Attached are:
 Please review with four lenses:
 
 D. MOAT vs COMMERCIAL PRODUCT (the central open question — review this first)
-FinLens's actual recent work (~90% of commits) is the Data Integrity Engine + SEDAR+ Canadian-filing data moat: a validated IFRS fundamentals corpus (13 filers across 5 sector profiles), an error-correction flywheel (every alias/sector rule logged), with a long-term thesis of selling validated data to Canadian fund managers/fintechs. The roadmap (attached) still describes a feature-SaaS + curriculum product. These have diverged.
+FinLens's actual recent work (~90% of commits) is the Data Integrity Engine + SEDAR+ Canadian-filing data moat: a validated IFRS fundamentals corpus (15 filers across 6 sector profiles), an error-correction flywheel (every alias/sector rule logged), with a long-term thesis of selling validated data to Canadian fund managers/fintechs. The roadmap (attached) still describes a feature-SaaS + curriculum product. These have diverged.
 - Is the SEDAR/integrity data-moat a genuine defensible wedge, or a detour from a commercial product that needs user-facing features to sell?
 - If the moat is real: who pays for it, how soon, and what's the smallest commercial product that monetizes it?
 - If it's a detour: what's the opportunity cost of the campaign work vs shipping the SaaS features that are mostly not-started?
