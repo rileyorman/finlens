@@ -1050,17 +1050,24 @@ Relevant roadmap items:
 
 ## Deployment Checklist
 
+**Secrets note (since 2026-07-08):** there is no plaintext `.env` — API keys come
+from the encrypted SOPS store, so the app AND the test suite must run with secrets
+injected: `Import-Secrets` then the command, or `sops exec-env %USERPROFILE%\.secrets\secrets.enc.env "<cmd>"`.
+Running `pytest` with NO injected secrets fails at collection (`test_run.py` makes a
+live Claude call and finds no key) — that's an environment miss, not a code failure.
+
 Before deployment or demo:
 
 1. Confirm work is on `dev`.
 2. Run `python -m py_compile app.py`.
-3. Start Streamlit locally and confirm the app loads.
-4. Test the affected user flow.
-5. Confirm `.env` and `.streamlit/secrets.toml` are not committed.
-6. Confirm generated reports and PDFs are not committed.
-7. Merge `dev` into `main` only when stable.
-8. If using Windows service deployment, restart the FinLens service through the approved NSSM operations process.
-9. Check service logs if the app does not start.
+3. Start Streamlit locally (secrets injected) and confirm the app loads.
+4. Run the full suite with secrets injected: `sops exec-env <store> "python -m pytest -q"` — expect green.
+5. Test the affected user flow.
+6. Confirm `.streamlit/secrets.toml` is not committed (the `.env` is gone/gitignored; SOPS store lives outside the repo).
+7. Confirm generated reports and PDFs are not committed.
+8. Merge `dev` into `main` only when stable (`git merge --no-ff dev`).
+9. If using Windows service deployment (NSSM), restart the FinLens service and pass secrets via the service environment (the service can't run `Import-Secrets`). Not installed on the 2026-07 ThinkPad — that machine relaunches the app directly.
+10. Check service/startup logs if the app does not start.
 
 ## Communication Preferences
 
