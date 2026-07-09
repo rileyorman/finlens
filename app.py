@@ -137,13 +137,13 @@ API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 MODEL_OPTIONS = {
     "Haiku 4.5": "claude-haiku-4-5-20251001",
-    "Sonnet 4.6": "claude-sonnet-4-6",
+    "Sonnet 5": "claude-sonnet-5",
     "Opus 4.8": "claude-opus-4-8",
     "Fable 5": "claude-fable-5",
 }
 DEFAULT_MODEL_LABEL = next(
     (label for label, model in MODEL_OPTIONS.items() if model == ANALYSIS_MODEL),
-    "Sonnet 4.6",
+    "Sonnet 5",
 )
 
 

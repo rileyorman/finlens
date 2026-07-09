@@ -40,9 +40,12 @@ test showing the current code works?" before suggesting changes.
 These are verified live model IDs. Training-data model lists may be stale — do not change these strings without Riley's confirmation (CLAUDE.md empirical-evidence principle: APIs change faster than docs).
 
 - claude-haiku-4-5-20251001 (Haiku 4.5)
-- claude-sonnet-4-6 (Sonnet 4.6)
+- claude-sonnet-5 (Sonnet 5, Claude 5 family — **now the Sonnet tier**; ANALYSIS/BEAR_BULL/SEDAR use this as of 2026-07-08)
+- claude-sonnet-4-6 (Sonnet 4.6 — still a valid live ID; superseded by sonnet-5 for our Sonnet-tier calls)
 - claude-opus-4-8 (Opus 4.8, current Opus)
 - claude-fable-5 (Fable 5, Claude 5 family, tier above Opus)
+
+**sonnet-5 gotcha (empirically verified 2026-07-08):** `claude-sonnet-5` intermittently returns `thinking` content blocks by default. Two consequences on the non-Opus (else-branch) calls: (1) `response.content[0]` may be a ThinkingBlock, breaking bare `content[0].text` — always use `_text_content(response)`; (2) thinking consumes the output budget, truncating small-`max_tokens` JSON responses. Both are avoided by passing `thinking={"type": "disabled"}` on every non-Opus Sonnet-tier call (already applied in claude_analyzer.py, sedar_extractor.py, munger_inversion.py). Opus branches deliberately keep `thinking={"type": "adaptive"}`.
 
 ## Engineering Principle: Number Formatters Must Handle Full Magnitude Range
 
@@ -783,8 +786,8 @@ Current model setup:
 
 ```python
 EXTRACTION_MODEL = "claude-haiku-4-5-20251001"
-ANALYSIS_MODEL = "claude-sonnet-4-6"
-BEAR_BULL_MODEL = "claude-sonnet-4-6"
+ANALYSIS_MODEL = "claude-sonnet-5"
+BEAR_BULL_MODEL = "claude-sonnet-5"
 ```
 
 Current input limits:
@@ -798,8 +801,9 @@ MAX_FILING_CHARS = 80_000
 Architecture:
 
 - Haiku is used for fast, lower-cost extraction.
-- Sonnet is used for reasoning-heavy analysis.
-- Bear/bull case generation currently uses Sonnet.
+- Sonnet (now Sonnet 5) is used for reasoning-heavy analysis.
+- Bear/bull case generation currently uses Sonnet (5).
+- Non-Opus Sonnet-tier calls pass `thinking={"type": "disabled"}` (see the sonnet-5 gotcha near the top of this file).
 - Input truncation and response caching are used to control API cost.
 
 When changing model behavior, prefer updating `config.py` instead of hardcoding model names inside modules.

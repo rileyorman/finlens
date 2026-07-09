@@ -621,6 +621,9 @@ def analyze_financials(
                 "content": user_message,
             }
         ],
+        # sonnet-5 can emit thinking blocks that shift content[0] and eat the
+        # output budget; extraction is structured JSON, so disable thinking.
+        thinking={"type": "disabled"},
     )
 
     print(log_cache_usage("analyze_financials", response.usage))
@@ -772,6 +775,7 @@ def analyze_summary(
             max_tokens=1024,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
     print(log_cache_usage("analyze_summary", response.usage))
@@ -885,6 +889,7 @@ def analyze_bear_bull(
             max_tokens=1024,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
     print(log_cache_usage("analyze_bear_bull", response.usage))
@@ -1022,6 +1027,7 @@ def analyze_dashboard_insights(
                 system    = [{"type": "text", "text": SYSTEM_PROMPT,
                               "cache_control": _cache_control()}],
                 messages  = [{"role": "user", "content": user_message}],
+                thinking  = {"type": "disabled"},  # sonnet-5: no thinking (would truncate 1200-tok JSON)
             )
 
         print(log_cache_usage("analyze_dashboard_insights", response.usage))
@@ -1174,6 +1180,7 @@ def analyze_mda_sentiment(
                 max_tokens=512,
                 system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
                 messages=[{"role": "user", "content": user_message}],
+                thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 512-tok JSON)
             )
 
         print(log_cache_usage("analyze_mda_sentiment", response.usage))
