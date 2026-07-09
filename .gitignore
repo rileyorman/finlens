@@ -16,3 +16,4 @@ run_service.bat
 setup_service.ps1
 library/analysis/
 .claude/settings.local.json
+candidates/
