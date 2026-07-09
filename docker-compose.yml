@@ -1,0 +1,35 @@
+# FinLens local container stack.
+#
+# Secrets are NOT stored here. Each ${VAR} is interpolated from the shell
+# environment at `docker compose up` time — so the existing SOPS workflow
+# supplies them: run `Import-Secrets` first (it decrypts the SOPS store into
+# the PowerShell session), then `docker compose up`. Nothing secret is written
+# to disk or baked into the image. The ":-" defaults keep unset optional keys
+# from producing compose warnings.
+services:
+  finlens:
+    build: .
+    image: finlens:latest
+    container_name: finlens
+    ports:
+      # Bind to host loopback ONLY — mirrors the app's deliberate localhost-only
+      # posture (.streamlit/config.toml security note, 2026-07-02). The app is
+      # reachable at http://localhost:8501 on this machine, not from the network.
+      - "127.0.0.1:8501:8501"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}   # required
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}         # Gemini second-extractor cross-check
+      FISCAL_AI_KEY: ${FISCAL_AI_KEY:-}           # Fiscal.ai profile/shares/logo
+      FMP_API_KEY: ${FMP_API_KEY:-}               # Financial Modeling Prep
+      SUPABASE_URL: ${SUPABASE_URL:-}             # optional Supabase persistence
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}             # app password gate (falls back to default if unset)
+      STREAMLIT_ENV: ${STREAMLIT_ENV:-}           # set to "dev" to bypass the password gate
+      FINLENS_DEBUG: ${FINLENS_DEBUG:-}
+    volumes:
+      # Persist the filing library, analysis cache, and integrity log.
+      - finlens-data:/data
+    restart: unless-stopped
+
+volumes:
+  finlens-data:

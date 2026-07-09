@@ -6,14 +6,19 @@ import json
 import logging
 import re
 import unicodedata
+from datetime import datetime, timezone
 
-from config import ANALYSIS_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK
+from config import ANALYSIS_MODEL, MAX_FILING_CHARS, MAX_EXTRACTION_FRONT, MAX_EXTRACTION_BACK, LIBRARY_DIR
 
 # Model alias for the dashboard insights call (same tier as analysis)
 DASHBOARD_MODEL = ANALYSIS_MODEL
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 OPUS_48_MODEL = "claude-opus-4-8"
 MAX_CACHED_FILING_CHARS = 450_000
+# Token-usage telemetry: one JSONL line per Claude call, alongside the
+# integrity log under ~/.finlens. Feeds the Sunday cost audit (per-tier spend +
+# cache hit-rate). See modules/claude_analyzer.log_cache_usage.
+USAGE_LOG_PATH = LIBRARY_DIR / "usage_log.jsonl"
 _LOGGER = logging.getLogger(__name__)
 _UNIT_SCALE_WORDS = ("thousand", "million", "billion")
 
@@ -354,13 +359,32 @@ def build_filing_context(filing_text: str) -> list:
     ]
 
 
-def log_cache_usage(call_name: str, usage) -> dict:
+def _persist_usage_record(record: dict) -> None:
+    """Append one token-usage record to ~/.finlens/usage_log.jsonl.
+
+    Best-effort telemetry only: a write failure must NEVER break an analysis,
+    so the file I/O is wrapped and swallowed (logged, not raised). Append mode
+    keeps the file a growing JSONL time-series the Sunday cost audit can read.
+    """
+    try:
+        entry = {"ts": datetime.now(timezone.utc).isoformat(), **record}
+        USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(USAGE_LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry) + "\n")
+    except Exception as exc:  # telemetry must not interrupt the analysis path
+        _LOGGER.warning("usage log write skipped: %s", exc)
+
+
+def log_cache_usage(call_name: str, usage, model: str | None = None) -> dict:
     log = {
         "call": call_name,
+        "model": model,
         "cache_read": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
         "cache_write": int(getattr(usage, "cache_creation_input_tokens", 0) or 0),
         "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+        "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
     }
+    _persist_usage_record(log)
     return log
 
 
@@ -626,7 +650,7 @@ def analyze_financials(
         thinking={"type": "disabled"},
     )
 
-    print(log_cache_usage("analyze_financials", response.usage))
+    print(log_cache_usage("analyze_financials", response.usage, response.model))
     raw = response.content[0].text
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -778,7 +802,7 @@ def analyze_summary(
             thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
-    print(log_cache_usage("analyze_summary", response.usage))
+    print(log_cache_usage("analyze_summary", response.usage, response.model))
     raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -892,7 +916,7 @@ def analyze_bear_bull(
             thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
-    print(log_cache_usage("analyze_bear_bull", response.usage))
+    print(log_cache_usage("analyze_bear_bull", response.usage, response.model))
     raw = _text_content(response)
 
     # Strip markdown code fences if Claude wraps the JSON in them
@@ -1030,7 +1054,7 @@ def analyze_dashboard_insights(
                 thinking  = {"type": "disabled"},  # sonnet-5: no thinking (would truncate 1200-tok JSON)
             )
 
-        print(log_cache_usage("analyze_dashboard_insights", response.usage))
+        print(log_cache_usage("analyze_dashboard_insights", response.usage, response.model))
         raw = _text_content(response)
 
         m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
@@ -1183,7 +1207,7 @@ def analyze_mda_sentiment(
                 thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 512-tok JSON)
             )
 
-        print(log_cache_usage("analyze_mda_sentiment", response.usage))
+        print(log_cache_usage("analyze_mda_sentiment", response.usage, response.model))
         data = _safe_json(_text_content(response))
         if data.get("error"):
             result = {k: v for k, v in _EMPTY_MDA.items()}
