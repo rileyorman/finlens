@@ -455,7 +455,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Unrealized income during the period, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
+        "label": "Unrealized income during the period, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
         "values": {
           "Three Months Ended Dec 31 2024": 1,
           "Three Months Ended Dec 31 2023": 0,
@@ -465,7 +465,7 @@
         "confidence": 0.92
       },
       {
-        "label": "Reclassification to net earnings, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
+        "label": "Reclassification to net earnings, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
         "values": {
           "Three Months Ended Dec 31 2024": -1,
           "Three Months Ended Dec 31 2023": 0,
@@ -797,7 +797,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents – beginning of period",
+        "label": "Cash and cash equivalents \u2013 beginning of period",
         "values": {
           "Three Months Ended Dec 31 2024": 721,
           "Three Months Ended Dec 31 2023": 125,
@@ -807,7 +807,7 @@
         "confidence": 0.99
       },
       {
-        "label": "Cash and cash equivalents – end of period",
+        "label": "Cash and cash equivalents \u2013 end of period",
         "values": {
           "Three Months Ended Dec 31 2024": 131,
           "Three Months Ended Dec 31 2023": 877,
@@ -874,9 +874,27 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "transportation_costs": {
+        "value": 9984,
+        "source_label": "Transportation, blending and feedstock",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "depletion_depreciation_amortization": {
         "value": 6681,
         "source_label": "Depletion, depreciation and amortization",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "interest_expense": {
+        "value": 592,
+        "source_label": "Interest and other financing expense",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "pretax_income": {
+        "value": 8059,
+        "source_label": "Earnings before taxes",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -892,6 +910,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "short_term_debt": {
+        "value": 2400,
+        "source_label": "Current portion of long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "long_term_debt": {
+        "value": 16419,
+        "source_label": "Long-term debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_liabilities": {
         "value": 45891,
         "source_label": "Total liabilities",
@@ -903,16 +933,30 @@
         "source_label": "Total shareholders' equity",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "operating_cash_flow": {
+        "value": 13386,
+        "source_label": "Cash flows from operating activities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "capitalized_exploration_additions": {
+        "value": -92,
+        "source_label": "Net expenditures on exploration and evaluation assets",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "capex": {
+        "value": -5291,
+        "source_label": "Net expenditures on property, plant and equipment",
+        "match_type": "exact",
+        "confidence": 0.99
       }
     },
     "unmapped": [
       {
         "label": "Revenue",
         "value": 35656
-      },
-      {
-        "label": "Transportation, blending and feedstock",
-        "value": 9984
       },
       {
         "label": "Administration",
@@ -925,10 +969,6 @@
       {
         "label": "Asset retirement obligation accretion",
         "value": 389
-      },
-      {
-        "label": "Interest and other financing expense",
-        "value": 592
       },
       {
         "label": "Risk management loss (gain)",
@@ -947,10 +987,6 @@
         "value": 27597
       },
       {
-        "label": "Earnings before taxes",
-        "value": 8059
-      },
-      {
         "label": "Current income tax expense",
         "value": 1531
       },
@@ -967,11 +1003,11 @@
         "value": 2.85
       },
       {
-        "label": "Unrealized income during the period, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
+        "label": "Unrealized income during the period, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
         "value": 2
       },
       {
-        "label": "Reclassification to net earnings, net of taxes of $nil (2023 – $nil) – three months ended; $nil (2023 – $nil) – year ended",
+        "label": "Reclassification to net earnings, net of taxes of $nil (2023 \u2013 $nil) \u2013 three months ended; $nil (2023 \u2013 $nil) \u2013 year ended",
         "value": -4
       },
       {
@@ -1047,20 +1083,12 @@
         "value": 92
       },
       {
-        "label": "Current portion of long-term debt",
-        "value": 2400
-      },
-      {
         "label": "Current portion of other long-term liabilities",
         "value": 1535
       },
       {
         "label": "Total current liabilities",
         "value": 9631
-      },
-      {
-        "label": "Long-term debt",
-        "value": 16419
       },
       {
         "label": "Other long-term liabilities",
@@ -1085,14 +1113,130 @@
       {
         "label": "Total liabilities and shareholders' equity",
         "value": 85359
+      },
+      {
+        "label": "Share-based compensation",
+        "value": 279
+      },
+      {
+        "label": "Asset retirement obligation accretion",
+        "value": 389
+      },
+      {
+        "label": "Unrealized risk management (gain) loss",
+        "value": 9
+      },
+      {
+        "label": "Unrealized foreign exchange loss (gain)",
+        "value": 888
+      },
+      {
+        "label": "Loss (gain) from investments",
+        "value": -50
+      },
+      {
+        "label": "Deferred income tax expense (recovery)",
+        "value": 422
+      },
+      {
+        "label": "Realized foreign exchange loss on repayment of US dollar debt securities",
+        "value": 135
+      },
+      {
+        "label": "Abandonment expenditures",
+        "value": -646
+      },
+      {
+        "label": "Other",
+        "value": -84
+      },
+      {
+        "label": "Net change in non-cash working capital",
+        "value": -743
+      },
+      {
+        "label": "Issuance (repayment) of bank credit facilities and commercial paper, net",
+        "value": 5466
+      },
+      {
+        "label": "Issuance of other long-term debt",
+        "value": 2639
+      },
+      {
+        "label": "Repayment of other long-term debt",
+        "value": -1008
+      },
+      {
+        "label": "Payment of lease liabilities",
+        "value": -325
+      },
+      {
+        "label": "Issue of common shares on exercise of stock options",
+        "value": 280
+      },
+      {
+        "label": "Dividends on common shares",
+        "value": -4429
+      },
+      {
+        "label": "Purchase of common shares under Normal Course Issuer Bid",
+        "value": -2660
+      },
+      {
+        "label": "Cash flows from (used in) financing activities",
+        "value": -37
+      },
+      {
+        "label": "Acquisition of Chevron's assets",
+        "value": -9163
+      },
+      {
+        "label": "Net proceeds from investments",
+        "value": 575
+      },
+      {
+        "label": "Net change in non-cash working capital",
+        "value": -124
+      },
+      {
+        "label": "Cash flows used in investing activities",
+        "value": -14095
+      },
+      {
+        "label": "(Decrease) increase in cash and cash equivalents",
+        "value": -746
+      },
+      {
+        "label": "Cash and cash equivalents \u2013 beginning of period",
+        "value": 877
+      },
+      {
+        "label": "Cash and cash equivalents \u2013 end of period",
+        "value": 131
+      },
+      {
+        "label": "Interest paid on long-term debt",
+        "value": 586
+      },
+      {
+        "label": "Income taxes paid, net",
+        "value": 1144
+      },
+      {
+        "label": "Depletion, depreciation and amortization",
+        "value": 6681
+      },
+      {
+        "label": "Net earnings",
+        "value": 6106
       }
     ],
     "meta": {
       "accounting_standard": "IFRS",
       "sector_profile": "resource_sector",
-      "total": 54,
-      "mapped_count": 8,
-      "unmapped_count": 45,
+      "total": 86,
+      "mapped_count": 16,
+      "unmapped_count": 69,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

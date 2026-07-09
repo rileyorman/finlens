@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env", override=False)
 
 EXTRACTION_MODEL    = "claude-haiku-4-5-20251001"   # Fast, cheap, accurate for numbers
-ANALYSIS_MODEL      = "claude-sonnet-4-6"              # Good reasoning, low cost
-BEAR_BULL_MODEL     = "claude-sonnet-4-6"              # Same
+ANALYSIS_MODEL      = "claude-sonnet-5"                # Good reasoning (upgraded from sonnet-4-6, 2026-07-08)
+BEAR_BULL_MODEL     = "claude-sonnet-5"                # Same
 MAX_EXTRACTION_FRONT = 50_000   # Front slice: cover page + business overview
 MAX_EXTRACTION_BACK  = 150_000  # Back slice: financial statements (always at end of filing)
 MAX_FILING_CHARS     = 80_000   # Sonnet cap for analysis/summary calls (Calls 2-4)

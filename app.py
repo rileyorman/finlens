@@ -137,13 +137,13 @@ API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 MODEL_OPTIONS = {
     "Haiku 4.5": "claude-haiku-4-5-20251001",
-    "Sonnet 4.6": "claude-sonnet-4-6",
+    "Sonnet 5": "claude-sonnet-5",
     "Opus 4.8": "claude-opus-4-8",
     "Fable 5": "claude-fable-5",
 }
 DEFAULT_MODEL_LABEL = next(
     (label for label, model in MODEL_OPTIONS.items() if model == ANALYSIS_MODEL),
-    "Sonnet 4.6",
+    "Sonnet 5",
 )
 
 
@@ -415,11 +415,13 @@ def _quality_score(m: dict) -> tuple[int | None, int]:
         if metric == "rev_growth": return 20 if value >= 5.0 else (10 if value >= 0.0 else 0)
         if metric == "fcf_conv":   return 20 if value >= 100.0 else (10 if value >= 50.0 else 0)
         if metric == "int_cover":  return 20 if value >= 3.0 else (10 if value >= 1.5 else 0)
+        if metric == "debt_equity": return 20 if value <= 1.0 else (10 if value <= 2.0 else 0)
         return 0
 
     checks = [
         ("liquidity",  m.get("current_ratio")),
         ("leverage",   m.get("nd_ebitda")),
+        ("debt_equity", m.get("de_ratio")),
         ("rev_growth", m.get("rev_growth")),
         ("fcf_conv",   m.get("fcf_conv")),
         ("int_cover",  m.get("int_cover")),
@@ -445,6 +447,7 @@ def _dash_rag(metric: str, value) -> tuple:
     elif metric == "rev_growth": c = "G" if value >= 5.0 else ("A" if value >= 0.0 else "R")
     elif metric == "fcf_conv": c = "G" if value >= 100.0 else ("A" if value >= 50.0 else "R")
     elif metric == "int_cover": c = "G" if value >= 3.0 else ("A" if value >= 1.5 else "R")
+    elif metric == "debt_equity": c = "G" if value <= 1.0 else ("A" if value <= 2.0 else "R")
     else: return "#D9D9D9", "N/A"
     return {"G": ("#70AD47", "GREEN"), "A": ("#FFC000", "AMBER"), "R": ("#C00000", "RED")}[c]
 
@@ -6642,12 +6645,12 @@ if st.session_state.financial_data:
         _hero_rgb, _hero_hex = _HERO_RGB.get(_hero_signal, ("148,163,184", "#94A3B8"))
         _hero_qs, _hero_qs_n = _quality_score(_calc_summary_metrics(financial_data))
         _hero_qs_chip = (
-            f'<span title="Scored from the five Financial Health checks (Dashboard tab): '
-            f'Liquidity · Leverage · Revenue growth · FCF conversion · Interest coverage" '
+            f'<span title="Scored from the six Financial Health checks (Dashboard tab): '
+            f'Liquidity · Leverage · Debt/equity · Revenue growth · FCF conversion · Interest coverage" '
             f'style="background:rgba(255,255,255,0.06);color:#F1F5F9;cursor:help;'
             f'padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600">'
             f'Quality {_hero_qs} <span style="color:#64748B;font-weight:400">'
-            f'/ 100 · {_hero_qs_n} of 5 metrics</span></span>'
+            f'/ 100 · {_hero_qs_n} of 6 metrics</span></span>'
             if _hero_qs is not None else ""
         )
         _hero_badge = (
@@ -7539,7 +7542,7 @@ if st.session_state.financial_data:
                 f'<div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px">Quality Score</div>'
                 f'<div style="font-size:28px;font-weight:700;color:{qs_color}">{qs if qs is not None else "—"}</div>'
                 f'<div style="font-size:10px;color:#64748B">'
-                f'{f"/ 100 · {qs_n} of 5 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
+                f'{f"/ 100 · {qs_n} of 6 Financial Health checks below" if qs is not None else "no health metrics available"}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -7926,16 +7929,38 @@ if st.session_state.financial_data:
         def _fmt_pct(v):
             return f"{v:.1f}%" if v is not None else None
 
+        # CB-021: a small calculation caption under each card shows the formula
+        # + inputs behind the number (receipts principle applied to ratios).
+        _calcs = metrics.get("calcs") or {}
         with m1:
             st.metric("Revenue", _fmt_num(rev_c), _fmt_pct(yoy_rev))
+            if _calcs.get("rev"):
+                st.caption(_calcs["rev"])
         with m2:
-            st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
+            # CB-024: sector-aware — O&G producers have no cost-of-goods line, so
+            # the card shows the operating Netback Margin (the O&G analog) instead
+            # of a faked Gross Margin. Non-resource filers keep Gross Margin.
+            _nb_m = metrics.get("netback_margin")
+            if _nb_m is not None:
+                st.metric("Netback Margin", _fmt_pct(_nb_m))
+                if _calcs.get("netback_margin"):
+                    st.caption(_calcs["netback_margin"])
+            else:
+                st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
+                if _calcs.get("gp_margin"):
+                    st.caption(_calcs["gp_margin"])
         with m3:
             st.metric("EBITDA Margin", _fmt_pct(ebitda_m) or "—")
+            if _calcs.get("ebitda_margin"):
+                st.caption(_calcs["ebitda_margin"])
         with m4:
             st.metric("Net Income", _fmt_num(ni_c), _fmt_pct(ni_m))
+            if _calcs.get("ni_margin"):
+                st.caption(_calcs["ni_margin"])
         with m5:
             st.metric("Free Cash Flow", _fmt_num(fcf_c))
+            if _calcs.get("fcf"):
+                st.caption(_calcs["fcf"])
 
         st.divider()
 
@@ -8133,6 +8158,7 @@ if st.session_state.financial_data:
                 rag_items = [
                     ("Liquidity",      "liquidity",  metrics.get("current_ratio")),
                     ("Leverage",       "leverage",   metrics.get("nd_ebitda")),
+                    ("Debt / Equity",  "debt_equity", metrics.get("de_ratio")),
                     ("Revenue Growth", "rev_growth", metrics.get("rev_growth")),
                     ("FCF Conversion", "fcf_conv",   metrics.get("fcf_conv")),
                     ("Interest Cover", "int_cover",  metrics.get("int_cover")),
@@ -8162,6 +8188,14 @@ if st.session_state.financial_data:
                         f'</span></div>',
                         unsafe_allow_html=True,
                     )
+                # CB-022/CB-023: disclose the composition of the derived
+                # leverage/coverage ratios (receipts principle) — Debt/Equity,
+                # Interest Cover (EBIT ÷ interest), and the EBIT add-back when
+                # EBIT was derived rather than lifted from a printed line.
+                _fh_calcs = metrics.get("calcs") or {}
+                for _ck in ("debt_equity", "int_cover", "ebit"):
+                    if _fh_calcs.get(_ck):
+                        st.caption(_fh_calcs[_ck])
 
         with cap_col:
             with st.container(border=True):

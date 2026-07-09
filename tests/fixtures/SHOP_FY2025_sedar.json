@@ -930,6 +930,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 1509,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 1231,
         "source_label": "Net income",
@@ -1021,10 +1027,6 @@
       {
         "label": "Total other income, net",
         "value": 41
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 1509
       },
       {
         "label": "Provision for income taxes",
@@ -1179,8 +1181,8 @@
       "accounting_standard": "U.S. GAAP",
       "sector_profile": null,
       "total": 62,
-      "mapped_count": 6,
-      "unmapped_count": 56,
+      "mapped_count": 7,
+      "unmapped_count": 55,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

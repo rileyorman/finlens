@@ -40,9 +40,12 @@ test showing the current code works?" before suggesting changes.
 These are verified live model IDs. Training-data model lists may be stale — do not change these strings without Riley's confirmation (CLAUDE.md empirical-evidence principle: APIs change faster than docs).
 
 - claude-haiku-4-5-20251001 (Haiku 4.5)
-- claude-sonnet-4-6 (Sonnet 4.6)
+- claude-sonnet-5 (Sonnet 5, Claude 5 family — **now the Sonnet tier**; ANALYSIS/BEAR_BULL/SEDAR use this as of 2026-07-08)
+- claude-sonnet-4-6 (Sonnet 4.6 — still a valid live ID; superseded by sonnet-5 for our Sonnet-tier calls)
 - claude-opus-4-8 (Opus 4.8, current Opus)
 - claude-fable-5 (Fable 5, Claude 5 family, tier above Opus)
+
+**sonnet-5 gotcha (empirically verified 2026-07-08):** `claude-sonnet-5` intermittently returns `thinking` content blocks by default. Two consequences on the non-Opus (else-branch) calls: (1) `response.content[0]` may be a ThinkingBlock, breaking bare `content[0].text` — always use `_text_content(response)`; (2) thinking consumes the output budget, truncating small-`max_tokens` JSON responses. Both are avoided by passing `thinking={"type": "disabled"}` on every non-Opus Sonnet-tier call (already applied in claude_analyzer.py, sedar_extractor.py, munger_inversion.py). Opus branches deliberately keep `thinking={"type": "adaptive"}`.
 
 ## Engineering Principle: Number Formatters Must Handle Full Magnitude Range
 
@@ -343,6 +346,92 @@ presentation (negative "Interest income") is deliberately NOT handled (n=1,
 deferred). Prerequisite for CB-019's explorer suppression to fire on real
 data.
 
+### `operating_cash_flow` + `capex` — Free Cash Flow inputs (default, cash-flow-scoped)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-021):
+- `operating_cash_flow` = the filer's "cash flows from operating activities"
+  subtotal (indirect method). Default field, cash-flow-statement-scoped.
+- `capex` = additions to property, plant & equipment, stored NEGATIVE
+  as-presented. Default field, cash-flow-scoped.
+
+CAPEX EXCLUDES ACQUISITIONS / M&A by design — a buyout must never enter FCF.
+CNQ's "Acquisition of Chevron's assets" (−9,163) stays UNMAPPED (no alias);
+capex maps only the −5,291 "Net expenditures on property, plant and equipment".
+
+SECTOR-AWARE CAPEX for Free Cash Flow (the FCF card): general filers → CapEx =
+PP&E only; OIL & GAS / MINING filers → CapEx = PP&E + E&E (full
+capital-investment lifecycle). E&E is `capitalized_exploration_additions`
+(CB-009), extended to resource_sector; its PRESENCE is the sector signal (that
+field maps only in resource/mining/explorer sectors), so FCF needs no separate
+sector check. The composition is DISCLOSED on the card ("(PP&E)" vs
+"(PP&E + E&E)") and, generalized, every Key Metric card carries a calculation
+caption. FCF = operating_cash_flow − |CapEx|. CNQ: 13,386 − (5,291 + 92) =
+8,003.
+
+FEED SCOPE: `sedar_mapper.mapper_statement_keys` is the SINGLE SOURCE OF TRUTH
+for which statements feed the mapper (mining-family + resource include cash
+flow); attach_mapping, build_filing_registry, and test_filing_registry all
+delegate to it — do NOT reintroduce a local copy (the mining-only rule was
+triplicated and drifted).
+
+EXPLORER COLLISION: pre-revenue explorers keep
+`net_cash_used_in_operating_activities` over the new default
+`operating_cash_flow` via `prefer_profile` (SIG shares the exact label).
+
+CORRECTNESS: the cash-flow statement has no single-filing identity (unlike
+assets ≡ liabilities + equity), so these fields lean on ground-truth + the
+Gemini cross-check, never a self-check. Canonical-first in both
+`_calc_summary_metrics` and `two_year_statement_pairs`; the label scrape (with
+CB-017 interest guards) is the fallback for non-mapped EDGAR/manual paths.
+
+### `long_term_debt` + `short_term_debt` — Debt/Equity inputs (default, balance-sheet-scoped)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-022): interest-bearing
+borrowings. `long_term_debt` = "long-term debt"; `short_term_debt` = "current
+portion of long-term debt". Both DEFAULT, balance-sheet-scoped, presented
+positive.
+
+TOTAL DEBT = long_term_debt + short_term_debt → Debt/Equity = total_debt /
+total_equity. EXCLUDES leases (filers break lease obligations out under
+separate labels the aliases don't match — AEM/CNR/CNQ all do) and operating
+liabilities. SUPPRESSED for financial_sector / insurance_sector (deposits and
+policy liabilities make D/E a different concept — honest N/A). Canonical-first,
+feeding BOTH net_debt and Debt/Equity so they never disagree; balance-sheet
+debt scrape is the fallback for non-mapped paths. Composition disclosed on the
+Financial Health panel; D/E is the 6th RAG check (≤1.0 GREEN, ≤2.0 AMBER, >2.0
+RED). Ground-truthed: CNQ 0.48, AEM 0.008 (low-debt miner), CNR 0.98 (railway).
+
+### `pretax_income` + `interest_expense` — EBIT/EBITDA/Interest-Cover inputs
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-023): `pretax_income` =
+the pre-tax earnings subtotal ("earnings before taxes" / "income before income
+taxes"), DEFAULT, income-statement-scoped. `interest_expense` gains the
+resource alias "interest and other financing expense".
+
+EBIT = pre-tax income + interest expense (standard add-back), used when the
+filer prints NO operating-income line (O&G like CNQ); a printed operating
+income is preferred where present. EBITDA = EBIT + D&A → EBITDA Margin,
+Interest Cover (= EBIT / interest), and Leverage (= net-debt / EBITDA).
+GATED OFF financial_sector / insurance_sector — interest is core to a
+bank/insurer, so EBIT/EBITDA/interest-cover are honest N/A there (pretax_income
+still maps; only the derived metrics are withheld). The EBIT add-back and the
+Interest-Cover composition are disclosed in captions. Ground-truthed on CNQ:
+EBIT 8,651, EBITDA 15,332, EBITDA Margin 36.9%, Interest Cover 14.6×, Leverage
+1.22×.
+
+### `transportation_costs` — Netback Margin input (resource, O&G gross-margin analog)
+
+DEFINITION (decided by Riley 2026-07-07, casebook CB-024): `transportation_costs`
+= "transportation, blending and feedstock", resource-scoped, income-statement.
+Gross Margin is genuinely N/A for O&G (no cost-of-goods line), so the Key Metrics
+card shows the operating NETBACK MARGIN instead for resource filers. Operating
+netback = net revenue (gross revenue − royalties) − production (operating_expense)
+− transportation; netback margin = netback / NET revenue (after royalties).
+CNQ: 17,579 / 35,656 = 49.3%. Excludes D&A, G&A, financing, taxes (field-level
+margin). Sector-aware card: Netback Margin for resource, Gross Margin otherwise;
+composition disclosed. The per-barrel netback ($/boe) is DEFERRED — it needs
+production volumes from the MD&A (Tier-2 / MD&A-fetcher), not the financials.
+
 ## Engineering Principle: Cross-Check Source (FMP Is an Unreliable Witness Generally)
 
 CROSS-CHECK SOURCE PRINCIPLE (widened 2026-07-03; original SEDAR-scoped
@@ -586,8 +675,8 @@ Important project files:
 - `config.py` - Claude model names, input limits, and cache directory.
 - `sedar_extractor.py` - SEDAR+ PDF extraction; owns Option A cover-page selection (`_ordered_unique_pages`) and `attach_mapping()` (feeds statements to the canonical mapper).
 - `scripts/run_cross_extractor.py` - manual Sunday-audit runner for the Gemini second-extractor integrity signal.
-- `.env` - local secrets such as API keys. Do not commit.
-- `.env.example` - example environment variables.
+- ~~`.env`~~ - REMOVED 2026-07-08; API keys now live in the encrypted SOPS store at `%USERPROFILE%\.secrets\secrets.enc.env`, injected at runtime (`Import-Secrets` / `run.bat`). App still reads them via `os.getenv` / `load_dotenv` (which no-ops with no `.env`).
+- `.env.example` - example environment variables (documents which keys are expected).
 - `requirements.txt` - Python dependencies.
 - `filing_library.json` - local filing library metadata.
 - `portfolio_registry.json` - local portfolio registry.
@@ -697,8 +786,8 @@ Current model setup:
 
 ```python
 EXTRACTION_MODEL = "claude-haiku-4-5-20251001"
-ANALYSIS_MODEL = "claude-sonnet-4-6"
-BEAR_BULL_MODEL = "claude-sonnet-4-6"
+ANALYSIS_MODEL = "claude-sonnet-5"
+BEAR_BULL_MODEL = "claude-sonnet-5"
 ```
 
 Current input limits:
@@ -712,8 +801,9 @@ MAX_FILING_CHARS = 80_000
 Architecture:
 
 - Haiku is used for fast, lower-cost extraction.
-- Sonnet is used for reasoning-heavy analysis.
-- Bear/bull case generation currently uses Sonnet.
+- Sonnet (now Sonnet 5) is used for reasoning-heavy analysis.
+- Bear/bull case generation currently uses Sonnet (5).
+- Non-Opus Sonnet-tier calls pass `thinking={"type": "disabled"}` (see the sonnet-5 gotcha near the top of this file).
 - Input truncation and response caching are used to control API cost.
 
 When changing model behavior, prefer updating `config.py` instead of hardcoding model names inside modules.
@@ -738,13 +828,19 @@ Do not casually replace this with `certifi.where()` or `ssl.create_default_conte
 
 ## Running Locally
 
+Secrets come from the encrypted SOPS store (`%USERPROFILE%\.secrets\secrets.enc.env`),
+NOT a plaintext `.env` (migrated 2026-07-08 — the in-project `.env` was deleted).
+`Import-Secrets` (a PowerShell profile helper) decrypts the store into the shell;
+`run.bat` injects them via `sops exec-env`. The private key is at
+`C:\Users\riley\.age\keys.txt` (env var `SOPS_AGE_KEY_FILE`) — BACK IT UP.
+
 Regular PowerShell:
 
 ```powershell
-cd "C:\Users\riley\OneDrive\Documents\Python Project\finlens"; .\venv\Scripts\Activate.ps1; streamlit run app.py
+cd "C:\Users\riley\OneDrive\Documents\Python Project\finlens"; .\venv\Scripts\Activate.ps1; Import-Secrets; streamlit run app.py
 ```
 
-Alternative:
+Alternative (injects secrets automatically):
 
 ```powershell
 .\run.bat

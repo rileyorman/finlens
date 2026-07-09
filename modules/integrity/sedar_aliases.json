@@ -195,6 +195,73 @@
         }
       ],
       "patterns": []
+    },
+    "operating_cash_flow": {
+      "aliases": [
+        {
+          "label": "cash flows from operating activities",
+          "standards": ["IFRS"],
+          "source": "CB-021 CNQ_FY2024 — operating-activities subtotal (indirect method)",
+          "statements": ["cash_flow"]
+        }
+      ],
+      "patterns": []
+    },
+    "capex": {
+      "aliases": [
+        {
+          "label": "net expenditures on property, plant and equipment",
+          "standards": ["IFRS"],
+          "source": "CB-021 CNQ_FY2024 — PP&E additions; acquisitions/M&A EXCLUDED by design (see negative rule)",
+          "statements": ["cash_flow"]
+        }
+      ],
+      "patterns": []
+    },
+    "long_term_debt": {
+      "aliases": [
+        {
+          "label": "long-term debt",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-022 CNQ_FY2024 — interest-bearing long-term borrowings",
+          "statements": ["balance_sheet"]
+        }
+      ],
+      "patterns": []
+    },
+    "short_term_debt": {
+      "aliases": [
+        {
+          "label": "current portion of long-term debt",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-022 CNQ_FY2024 — current portion of interest-bearing borrowings",
+          "statements": ["balance_sheet"]
+        }
+      ],
+      "patterns": []
+    },
+    "pretax_income": {
+      "aliases": [
+        {
+          "label": "earnings before taxes",
+          "standards": ["IFRS"],
+          "source": "CB-023 CNQ_FY2024 — pre-tax earnings; EBIT = this + interest",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "income before income taxes",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-023 standard pre-tax subtotal",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "income before taxes",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-023 standard pre-tax subtotal",
+          "statements": ["income_statement"]
+        }
+      ],
+      "patterns": []
     }
   },
   "sector_profiles": {
@@ -358,6 +425,39 @@
               "label": "production",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            }
+          ],
+          "patterns": []
+        },
+        "capitalized_exploration_additions": {
+          "aliases": [
+            {
+              "label": "net expenditures on exploration and evaluation assets",
+              "standards": ["IFRS"],
+              "source": "CB-021 CNQ_FY2024 — E&E capex; summed into capex for O&G/mining per ruling",
+              "statements": ["cash_flow"]
+            }
+          ],
+          "patterns": []
+        },
+        "interest_expense": {
+          "aliases": [
+            {
+              "label": "interest and other financing expense",
+              "standards": ["IFRS"],
+              "source": "CB-023 CNQ_FY2024 — financing expense; used in EBIT add-back + interest cover",
+              "statements": ["income_statement"]
+            }
+          ],
+          "patterns": []
+        },
+        "transportation_costs": {
+          "aliases": [
+            {
+              "label": "transportation, blending and feedstock",
+              "standards": ["IFRS"],
+              "source": "CB-024 CNQ_FY2024 — field transportation cost; netback component",
+              "statements": ["income_statement"]
             }
           ],
           "patterns": []
@@ -546,7 +646,9 @@
             {
               "label": "cash flows from operating activities",
               "standards": ["IFRS"],
-              "source": "SIG_FY2024"
+              "source": "SIG_FY2024",
+              "prefer_profile": true,
+              "prefer_profile_note": "CB-021: the same label is now a DEFAULT operating_cash_flow alias (producers/miners); pre-revenue explorers keep their net_cash_used_in_operating_activities spine via this override"
             }
           ],
           "patterns": []

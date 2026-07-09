@@ -122,6 +122,7 @@ _MARKET_DERIVED_SCALE_FIELDS = frozenset({
 
 # SEDAR canonical fields that are dollar magnitudes -- scaled by the unit factor.
 _CANONICAL_SCALE_FIELDS = frozenset({
+    "capex",
     "capitalized_exploration_additions",
     "cash",
     "cost_of_revenue",
@@ -133,6 +134,7 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "insurance_revenue",
     "insurance_service_expenses",
     "interest_expense",
+    "long_term_debt",
     "investment_property_fair_value_delta",
     "mine_development_amortization",
     "net_cash_used_in_operating_activities",
@@ -142,9 +144,11 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "net_investment_result",
     "net_loss",
     "net_operating_income",
+    "operating_cash_flow",
     "operating_expense",
     "operating_income",
     "operating_loss",
+    "pretax_income",
     "production_costs",
     "property_operating_costs",
     "provision_for_credit_losses",
@@ -152,10 +156,12 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "rental_revenue",
     "revenue",
     "royalties",
+    "short_term_debt",
     "total_assets",
     "total_equity",
     "total_liabilities",
     "total_revenue_bank",
+    "transportation_costs",
 })
 
 # SEDAR canonical fields that are NOT dollar magnitudes (ratios/margins) and must
@@ -615,6 +621,9 @@ def analyze_financials(
                 "content": user_message,
             }
         ],
+        # sonnet-5 can emit thinking blocks that shift content[0] and eat the
+        # output budget; extraction is structured JSON, so disable thinking.
+        thinking={"type": "disabled"},
     )
 
     print(log_cache_usage("analyze_financials", response.usage))
@@ -766,6 +775,7 @@ def analyze_summary(
             max_tokens=1024,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
     print(log_cache_usage("analyze_summary", response.usage))
@@ -879,6 +889,7 @@ def analyze_bear_bull(
             max_tokens=1024,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
         )
 
     print(log_cache_usage("analyze_bear_bull", response.usage))
@@ -1016,6 +1027,7 @@ def analyze_dashboard_insights(
                 system    = [{"type": "text", "text": SYSTEM_PROMPT,
                               "cache_control": _cache_control()}],
                 messages  = [{"role": "user", "content": user_message}],
+                thinking  = {"type": "disabled"},  # sonnet-5: no thinking (would truncate 1200-tok JSON)
             )
 
         print(log_cache_usage("analyze_dashboard_insights", response.usage))
@@ -1168,6 +1180,7 @@ def analyze_mda_sentiment(
                 max_tokens=512,
                 system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
                 messages=[{"role": "user", "content": user_message}],
+                thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 512-tok JSON)
             )
 
         print(log_cache_usage("analyze_mda_sentiment", response.usage))

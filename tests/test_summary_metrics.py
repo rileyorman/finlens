@@ -228,3 +228,204 @@ def test_two_year_pairs_use_canonical_revenue_and_net_income():
     assert pairs["Revenue"] == {"current": 67_777e6, "prior": 57_223e6}
     # Pre-fix the chart matched "Net interest income" by row order:
     assert pairs["Net Income"] == {"current": 20_538e6, "prior": 8_842e6}
+
+
+# ---------------------------------------------------------------------------
+# CB-021: canonical-first Operating Cash Flow + CapEx, sector-aware CapEx basis
+# (general = PP&E; O&G/mining = PP&E + E&E), acquisitions excluded, composition
+# disclosed, every ratio carrying a calculation caption. (− = minus sign,
+# ÷ = division sign, matching the app's captions.)
+# ---------------------------------------------------------------------------
+
+def test_fcf_canonical_first_capex_basis_ppe_only():
+    fd = _fd(is_rows=[_row("Total revenue", 41_509_000_000, "total")])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000  # PP&E additions, stored negative as-presented
+    m = _calc_summary_metrics(fd)
+    assert m["ocf_c"] == 13_386_000_000
+    assert m["capex_c"] == 5_291_000_000
+    assert m["capex_basis"] == "PP&E"
+    assert m["fcf_c"] == 13_386_000_000 - 5_291_000_000
+    assert m["calcs"]["fcf"] == "OCF 13.39B − CapEx 5.29B (PP&E)"
+
+
+def test_fcf_capex_includes_ee_for_resource_mining():
+    # CNQ shape: an O&G filer maps E&E capex, so CapEx = PP&E + E&E (disclosed).
+    # The Chevron-style acquisition never enters — it is not mapped to capex.
+    fd = _fd(is_rows=[_row("Total revenue", 41_509_000_000, "total")])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000
+    fd["capitalized_exploration_additions"] = -92_000_000
+    fd["net_income"] = 6_106_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["capex_c"] == 5_383_000_000        # 5,291 + 92
+    assert m["capex_basis"] == "PP&E + E&E"
+    assert m["fcf_c"] == 8_003_000_000          # 13,386 - 5,383
+    assert m["calcs"]["fcf"] == "OCF 13.39B − CapEx 5.38B (PP&E + E&E)"
+    assert m["calcs"]["ni_margin"] == "net income 6.11B ÷ revenue 41.51B"
+
+
+def test_capex_canonical_outranks_scrape():
+    # A cash-flow row the scrape would match must not override the mapped capex.
+    fd = _fd(cf_rows=[_row("Purchases of property, plant and equipment", -9_999)])
+    fd["operating_cash_flow"] = 100
+    fd["capex"] = -40
+    m = _calc_summary_metrics(fd)
+    assert m["capex_c"] == 40   # canonical, not the 9,999 scrape row
+    assert m["fcf_c"] == 60
+
+
+def test_capex_scrape_fallback_unchanged_without_canonical_field():
+    # Non-mapped paths (EDGAR/manual) keep the pre-existing scrape + PP&E basis.
+    fd = _fd(cf_rows=[
+        _row("Net cash provided by operating activities", 102_720, "total"),
+        _row("Purchases of property, plant and equipment", -6_100),
+    ])
+    m = _calc_summary_metrics(fd)
+    assert m["fcf_c"] == 102_720 - 6_100
+    assert m["capex_basis"] == "PP&E"
+
+
+def test_two_year_capex_chart_matches_card_ppe_plus_ee():
+    # The chart's CapEx mirrors the card (PP&E + E&E), so OCF - CapEx on the
+    # chart reconciles to the card's FCF (Change Propagation).
+    fd = _fd(cf_rows=[
+        {"line_item": "Net expenditures on property, plant and equipment",
+         "value": -5_291_000_000, "value_prior": -4_000_000_000, "row_type": "data"},
+        {"line_item": "Net expenditures on exploration and evaluation assets",
+         "value": -92_000_000, "value_prior": -80_000_000, "row_type": "data"},
+        {"line_item": "Cash flows from operating activities",
+         "value": 13_386_000_000, "value_prior": 12_000_000_000, "row_type": "total"},
+    ])
+    fd["operating_cash_flow"] = 13_386_000_000
+    fd["capex"] = -5_291_000_000
+    fd["capitalized_exploration_additions"] = -92_000_000
+    fd["mapping"] = {"mapped": {
+        "operating_cash_flow": {"value": 13_386,
+                                "source_label": "Cash flows from operating activities"},
+        "capex": {"value": -5_291,
+                  "source_label": "Net expenditures on property, plant and equipment"},
+        "capitalized_exploration_additions": {"value": -92,
+                  "source_label": "Net expenditures on exploration and evaluation assets"},
+    }}
+    pairs = two_year_statement_pairs(fd)
+    assert pairs["Capital Expenditures"]["current"] == 5_383_000_000  # PP&E + E&E
+    assert pairs["Capital Expenditures"]["prior"] == 4_080_000_000    # 4,000 + 80
+    assert pairs["Operating Cash Flow"]["current"] == 13_386_000_000
+
+
+# ---------------------------------------------------------------------------
+# CB-022: Debt/Equity leverage ratio — canonical-first total debt (LT +
+# current portion; leases and acquisitions excluded), disclosed composition,
+# suppressed for banks/insurers (deposits/policy liabilities != leverage debt).
+# ---------------------------------------------------------------------------
+
+def test_debt_equity_canonical_first_with_disclosure():
+    fd = _fd()
+    fd["long_term_debt"] = 16_419_000_000
+    fd["short_term_debt"] = 2_400_000_000
+    fd["total_equity"] = 39_468_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert round(m["de_ratio"], 4) == 0.4768   # 18,819 / 39,468
+    assert m["calcs"]["debt_equity"] == (
+        "total debt 18.82B ÷ equity 39.47B (LT debt + current portion)")
+
+
+def test_debt_equity_suppressed_for_financial_sector():
+    fd = _fd()
+    fd["long_term_debt"] = 100_000
+    fd["total_equity"] = 500_000
+    fd["mapping"] = {"meta": {"sector_profile": "financial_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["de_ratio"] is None            # deposits != leverage debt -> honest N/A
+    assert m["calcs"]["debt_equity"] is None
+
+
+def test_debt_equity_scrape_fallback_when_not_mapped():
+    # Non-mapped path (EDGAR/manual): total debt from the balance-sheet scrape,
+    # equity still read canonically.
+    fd = _fd(bs_rows=[
+        _row("Long-term debt", 16_419),
+        _row("Current portion of long-term debt", 2_400),
+    ])
+    fd["total_equity"] = 39_468
+    m = _calc_summary_metrics(fd)
+    assert round(m["de_ratio"], 4) == 0.4768
+
+
+# ---------------------------------------------------------------------------
+# CB-023: EBIT = pre-tax income + interest (add-back) when no printed operating
+# income; feeds EBITDA margin, interest cover, and leverage — with the EBIT
+# derivation disclosed. Suppressed for banks/insurers.
+# ---------------------------------------------------------------------------
+
+def test_ebit_derived_from_pretax_plus_interest_feeds_ebitda_and_coverage():
+    # CNQ shape: no operating-income line, so EBIT = pretax + interest.
+    fd = _fd(cf_rows=[_row("Depletion, depreciation and amortization", 6_681_000_000)])
+    fd["revenue"] = 41_509_000_000
+    fd["interest_expense"] = 592_000_000
+    fd["pretax_income"] = 8_059_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] == 15_332_000_000       # EBIT 8,651 + D&A 6,681
+    assert round(m["ebitda_margin"], 1) == 36.9   # 15,332 / 41,509
+    assert round(m["int_cover"], 1) == 14.6        # EBIT 8,651 / interest 592
+    assert m["calcs"]["int_cover"] == "EBIT 8.65B ÷ interest 592.0M"
+    assert m["calcs"]["ebit"] == "EBIT 8.65B = pretax 8.06B + interest 592.0M"
+    assert m["calcs"]["ebitda_margin"] == "EBITDA 15.33B ÷ revenue 41.51B (EBIT + D&A)"
+
+
+def test_ebit_derivation_suppressed_for_financial_sector():
+    # Banks/insurers: interest is core, not a financing add-back — honest N/A.
+    fd = _fd(cf_rows=[_row("Depreciation and amortization", 1_000_000_000)])
+    fd["revenue"] = 100_000_000_000
+    fd["interest_expense"] = 50_000_000_000
+    fd["pretax_income"] = 20_000_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "financial_sector"}}
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] is None
+    assert m["ebitda_margin"] is None
+    assert m["int_cover"] is None
+    assert m["calcs"]["ebit"] is None
+
+
+def test_printed_operating_income_preferred_over_ebit_derivation():
+    fd = _fd(
+        is_rows=[_row("Operating income", 5_000_000_000, "total")],
+        cf_rows=[_row("Depreciation and amortization", 1_000_000_000)],
+    )
+    fd["interest_expense"] = 500_000_000
+    fd["pretax_income"] = 4_000_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["ebitda_c"] == 6_000_000_000    # printed OI 5.0B + D&A 1.0B, NOT derived 4.5B
+    assert m["calcs"].get("ebit") is None    # not derived -> no derivation caption
+
+
+# ---------------------------------------------------------------------------
+# CB-024: operating netback margin — the O&G analog to gross margin from the
+# income statement (net revenue after royalties, less field operating costs).
+# Resource-only; the Key Metrics card shows Netback instead of Gross Margin.
+# ---------------------------------------------------------------------------
+
+def test_netback_margin_for_resource_filer():
+    fd = _fd()
+    fd["revenue"] = 41_509_000_000            # gross product sales
+    fd["royalties"] = -5_853_000_000
+    fd["operating_expense"] = 8_093_000_000   # production
+    fd["transportation_costs"] = 9_984_000_000
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    # net revenue 35,656; netback 17,579; margin over net revenue = 49.3%
+    assert round(m["netback_margin"], 1) == 49.3
+    assert m["calcs"]["netback_margin"] == "netback 17.58B ÷ net revenue 35.66B"
+
+
+def test_netback_margin_none_without_transportation():
+    # Non-O&G (no transportation cost) -> no netback; card falls back to Gross Margin.
+    fd = _fd()
+    fd["revenue"] = 100_000_000_000
+    fd["royalties"] = -1_000_000_000
+    fd["operating_expense"] = 20_000_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["netback_margin"] is None

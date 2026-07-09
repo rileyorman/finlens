@@ -120,7 +120,13 @@ def test_cnr_fixture_maps_required_income_statement_fields():
     assert mapped["operating_income"]["value"] == _source_value(data, "Operating income")
     assert mapped["interest_expense"]["value"] == _source_value(data, "Interest expense")
     assert mapped["net_income"]["value"] == _source_value(data, "Net income")
-    assert result["meta"]["mapped_count"] == 7
+    # CB-022: debt fields for Debt/Equity (leases excluded — CNR breaks them out).
+    assert mapped["long_term_debt"]["value"] == _balance_source_value(data, "Long-term debt")
+    assert mapped["short_term_debt"]["value"] == _balance_source_value(
+        data, "Current portion of long-term debt")
+    # CB-023: pretax_income ("Income before income taxes") for the EBIT add-back.
+    assert mapped["pretax_income"]["value"] == _source_value(data, "Income before income taxes")
+    assert result["meta"]["mapped_count"] == 10
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -209,7 +215,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
     assert ifc_mapped["net_insurance_service_result"]["source_label"] == "Insurance service result"
     assert ifc_mapped["insurance_finance_result"]["source_label"] == "Insurance finance income (expense)"
     assert ifc_mapped["net_investment_result"]["source_label"] == "Net investment return"
-    assert ifc_result["meta"]["mapped_count"] == 9
+    assert ifc_result["meta"]["mapped_count"] == 10  # +pretax_income (CB-023)
     _assert_conservation(ifc_result)
     _assert_unmapped_labels_are_verbatim(ifc, ifc_result)
 
@@ -313,8 +319,11 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
     """The prefer_profile override whitelist is deliberate and pinned:
     reit_sector NOI (original use) + CB-017's exploration net_loss (the
     same label became a DEFAULT net_income alias for loss-year corporates;
-    explorers keep their net_loss spine via the override). Any new use is a
-    ruling-level decision, not a convenience."""
+    explorers keep their net_loss spine via the override) + CB-021's explorer
+    operating cash flow (the same label became a DEFAULT operating_cash_flow
+    alias for producers/miners; explorers keep net_cash_used_in_operating_
+    activities via the override). Any new use is a ruling-level decision, not a
+    convenience."""
     alias_table = sedar_mapper._load_alias_table()
     uses = []
     for profile_name, profile in (alias_table.get("sector_profiles") or {}).items():
@@ -324,6 +333,8 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
                     uses.append((profile_name, field_name, alias["label"]))
 
     assert sorted(uses) == [
+        ("mining_exploration_sector", "net_cash_used_in_operating_activities",
+         "cash flows from operating activities"),
         ("mining_exploration_sector", "net_loss", "net loss and comprehensive loss"),
         ("reit_sector", "net_operating_income", "operating income"),
     ]
@@ -428,7 +439,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     assert mapped["revenue"]["source_label"] == "Total revenues"
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 7  # +pretax_income (CB-023)
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -591,7 +602,8 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert result["meta"]["sector_profile"] == "reit_sector"
     # CB-012: the printed "Total operating costs" line no longer counts as
     # mapped (derived entries are excluded from mapped_count) — 7 -> 6.
-    assert result["meta"]["mapped_count"] == 8
+    # CB-023: +pretax_income ("Income before income taxes") -> 9.
+    assert result["meta"]["mapped_count"] == 9
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -707,8 +719,19 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["value"] == 6106
     assert "exploration_expense" not in mapped
 
+    # CB-022: Debt/Equity components (income+balance path here — no cash flow,
+    # so the CB-021 FCF fields are absent; those show in the fixture snapshot).
+    assert mapped["long_term_debt"]["value"] == 16419
+    assert mapped["short_term_debt"]["value"] == 2400
+    # CB-023: interest_expense (resource) + pretax_income drive EBIT = pretax +
+    # interest, since CNQ prints no operating-income line.
+    assert mapped["interest_expense"]["value"] == 592
+    assert mapped["pretax_income"]["value"] == 8059
+    # CB-024: transportation cost for the operating netback margin.
+    assert mapped["transportation_costs"]["value"] == 9984
+
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 13
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -789,8 +812,15 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income for the year"
     assert mapped["net_income"]["value"] == _source_value(data, "Net income for the year")
 
+    # CB-022: Debt/Equity components. AEM is a low-debt miner — long-term debt
+    # 196,271, current portion 0; lease obligations are broken out separately
+    # and correctly excluded from total debt.
+    assert mapped["long_term_debt"]["value"] == _balance_source_value(data, "Long-term debt (Note 14)")
+    assert mapped["short_term_debt"]["value"] == _balance_source_value(
+        data, "Current portion of long-term debt (Note 14)")
+
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 9
+    assert result["meta"]["mapped_count"] == 11
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -1370,7 +1400,7 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income"
     assert mapped["net_income"]["value"] == 259611
 
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 9  # +pretax_income (CB-023)
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

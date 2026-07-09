@@ -725,6 +725,12 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "pretax_income": {
+        "value": 269375,
+        "source_label": "Income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "net_income": {
         "value": 259611,
         "source_label": "Net income",
@@ -790,10 +796,6 @@
       {
         "label": "Total fair value adjustments and net loss on transactions and other activities",
         "value": -23095
-      },
-      {
-        "label": "Income before income taxes",
-        "value": 269375
       },
       {
         "label": "Current and deferred income tax (expense) recovery, net",
@@ -916,8 +918,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 48,
-      "mapped_count": 8,
-      "unmapped_count": 40,
+      "mapped_count": 9,
+      "unmapped_count": 39,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

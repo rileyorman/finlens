@@ -185,6 +185,25 @@ def _is_mining_family_sector(sector: str | None) -> bool:
     )
 
 
+def mapper_statement_keys(sector: str | None) -> tuple[str, ...]:
+    """Which statements are fed to the mapper for a given sector.
+
+    Mining-family AND resource (O&G) filers include the cash-flow statement so
+    operating_cash_flow / capex / capitalized E&E map and Free Cash Flow can
+    compute (CB-021). SINGLE SOURCE OF TRUTH: both the production path
+    (sedar_extractor.attach_mapping) and the fixture/registry path
+    (scripts.build_filing_registry) call this, so they can never drift — the
+    drift this replaced was a stale duplicate of the mining-only rule.
+    """
+    keys = ["income_statement", "balance_sheet"]
+    sector_text = str(sector or "").lower()
+    if _is_mining_family_sector(sector) or any(
+        token in sector_text for token in RESOURCE_SECTOR_TOKENS
+    ):
+        keys.append("cash_flow")
+    return tuple(keys)
+
+
 def _income_statement_rows(line_items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     rows = [item for item in (line_items or []) if item.get("statement") == "income_statement"]
     return rows if rows else list(line_items or [])

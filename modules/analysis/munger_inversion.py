@@ -265,6 +265,7 @@ def generate_inversion(financial_data, ticker, sector, mapping, dcf_snapshot=Non
             max_tokens=1600,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": prompt}],
+            thinking={"type": "disabled"},  # sonnet-5: keep output deterministic, no thinking budget
         )
         parsed = _parse_response(_text_content(response))
         if not isinstance(parsed, dict):

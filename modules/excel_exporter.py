@@ -562,6 +562,26 @@ _FIN_CF_LABELS = ["net cash provided by financing", "net cash used in financing"
                   "cash flows from financing", "cash used in financing activities"]
 
 
+def _fmt_compact(v) -> str:
+    """Compact K/M/B/T money formatter for the calculation captions.
+
+    Full magnitude range per the FinLens number-formatter rule (a producer's
+    multi-billion capex and a microcap's thousands must both read correctly).
+    """
+    if v is None:
+        return "—"
+    n = abs(v)
+    if n >= 1_000_000_000_000:
+        return f"{v / 1_000_000_000_000:,.2f}T"
+    if n >= 1_000_000_000:
+        return f"{v / 1_000_000_000:,.2f}B"
+    if n >= 1_000_000:
+        return f"{v / 1_000_000:,.1f}M"
+    if n >= 1_000:
+        return f"{v / 1_000:,.0f}K"
+    return f"{v:,.0f}"
+
+
 def _canonical_pair(financial_data: dict, canonical_key: str, rows: list):
     """Current value from the promoted canonical field; prior from the SAME
     statement row, found via the mapping's verbatim source_label.
@@ -645,6 +665,21 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
         return {"current": _signed_bottom_line(label, row.get("value")),
                 "prior":   _signed_bottom_line(label, row.get("value_prior"))}
 
+    # CB-021: the CapEx chart mirrors the FCF card's CapEx — canonical PP&E
+    # additions plus E&E for O&G/mining (positive magnitude), so a reader who
+    # subtracts CapEx from OCF on the chart reconciles to the card's FCF.
+    # Scrape fallback (as-presented) for non-mapped filers, unchanged.
+    def _capex_pair():
+        ppe_v, ppe_p = _canonical_pair(financial_data, "capex", cf_rows)
+        if ppe_v is None:
+            return _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE)
+        ee_v, ee_p = _canonical_pair(
+            financial_data, "capitalized_exploration_additions", cf_rows)
+        cur = abs(ppe_v) + (abs(ee_v) if ee_v is not None else 0)
+        pri = (abs(ppe_p) + (abs(ee_p) if ee_p is not None else 0)
+               if ppe_p is not None else None)
+        return {"current": cur, "prior": pri}
+
     return {
         "Revenue":              _pair_canonical_first(
                                     "revenue", is_rows,
@@ -652,8 +687,10 @@ def two_year_statement_pairs(financial_data: dict) -> dict:
         "Gross Profit":         _pair(is_rows, _GP_LABELS,  _lookup2),
         "Operating Income":     _pair(is_rows, _OI_LABELS,  _lookup),
         "Net Income":           _net_income_pair(),
-        "Operating Cash Flow":  _pair(cf_rows, _OCF_LABELS, _lookup2),
-        "Capital Expenditures": _pair_excl(cf_rows, _CAPEX_LABELS, _lookup, _CAPEX_EXCLUDE),
+        "Operating Cash Flow":  _pair_canonical_first(
+                                    "operating_cash_flow", cf_rows,
+                                    lambda: _pair(cf_rows, _OCF_LABELS, _lookup2)),
+        "Capital Expenditures": _capex_pair(),
         "Buybacks":             _pair(cf_rows, _BUYBACK_LABELS, _lookup),
         "Dividends":            _pair(cf_rows, _DIVIDEND_LABELS, _lookup),
         "Investing Cash Flow":  _pair(cf_rows, _ICF_LABELS, _lookup2),
@@ -678,7 +715,31 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         rev_c = _lookup2(is_rows, _REV_LABELS, "value")
         rev_p = _lookup2(is_rows, _REV_LABELS, "value_prior")
     gp_c  = _lookup2(is_rows, _GP_LABELS,  "value")
-    oi_c  = _lookup(is_rows,  _OI_LABELS,  "value")
+    # CB-023: EBIT for the EBITDA / interest-cover / leverage family. Prefer a
+    # printed operating-income line (canonical, then scrape); otherwise DERIVE
+    # EBIT = pre-tax income + interest expense (the standard add-back), which
+    # computes for O&G filers like CNQ that go straight from expenses to
+    # "Earnings before taxes" with no operating-income subtotal. Interest is
+    # canonical-first too (resource maps "Interest and other financing expense").
+    _int_raw = financial_data.get("interest_expense")
+    if not isinstance(_int_raw, (int, float)) or isinstance(_int_raw, bool):
+        _int_raw = _lookup(is_rows, ["interest expense"], "value")
+    int_exp_c = abs(_int_raw) if _int_raw is not None else None
+    pretax_c = financial_data.get("pretax_income")
+    pretax_c = pretax_c if isinstance(pretax_c, (int, float)) and not isinstance(pretax_c, bool) else None
+    oi_c = financial_data.get("operating_income")
+    if not isinstance(oi_c, (int, float)) or isinstance(oi_c, bool):
+        oi_c = _lookup(is_rows, _OI_LABELS, "value")
+    # EBIT/EBITDA/interest-cover are not meaningful for banks/insurers (interest
+    # is core to their business, not a financing add-back), so the derivation is
+    # gated off those sectors — they get honest N/A on this whole metric family.
+    _sector_profile = ((financial_data.get("mapping") or {}).get("meta") or {}).get("sector_profile")
+    _financial_or_insurance = _sector_profile in ("financial_sector", "insurance_sector")
+    ebit_derived = False
+    if (oi_c is None and pretax_c is not None and int_exp_c is not None
+            and not _financial_or_insurance):
+        oi_c = pretax_c + int_exp_c
+        ebit_derived = True
     # CB-017/CB-018: canonical-first — SEDAR filings promote the mapped
     # net_income to the top level (raw dollars, same basis as the scaled rows).
     # CB-020: the explorer bottom line maps to the separate net_loss field
@@ -707,10 +768,37 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     # ≈96.6B when capex was missing).
     ebitda_c = (oi_c + da_c) if (oi_c is not None and da_c is not None) else None
 
-    ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
+    # CB-021: canonical-first Operating Cash Flow (producers/miners map it from
+    # the cash-flow statement); scrape fallback for non-mapped paths.
+    ocf_c = financial_data.get("operating_cash_flow")
+    if not isinstance(ocf_c, (int, float)) or isinstance(ocf_c, bool):
+        ocf_c = _lookup2(cf_rows, _OCF_LABELS, "value")
 
-    capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value", exclude=_CAPEX_EXCLUDE)
-    capex_c = abs(capex_raw) if capex_raw is not None else None
+    # CB-021: canonical-first CapEx. The `capex` canonical field is PP&E
+    # additions (stored negative as-presented; acquisitions/M&A deliberately
+    # UNMAPPED so a buyout never lands in FCF). For O&G / mining filers, CapEx
+    # ALSO includes capitalized E&E — carried by capitalized_exploration_
+    # additions, which only maps in those sectors, so its PRESENCE is the
+    # sector signal (Riley's CB-021 ruling: general = PP&E; O&G/mining =
+    # PP&E + E&E). The composition is disclosed via capex_basis.
+    capex_ppe = financial_data.get("capex")
+    if isinstance(capex_ppe, (int, float)) and not isinstance(capex_ppe, bool):
+        capex_ppe = abs(capex_ppe)
+    else:
+        capex_raw = _lookup(cf_rows, _CAPEX_LABELS, "value", exclude=_CAPEX_EXCLUDE)
+        capex_ppe = abs(capex_raw) if capex_raw is not None else None
+
+    ee_capex = financial_data.get("capitalized_exploration_additions")
+    ee_capex = (abs(ee_capex)
+                if isinstance(ee_capex, (int, float)) and not isinstance(ee_capex, bool)
+                else None)
+
+    if capex_ppe is None:
+        capex_c, capex_basis = None, None
+    elif ee_capex is not None:
+        capex_c, capex_basis = capex_ppe + ee_capex, "PP&E + E&E"
+    else:
+        capex_c, capex_basis = capex_ppe, "PP&E"
 
     fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None
 
@@ -720,19 +808,44 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
                      ["cash and cash equivalents", "cash and equivalents",
                       "cash, cash equivalents and short-term investments"],
                      "value")
-    ltd_c = _lookup(bs_rows,
-                    ["long-term debt", "long-term notes payable", "long-term borrowings",
-                     "senior notes", "term loan"],
-                    "value") or 0
-    std_c = _lookup(bs_rows,
-                    ["short-term debt", "current portion of long-term debt",
-                     "current maturities of long-term debt", "commercial paper"],
-                    "value") or 0
+    # CB-022: canonical-first total debt = long-term debt + current portion of
+    # long-term debt (interest-bearing borrowings). Balance-sheet debt is
+    # presented positive; prefer the mapped fields, fall back to the label
+    # scrape for non-mapped (EDGAR/manual) paths. Feeds BOTH net_debt and the
+    # Debt/Equity leverage ratio so they never disagree.
+    def _pos(v):
+        return abs(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+    ltd_canon = _pos(financial_data.get("long_term_debt"))
+    std_canon = _pos(financial_data.get("short_term_debt"))
+    if ltd_canon is not None or std_canon is not None:
+        ltd_c, std_c, _debt_found = (ltd_canon or 0), (std_canon or 0), True
+    else:
+        ltd_c = _lookup(bs_rows,
+                        ["long-term debt", "long-term notes payable", "long-term borrowings",
+                         "senior notes", "term loan"],
+                        "value") or 0
+        std_c = _lookup(bs_rows,
+                        ["short-term debt", "current portion of long-term debt",
+                         "current maturities of long-term debt", "commercial paper"],
+                        "value") or 0
+        _debt_found = (ltd_c + std_c) != 0
     net_debt_c = ((ltd_c + std_c) - (cash_c or 0)) if cash_c is not None else None
+    total_debt_c = (ltd_c + std_c) if _debt_found else None
+    _debt_basis = None
+    if _debt_found:
+        _debt_basis = ("LT debt + current portion" if (ltd_c and std_c)
+                       else ("LT debt" if ltd_c else "current portion"))
 
-    int_raw   = _lookup(is_rows, ["interest expense"], "value")
-    int_exp_c = abs(int_raw) if int_raw is not None else None
+    # Debt/Equity leverage ratio (CB-022). Canonical total_equity; suppressed
+    # for banks/insurers, whose deposit/policy liabilities make D/E a different
+    # concept (honest N/A rather than a misleading number).
+    te_c = financial_data.get("total_equity")
+    te_c = te_c if isinstance(te_c, (int, float)) and not isinstance(te_c, bool) else None
+    de_ratio = (total_debt_c / te_c
+                if (total_debt_c is not None and te_c and not _financial_or_insurance) else None)
 
+    # int_exp_c already computed canonical-first above (CB-023).
     yoy_rev       = _pct(_safe_div(rev_c - rev_p, abs(rev_p))) if (rev_c is not None and rev_p) else None
     gp_margin     = _pct(_safe_div(gp_c,     rev_c))
     ebitda_margin = _pct(_safe_div(ebitda_c, rev_c))
@@ -743,17 +856,69 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     fcf_conv      = _pct(_safe_div(fcf_c, ni_c)) if (ni_c and ni_c != 0) else None
     int_cover     = _safe_div(oi_c, int_exp_c)
 
+    # CB-024: operating netback margin — the O&G analog to gross margin, from the
+    # income statement. Net revenue (after royalties) less field operating costs
+    # (production + transportation), over net revenue. Resource-only: gated on
+    # transportation_costs, which maps only for O&G filers. The per-barrel
+    # netback (vs production volumes) is deliberately Tier-2 / MD&A-gated.
+    def _num2(v):
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+    _nb_roy = _num2(financial_data.get("royalties"))
+    _nb_prod = _num2(financial_data.get("operating_expense"))
+    _nb_trans = _num2(financial_data.get("transportation_costs"))
+    net_revenue_c = netback_c = netback_margin = None
+    if (rev_c is not None and _nb_roy is not None
+            and _nb_prod is not None and _nb_trans is not None):
+        net_revenue_c = rev_c - abs(_nb_roy)
+        netback_c = net_revenue_c - abs(_nb_prod) - abs(_nb_trans)
+        netback_margin = _pct(_safe_div(netback_c, net_revenue_c))
+
+    # CB-021: human-readable calculation strings for the Key Metrics cards —
+    # every derived number shows its formula + inputs (the receipts principle,
+    # applied to ratios). None where the metric is honestly unavailable.
+    calcs = {
+        "rev": (f"{_fmt_compact(rev_p)} → {_fmt_compact(rev_c)} YoY"
+                if (rev_c is not None and rev_p) else None),
+        "gp_margin": (f"gross profit {_fmt_compact(gp_c)} ÷ revenue {_fmt_compact(rev_c)}"
+                      if gp_margin is not None else None),
+        "netback_margin": (
+            f"netback {_fmt_compact(netback_c)} ÷ net revenue {_fmt_compact(net_revenue_c)}"
+            if netback_margin is not None else None),
+        "ebitda_margin": (
+            f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
+            + (" (EBIT + D&A)" if ebit_derived else "")
+            if ebitda_margin is not None else None),
+        "ni_margin": (f"net income {_fmt_compact(ni_c)} ÷ revenue {_fmt_compact(rev_c)}"
+                      if ni_margin is not None else None),
+        "fcf": (f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
+                if fcf_c is not None else None),
+        "debt_equity": (
+            f"total debt {_fmt_compact(total_debt_c)} ÷ equity {_fmt_compact(te_c)} ({_debt_basis})"
+            if de_ratio is not None else None),
+        "int_cover": (f"EBIT {_fmt_compact(oi_c)} ÷ interest {_fmt_compact(int_exp_c)}"
+                      if int_cover is not None else None),
+        # CB-023: disclose the EBIT derivation when EBIT was computed as an
+        # add-back (pre-tax + interest) rather than lifted from a printed line.
+        "ebit": (
+            f"EBIT {_fmt_compact(oi_c)} = pretax {_fmt_compact(pretax_c)} + interest {_fmt_compact(int_exp_c)}"
+            if ebit_derived else None),
+    }
+
     return {
         "rev_c": rev_c,       "yoy_rev": yoy_rev,
         "gp_c": gp_c,         "gp_margin": gp_margin,
+        "netback_margin": netback_margin,
         "ebitda_c": ebitda_c, "ebitda_margin": ebitda_margin,
         "ni_c": ni_c,         "ni_margin": ni_margin,
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
+        "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
+        "de_ratio": de_ratio,
         "rev_growth": yoy_rev,
         "fcf_conv": fcf_conv,
         "int_cover": int_cover,
+        "calcs": calcs,
     }
 
 

@@ -952,6 +952,212 @@ disagree, that is a defect: flag it, do not silently fix either side.
 
 ---
 
+## CB-021: Free Cash Flow — `operating_cash_flow` + `capex` canonical fields; sector-aware CapEx (PP&E, or PP&E + E&E for O&G/mining); acquisitions excluded; composition disclosed
+
+DECIDED 2026-07-07 (Riley). Motivation: CNQ's Key Metrics showed only 2 of 5
+(Revenue, Net Income); Free Cash Flow rendered an honest "—" because the capex
+label scrape did not recognize CNQ's "Net expenditures on property, plant and
+equipment" line (OCF scraped fine at 13,386; capex None → FCF None). FCF is a
+core value-investing metric, so map it the governed way rather than patch the
+scrape.
+
+RULINGS:
+1. MINT two DEFAULT canonical fields, both cash_flow-statement-scoped:
+   `operating_cash_flow` = the "cash flows from operating activities" subtotal
+   (indirect method; CNQ = 13,386); `capex` = additions to property, plant &
+   equipment, stored NEGATIVE as-presented (CNQ = −5,291 from "Net
+   expenditures on property, plant and equipment").
+2. CAPEX EXCLUDES ACQUISITIONS / M&A by design — a buyout must never enter
+   FCF. CNQ's "Acquisition of Chevron's assets" (−9,163) is deliberately
+   UNMAPPED (no alias matches it); pinned by the CNQ value snapshot.
+3. SECTOR-AWARE CAPEX (Riley's finance-expert ruling): general filers → CapEx
+   = PP&E only; OIL & GAS / MINING filers → CapEx = PP&E + E&E (the full
+   capital-investment lifecycle). E&E is carried by
+   `capitalized_exploration_additions` (CB-009), extended to resource_sector
+   with CNQ's "Net expenditures on exploration and evaluation assets" (−92).
+   Its PRESENCE is the sector signal (that field only maps in
+   resource/mining/explorer sectors), so no separate sector check is needed.
+   CNQ CapEx = 5,291 + 92 = 5,383; FCF = 13,386 − 5,383 = 8,003.
+4. FULL DISCLOSURE (Riley): the metric states what CapEx includes — "(PP&E)"
+   vs "(PP&E + E&E)". Generalized to a calculation caption under EVERY Key
+   Metric card (the receipts principle applied to ratios): FCF "OCF 13.39B −
+   CapEx 5.38B (PP&E + E&E)", Net Income "net income 6.11B ÷ revenue 41.51B";
+   metrics that are genuinely N/A (O&G has no gross-profit line) carry no
+   caption (honest silence).
+5. FEED SCOPE: the cash-flow statement is fed to the mapper for mining-family
+   AND resource (O&G) filers via a SINGLE SOURCE OF TRUTH
+   `sedar_mapper.mapper_statement_keys` — the prior mining-only rule was
+   DUPLICATED in three places (attach_mapping, build_filing_registry,
+   test_filing_registry) and drifted the moment this shipped; all three now
+   delegate (Minimize Human Error, rule-of-three met).
+6. EXPLORER COLLISION: the new default `operating_cash_flow` alias "cash flows
+   from operating activities" collided with the explorer field
+   `net_cash_used_in_operating_activities` (SIG's exact label). Pre-revenue
+   explorers keep their own OCF spine via `prefer_profile: true` (same
+   mechanism as CB-017's net_loss and the REIT NOI); pinned by the
+   ratified-uses whitelist test.
+
+CORRECTNESS NOTE: unlike the balance sheet (assets ≡ liabilities + equity), the
+cash-flow statement has no single-filing identity, so these fields lean on
+ground-truth + the Gemini cross-check, not a self-check.
+
+CANONICAL-FIRST: `_calc_summary_metrics` and `two_year_statement_pairs` prefer
+the mapped operating_cash_flow / capex over the label scrape; the scrape (with
+its CB-017 interest-exclusion guards) stays the fallback for non-mapped
+(EDGAR/manual) paths. The CapEx chart mirrors the card's PP&E+E&E composition
+so OCF − CapEx on the chart reconciles to the card's FCF.
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (operating_cash_flow
+  + capex default fields; capitalized_exploration_additions on resource_sector;
+  explorer OCF prefer_profile); sedar_mapper.py (`mapper_statement_keys` single
+  source of truth); sedar_extractor.py + scripts/build_filing_registry.py +
+  tests/test_filing_registry.py (all delegate); claude_analyzer.py
+  (`_CANONICAL_SCALE_FIELDS` += operating_cash_flow, capex); excel_exporter.py
+  (`_fmt_compact`, canonical-first + sector-aware capex + capex_basis + calcs,
+  in `_calc_summary_metrics` AND `two_year_statement_pairs`); app.py (calc
+  captions under each Key Metric card); CLAUDE.md Canonical Field Definitions
+  (same commit). Tests: 5 in test_summary_metrics.py; prefer_profile whitelist
+  updated; CNQ value snapshot re-stored (8→11) + registry regenerated (only CNQ
+  changed). GATES: full suite 452→457 green; ruff clean; empirically verified
+  on the real CNQ fixture (OCF 13,386 / CapEx 5,383 / FCF 8,003, acquisition
+  excluded, mapped_count 8→11, zero collisions). INTEGRITY-LOG EVIDENCE GATE
+  NOT TRIGGERED — new mapped fields flow through the existing
+  `_run_integrity_checks` on load (engine wiring unchanged); the change is
+  canonical coverage + render-layer disclosure. Deferred: operating_cash_flow /
+  capex aliases for non-CNQ filers as each is ground-truthed (labels differ);
+  EBITDA-margin for O&G (needs an operating_income definition); full-corpus FCF
+  widening.
+
+---
+
+## CB-022: Debt/Equity leverage — `long_term_debt` + `short_term_debt` canonical fields; interest-bearing borrowings only (leases & M&A excluded); suppressed for banks/insurers; composition disclosed
+
+DECIDED 2026-07-07 (Riley). Complements CB-021: cash generation (FCF) and
+balance-sheet risk (leverage) are the two halves of a value investor's core
+read. CNQ's "Leverage" tile was N/A (net-debt/EBITDA needs EBITDA); Debt/Equity
+is broadly computable and reuses the already-mapped total_equity (CB-013).
+
+RULINGS:
+1. MINT two DEFAULT balance-sheet-scoped canonical fields: `long_term_debt`
+   ("long-term debt") + `short_term_debt` ("current portion of long-term
+   debt") — interest-bearing borrowings, presented positive.
+2. TOTAL DEBT = long_term_debt + short_term_debt. EXCLUDES leases (filers break
+   lease obligations out separately — AEM/CNR/CNQ all do — and the aliases
+   don't match lease labels) and operating liabilities. Debt/Equity = total
+   debt / total_equity.
+3. SUPPRESSED FOR BANKS/INSURERS: financial_sector / insurance_sector filers
+   get honest N/A — deposits and policy liabilities make D/E a different
+   concept (integrity-first, same spirit as the economics-panel gating).
+4. DISCLOSURE: the ratio states its composition ("LT debt + current portion")
+   in a caption under the Financial Health panel, and it joins that panel as a
+   6th RAG check (thresholds ≤1.0 GREEN, ≤2.0 AMBER, >2.0 RED) feeding the
+   Quality score (rescaled to available checks).
+
+CANONICAL-FIRST: total debt prefers the mapped fields (feeding BOTH net_debt
+and D/E so they never disagree); the balance-sheet debt scrape is the fallback
+for non-mapped EDGAR/manual paths.
+
+GROUND-TRUTH (all three drifted fixtures verified against their balance sheets,
+leases correctly excluded): CNQ D/E 0.48 (LT 16,419 + current 2,400 / equity
+39,468); AEM 0.008 (a genuinely low-debt miner — LT 196,271, current 0, equity
+24.7B; lease obligations broken out separately); CNR 0.98 (capital-intensive
+railway — LT 20,300 + current 906 / equity 21,568).
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (long_term_debt +
+  short_term_debt default fields, balance-sheet-scoped); claude_analyzer.py
+  (_CANONICAL_SCALE_FIELDS += both); excel_exporter.py (canonical-first total
+  debt feeding net_debt + de_ratio; sector gating; debt_equity calc caption);
+  app.py (_quality_score + _dash_rag debt_equity thresholds; 6th RAG tile;
+  disclosure caption; "5 checks" → "6 checks"); CLAUDE.md Canonical Field
+  Definitions (same commit). Tests: 3 in test_summary_metrics.py; AEM/CNR/CNQ
+  fixture assertions updated; 3 fixtures re-stored + registry regenerated.
+  GATES: full suite 457→460 green; ruff clean; empirically verified (D/E 0.48 /
+  0.008 / 0.98 against source balance sheets). Integrity-log gate not triggered
+  (canonical coverage + render-layer disclosure; engine wiring unchanged).
+  Deferred: lease-inclusive leverage variant; debt aliases for other filers as
+  ground-truthed; a bank/insurer-appropriate leverage metric.
+
+## CB-023: EBIT / EBITDA / Interest-Cover — `pretax_income` + `interest_expense`; EBIT = pre-tax income + interest (add-back); gated off banks/insurers
+
+DECIDED 2026-07-07 (Riley). CNQ's EBITDA Margin + Interest Cover were N/A
+because CNQ prints no operating-income line (straight from expenses to
+"Earnings before taxes"), so EBITDA (= OI + D&A) and interest cover (=
+EBIT / interest) had no numerator. Both unlock from the same derivation.
+
+RULINGS:
+1. MINT default income-statement-scoped `pretax_income` ("earnings before
+   taxes", "income before income taxes", "income before taxes"); map
+   `interest_expense` for resource ("interest and other financing expense").
+2. EBIT = pre-tax income + interest expense (the standard add-back), used when
+   no printed operating-income line exists; a printed operating income is
+   preferred where present. Includes non-operating items in EBT (FX, risk-mgmt)
+   — the accepted standard-EBIT tradeoff for comparability.
+3. EBITDA = EBIT + D&A. Unlocks EBITDA Margin (Key Metrics), Interest Cover =
+   EBIT / interest, and Leverage = net-debt / EBITDA (Financial Health).
+4. GATED OFF BANKS/INSURERS: EBIT/EBITDA/interest-cover are not meaningful for
+   financial_sector / insurance_sector (interest is core to their business) —
+   honest N/A. `pretax_income` still MAPS on those filers (a real line); only
+   the derived metrics are withheld.
+5. DISCLOSURE: the EBITDA-margin caption notes "(EBIT + D&A)"; Interest Cover
+   shows "EBIT / interest"; and when EBIT is an add-back, a caption discloses
+   "EBIT = pretax + interest".
+
+GROUND-TRUTH (CNQ): interest 592, pretax 8,059 -> EBIT 8,651; DD&A 6,681 ->
+EBITDA 15,332. EBITDA Margin 36.9% (/ gross revenue 41,509), Interest Cover
+14.6x, Leverage 1.22x. CNQ now has all 6 Financial Health checks and 4 of 5 Key
+Metrics (Gross Margin stays N/A — O&G has no COGS).
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (pretax_income
+  default; interest_expense resource alias); claude_analyzer.py
+  (_CANONICAL_SCALE_FIELDS += pretax_income); excel_exporter.py (canonical-first
+  interest; EBIT derivation gated off financials; int_cover + ebit captions);
+  app.py (Financial Health discloses int_cover + the EBIT add-back). Tests: 3
+  in test_summary_metrics.py; 6 fixture assertions updated; 7 fixtures re-stored
+  (all gained pretax_income; CNQ + interest_expense) + registry regenerated.
+  GATES: full suite 460->463 green; ruff clean. Empirically verified (EBITDA
+  margin 36.9%, interest cover 14.6x, leverage 1.22x on CNQ; suppressed on
+  RY/IFC). CB-023 casebook + CLAUDE.md same commit. Deferred: strict operating
+  income as an alternative EBIT; per-filer interest_expense aliases; a
+  bank/insurer-appropriate coverage metric.
+
+## CB-024: Netback Margin — the O&G gross-margin analog; `transportation_costs`; sector-aware Key Metrics card
+
+DECIDED 2026-07-07 (Riley). Gross Margin is genuinely N/A for O&G (no
+cost-of-goods line), so rather than fake it, the Key Metrics card shows the
+operating NETBACK MARGIN for resource filers — the standard O&G profitability
+measure, computed from the income statement.
+
+RULINGS:
+1. MINT resource-scoped income-statement `transportation_costs`
+   ("transportation, blending and feedstock").
+2. Operating netback = net revenue (gross revenue − royalties) − production
+   (operating_expense) − transportation. Netback margin = netback / NET revenue
+   (after royalties — Riley's denominator choice, the stricter post-royalty
+   convention). CNQ: 35,656 − 8,093 − 9,984 = 17,579; margin 17,579 / 35,656 =
+   49.3%.
+3. SECTOR-AWARE CARD: for resource filers the "Gross Margin" Key Metrics card
+   becomes "Netback Margin" (the O&G-correct analog); non-resource filers keep
+   Gross Margin. Netback excludes D&A, G&A, financing, taxes (field-level
+   operating margin). Composition disclosed ("netback X / net revenue Y").
+4. PER-BARREL NETBACK ($/boe) is DEFERRED — it needs production VOLUMES, which
+   live in the MD&A, not the financial statements; that is the Tier-2 /
+   MD&A-fetcher build (scoped in the handoff), not this income-statement metric.
+
+Resource-only: gated on transportation_costs, which maps only for O&G filers
+(presence is the signal). Ground-truthed on CNQ: netback 17,579, margin 49.3%.
+
+- Enforced by: CC-implemented directly. sedar_aliases.json (transportation_costs
+  resource alias); claude_analyzer.py (_CANONICAL_SCALE_FIELDS +=
+  transportation_costs); excel_exporter.py (netback + netback_margin + caption);
+  app.py (sector-aware Key Metrics card: Netback Margin for O&G, Gross Margin
+  otherwise). Tests: 2 in test_summary_metrics.py; CNQ fixture assertion updated;
+  CNQ re-stored (mapped_count 16) + registry regenerated. GATES: full suite
+  463->465 green; ruff clean. Integrity-log gate not triggered. CB-024 casebook
+  + CLAUDE.md same commit. Deferred: per-barrel netback (MD&A volumes);
+  transportation aliases for other O&G filers as ground-truthed.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added
