@@ -42,6 +42,9 @@ process, not a detection failure.
   `CURRENT_SCHEMA_VERSION` to 7 with a comment noting the CB-021→024 whitelist
   additions, OR record a deliberate no-bump decision with rationale. Do not
   ship the next analysis-path change without resolving this.
+- **✅ RESOLVED same session (Riley signed off):** bumped
+  `CURRENT_SCHEMA_VERSION` 6→7 with a comment citing the CB-021→024 whitelist
+  additions; pre-CB caches now prompt Re-Analyse. Full suite re-run: 465 passed.
 
 ### Test suite
 - `pytest tests -q` (secrets injected): **465 passed in 5.96s**, 0 failed.
