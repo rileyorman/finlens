@@ -1,0 +1,42 @@
+# --- Python virtualenv & caches (never needed in the image) ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+pytest-cache-files-*/
+
+# --- Git ---
+.git/
+.gitignore
+.githooks/
+
+# --- Secrets: passed at RUNTIME via env, never baked into the image ---
+.env
+.streamlit/secrets.toml
+secrets*.enc.env
+*.age
+
+# --- Local app data & generated artifacts (persisted via the /data volume) ---
+cache/
+logs/
+data/
+library/
+*.log
+*.xlsx
+*.pdf
+portfolio_registry.json
+
+# --- Dev-only material not imported at runtime ---
+tests/
+docs/
+scripts/
+.claude/
+.agents/
+*.md
+!README.md
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
