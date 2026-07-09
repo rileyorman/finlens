@@ -675,8 +675,8 @@ Important project files:
 - `config.py` - Claude model names, input limits, and cache directory.
 - `sedar_extractor.py` - SEDAR+ PDF extraction; owns Option A cover-page selection (`_ordered_unique_pages`) and `attach_mapping()` (feeds statements to the canonical mapper).
 - `scripts/run_cross_extractor.py` - manual Sunday-audit runner for the Gemini second-extractor integrity signal.
-- `.env` - local secrets such as API keys. Do not commit.
-- `.env.example` - example environment variables.
+- ~~`.env`~~ - REMOVED 2026-07-08; API keys now live in the encrypted SOPS store at `%USERPROFILE%\.secrets\secrets.enc.env`, injected at runtime (`Import-Secrets` / `run.bat`). App still reads them via `os.getenv` / `load_dotenv` (which no-ops with no `.env`).
+- `.env.example` - example environment variables (documents which keys are expected).
 - `requirements.txt` - Python dependencies.
 - `filing_library.json` - local filing library metadata.
 - `portfolio_registry.json` - local portfolio registry.
@@ -828,13 +828,19 @@ Do not casually replace this with `certifi.where()` or `ssl.create_default_conte
 
 ## Running Locally
 
+Secrets come from the encrypted SOPS store (`%USERPROFILE%\.secrets\secrets.enc.env`),
+NOT a plaintext `.env` (migrated 2026-07-08 — the in-project `.env` was deleted).
+`Import-Secrets` (a PowerShell profile helper) decrypts the store into the shell;
+`run.bat` injects them via `sops exec-env`. The private key is at
+`C:\Users\riley\.age\keys.txt` (env var `SOPS_AGE_KEY_FILE`) — BACK IT UP.
+
 Regular PowerShell:
 
 ```powershell
-cd "C:\Users\riley\OneDrive\Documents\Python Project\finlens"; .\venv\Scripts\Activate.ps1; streamlit run app.py
+cd "C:\Users\riley\OneDrive\Documents\Python Project\finlens"; .\venv\Scripts\Activate.ps1; Import-Secrets; streamlit run app.py
 ```
 
-Alternative:
+Alternative (injects secrets automatically):
 
 ```powershell
 .\run.bat
