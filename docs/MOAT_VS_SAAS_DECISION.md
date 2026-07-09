@@ -55,6 +55,31 @@ straight from the review's evidence so the trade-off is visible, not to steer.)*
 
 ---
 
+## What the Step-8 review did NOT know (material corrections)
+
+The review is sharp but reasoned from an incomplete picture on its single
+strongest criticism. Weigh the decision against the *complete* picture:
+
+- **Agent-fetch has worked.** OpenClaw has empirically fetched filings from
+  issuer IR pages. The review's "manual-ingestion ceiling" (dataset capped by
+  what Riley can hand-download) describes the PRE-commercial phase, not the
+  model. The manual-download rule is a SEDAR+-CAPTCHA-era default.
+- **Ingestion is usage-driven and compounding.** Commercially, an agent fetches
+  a filing once per company when a client searches it → it joins the validated
+  corpus → usage compounds the corpus (data network effect). The corpus scales
+  with client demand, not with anyone's hands. This is the direct answer to the
+  review's #1 blind-spot claim.
+- **The Integrity Engine is the bridge, so the fork may be false.** The engine
+  (mapper + identity checks + Gemini cross-extractor, human review only on
+  flagged exceptions) is exactly what lets the corpus grow with usage while
+  staying trustworthy. That makes the moat work and the commercial product the
+  SAME bet — the strongest argument that A and B are not actually competing.
+  See CLAUDE.md "Commercial Thesis — The Corpus Flywheel" (canonical statement).
+- **Honest caveats stand:** the flywheel solves scaling, not cold-start (t=0
+  still needs a compelling thin-corpus experience to land the first clients); and
+  agent-fetch reliability (Cloudflare-blockable IR pages) must be hardened before
+  it is load-bearing.
+
 ## How the course informs this (why it's OK to decide post-course)
 
 Riley's plan: build + capture during the 8-week course, then ASK the

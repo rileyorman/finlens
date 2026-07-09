@@ -15,6 +15,46 @@ FinLens should be treated as an investment analysis workspace, not just a PDF-to
 - **Weekly audit:** `docs/audits/STEP_7_OPUS_REVIEW_PROMPT.md` — run Sundays after CC's audit report.
 - **Build order priority:** Lot-level position tracking → Catalyst Calendar → Memo Builder → Filing Diff Viewer → Curriculum Mode. See addendum for full sequence.
 
+## Commercial Thesis — The Corpus Flywheel (how FinLens wins)
+
+This is the durable answer to "how does FinLens scale and defend its data." It is
+recorded HERE (source of truth) because it has needed frequent re-explaining and
+must not live only in chat history (Minimize-Human-Error principle). Downstream
+digests: CODEX_MEMORY.md "Product Vision" and STERLING_BRIEF. Any agent doing
+fetch / ingestion / corpus / commercialization work should read this section.
+
+- **Ingestion is usage-driven, paid once per company.** When a client searches
+  for a company in FinLens, an agent (OpenClaw-style) fetches that filing from
+  the issuer IR page, FinLens analyzes it, and the analyzed filing becomes a
+  permanent part of the validated corpus. The fetch+analyze cost is paid ONCE
+  per company; every later client who wants it reads the corpus for free.
+- **Usage compounds the corpus (data network effect).** The more clients search,
+  the more filings enter the corpus, the more valuable FinLens is to the next
+  client — a self-reinforcing flywheel. The corpus scales with client demand,
+  not with anyone's manual effort.
+- **Agent fetch works; manual download is a campaign-era default.** OpenClaw has
+  empirically fetched filings from issuer IR pages. The "manual browser download
+  is primary" rule in the fetch/ingestion docs
+  (docs/FETCH_CAMPAIGN_LOG.md, docs/INGESTION_WORKER_SPEC.md) is a SEDAR+-CAPTCHA
+  workaround for the PRE-commercial corpus-building phase, NOT the commercial
+  model (empirical-evidence principle: working behavior outranks docs' emphasis).
+- **The Integrity Engine is the bridge, not a detour.** You cannot hand-
+  ground-truth every client-triggered filing at scale. The mapper + identity
+  checks + Gemini cross-extractor (human review only on flagged exceptions) are
+  exactly what lets the corpus grow with usage while staying trustworthy. So the
+  moat work (Integrity Engine + adjudication casebook) and the commercial product
+  are the SAME bet: the engine is the automated trust layer that makes the
+  usage-driven flywheel sellable.
+- **The "manual-ingestion ceiling" is a pre-commercial artifact.** Any critique
+  that FinLens's corpus is capped by what one person can hand-download describes
+  TODAY, not the model — post-launch the corpus scales with demand. Do not treat
+  that ceiling as fatal.
+- **Honest caveats (do not oversell).** The flywheel solves SCALING, not
+  COLD-START — at launch FinLens still needs a compelling experience on a thin
+  corpus to land the first clients who feed it. And agent-fetch reliability is an
+  operational dependency — IR pages can be Cloudflare-blocked (AEM precedent), so
+  fetch must be hardened before it is load-bearing for paying users.
+
 ## Engineering Principle: Empirical Evidence > Documentation
 
 When code is empirically demonstrated to work (real API call, real metrics
