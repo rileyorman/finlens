@@ -29,3 +29,11 @@ select = [
     "F",    # Pyflakes: unused imports, undefined names, unused variables
     "E722", # bare 'except:' that silently swallows errors
 ]
+
+[tool.pytest.ini_options]
+# Collect ONLY tests/ — test_run.py at the repo root is a manual demo
+# SCRIPT (python test_run.py) whose module-level code runs a live Claude
+# call; pytest importing it at collection burned ~50K tokens per suite run
+# and wrote Mastech figure-presence noise into the production moat log
+# (2026-07-09 finding). conftest.py adds the data-dir isolation layer.
+testpaths = ["tests"]
