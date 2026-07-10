@@ -1400,7 +1400,14 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income"
     assert mapped["net_income"]["value"] == 259611
 
-    assert result["meta"]["mapped_count"] == 9  # +pretax_income (CB-023)
+    # CB-025 (2026-07-09): the IFRS current/non-current debt pair maps as a
+    # PAIR — "current debt" alone would compute an understated D/E.
+    assert mapped["long_term_debt"]["source_label"] == "Non-current debt"
+    assert mapped["long_term_debt"]["value"] == 2098543
+    assert mapped["short_term_debt"]["source_label"] == "Current debt"
+    assert mapped["short_term_debt"]["value"] == 870407
+
+    assert result["meta"]["mapped_count"] == 11  # +debt pair (CB-025)
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

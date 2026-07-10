@@ -203,6 +203,18 @@
           "standards": ["IFRS"],
           "source": "CB-021 CNQ_FY2024 — operating-activities subtotal (indirect method)",
           "statements": ["cash_flow"]
+        },
+        {
+          "label": "total cash flow from operating activities",
+          "standards": ["IFRS"],
+          "source": "CB-025 TOU_FY2025 triage — OCF subtotal variant",
+          "statements": ["cash_flow"]
+        },
+        {
+          "label": "cash flow from operating activities",
+          "standards": ["IFRS"],
+          "source": "CB-025 ARX_FY2025 triage — OCF subtotal variant (singular)",
+          "statements": ["cash_flow"]
         }
       ],
       "patterns": []
@@ -225,6 +237,12 @@
           "standards": ["IFRS", "US GAAP"],
           "source": "CB-022 CNQ_FY2024 — interest-bearing long-term borrowings",
           "statements": ["balance_sheet"]
+        },
+        {
+          "label": "non-current debt",
+          "standards": ["IFRS"],
+          "source": "CB-025 labeled ADDITION (DIR.UN FY2024, surfaced by the current-debt drift check) — IFRS non-current interest-bearing borrowings; the new 'current debt' alias alone would compute an understated D/E (DIR.UN 870,407 shown vs true total debt 2,968,950)",
+          "statements": ["balance_sheet"]
         }
       ],
       "patterns": []
@@ -235,6 +253,12 @@
           "label": "current portion of long-term debt",
           "standards": ["IFRS", "US GAAP"],
           "source": "CB-022 CNQ_FY2024 — current portion of interest-bearing borrowings",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "current debt",
+          "standards": ["IFRS"],
+          "source": "CB-025 TOU_FY2025 triage — drawn current borrowings (interest-bearing per CB-022; TOU financing shows the 800,000 draw)",
           "statements": ["balance_sheet"]
         }
       ],
@@ -258,6 +282,12 @@
           "label": "income before taxes",
           "standards": ["IFRS", "US GAAP"],
           "source": "CB-023 standard pre-tax subtotal",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "net income before income taxes",
+          "standards": ["IFRS"],
+          "source": "CB-025 ARX_FY2025 triage — pre-tax subtotal variant (1,633.9 − 358.8 taxes = 1,275.1 net income, concept-verified)",
           "statements": ["income_statement"]
         }
       ],
@@ -379,6 +409,9 @@
       }
     },
     "resource_sector": {
+      "suppressed_default_aliases": {
+        "revenue": ["total revenue", "total revenues", "revenue total", "revenues"]
+      },
       "canonical_fields": {
         "revenue": {
           "aliases": [
@@ -391,6 +424,11 @@
               "label": "gross revenues",
               "standards": ["IFRS"],
               "source": "SU_FY2025_dry_run"
+            },
+            {
+              "label": "commodity sales from production",
+              "standards": ["IFRS"],
+              "source": "CB-025 TOU_FY2025 + ARX_FY2025 triage — gross production top line; both filers' printed 'Total revenue' is NET of royalties and stays unmapped via suppressed_default_aliases (negative rule, machine-enforced)"
             }
           ],
           "patterns": []
@@ -401,6 +439,12 @@
               "label": "less: royalties",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            },
+            {
+              "label": "royalties",
+              "standards": ["IFRS"],
+              "source": "CB-025 TOU_FY2025 + ARX_FY2025 triage — bare form, negative as-presented on both (stored NEGATIVE per the royalties sign rule)",
+              "statements": ["income_statement"]
             }
           ],
           "patterns": []
@@ -411,6 +455,20 @@
               "label": "depletion, depreciation and amortization",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            },
+            {
+              "label": "depletion, depreciation, amortization and impairment",
+              "standards": ["IFRS"],
+              "source": "CB-026 TOU_FY2025 triage — combined non-cash line 3,000,251; maps WITH includes_impairment semantics (Riley re-ratified 2026-07-09: both DD&A and impairment are added back in standard EBITDA practice; ATD excludes_da tag precedent); EBITDA caption must disclose",
+              "semantics": {"includes_impairment": true},
+              "statements": ["income_statement"]
+            },
+            {
+              "label": "depletion, depreciation and amortization and impairment of property, plant and equipment",
+              "standards": ["IFRS"],
+              "source": "CB-026 ARX_FY2025 triage — combined non-cash line 1,547.2; same includes_impairment ruling as the TOU form",
+              "semantics": {"includes_impairment": true},
+              "statements": ["income_statement"]
             }
           ],
           "patterns": []
@@ -458,6 +516,23 @@
               "standards": ["IFRS"],
               "source": "CB-024 CNQ_FY2024 — field transportation cost; netback component",
               "statements": ["income_statement"]
+            }
+          ],
+          "patterns": []
+        },
+        "capex": {
+          "aliases": [
+            {
+              "label": "property, plant and equipment",
+              "standards": ["IFRS"],
+              "source": "CB-025 TOU_FY2025 triage — investing outflow −2,988,595; cash_flow-scoped because the identical label is the balance-sheet asset STOCK (19,620,271) — CB-009 stock/flow pattern",
+              "statements": ["cash_flow"]
+            },
+            {
+              "label": "property, plant and equipment development expenditures",
+              "standards": ["IFRS"],
+              "source": "CB-025 ARX_FY2025 triage — development capex −1,819.1",
+              "statements": ["cash_flow"]
             }
           ],
           "patterns": []

@@ -73,7 +73,7 @@ def _load_alias_table() -> dict[str, Any]:
 # Bump ONLY on mapper LOGIC changes that leave sedar_aliases.json unchanged
 # (a new derivation, routing rule, or collision mechanism). Alias/sector-profile
 # edits are versioned automatically by the file hash below, so they need no bump.
-_MAPPER_LOGIC_REV = "1"
+_MAPPER_LOGIC_REV = "2"  # rev 2: CB-025 apostrophe fold + default-alias suppression
 
 
 @lru_cache(maxsize=1)
@@ -124,6 +124,10 @@ def sedar_mapping_is_stale(financial_data: Any, current_version: str | None = No
 def _normalize_label(label: str) -> str:
     text = re.sub(r"\s*\([^)]*\bnote\b[^)]*\)", "", str(label or ""), flags=re.IGNORECASE)
     text = _TRAILING_FOOTNOTE_MARKER_RE.sub("", text)
+    # CB-025: typographic apostrophes fold to ASCII so a filer's curly quote
+    # cannot defeat an alias (ARX prints "Total shareholders’ equity" with
+    # U+2019; the CB-013 aliases are ASCII-apostrophe).
+    text = text.replace("’", "'").replace("‘", "'")
     text = text.lower().strip()
     text = re.sub(r"[\s.,;:!?]+$", "", text)
     return re.sub(r"\s+", " ", text)
@@ -374,6 +378,23 @@ def _build_match_indexes(
     statement_scope: dict[str, set] = {}
     alias_order: dict[str, int] = {}
 
+    # CB-025: a sector profile may SUPPRESS named default aliases for a named
+    # canonical field ("suppressed_default_aliases": {field: [labels]}). This
+    # machine-enforces the gross-of-royalties NEGATIVE RULE: on resource/O&G
+    # filers the default revenue rollup aliases ("total revenue" etc.) would
+    # capture the filer's NET-of-royalties blended line (TOU 6,019,970 and
+    # ARX 6,075.7 both include the royalty deduction — component sums tie
+    # exactly), collapsing the gross/royalty split the canonical definition
+    # requires. Suppressed labels simply never enter the match indexes for
+    # that sector, so the line stays visible in unmapped[] — same honest
+    # behavior CNQ's bare net "Revenue" line has always had.
+    suppressed: set[tuple[str, str]] = set()
+    if sector_profile:
+        _profile = (alias_table.get("sector_profiles") or {}).get(sector_profile, {})
+        for _field, _labels in (_profile.get("suppressed_default_aliases") or {}).items():
+            for _label in _labels or []:
+                suppressed.add((_field, str(_label)))
+
     # First-write-wins on alias-label collisions: defaults are iterated before
     # sector-profile fields, so a default claims a collided label and the
     # profile's same-label alias is rejected. This is the RY-trap defuse —
@@ -386,6 +407,8 @@ def _build_match_indexes(
         for position, alias in enumerate(config.get("aliases") or []):
             if _standard_allowed(alias, accounting_standard):
                 label = alias["label"]
+                if (field_name, label) in suppressed:
+                    continue
                 # Rare explicit sector-profile override for labels whose
                 # sector meaning is more precise than a generic default.
                 # Defaults still claim ordinary collisions first (RY trap).

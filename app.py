@@ -8512,13 +8512,36 @@ if st.session_state.financial_data:
                 _econ_cmdt_header_label = _econ_cmdt_display["header_label"]
                 _econ_cmdt_spot_title = _econ_cmdt_display["spot_title"]
                 _econ_cmdt_caveat = _econ_cmdt_display["crude_caveat"]
+                # CB-027: many producers sell several commodities at once and
+                # the sector string cannot reveal the revenue weighting — the
+                # header records EVERY family evidenced (incl. record-only
+                # families with no free-tier proxy) and claims NO primary;
+                # a benchmark block renders below for each proxied family.
+                _econ_all_commodities = _econ_metadata.get("commodities") or []
+                _econ_benchmarks = _econ_snapshot.get("commodity_benchmarks") or []
+                if len(_econ_all_commodities) > 1:
+                    _cmdt_names = []
+                    for _c in _econ_all_commodities:
+                        _cname = str(_c.get("name") or "").title()
+                        if not _c.get("proxy_available"):
+                            _cname += " (recorded — no free-tier benchmark proxy)"
+                        _cmdt_names.append(_cname)
+                    _econ_cmdt_line = (
+                        f'Commodities: {escape(", ".join(_cmdt_names))} — from the sector '
+                        f'description; <b>no revenue weighting claimed</b>. A benchmark '
+                        f'block renders below for each proxied commodity.'
+                    )
+                else:
+                    _econ_cmdt_line = (
+                        f'Commodity: {escape(_econ_cmdt_header_label)}; '
+                        f'proxy: <code>{escape(_econ_proxy)}</code> ({escape(_econ_proxy_role)}).'
+                    )
                 st.markdown(
                     f'<div style="font-size:20px;font-weight:700;color:#F1F5F9;margin:0 0 4px 0">'
                     f'Resource Economics Snapshot — Tier 1</div>'
                     f'<div style="font-size:12px;color:#64748B;margin:0 0 16px 0">'
                     f'Filing fundamentals × yfinance commodity overlay. '
-                    f'Commodity: {escape(_econ_cmdt_header_label)}; proxy: <code>{escape(_econ_proxy)}</code> '
-                    f'({escape(_econ_proxy_role)}). Free tier (yfinance only); no API cost.'
+                    f'{_econ_cmdt_line} Free tier (yfinance only); no API cost.'
                     f'{"<br>" + escape(_econ_cmdt_caveat) if _econ_cmdt_caveat else ""}</div>',
                     unsafe_allow_html=True,
                 )
@@ -8690,22 +8713,30 @@ if st.session_state.financial_data:
                     except (ValueError, TypeError):
                         return None
 
-                _trend_points = _econ_trend.get("points") or []
-                if _trend_points:
+                def _econ_render_trend_chart(trend_points, proxy_symbol, unit_label,
+                                             commodity_label=None):
+                    # CB-027: shared by benchmark #1 and every additional
+                    # commodity benchmark block (multi-commodity filers).
+                    _title = "Commodity Price Trend — last 1 year"
+                    if commodity_label:
+                        _title = f"{commodity_label} Price Trend — last 1 year"
+                    if not trend_points:
+                        st.caption("Commodity price trend unavailable — proxy returned no points.")
+                        return
                     st.markdown(
                         f'<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
-                        f'Commodity Price Trend — last 1 year</div>'
+                        f'{escape(_title)}</div>'
                         f'<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
-                        f'Source proxy: <code>{escape(_econ_trend.get("proxy_used") or "—")}</code>. '
+                        f'Source proxy: <code>{escape(proxy_symbol or "—")}</code>. '
                         f'Filing fiscal year end overlaid in dotted gray.</div>',
                         unsafe_allow_html=True,
                     )
                     # Fall back to raw strings only if any point fails to
                     # parse (so the x list never mixes types).
-                    _raw_xs = [p["date"] for p in _trend_points]
+                    _raw_xs = [p["date"] for p in trend_points]
                     _parsed_xs = [_econ_parse_date(x) for x in _raw_xs]
                     _trend_xs = _parsed_xs if all(d is not None for d in _parsed_xs) else _raw_xs
-                    _trend_ys = [p["close"] for p in _trend_points]
+                    _trend_ys = [p["close"] for p in trend_points]
                     _trend_fig = go.Figure()
                     _trend_fig.add_trace(go.Scatter(
                         x=_trend_xs, y=_trend_ys,
@@ -8713,7 +8744,7 @@ if st.session_state.financial_data:
                         line=dict(color='#F4B942', width=2),
                         fill='tozeroy',
                         fillcolor='rgba(244,185,66,0.08)',
-                        name=_econ_trend.get("proxy_used") or "Commodity",
+                        name=proxy_symbol or "Commodity",
                     ))
                     # Overlay the filing's fiscal-year-end as a dotted vertical line.
                     # NOTE: plotly 6.7.0's add_vline crashes on datetime/string x
@@ -8763,11 +8794,16 @@ if st.session_state.financial_data:
                     _trend_fig.update_yaxes(
                         gridcolor='rgba(255,255,255,0.06)',
                         zerolinecolor='rgba(255,255,255,0.1)',
-                        title_text=_econ_cmdt_display.get("unit_label") or "US$",
+                        title_text=unit_label or "US$",
                     )
                     st.plotly_chart(_trend_fig, width='stretch', config={"displayModeBar": False})
-                else:
-                    st.caption("Commodity price trend unavailable — proxy returned no points.")
+
+                _trend_points = _econ_trend.get("points") or []
+                _econ_render_trend_chart(
+                    _trend_points,
+                    _econ_trend.get("proxy_used"),
+                    _econ_cmdt_display.get("unit_label"),
+                )
 
                 # --- Company vs commodity — indexed relative performance ---
                 # Both series rebased to 100 one year back, on ONE axis: shows
@@ -8775,7 +8811,13 @@ if st.session_state.financial_data:
                 _company_trend = _econ_snapshot.get("company_trend") or {}
                 _company_points = _company_trend.get("points") or []
                 _company_symbol = _company_trend.get("ticker_used") or "Company"
-                if _company_points and _trend_points:
+
+                def _econ_render_indexed_chart(trend_points, proxy_name,
+                                               commodity_label=None):
+                    # CB-027: shared by benchmark #1 and every additional
+                    # commodity benchmark block (multi-commodity filers).
+                    if not (_company_points and trend_points):
+                        return
 
                     def _econ_indexed(points):
                         base = points[0]["close"]
@@ -8787,16 +8829,17 @@ if st.session_state.financial_data:
                         ys = [p["close"] / base * 100 for p in points]
                         return xs, ys
 
-                    _cmd_xs, _cmd_ys = _econ_indexed(_trend_points)
+                    _cmd_xs, _cmd_ys = _econ_indexed(trend_points)
                     _cmp_xs, _cmp_ys = _econ_indexed(_company_points)
                     if _cmd_ys and _cmp_ys:
-                        _cmd_name = _econ_trend.get("proxy_used") or "Commodity"
+                        _cmd_name = proxy_name or "Commodity"
+                        _vs_label = commodity_label or "Commodity"
                         st.markdown(
-                            '<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
-                            'Company vs Commodity — indexed to 100, last 1 year</div>'
-                            '<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
-                            'Is the equity tracking the commodity or diverging from it? '
-                            'Both series rebased to 100 at the start of the window.</div>',
+                            f'<div style="font-size:13px;font-weight:700;color:#F1F5F9;margin:18px 0 4px 0">'
+                            f'Company vs {escape(_vs_label)} — indexed to 100, last 1 year</div>'
+                            f'<div style="font-size:11px;color:#64748B;margin:0 0 8px 0">'
+                            f'Is the equity tracking the commodity or diverging from it? '
+                            f'Both series rebased to 100 at the start of the window.</div>',
                             unsafe_allow_html=True,
                         )
                         # Colorblind-validated pair on the dark surface:
@@ -8840,6 +8883,75 @@ if st.session_state.financial_data:
                         _idx_fig.update_xaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)')
                         _idx_fig.update_yaxes(gridcolor='rgba(255,255,255,0.06)', zerolinecolor='rgba(255,255,255,0.1)', title_text='Indexed (start = 100)')
                         st.plotly_chart(_idx_fig, width='stretch', config={"displayModeBar": False})
+
+                _econ_render_indexed_chart(
+                    _trend_points,
+                    _econ_trend.get("proxy_used"),
+                    _econ_cmdt_display["commodity_label"] if len(_econ_benchmarks) > 1 else None,
+                )
+
+                # --- CB-027: additional commodity benchmarks (no primary) ---
+                # Multi-commodity filers (e.g. "Upstream Oil & Gas" — CNQ, TOU,
+                # ARX) get a full benchmark block per proxied commodity: spot,
+                # linkage, trend, and indexed chart. The first family rendered
+                # above is NOT a primary — the header says so.
+                for _bm in _econ_benchmarks[1:]:
+                    _bm_display = build_commodity_display_text(
+                        _bm.get("commodity"), _bm.get("proxy_used")
+                    )
+                    _bm_label = _bm_display["commodity_label"]
+                    st.markdown(
+                        f'<div style="font-size:16px;font-weight:700;color:#F1F5F9;margin:22px 0 4px 0">'
+                        f'{escape(_bm_label)} benchmark</div>'
+                        f'<div style="font-size:11px;color:#64748B;margin:0 0 10px 0">'
+                        f'Additional commodity this filer produces — no revenue '
+                        f'weighting claimed between benchmarks. Proxy: '
+                        f'<code>{escape(_bm.get("proxy_used") or "—")}</code> '
+                        f'({escape(_bm.get("proxy_role") or "—")}).'
+                        f'{"<br>" + escape(_bm_display["crude_caveat"]) if _bm_display["crude_caveat"] else ""}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    _bm1, _bm2, _bm3 = st.columns(3)
+                    with _bm1:
+                        _bm_spot_reason = (
+                            f'via {_bm.get("proxy_used")} ({_bm.get("proxy_role") or "—"})'
+                            if _bm.get("proxy_used")
+                            else (_bm.get("error") or "proxy unavailable")
+                        )
+                        _econ_metric_card(
+                            _bm_display["spot_title"],
+                            _econ_fmt_price(_bm.get("spot_price")),
+                            _bm_spot_reason,
+                        )
+                    with _bm2:
+                        _bm_corr = _bm.get("correlation") or {}
+                        _bm_corr_val = _bm_corr.get("correlation")
+                        _bm_corr_beta = _bm_corr.get("beta")
+                        if _bm_corr_val is not None and _bm_corr_beta is not None:
+                            _bm_corr_text = f"r = {_bm_corr_val:.2f}"
+                            _bm_corr_reason = (
+                                f"β {_bm_corr_beta:.2f}× vs {_bm_corr.get('proxy_used') or 'proxy'} "
+                                f"daily moves · {_bm_corr.get('points_used')} trading days"
+                            )
+                        else:
+                            _bm_corr_text = "—"
+                            _bm_corr_reason = _bm_corr.get("reason")
+                        _econ_metric_card(
+                            "Commodity Linkage (1y daily returns)",
+                            _bm_corr_text,
+                            _bm_corr_reason,
+                        )
+                    _econ_render_trend_chart(
+                        _bm.get("trend") or [],
+                        _bm.get("proxy_used"),
+                        _bm_display.get("unit_label"),
+                        _bm_label,
+                    )
+                    _econ_render_indexed_chart(
+                        _bm.get("trend") or [],
+                        _bm.get("proxy_used"),
+                        _bm_label,
+                    )
 
                 # --- Cost structure waterfall (statement-level) ---
                 # Where the top line goes, using the sector profile's mapped

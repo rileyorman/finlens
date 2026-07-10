@@ -119,28 +119,82 @@ def _extract_text(fundamentals: dict[str, Any], field: str) -> str | None:
     return text or None
 
 
-def infer_commodity(sector_inferred: str | None, commodity_hint: str | None = None) -> str | None:
-    """Infer a commodity key supported by COMMODITY_PROXIES."""
+# CB-027 (ratified 2026-07-09): commodity families FinLens RECORDS even though
+# no liquid free-tier benchmark proxy exists for them. They appear in
+# metadata.commodities with proxy_available False and the UI says so honestly —
+# never borrow a lookalike proxy for them.
+RECORD_ONLY_COMMODITIES = ("oil sands", "ngls")
+
+
+def classify_commodities(
+    sector_inferred: str | None, commodity_hint: str | None = None
+) -> list[dict[str, Any]]:
+    """CB-027: ALL commodity families evidenced for the filer, none primary.
+
+    Many producers sell several commodities at once (oil + natural gas + NGLs;
+    oil sands filers realize crude-blend pricing) and a sector string like
+    "Upstream Oil & Gas" cannot reveal the revenue weighting — so FinLens
+    records EVERY family the evidence names and claims no primary. Entries:
+    {"name", "source", "proxy_available"}. Order is deliberate: the first
+    proxy-available entry is the legacy single-commodity benchmark (kept for
+    back-compat), matching infer_commodity()'s historical choice exactly.
+    Revenue weighting from the IFRS 15 disaggregation note is the future
+    upgrade; until then no weighting is claimed anywhere.
+    """
+    found: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def _add(name: str, source: str) -> None:
+        if name not in seen:
+            seen.add(name)
+            found.append({
+                "name": name,
+                "source": source,
+                "proxy_available": name in COMMODITY_PROXIES,
+            })
+
     if commodity_hint:
         hint = commodity_hint.strip().lower()
-        if hint in COMMODITY_PROXIES:
-            return hint
+        if hint in COMMODITY_PROXIES or hint in RECORD_ONLY_COMMODITIES:
+            _add(hint, "hint")
 
     sector = str(sector_inferred or "").lower()
-    # Gold before silver: a "gold-silver" miner prices primarily off gold.
+    # Insertion order preserves infer_commodity()'s historical precedence
+    # (gold before silver; crude before natural gas), so benchmark #1 is
+    # unchanged for every previously-supported shape.
     if "gold" in sector:
-        return "gold"
+        _add("gold", "sector_description")
     if "silver" in sector:
-        return "silver"
+        _add("silver", "sector_description")
     if "copper" in sector:
-        return "copper"
+        _add("copper", "sector_description")
     if "uranium" in sector:
-        return "uranium"
+        _add("uranium", "sector_description")
     has_oil_keyword = any(keyword in sector for keyword in ("oil", "crude", "petroleum"))
-    if "natural gas" in sector and not has_oil_keyword:
-        return "natural gas"
     if has_oil_keyword:
-        return "crude oil"
+        _add("crude oil", "sector_description")
+    # Natural gas needs the explicit phrase, OR a bare "gas" word alongside
+    # oil evidence (the "Oil & Gas" family form). A bare "gas" alone stays
+    # unclassified — "Gas Gathering and Processing" is midstream, not a
+    # producer, and gets no commodity benchmark (pinned test).
+    if "natural gas" in sector or (has_oil_keyword and re.search(r"\bgas\b", sector)):
+        _add("natural gas", "sector_description")
+    if "oil sands" in sector:
+        _add("oil sands", "sector_description")
+    if "ngl" in sector or "natural gas liquids" in sector:
+        _add("ngls", "sector_description")
+    return found
+
+
+def infer_commodity(sector_inferred: str | None, commodity_hint: str | None = None) -> str | None:
+    """Legacy single-commodity view: first proxy-available family (CB-027).
+
+    Kept for callers/tests that want one benchmark key; behavior is identical
+    to the historical implementation for every previously-supported shape.
+    """
+    for entry in classify_commodities(sector_inferred, commodity_hint):
+        if entry["proxy_available"]:
+            return entry["name"]
     return None
 
 
@@ -522,12 +576,20 @@ def build_resource_economics_snapshot(
         value = _extract_field(fundamentals, field)
         cost_structure[field] = value * factor if value is not None else None
 
-    commodity = infer_commodity(sector_inferred, commodity_hint)
+    # CB-027 (2026-07-09): record ALL commodity families evidenced for the
+    # filer and benchmark EACH proxy-available one — no primary is claimed.
+    # "Upstream Oil & Gas" (CNQ, TOU, ARX) records crude oil AND natural gas;
+    # record-only families (oil sands, NGLs) appear in metadata.commodities
+    # with an honest no-proxy marker. The legacy single-commodity keys below
+    # stay wired to benchmark #1 (identical to the old infer_commodity pick)
+    # so single-commodity filers and existing consumers are unchanged.
+    commodities = classify_commodities(sector_inferred, commodity_hint)
+    proxied_commodities = [c for c in commodities if c["proxy_available"]]
+    commodity = proxied_commodities[0]["name"] if proxied_commodities else None
     # Resolve the filing currency first so the company lookup can prefer the
     # listing quoted in the same currency (see _resolve_company_market_data).
     filing_currency = _currency_code(currency)
     company_market = _resolve_company_market_data(ticker, filing_currency, cache)
-    commodity_market = _fetch_commodity_market_data(commodity, cache)
 
     # Company share-price history for the indexed company-vs-commodity chart.
     # Reuses the proxy fetcher (same 1y window and point shape as the
@@ -537,13 +599,38 @@ def build_resource_economics_snapshot(
     if company_symbol:
         company_trend_points = _fetch_proxy_data(company_symbol, cache).get("trend", [])
 
+    commodity_benchmarks: list[dict[str, Any]] = []
+    for entry in proxied_commodities:
+        market = _fetch_commodity_market_data(entry["name"], cache)
+        stats = _daily_return_stats(company_trend_points, market.get("trend", []))
+        stats["proxy_used"] = market.get("proxy_used")
+        commodity_benchmarks.append({
+            "commodity": entry["name"],
+            "source": entry["source"],
+            "spot_price": market.get("spot_price"),
+            "proxy_used": market.get("proxy_used"),
+            "proxy_role": market.get("proxy_role"),
+            "trend": market.get("trend", []),
+            "correlation": stats,
+            "error": market.get("error"),
+        })
+
+    _first_benchmark = commodity_benchmarks[0] if commodity_benchmarks else {}
+    commodity_market = {
+        "spot_price": _first_benchmark.get("spot_price"),
+        "proxy_used": _first_benchmark.get("proxy_used"),
+        "proxy_role": _first_benchmark.get("proxy_role"),
+        "trend": _first_benchmark.get("trend", []),
+        "error": _first_benchmark.get("error"),
+    }
+
     # Fill the scaled revenue shared with the Tier 1 ratios (revenue is both a
     # ratio input and the waterfall's opening bar). production_costs and
     # mine_development_amortization are already filled by the cost-field loop.
     cost_structure["revenue"] = values["revenue"]
 
-    correlation_stats = _daily_return_stats(
-        company_trend_points, commodity_market.get("trend", [])
+    correlation_stats = _first_benchmark.get("correlation") or _daily_return_stats(
+        company_trend_points, []
     )
     correlation_stats["proxy_used"] = commodity_market.get("proxy_used")
 
@@ -646,12 +733,18 @@ def build_resource_economics_snapshot(
             "points": company_trend_points,
         },
         "commodity_correlation": correlation_stats,
+        # CB-027: one block per proxy-available commodity family, no primary
+        # claimed. Blocks [1:] are the families the legacy single-commodity
+        # keys above cannot carry (e.g. natural gas for an "Oil & Gas" filer).
+        "commodity_benchmarks": commodity_benchmarks,
         "cost_structure": cost_structure,
         "cheap_company_or_cheap_sector": cheap_company_or_cheap_sector,
         "metadata": {
             "ticker": ticker,
             "ticker_used": company_market.get("ticker_used"),
             "commodity": commodity,
+            "commodities": commodities,
+            "multi_commodity": len(proxied_commodities) > 1,
             "proxy_used": commodity_market.get("proxy_used"),
             "fiscal_year_end": fiscal_year_end,
             "currency": currency,

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-07T23:49:32Z",
+  "generated_at": "2026-07-10T00:22:00Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -167,8 +167,8 @@
         "issuer_url": "https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 9,
-      "resolved_field_count": 9,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2025-02-18",
       "commit": "24cf477",
       "notes": ""

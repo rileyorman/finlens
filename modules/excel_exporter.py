@@ -757,7 +757,22 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         ni_row = _find_row2(is_rows, _NI_LABELS, exclude=_NI_EXCLUDE)
         ni_c = _signed_bottom_line(ni_row.get("line_item"), ni_row.get("value")) if ni_row else None
 
-    da_c = _lookup(cf_rows, _DA_LABELS, "value")
+    # CB-026: canonical-first D&A for the EBITDA add-back. Resource filers may
+    # print a COMBINED "DD&A and impairment" line (TOU 3,000,251 / ARX 1,547.2);
+    # it maps with an includes_impairment semantics tag (ruling 2026-07-09:
+    # impairment is a non-cash add-back in standard EBITDA practice) and the
+    # composition is DISCLOSED via da_basis — the cf-row scrape's bare
+    # "depreciation" keyword would otherwise match the combined line silently,
+    # with impairment inside EBITDA and no caption saying so.
+    da_c = financial_data.get("depletion_depreciation_amortization")
+    da_basis = "D&A"
+    if isinstance(da_c, (int, float)) and not isinstance(da_c, bool):
+        _da_sem = (((financial_data.get("mapping") or {}).get("mapped") or {})
+                   .get("depletion_depreciation_amortization") or {}).get("semantics") or {}
+        if _da_sem.get("includes_impairment"):
+            da_basis = "D&A incl. impairment"
+    else:
+        da_c = _lookup(cf_rows, _DA_LABELS, "value")
     if da_c is not None:
         da_c = abs(da_c)
 
@@ -886,7 +901,8 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
             if netback_margin is not None else None),
         "ebitda_margin": (
             f"EBITDA {_fmt_compact(ebitda_c)} ÷ revenue {_fmt_compact(rev_c)}"
-            + (" (EBIT + D&A)" if ebit_derived else "")
+            + (f" (EBIT + {da_basis})" if ebit_derived
+               else (f" ({da_basis})" if da_basis != "D&A" else ""))
             if ebitda_margin is not None else None),
         "ni_margin": (f"net income {_fmt_compact(ni_c)} ÷ revenue {_fmt_compact(rev_c)}"
                       if ni_margin is not None else None),
@@ -912,6 +928,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "ni_c": ni_c,         "ni_margin": ni_margin,
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
         "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
+        "da_basis": da_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
         "de_ratio": de_ratio,
