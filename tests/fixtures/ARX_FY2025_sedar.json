@@ -1,0 +1,1218 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 5,
+  "company_name": "ARC Resources Ltd.",
+  "accounting_standard": "IFRS Accounting Standards",
+  "currency": "CAD",
+  "scale": "millions",
+  "fiscal_year_end": "December 31, 2025",
+  "filing_date": "2026-02-05",
+  "sector_inferred": "Upstream Oil & Gas",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash and cash equivalents",
+        "values": {
+          "December 31, 2025": 7.0,
+          "December 31, 2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Inventory",
+        "values": {
+          "December 31, 2025": 17.9,
+          "December 31, 2024": 12.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Accounts receivable",
+        "values": {
+          "December 31, 2025": 749.2,
+          "December 31, 2024": 691.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Prepaid expense",
+        "values": {
+          "December 31, 2025": 136.6,
+          "December 31, 2024": 107.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Risk management contracts",
+        "values": {
+          "December 31, 2025": 135.6,
+          "December 31, 2024": 190.1
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "December 31, 2025": 1046.3,
+          "December 31, 2024": 1000.9
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Risk management contracts (long-term)",
+        "values": {
+          "December 31, 2025": 56.4,
+          "December 31, 2024": 154.1
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Long-term investments",
+        "values": {
+          "December 31, 2025": 30.2,
+          "December 31, 2024": 27.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "values": {
+          "December 31, 2025": 442.4,
+          "December 31, 2024": 338.1
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Property, plant and equipment",
+        "values": {
+          "December 31, 2025": 12514.4,
+          "December 31, 2024": 10373.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Right-of-use and other long-term assets",
+        "values": {
+          "December 31, 2025": 972.4,
+          "December 31, 2024": 956.8
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Goodwill",
+        "values": {
+          "December 31, 2025": 248.2,
+          "December 31, 2024": 248.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "December 31, 2025": 15310.3,
+          "December 31, 2024": 13099.7
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2025": 760.8,
+          "December 31, 2024": 634.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Current portion of lease obligations",
+        "values": {
+          "December 31, 2025": 112.1,
+          "December 31, 2024": 92.8
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Current portion of long-term debt",
+        "values": {
+          "December 31, 2025": 450.0,
+          "December 31, 2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Current portion of other deferred liabilities",
+        "values": {
+          "December 31, 2025": 28.6,
+          "December 31, 2024": 23.3
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Current portion of asset retirement obligation",
+        "values": {
+          "December 31, 2025": 20.0,
+          "December 31, 2024": 17.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Dividends payable",
+        "values": {
+          "December 31, 2025": 120.0,
+          "December 31, 2024": 112.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Risk management contracts",
+        "values": {
+          "December 31, 2025": 0.0,
+          "December 31, 2024": 1.0
+        },
+        "confidence": 0.85
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "December 31, 2025": 1491.5,
+          "December 31, 2024": 880.7
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Risk management contracts (long-term)",
+        "values": {
+          "December 31, 2025": 138.9,
+          "December 31, 2024": 37.1
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Long-term portion of lease obligations",
+        "values": {
+          "December 31, 2025": 922.1,
+          "December 31, 2024": 908.5
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Long-term debt",
+        "values": {
+          "December 31, 2025": 2428.1,
+          "December 31, 2024": 1387.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Long-term incentive compensation liability",
+        "values": {
+          "December 31, 2025": 28.1,
+          "December 31, 2024": 76.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Other deferred liabilities",
+        "values": {
+          "December 31, 2025": 113.0,
+          "December 31, 2024": 95.8
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Asset retirement obligation",
+        "values": {
+          "December 31, 2025": 473.9,
+          "December 31, 2024": 414.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Deferred taxes",
+        "values": {
+          "December 31, 2025": 1450.7,
+          "December 31, 2024": 1351.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2025": 7046.3,
+          "December 31, 2024": 5151.5
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Shareholders' capital",
+        "values": {
+          "December 31, 2025": 5990.6,
+          "December 31, 2024": 6194.3
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Contributed surplus",
+        "values": {
+          "December 31, 2025": 28.4,
+          "December 31, 2024": 31.6
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "December 31, 2025": 2247.0,
+          "December 31, 2024": 1728.5
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Accumulated other comprehensive loss",
+        "values": {
+          "December 31, 2025": -2.0,
+          "December 31, 2024": -6.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total shareholders' equity",
+        "values": {
+          "December 31, 2025": 8264.0,
+          "December 31, 2024": 7948.2
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "values": {
+          "December 31, 2025": 15310.3,
+          "December 31, 2024": 13099.7
+        },
+        "confidence": 0.98
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Commodity sales from production",
+        "values": {
+          "2025": 5421.7,
+          "2024": 4603.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Royalties",
+        "values": {
+          "2025": -536.8,
+          "2024": -524.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Sales of third-party purchases",
+        "values": {
+          "2025": 1190.8,
+          "2024": 1020.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total revenue",
+        "values": {
+          "2025": 6075.7,
+          "2024": 5099.0
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Interest and other income",
+        "values": {
+          "2025": 20.4,
+          "2024": 20.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Gain on risk management contracts",
+        "values": {
+          "2025": 11.0,
+          "2024": 272.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total revenue, interest and other income, and gain on risk management contracts",
+        "values": {
+          "2025": 6107.1,
+          "2024": 5391.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Operating",
+        "values": {
+          "2025": 735.8,
+          "2024": 596.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Transportation",
+        "values": {
+          "2025": 689.1,
+          "2024": 662.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Third-party purchases",
+        "values": {
+          "2025": 1164.9,
+          "2024": 1011.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "General and administrative",
+        "values": {
+          "2025": 175.6,
+          "2024": 248.1
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Interest and financing",
+        "values": {
+          "2025": 151.3,
+          "2024": 133.8
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Impairment (reversal of impairment) of financial assets",
+        "values": {
+          "2025": -2.8,
+          "2024": 2.3
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Depletion, depreciation and amortization and impairment of property, plant and equipment",
+        "values": {
+          "2025": 1547.2,
+          "2024": 1360.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Loss on foreign exchange",
+        "values": {
+          "2025": 16.1,
+          "2024": 1.3
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Gain on disposal of assets",
+        "values": {
+          "2025": -4.0,
+          "2024": -80.0
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Total expenses",
+        "values": {
+          "2025": 4473.2,
+          "2024": 3936.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Net income before income taxes",
+        "values": {
+          "2025": 1633.9,
+          "2024": 1455.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Current income taxes",
+        "values": {
+          "2025": 260.0,
+          "2024": 200.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Deferred income taxes",
+        "values": {
+          "2025": 98.8,
+          "2024": 130.5
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Total income taxes",
+        "values": {
+          "2025": 358.8,
+          "2024": 330.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 1275.1,
+          "2024": 1124.1
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Net unrealized gain on foreign currency translation adjustment",
+        "values": {
+          "2025": 4.2,
+          "2024": 11.7
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Comprehensive income",
+        "values": {
+          "2025": 1279.3,
+          "2024": 1135.8
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Net income per share - Basic",
+        "values": {
+          "2025": 2.19,
+          "2024": 1.89
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Net income per share - Diluted",
+        "values": {
+          "2025": 2.19,
+          "2024": 1.88
+        },
+        "confidence": 0.95
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "2025": 1275.1,
+          "2024": 1124.1
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Unrealized loss (gain) on risk management contracts",
+        "values": {
+          "2025": 253.0,
+          "2024": -82.4
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Depletion, depreciation and amortization and impairment of property, plant and equipment",
+        "values": {
+          "2025": 1547.2,
+          "2024": 1360.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Unrealized loss on foreign exchange",
+        "values": {
+          "2025": 3.3,
+          "2024": 5.1
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Gain on disposal of assets",
+        "values": {
+          "2025": -4.0,
+          "2024": -80.0
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Deferred taxes",
+        "values": {
+          "2025": 98.8,
+          "2024": 130.5
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Other",
+        "values": {
+          "2025": 19.0,
+          "2024": 14.5
+        },
+        "confidence": 0.85
+      },
+      {
+        "label": "Net change in other liabilities",
+        "values": {
+          "2025": -95.4,
+          "2024": -19.9
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "values": {
+          "2025": -3.5,
+          "2024": -104.0
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Cash flow from operating activities",
+        "values": {
+          "2025": 3093.5,
+          "2024": 2348.6
+        },
+        "confidence": 0.98
+      },
+      {
+        "label": "Draw of long-term debt under credit facilities",
+        "values": {
+          "2025": 6095.9,
+          "2024": 7348.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Issuance of senior notes",
+        "values": {
+          "2025": 1000.0,
+          "2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Issuance of term loan",
+        "values": {
+          "2025": 500.0,
+          "2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Repayment of long-term debt",
+        "values": {
+          "2025": -6099.9,
+          "2024": -7111.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Proceeds from exercise of share options",
+        "values": {
+          "2025": 10.4,
+          "2024": 16.5
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Repurchase of shares",
+        "values": {
+          "2025": -514.0,
+          "2024": -202.4
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Repayment of principal relating to lease obligations",
+        "values": {
+          "2025": -103.8,
+          "2024": -93.6
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Cash dividends paid",
+        "values": {
+          "2025": -444.0,
+          "2024": -405.7
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "values": {
+          "2025": 4.9,
+          "2024": 4.7
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Cash flow from (used in) financing activities",
+        "values": {
+          "2025": 449.5,
+          "2024": -443.5
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Business combination",
+        "values": {
+          "2025": -1672.1,
+          "2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Acquisition of assets",
+        "values": {
+          "2025": -17.8,
+          "2024": -13.9
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Disposition of assets",
+        "values": {
+          "2025": 4.0,
+          "2024": 80.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Property, plant and equipment development expenditures",
+        "values": {
+          "2025": -1819.1,
+          "2024": -1787.8
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Exploration and evaluation asset expenditures",
+        "values": {
+          "2025": -53.6,
+          "2024": -31.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Long-term investments",
+        "values": {
+          "2025": -3.5,
+          "2024": -6.8
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "values": {
+          "2025": 26.1,
+          "2024": -146.5
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Cash flow used in investing activities",
+        "values": {
+          "2025": -3536.0,
+          "2024": -1906.2
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Increase (decrease) in cash and cash equivalents",
+        "values": {
+          "2025": 7.0,
+          "2024": -1.1
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of year",
+        "values": {
+          "2025": 0.0,
+          "2024": 1.1
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "values": {
+          "2025": 7.0,
+          "2024": 0.0
+        },
+        "confidence": 0.95
+      },
+      {
+        "label": "Income taxes paid in cash",
+        "values": {
+          "2025": 183.3,
+          "2024": 199.7
+        },
+        "confidence": 0.9
+      },
+      {
+        "label": "Interest paid in cash",
+        "values": {
+          "2025": 129.5,
+          "2024": 117.4
+        },
+        "confidence": 0.9
+      }
+    ]
+  },
+  "extraction_confidence": 0.85,
+  "pages_used": {
+    "balance_sheet": [
+      78,
+      79
+    ],
+    "income_statement": [
+      40,
+      41,
+      79,
+      80
+    ],
+    "cash_flow": [
+      81,
+      82
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "revenue": {
+        "value": 5421.7,
+        "source_label": "Commodity sales from production",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "royalties": {
+        "value": -536.8,
+        "source_label": "Royalties",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "depletion_depreciation_amortization": {
+        "value": 1547.2,
+        "source_label": "Depletion, depreciation and amortization and impairment of property, plant and equipment",
+        "match_type": "exact",
+        "confidence": 0.95,
+        "semantics": {
+          "includes_impairment": true
+        }
+      },
+      "pretax_income": {
+        "value": 1633.9,
+        "source_label": "Net income before income taxes",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "net_income": {
+        "value": 1275.1,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_assets": {
+        "value": 15310.3,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "short_term_debt": {
+        "value": 450.0,
+        "source_label": "Current portion of long-term debt",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "long_term_debt": {
+        "value": 2428.1,
+        "source_label": "Long-term debt",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "total_liabilities": {
+        "value": 7046.3,
+        "source_label": "Total liabilities",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_equity": {
+        "value": 8264.0,
+        "source_label": "Total shareholders' equity",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "operating_cash_flow": {
+        "value": 3093.5,
+        "source_label": "Cash flow from operating activities",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "capex": {
+        "value": -1819.1,
+        "source_label": "Property, plant and equipment development expenditures",
+        "match_type": "exact",
+        "confidence": 0.95
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Sales of third-party purchases",
+        "value": 1190.8
+      },
+      {
+        "label": "Total revenue",
+        "value": 6075.7
+      },
+      {
+        "label": "Interest and other income",
+        "value": 20.4
+      },
+      {
+        "label": "Gain on risk management contracts",
+        "value": 11.0
+      },
+      {
+        "label": "Total revenue, interest and other income, and gain on risk management contracts",
+        "value": 6107.1
+      },
+      {
+        "label": "Operating",
+        "value": 735.8
+      },
+      {
+        "label": "Transportation",
+        "value": 689.1
+      },
+      {
+        "label": "Third-party purchases",
+        "value": 1164.9
+      },
+      {
+        "label": "General and administrative",
+        "value": 175.6
+      },
+      {
+        "label": "Interest and financing",
+        "value": 151.3
+      },
+      {
+        "label": "Impairment (reversal of impairment) of financial assets",
+        "value": -2.8
+      },
+      {
+        "label": "Loss on foreign exchange",
+        "value": 16.1
+      },
+      {
+        "label": "Gain on disposal of assets",
+        "value": -4.0
+      },
+      {
+        "label": "Total expenses",
+        "value": 4473.2
+      },
+      {
+        "label": "Current income taxes",
+        "value": 260.0
+      },
+      {
+        "label": "Deferred income taxes",
+        "value": 98.8
+      },
+      {
+        "label": "Total income taxes",
+        "value": 358.8
+      },
+      {
+        "label": "Net unrealized gain on foreign currency translation adjustment",
+        "value": 4.2
+      },
+      {
+        "label": "Comprehensive income",
+        "value": 1279.3
+      },
+      {
+        "label": "Net income per share - Basic",
+        "value": 2.19
+      },
+      {
+        "label": "Net income per share - Diluted",
+        "value": 2.19
+      },
+      {
+        "label": "Cash and cash equivalents",
+        "value": 7.0
+      },
+      {
+        "label": "Inventory",
+        "value": 17.9
+      },
+      {
+        "label": "Accounts receivable",
+        "value": 749.2
+      },
+      {
+        "label": "Prepaid expense",
+        "value": 136.6
+      },
+      {
+        "label": "Risk management contracts",
+        "value": 135.6
+      },
+      {
+        "label": "Total current assets",
+        "value": 1046.3
+      },
+      {
+        "label": "Risk management contracts (long-term)",
+        "value": 56.4
+      },
+      {
+        "label": "Long-term investments",
+        "value": 30.2
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "value": 442.4
+      },
+      {
+        "label": "Property, plant and equipment",
+        "value": 12514.4
+      },
+      {
+        "label": "Right-of-use and other long-term assets",
+        "value": 972.4
+      },
+      {
+        "label": "Goodwill",
+        "value": 248.2
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 760.8
+      },
+      {
+        "label": "Current portion of lease obligations",
+        "value": 112.1
+      },
+      {
+        "label": "Current portion of other deferred liabilities",
+        "value": 28.6
+      },
+      {
+        "label": "Current portion of asset retirement obligation",
+        "value": 20.0
+      },
+      {
+        "label": "Dividends payable",
+        "value": 120.0
+      },
+      {
+        "label": "Risk management contracts",
+        "value": 0.0
+      },
+      {
+        "label": "Total current liabilities",
+        "value": 1491.5
+      },
+      {
+        "label": "Risk management contracts (long-term)",
+        "value": 138.9
+      },
+      {
+        "label": "Long-term portion of lease obligations",
+        "value": 922.1
+      },
+      {
+        "label": "Long-term incentive compensation liability",
+        "value": 28.1
+      },
+      {
+        "label": "Other deferred liabilities",
+        "value": 113.0
+      },
+      {
+        "label": "Asset retirement obligation",
+        "value": 473.9
+      },
+      {
+        "label": "Deferred taxes",
+        "value": 1450.7
+      },
+      {
+        "label": "Shareholders' capital",
+        "value": 5990.6
+      },
+      {
+        "label": "Contributed surplus",
+        "value": 28.4
+      },
+      {
+        "label": "Retained earnings",
+        "value": 2247.0
+      },
+      {
+        "label": "Accumulated other comprehensive loss",
+        "value": -2.0
+      },
+      {
+        "label": "Total liabilities and shareholders' equity",
+        "value": 15310.3
+      },
+      {
+        "label": "Unrealized loss (gain) on risk management contracts",
+        "value": 253.0
+      },
+      {
+        "label": "Depletion, depreciation and amortization and impairment of property, plant and equipment",
+        "value": 1547.2
+      },
+      {
+        "label": "Unrealized loss on foreign exchange",
+        "value": 3.3
+      },
+      {
+        "label": "Gain on disposal of assets",
+        "value": -4.0
+      },
+      {
+        "label": "Deferred taxes",
+        "value": 98.8
+      },
+      {
+        "label": "Other",
+        "value": 19.0
+      },
+      {
+        "label": "Net change in other liabilities",
+        "value": -95.4
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "value": -3.5
+      },
+      {
+        "label": "Draw of long-term debt under credit facilities",
+        "value": 6095.9
+      },
+      {
+        "label": "Issuance of senior notes",
+        "value": 1000.0
+      },
+      {
+        "label": "Issuance of term loan",
+        "value": 500.0
+      },
+      {
+        "label": "Repayment of long-term debt",
+        "value": -6099.9
+      },
+      {
+        "label": "Proceeds from exercise of share options",
+        "value": 10.4
+      },
+      {
+        "label": "Repurchase of shares",
+        "value": -514.0
+      },
+      {
+        "label": "Repayment of principal relating to lease obligations",
+        "value": -103.8
+      },
+      {
+        "label": "Cash dividends paid",
+        "value": -444.0
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "value": 4.9
+      },
+      {
+        "label": "Cash flow from (used in) financing activities",
+        "value": 449.5
+      },
+      {
+        "label": "Business combination",
+        "value": -1672.1
+      },
+      {
+        "label": "Acquisition of assets",
+        "value": -17.8
+      },
+      {
+        "label": "Disposition of assets",
+        "value": 4.0
+      },
+      {
+        "label": "Exploration and evaluation asset expenditures",
+        "value": -53.6
+      },
+      {
+        "label": "Long-term investments",
+        "value": -3.5
+      },
+      {
+        "label": "Change in non-cash working capital",
+        "value": 26.1
+      },
+      {
+        "label": "Cash flow used in investing activities",
+        "value": -3536.0
+      },
+      {
+        "label": "Increase (decrease) in cash and cash equivalents",
+        "value": 7.0
+      },
+      {
+        "label": "Cash and cash equivalents, beginning of year",
+        "value": 0.0
+      },
+      {
+        "label": "Cash and cash equivalents, end of year",
+        "value": 7.0
+      },
+      {
+        "label": "Income taxes paid in cash",
+        "value": 183.3
+      },
+      {
+        "label": "Interest paid in cash",
+        "value": 129.5
+      },
+      {
+        "label": "Net income",
+        "value": 1275.1
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS Accounting Standards",
+      "sector_profile": "resource_sector",
+      "total": 94,
+      "mapped_count": 12,
+      "unmapped_count": 82,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": [],
+      "resolved_collisions": []
+    }
+  },
+  "source_provenance": {
+    "pdf_origin_url": "https://www.arcresources.com/wp-content/uploads/2026/03/2025-ARC-Annual-Report_web.pdf",
+    "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
+    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T23:05Z); review-gate re-fetches — sha256 byte-identical across 3 independent fetches by promotion (2026-07-09)",
+    "document_note": "2025 Annual Report (2025-ARC-Annual-Report_web.pdf); consolidated financial statements within the annual-report document",
+    "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md; first agent-fetched corpus fixtures (with TOU #16)",
+    "sha256": "d6a50819e9fd12f0cbba3f38595978444478d4ce92d71d12811fbae3197848f5",
+    "byte_size": 4604473
+  }
+}
