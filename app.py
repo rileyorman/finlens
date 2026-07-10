@@ -8210,6 +8210,12 @@ if st.session_state.financial_data:
                 st.metric("Netback Margin", _fmt_pct(_nb_m))
                 if _calcs.get("netback_margin"):
                     st.caption(_calcs["netback_margin"])
+            elif metrics.get("netback_expected"):
+                # Resource filer (royalties map) whose netback inputs are
+                # unmapped: name the RIGHT metric honestly rather than showing
+                # a Gross Margin dash that reads as a missing-COGS problem.
+                st.metric("Netback Margin", "—")
+                st.caption("netback inputs (operating / transportation) unmapped for this filer")
             else:
                 st.metric("Gross Margin", _fmt_pct(gp_m) or "—")
                 if _calcs.get("gp_margin"):

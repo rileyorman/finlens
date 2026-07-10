@@ -793,6 +793,18 @@
         "match_type": "exact",
         "confidence": 0.98
       },
+      "operating_expense": {
+        "value": 1148182,
+        "source_label": "Operating",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "transportation_costs": {
+        "value": 1198061,
+        "source_label": "Transportation",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
       "depletion_depreciation_amortization": {
         "value": 3000251,
         "source_label": "Depletion, depreciation, amortization and impairment",
@@ -875,14 +887,6 @@
       {
         "label": "Total revenue",
         "value": 6019970
-      },
-      {
-        "label": "Operating",
-        "value": 1148182
-      },
-      {
-        "label": "Transportation",
-        "value": 1198061
       },
       {
         "label": "Marketing purchases",
@@ -1181,8 +1185,8 @@
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "resource_sector",
       "total": 92,
-      "mapped_count": 11,
-      "unmapped_count": 81,
+      "mapped_count": 13,
+      "unmapped_count": 79,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
@@ -1193,7 +1197,7 @@
   "source_provenance": {
     "pdf_origin_url": "https://tourmaline.cdn.prismic.io/tourmaline/aaidt1xvIZEnjVXx_FinalQ42025MDAFinancialStatements.pdf",
     "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
-    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches — sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)",
+    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches \u2014 sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)",
     "document_note": "Q4 2025 MD&A + annual consolidated financial statements pack (FinalQ42025MDAFinancialStatements.pdf)",
     "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md; first agent-fetched corpus fixtures (with ARX #17)",
     "sha256": "16c2e1132c1b3928745739c3f9bea7d015242c86e8fc12af68ce982960e72214",

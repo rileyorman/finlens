@@ -1382,6 +1382,51 @@ RULINGS:
   matched nothing unintended corpus-wide); registry manifest note updated in
   scripts/build_filing_registry.py.
 
+## CB-030: Bare "Operating"/"Transportation" un-deferred — netback armed on TOU/ARX (supersedes CB-025 ruling 7)
+
+DECIDED 2026-07-10 (Riley — prompted by his live question "why is there no
+Gross Margin in the key metrics?" on the ARX dashboard; CC explained the
+two-layer answer — O&G prints no COGS (CB-024), and the designed Netback
+Margin replacement was dark because CB-025 ruling 7 had deferred the bare
+production-cost labels as "n=2 but dangerously generic" — and Riley ratified
+un-deferring with tight scoping).
+
+RULINGS:
+1. resource_sector `operating_expense` += bare "operating"
+   (INCOME_STATEMENT-scoped; TOU 1,148,182 / ARX 735.8) and
+   `transportation_costs` += bare "transportation" (same scoping;
+   TOU 1,198,061 / ARX 689.1). The scoping answers the original genericness
+   worry: the alias fires only on the exact normalized label, on one
+   statement, in one sector profile — cash-flow "operating activities" rows
+   and other sectors cannot match. CNQ is untouched (its labels are
+   "Production" / "Transportation, blending and feedstock" — CB-024).
+2. CB-024 netback consequence: TOU netback margin =
+   (4,426,145 − 1,148,182 − 1,198,061) / 4,426,145 = 47.0%; ARX =
+   (4,884.9 − 735.8 − 689.1) / 4,884.9 = 70.8% (real spread — low-cost
+   Montney gas vs CNQ's oil-weighted 49.3%; the cross-producer comparison
+   is the metric's purpose). Third-party/marketing purchase costs stay
+   outside the netback by construction — canonical revenue is
+   production-only (CB-025), and the bare labels are the production-cost
+   lines.
+3. HONEST CARD LABEL (display rule): a resource filer (signal: `royalties`
+   maps — royalties only map under resource revenue semantics) whose
+   netback INPUTS are unmapped shows "Netback Margin —" with an
+   inputs-unmapped caption, never a "Gross Margin —" that reads as a
+   missing-COGS problem. New `netback_expected` flag in
+   `_calc_summary_metrics`.
+
+- Enforced by: CC-implemented directly (commit cites CB-030).
+  sedar_aliases.json (both aliases, sources cite CB-030); TOU fixture
+  re-mapped 11 → 13 and ARX 14 → 16 via attach_mapping; registry
+  regenerated — both campaign_validated, all 15 other filers' counts
+  unchanged (the bare aliases fired nowhere unintended, machine-checked);
+  excel_exporter netback_expected + app.py card branch. Tests: TOU/ARX
+  fixture pins extended (labels + values + new counts), 3 summary-metrics
+  pins (ARX 70.8% from bare labels; expected-but-unmapped shows the flag;
+  non-resource keeps Gross Margin). Cross-extractor note (CB-014 family):
+  the four new line-item-backed fields enter the Gemini denominator at the
+  next run, same as CB-029's two.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
