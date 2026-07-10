@@ -1301,6 +1301,47 @@ RULINGS:
   record-only marking, bare-gas pin, per-proxy benchmark blocks, legacy-key
   back-compat, single-commodity shape unchanged).
 
+## CB-028: Search-triggered agent fetch — the flywheel front door; fetched bytes converge on the upload path by construction
+
+DECIDED 2026-07-09 (Riley — ratified all 8 rulings + 4 open questions as
+recommended; full ruling doc:
+docs/design_sessions/2026-07-09-search-triggered-agent-fetch__cc.md; brief:
+docs/design_briefs/2026-07-09-search-triggered-agent-fetch.md). Riley's UX,
+verbatim: "search a company and a filing and have OpenClaw fetch it and load
+it into the Upload Financial Statements section so I can then click analyze."
+
+RULINGS (summary — the ruling doc is authoritative):
+R1 fetch lane INSIDE the Upload expander, own Canadian checkbox (default
+True); R2 honest staged blocking states via st.status (240s agent turn /
+120s byte fetch), every failure shows the manual-upload fallback; R3 strict
+one-JSON-object agent contract (found/not_found/blocked), fetch-only,
+issuer/EDGAR only, NO SEDAR+ CAPTCHA automation, never guess a URL; R4 the
+app re-fetches bytes ITSELF, sha256 provenance receipt rides inside
+financial_data (additively — cache, library, Supabase all carry it), bytes
+cached to ~/.finlens/pdfs/_fetched/ for Re-Analyse; R5 the UploadedFile shim
+(io.BytesIO + .name/.size/.getvalue) is assigned to the SAME uploaded_file
+variable, so the 20MB guard, docx branch, cache key, CB-015 document-class
+gate, extraction, mapper, engine, moat log, and library fire UNCHANGED BY
+CONSTRUCTION — no second path to drift; R6 no auto-analyze, no auto-spend
+(the analyze click and its cost stay with the user; one Sterling turn per
+click); R7 config = OPENCLAW_GATEWAY_URL/_TOKEN/_SESSION_KEY via the SOPS
+store + .env.example same commit (the lost-GEMINI-key lesson), missing →
+lane disabled with honest caption; R8 evidence gate = live end-to-end on an
+uncached filer + moat-log JSONL + failure states exercised.
+OQ1 session key: REUSE the Telegram-routed key (every fetch visible in
+Riley's thread — visibility rule for free; revisit at user #2). OQ2 EDGAR
+URLs accepted; copy says best-for-Canadian. OQ3 240s agent timeout.
+OQ4 the fetch lane's Canadian checkbox stays independent of the manual one.
+
+- Enforced by: CC-implemented directly (commit cites CB-028).
+  modules/agent_fetch.py (pure/UI-agnostic: contract prompt + parser,
+  gateway turn, byte re-fetch with %PDF- magic + 20MB cap, sha256 receipt,
+  FetchedUpload shim, _fetched cache); app.py (fetch lane in the Upload
+  expander; same-variable convergence with manual-upload-wins clearing and
+  BytesIO rewind; provenance stamp before save_cache); .env.example.
+  Tests: 12 pins in tests/test_agent_fetch.py (T1–T6 + T8 module half; T7
+  structural via the blocking st.status flow).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

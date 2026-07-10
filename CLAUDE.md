@@ -1111,10 +1111,16 @@ Relevant roadmap items:
 ## Deployment Checklist
 
 **Secrets note (since 2026-07-08):** there is no plaintext `.env` — API keys come
-from the encrypted SOPS store, so the app AND the test suite must run with secrets
-injected: `Import-Secrets` then the command, or `sops exec-env %USERPROFILE%\.secrets\secrets.enc.env "<cmd>"`.
-Running `pytest` with NO injected secrets fails at collection (`test_run.py` makes a
-live Claude call and finds no key) — that's an environment miss, not a code failure.
+from the encrypted SOPS store, so the app must run with secrets injected:
+`Import-Secrets` then the command, or `sops exec-env %USERPROFILE%\.secrets\secrets.enc.env "<cmd>"`.
+**The test suite needs NO secrets (since 2026-07-09):** pyproject `testpaths`
+stopped pytest from collecting `test_run.py` (a root-level manual demo script
+whose import ran a live Claude call — it burned ~35s + ~50K tokens per suite
+run and wrote Mastech figure-presence noise into the production moat log),
+and `conftest.py` redirects `FINLENS_DATA_DIR` to a throwaway directory for
+every test session, so NO test can touch real `~/.finlens` data — pinned by
+tests/test_data_dir_isolation.py. Run `python test_run.py` manually (with
+secrets) when the live smoke test is wanted.
 
 Before deployment or demo:
 
