@@ -1329,7 +1329,21 @@ def test_arx_fixture_first_agent_fetched_filer_to_reach_verified():
     assert mapped["capex"]["source_label"] == "Property, plant and equipment development expenditures"
     assert mapped["capex"]["value"] == -1819.1
 
-    assert result["meta"]["mapped_count"] == 12
+    # CB-029 (2026-07-10): the two deferred alias candidates from promotion,
+    # ratified after the browser ground-truth pass. E&E is cash_flow-scoped
+    # (the balance-sheet asset STOCK 442.4 must not match — CB-009 pattern);
+    # its presence flips ARX's FCF capex composition to PP&E + E&E (CB-021).
+    ee = mapped["capitalized_exploration_additions"]
+    assert ee["source_label"] == "Exploration and evaluation asset expenditures"
+    assert ee["value"] == -53.6
+    # income_statement-scoped: the cash-flow "Interest paid in cash" 129.5
+    # stays unmapped; arms EBIT/EBITDA/interest-cover on ARX (CB-023).
+    assert mapped["interest_expense"]["source_label"] == "Interest and financing"
+    assert mapped["interest_expense"]["value"] == 151.3
+    assert "Interest paid in cash" in unmapped_labels
+    assert "Exploration and evaluation assets" in unmapped_labels  # the stock
+
+    assert result["meta"]["mapped_count"] == 14
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)

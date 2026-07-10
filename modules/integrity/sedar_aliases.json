@@ -494,6 +494,12 @@
               "standards": ["IFRS"],
               "source": "CB-021 CNQ_FY2024 — E&E capex; summed into capex for O&G/mining per ruling",
               "statements": ["cash_flow"]
+            },
+            {
+              "label": "exploration and evaluation asset expenditures",
+              "standards": ["IFRS"],
+              "source": "CB-029 ARX_FY2025 — E&E capex −53.6, promoted from the ARX promotion note's deferred candidate (n=1 triage, concept-unambiguous); presence arms the PP&E + E&E FCF composition per CB-021",
+              "statements": ["cash_flow"]
             }
           ],
           "patterns": []
@@ -504,6 +510,12 @@
               "label": "interest and other financing expense",
               "standards": ["IFRS"],
               "source": "CB-023 CNQ_FY2024 — financing expense; used in EBIT add-back + interest cover",
+              "statements": ["income_statement"]
+            },
+            {
+              "label": "interest and financing",
+              "standards": ["IFRS"],
+              "source": "CB-029 ARX_FY2025 — financing expense 151.3 (n=1 triage, concept-unambiguous); arms EBIT/EBITDA/interest-cover per CB-023; income_statement-scoped so ARX's cash-flow 'Interest paid in cash' cannot match",
               "statements": ["income_statement"]
             }
           ],

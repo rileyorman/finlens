@@ -249,9 +249,13 @@ FILING_MANIFEST = {
             "1,190.8) staying unmapped and the curly-apostrophe equity label in "
             "print. Benign observations: unlabeled current-asset/liability subtotals "
             "stored under standard names; tax rows stored contextualized ('Current' "
-            "→ 'Current income taxes'). Alias candidate (n=1, deferred): "
-            "'Exploration and evaluation asset expenditures' −53.6 matches no CB-009 "
-            "alias — ARX FCF capex is honestly PP&E-only."
+            "→ 'Current income taxes'). CB-029 (2026-07-10) promoted the deferred "
+            "alias candidates surfaced at promotion: 'Exploration and evaluation "
+            "asset expenditures' −53.6 → capitalized_exploration_additions "
+            "(cash_flow-scoped; FCF capex is now PP&E + E&E per CB-021) and "
+            "'Interest and financing' 151.3 → interest_expense "
+            "(income_statement-scoped; arms EBIT/EBITDA/interest-cover per CB-023). "
+            "Stored mapping regenerated 12 → 14 fields."
         ),
     },
 }
