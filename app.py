@@ -879,6 +879,10 @@ def _sedar_extraction_to_financial_data(
         "fiscal_year": income_current,
         "fiscal_year_prior": income_prior or "Prior",
         "accounting_standard": extraction_result.get("accounting_standard"),
+        # Boundary normalization: the filing's inferred sector must ride at the
+        # top level so consumers (peer comparison, inversion panel, library
+        # views) never have to dig into sedar_extraction for it.
+        "sector_inferred": extraction_result.get("sector_inferred"),
         "extraction_confidence": extraction_result.get("extraction_confidence"),
         "pages_used": extraction_result.get("pages_used"),
         "mapping": mapping,
@@ -6104,15 +6108,18 @@ _sector_ticker = (
 )
 _quick_financial_data = st.session_state.get("quick_financial_data") or {}
 _yf_sector, _yf_industry = _lookup_yfinance_sector(_sector_ticker, return_industry=True)
+# market_data now carries the NAME-VALIDATED listing's classification
+# (wrong-issuer guard, 2026-07-10 ARX/Accelerant collision), so it outranks
+# the raw bare-ticker yfinance lookup.
 _raw_sector = (
     _quick_financial_data.get("sector")
-    or _yf_sector
     or (st.session_state.get("market_data") or {}).get("sector")
+    or _yf_sector
 )
 _raw_industry = (
     _quick_financial_data.get("industry")
-    or _yf_industry
     or (st.session_state.get("market_data") or {}).get("industry")
+    or _yf_industry
 )
 _auto_sector = _map_sector_to_option(_raw_sector, _raw_industry)
 if _auto_sector:
@@ -6543,9 +6550,22 @@ if uploaded_file:
 
         if resolved_ticker:
             with st.spinner(f"Fetching market data for {resolved_ticker}..."):
-                market_data = get_market_data(resolved_ticker)
+                # company_name arms the wrong-issuer guard (bare 'ARX' on
+                # yfinance is Accelerant Holdings, not ARC Resources);
+                # prefer_canadian makes SEDAR filers try .TO/.V first.
+                market_data = get_market_data(
+                    resolved_ticker,
+                    company_name=financial_data.get("company_name"),
+                    prefer_canadian=_use_sedar_pipeline,
+                )
                 if not market_data.get("current_price"):
-                    st.warning(f"Could not fetch market data for '{resolved_ticker}'.")
+                    _res_note = market_data.get("resolution_note")
+                    if _res_note:
+                        st.warning(
+                            f"Market data withheld for '{resolved_ticker}': {_res_note}"
+                        )
+                    else:
+                        st.warning(f"Could not fetch market data for '{resolved_ticker}'.")
 
         market_cap = market_data.get("market_cap") or 0.0
         _upload_source = "sedar" if _use_sedar_pipeline else _upload_analysis_source(resolved_ticker)
@@ -7824,15 +7844,30 @@ if st.session_state.financial_data:
             )
             _sector_idx = 0
             _auto_pick_note = None
+            _auto_choice = None
             _auto_s = st.session_state.get("auto_sector")
-            _suggested = suggest_sector(_sector_hint)
-            if _auto_s and _auto_s in _sector_options:
-                _sector_idx = _sector_options.index(_auto_s)
-            elif _suggested:
+            # SEDAR filers get the Canadian peer variant where one exists —
+            # a WCSB gas producer's comparables are Canadian issuers, not
+            # US supermajors.
+            _is_sedar = financial_data.get("source") == "sedar_pdf"
+            _suggested = suggest_sector(_sector_hint, canadian=_is_sedar)
+            # The filing's own sector is ground truth and wins; the
+            # yfinance-derived session auto_sector is only a fallback — it can
+            # be stale from a previously viewed company, or wrong when the
+            # bare ticker resolves to a different listing.
+            if _suggested:
                 _sector_idx = _sector_options.index(_suggested)
+                _auto_choice = _suggested
                 _auto_pick_note = (
                     f'Auto-picked from the filing sector "{_sector_hint}" — '
                     f'change it if wrong.'
+                )
+            elif _auto_s and _auto_s in _sector_options:
+                _sector_idx = _sector_options.index(_auto_s)
+                _auto_choice = _auto_s
+                _auto_pick_note = (
+                    "Auto-picked from market data (no sector in the filing) — "
+                    "change it if wrong."
                 )
 
             _pc_sector_col, _pc_btn_col = st.columns([2, 1])
@@ -7843,13 +7878,22 @@ if st.session_state.financial_data:
                     index=_sector_idx,
                     key="peer_sector",
                 )
-                if _auto_pick_note and _peer_sector == _suggested:
+                if _auto_pick_note and _peer_sector == _auto_choice:
                     st.caption(_auto_pick_note)
-                elif not _suggested and _sector_hint:
-                    st.caption(
-                        f'No peer bucket matched the filing sector "{_sector_hint}" — '
-                        f'pick one, or edit the ticker list below.'
-                    )
+                elif _auto_choice is None:
+                    # Nothing matched — never let the index-0 default look
+                    # deliberate (a gas producer silently benchmarked against
+                    # Big Tech was the reference incident, 2026-07-10).
+                    if _sector_hint:
+                        st.caption(
+                            f'No peer bucket matched the filing sector "{_sector_hint}" — '
+                            f'pick one, or edit the ticker list below.'
+                        )
+                    else:
+                        st.caption(
+                            "No sector hint available for this filing — pick the "
+                            "right bucket, or edit the ticker list below."
+                        )
             _default_peers = ", ".join(peer_map.get(_peer_sector, []))
             _peer_tickers_text = st.text_input(
                 "Peer tickers (comma-separated — edit to compare against your own set)",
@@ -7873,6 +7917,23 @@ if st.session_state.financial_data:
                     import html as _html
 
                     _med = _peer_data.get("medians") or {}
+
+                    # Subject Net Debt / OCF from the filing's own canonical
+                    # fields (same normalization basis, so the ratio is
+                    # scale-invariant); honest None when the inputs aren't
+                    # mapped. Peers get the yfinance approximation.
+                    def _filing_net_debt_cf():
+                        try:
+                            _ocf = financial_data.get("operating_cash_flow")
+                            _ltd = financial_data.get("long_term_debt")
+                            if _ocf is None or float(_ocf) <= 0 or _ltd is None:
+                                return None
+                            _debt = float(_ltd) + float(financial_data.get("short_term_debt") or 0)
+                            _cash = float(financial_data.get("cash") or 0)
+                            return (_debt - _cash) / float(_ocf)
+                        except Exception:
+                            return None
+
                     _rows = [
                         {
                             "ticker": _peer_ticker,
@@ -7883,6 +7944,7 @@ if st.session_state.financial_data:
                             "ps": market_data.get("ps"),
                             "rev_growth": market_data.get("rev_growth"),
                             "gross_margin": market_data.get("gross_margin"),
+                            "net_debt_cf": _filing_net_debt_cf(),
                             "is_current": True,
                         }
                     ]
@@ -7896,6 +7958,7 @@ if st.session_state.financial_data:
                         "ps": _med.get("ps"),
                         "rev_growth": _med.get("rev_growth"),
                         "gross_margin": _med.get("gross_margin"),
+                        "net_debt_cf": _med.get("net_debt_cf"),
                         "is_median": True,
                     })
 
@@ -7928,7 +7991,7 @@ if st.session_state.financial_data:
                         ):
                             color = "#94A3B8"
                         else:
-                            lower_better = metric in ("pe", "ev_ebitda", "pb", "ps")
+                            lower_better = metric in ("pe", "ev_ebitda", "pb", "ps", "net_debt_cf")
                             better = value < median_value if lower_better else value > median_value
                             color = "#4ADE80" if better else "#F87171"
                         return f'<td style="color:{color};font-weight:600">{text}</td>'
@@ -7940,6 +8003,7 @@ if st.session_state.financial_data:
                         ("ps", "P/S"),
                         ("rev_growth", "Rev Growth %"),
                         ("gross_margin", "Gross Margin %"),
+                        ("net_debt_cf", "Net Debt/CF"),
                     ]
                     _thead = (
                         "<tr><th>Ticker</th><th>Company</th>"

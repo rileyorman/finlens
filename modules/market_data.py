@@ -135,60 +135,162 @@ _EMPTY = {
     "gross_margin":        None,
     "fifty_two_week_high": None,
     "fifty_two_week_low":  None,
+    "sector":              None,
+    "industry":            None,
+    "resolved_symbol":     None,
+    "resolved_name":       None,
+    "resolution_note":     None,
 }
 
 
-def get_market_data(ticker: str) -> dict:
+_CA_SUFFIXES = (".TO", ".V", ".CN", ".NE")
+
+# Legal-form words carry no identity signal and inflate mismatch scores
+# ("ARC Resources Ltd." vs "ARC Resources" must agree).
+_LEGAL_NAME_WORDS = {
+    "ltd", "ltd.", "limited", "inc", "inc.", "incorporated", "corp", "corp.",
+    "corporation", "plc", "co", "co.", "company", "the", "trust", "lp", "llc",
+}
+
+# Minimum normalized-name similarity to accept a listing as the filing's
+# issuer. Calibrated on the reference collision: "ARC Resources Ltd." vs
+# "Accelerant Holdings" scores ~0.35 (reject); true matches score ~1.0.
+_NAME_AGREE_THRESHOLD = 0.60
+
+
+def _normalize_company_name(name: str) -> str:
+    text = "".join(ch if (ch.isalnum() or ch.isspace()) else " " for ch in str(name or "").lower())
+    words = [w for w in text.split() if w not in _LEGAL_NAME_WORDS]
+    return " ".join(words)
+
+
+def _names_agree(filing_name: str, listing_name: str) -> bool:
+    """True when the yfinance listing plausibly IS the filing's issuer."""
+    a = _normalize_company_name(filing_name)
+    b = _normalize_company_name(listing_name)
+    if not a or not b:
+        return False
+    if a in b or b in a:
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= _NAME_AGREE_THRESHOLD
+
+
+def _candidate_symbols(ticker: str, prefer_canadian: bool = False) -> list[str]:
+    """Symbols to try, in order. A bare ticker on a Canadian filing tries the
+    TSX/TSXV listings before the bare symbol — a bare TSX-only ticker resolves
+    on yfinance to whatever US issuer holds that symbol (reference collision:
+    bare 'ARX' = Accelerant Holdings, an insurance broker; ARC Resources is
+    ARX.TO)."""
+    translated = _to_yfinance_ticker(ticker)
+    if not translated:
+        return []
+    if prefer_canadian and not any(translated.endswith(sfx) for sfx in _CA_SUFFIXES):
+        return [f"{translated}.TO", f"{translated}.V", translated]
+    return [translated]
+
+
+def _fetch_symbol_payload(symbol: str) -> dict | None:
+    """Fetch one symbol's market payload; None when it has no live price."""
+    t = yf.Ticker(symbol)
+    fi = t.fast_info  # lightweight endpoint — reliable for small-caps
+
+    current_price = getattr(fi, "last_price", None)
+    if not current_price:
+        return None
+
+    raw_mc = getattr(fi, "market_cap", None)
+    market_cap = round(raw_mc / 1_000_000, 2) if raw_mc else None
+
+    # Ratios, classification, and the listing's company name need the heavier
+    # info call — best-effort, won't block the rest.
+    pe_ratio = None
+    beta = None
+    ev_ebitda = None
+    pb = None
+    ps = None
+    rev_growth = None
+    gross_margin = None
+    sector = None
+    industry = None
+    resolved_name = None
+    try:
+        info = t.info
+        pe_ratio = info.get("trailingPE")
+        beta = info.get("beta")
+        ev_ebitda = info.get("enterpriseToEbitda")
+        pb = info.get("priceToBook")
+        ps = info.get("priceToSalesTrailing12Months")
+        rev_growth = info.get("revenueGrowth")
+        gross_margin = info.get("grossMargins")
+        sector = info.get("sector")
+        industry = info.get("industry")
+        resolved_name = info.get("longName") or info.get("shortName")
+    except Exception:
+        pass
+
+    return {
+        "market_cap":          market_cap,
+        "current_price":       current_price,
+        "shares_outstanding":  getattr(fi, "shares", None),
+        "pe_ratio":            pe_ratio,
+        "beta":                beta,
+        "ev_ebitda":           ev_ebitda,
+        "pb":                  pb,
+        "ps":                  ps,
+        "rev_growth":          rev_growth,
+        "gross_margin":        gross_margin,
+        "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
+        "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
+        "sector":              sector,
+        "industry":            industry,
+        "resolved_symbol":     symbol,
+        "resolved_name":       resolved_name,
+        "resolution_note":     None,
+    }
+
+
+def get_market_data(ticker: str, company_name: str | None = None,
+                    prefer_canadian: bool = False) -> dict:
     """Return key market data for a ticker. All fields are None if ticker is
-    missing, not found, or the fetch fails for any reason."""
+    missing, not found, or the fetch fails for any reason.
+
+    company_name arms the wrong-issuer guard: a candidate listing whose
+    company name disagrees with the filing's is REJECTED rather than served
+    (honest absence beats a confident wrong market cap). prefer_canadian
+    (pass for SEDAR filings) tries .TO/.V listings before the bare symbol.
+    """
     if not ticker or not ticker.strip():
         return dict(_EMPTY)
 
+    rejected_names = []
     try:
-        t = yf.Ticker(_to_yfinance_ticker(ticker))
-        fi = t.fast_info  # lightweight endpoint — reliable for small-caps
+        for symbol in _candidate_symbols(ticker, prefer_canadian=prefer_canadian):
+            try:
+                payload = _fetch_symbol_payload(symbol)
+            except Exception:
+                continue
+            if payload is None:
+                continue
 
-        current_price = getattr(fi, "last_price", None)
-        if not current_price:
-            return dict(_EMPTY)
+            resolved_name = payload.get("resolved_name")
+            if company_name:
+                if resolved_name:
+                    if not _names_agree(company_name, resolved_name):
+                        rejected_names.append(f"{symbol} ({resolved_name})")
+                        continue
+                elif prefer_canadian and not any(symbol.endswith(sfx) for sfx in _CA_SUFFIXES):
+                    # Bare US symbol for a Canadian filer with an unverifiable
+                    # name is exactly the collision case — refuse it honestly.
+                    rejected_names.append(f"{symbol} (name unavailable)")
+                    continue
+            return payload
 
-        raw_mc = getattr(fi, "market_cap", None)
-        market_cap = round(raw_mc / 1_000_000, 2) if raw_mc else None
-
-        # P/E and Beta require the heavier info call — best-effort, won't block the rest
-        pe_ratio = None
-        beta = None
-        ev_ebitda = None
-        pb = None
-        ps = None
-        rev_growth = None
-        gross_margin = None
-        try:
-            info = t.info
-            pe_ratio = info.get("trailingPE")
-            beta = info.get("beta")
-            ev_ebitda = info.get("enterpriseToEbitda")
-            pb = info.get("priceToBook")
-            ps = info.get("priceToSalesTrailing12Months")
-            rev_growth = info.get("revenueGrowth")
-            gross_margin = info.get("grossMargins")
-        except Exception:
-            pass
-
-        return {
-            "market_cap":          market_cap,
-            "current_price":       current_price,
-            "shares_outstanding":  getattr(fi, "shares", None),
-            "pe_ratio":            pe_ratio,
-            "beta":                beta,
-            "ev_ebitda":           ev_ebitda,
-            "pb":                  pb,
-            "ps":                  ps,
-            "rev_growth":          rev_growth,
-            "gross_margin":        gross_margin,
-            "fifty_two_week_high": getattr(fi, "fifty_two_week_high", None),
-            "fifty_two_week_low":  getattr(fi, "fifty_two_week_low", None),
-        }
-
+        empty = dict(_EMPTY)
+        if rejected_names:
+            empty["resolution_note"] = (
+                f"No listing matched the filing company name '{company_name}' — "
+                f"rejected: {', '.join(rejected_names)}."
+            )
+        return empty
     except Exception:
         return dict(_EMPTY)
