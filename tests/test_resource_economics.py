@@ -675,3 +675,122 @@ def test_gold_mining_selects_gold_primary_proxy(monkeypatch):
     assert result["metadata"]["proxy_used"] == "GC=F"
     assert result["commodity_spot_price"]["proxy_used"] == "GC=F"
     assert result["commodity_spot_price"]["value"] == 2400.0
+
+
+# ---------------------------------------------------------------------------
+# CB-027 (2026-07-09): multi-commodity tracking — record ALL families, no primary
+# ---------------------------------------------------------------------------
+
+class OilGasTicker(FakeTicker):
+    """FakeTicker extended with crude (CL=F) and natural gas (NG=F) proxies."""
+
+    def __init__(self, symbol: str):
+        super().__init__(symbol)
+        if symbol == "CL=F":
+            self.fast_info = SimpleNamespace(
+                last_price=78.5, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+        elif symbol == "NG=F":
+            self.fast_info = SimpleNamespace(
+                last_price=3.4, regular_market_price=None,
+                market_cap=None, shares=None,
+            )
+
+    def history(self, period: str = "1y"):
+        if self.symbol == "CL=F":
+            return pd.DataFrame(
+                {"Close": [70.0, 75.0, 78.5]},
+                index=pd.to_datetime(["2025-01-01", "2025-06-30", "2025-12-31"]),
+            )
+        if self.symbol == "NG=F":
+            return pd.DataFrame(
+                {"Close": [2.8, 3.1, 3.4]},
+                index=pd.to_datetime(["2025-01-01", "2025-06-30", "2025-12-31"]),
+            )
+        return super().history(period)
+
+
+def test_classify_commodities_records_all_families_no_primary():
+    # The gas-weighted trap (TOU/ARX/CNQ all read "Upstream Oil & Gas"):
+    # BOTH families are recorded; neither is claimed primary.
+    families = resource_economics.classify_commodities("Upstream Oil & Gas")
+    assert [f["name"] for f in families] == ["crude oil", "natural gas"]
+    assert all(f["proxy_available"] for f in families)
+    assert all(f["source"] == "sector_description" for f in families)
+
+
+def test_classify_commodities_record_only_families_marked_honestly():
+    families = resource_economics.classify_commodities(
+        "Oil Sands and Natural Gas Liquids Production"
+    )
+    names = {f["name"]: f for f in families}
+    # Oil sands filers realize crude-blend pricing — crude oil is proxied
+    # (the WCS caveat renders on the crude block); oil sands + NGLs are
+    # RECORDED with no free-tier proxy, never benchmarked with a lookalike.
+    assert "oil sands" in names and names["oil sands"]["proxy_available"] is False
+    assert "ngls" in names and names["ngls"]["proxy_available"] is False
+    assert "crude oil" in names and names["crude oil"]["proxy_available"] is True
+
+
+def test_classify_commodities_bare_gas_word_stays_unclassified():
+    # Midstream "Gas Gathering and Processing" is not a producer — pinned to
+    # stay commodity-free (matches the legacy infer_commodity pin).
+    assert resource_economics.classify_commodities("Gas Gathering and Processing") == []
+
+
+def test_snapshot_builds_benchmark_block_per_proxied_commodity(monkeypatch):
+    monkeypatch.setattr(resource_economics.yf, "Ticker", OilGasTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 4_940_024,
+            "net_income": 262_672,
+            "sector_inferred": "Upstream Oil & Gas",
+            "currency": "USD",
+            "scale": "thousands",
+            "fiscal_year_end": "2025-12-31",
+        },
+        "AEM.TO",  # fake company listing from the shared FakeTicker
+        cache={},
+    )
+
+    benchmarks = result["commodity_benchmarks"]
+    assert [b["commodity"] for b in benchmarks] == ["crude oil", "natural gas"]
+    crude, gas = benchmarks
+    assert crude["proxy_used"] == "CL=F" and crude["spot_price"] == 78.5
+    assert gas["proxy_used"] == "NG=F" and gas["spot_price"] == 3.4
+    assert crude["trend"][-1] == {"date": "2025-12-31", "close": 78.5}
+    assert gas["trend"][-1] == {"date": "2025-12-31", "close": 3.4}
+
+    # Legacy single-commodity keys stay wired to benchmark #1 (back-compat).
+    assert result["metadata"]["commodity"] == "crude oil"
+    assert result["commodity_spot_price"]["value"] == 78.5
+    assert result["commodity_trend"]["proxy_used"] == "CL=F"
+
+    # The full record, with no primary claimed.
+    assert result["metadata"]["multi_commodity"] is True
+    assert [c["name"] for c in result["metadata"]["commodities"]] == [
+        "crude oil", "natural gas",
+    ]
+
+
+def test_snapshot_single_commodity_filer_shape_unchanged(monkeypatch):
+    monkeypatch.setattr(resource_economics.yf, "Ticker", FakeTicker)
+
+    result = build_resource_economics_snapshot(
+        {
+            "revenue": 11_907_851,
+            "net_income": 4_461_461,
+            "sector_inferred": "Gold Mining",
+            "currency": "USD",
+            "scale": "thousands",
+        },
+        "AEM.TO",
+        cache={},
+    )
+
+    assert result["metadata"]["multi_commodity"] is False
+    assert [b["commodity"] for b in result["commodity_benchmarks"]] == ["gold"]
+    assert result["metadata"]["commodity"] == "gold"
+    assert result["commodity_spot_price"]["value"] == 2400.0

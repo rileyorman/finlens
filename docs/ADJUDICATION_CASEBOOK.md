@@ -1255,6 +1255,52 @@ add-back is a disclosed different composition. The caption is the mitigation.
   caption disclosure). Tests: 5 pins in test_cb025_tou_arx_triage.py (both
   label forms, CNQ pure line carries NO tag, caption with/without tag).
 
+## CB-027: Multi-commodity tracking — record ALL commodity families, benchmark each proxied one, claim NO primary
+
+DECIDED 2026-07-09 (Riley — this ruling SUPERSEDES the morning's
+"suppress-when-ambiguous" framing after Riley redirected: many producers
+sell oil AND natural gas AND NGLs at once, oil has grades (sweet/heavy,
+oil sands), and he wants ALL of them recorded). Motivating evidence: the
+queued gas-weighted ambiguity item hit its predicted case at n=2 — TOU
+(Canada's largest gas producer) and ARX (Montney gas-weighted) carry the
+IDENTICAL sector string "Upstream Oil & Gas" as oil-weighted CNQ, so the
+Economics panel benchmarked all three confidently against WTI. The string
+cannot reveal revenue weighting; picking one commodity was the defect.
+
+RULINGS:
+1. `classify_commodities()` records EVERY commodity family evidenced for a
+   filer ({name, source, proxy_available}); vocabulary adds NGLs and oil
+   sands. "Upstream Oil & Gas" → crude oil + natural gas, both recorded.
+2. The panel renders a FULL benchmark block (spot, linkage/correlation,
+   trend, indexed chart) per PROXY-AVAILABLE family — WTI and Henry Hub side
+   by side — and the header states "no revenue weighting claimed". Ratified
+   option: "All benchmarks, none primary." This dissolves the CNQ dilemma:
+   CNQ keeps its WTI benchmark and honestly gains the gas one.
+3. RECORD-ONLY families (oil sands, NGLs — no liquid free-tier proxy) appear
+   in metadata.commodities with an honest no-proxy marker; a lookalike proxy
+   is NEVER borrowed for them. Oil-sands strings still proxy crude oil
+   (blend pricing) with the standing WCS-differential caveat.
+4. Bare "gas" without oil evidence stays unclassified (midstream "Gas
+   Gathering and Processing" — pinned; matches the legacy conservative pin).
+5. BACK-COMPAT: legacy single-commodity snapshot keys stay wired to
+   benchmark #1, whose identity matches the historical infer_commodity()
+   pick on every previously-supported shape — single-commodity filers (AEM)
+   are bit-identical.
+6. DEFERRED (recorded): revenue-weighting extraction from the IFRS 15
+   disaggregation note (the real long-term source — the oil/gas/NGL revenue
+   split is printed in the filings); WCS/NGL benchmark data sources; grade
+   granularity (sweet/heavy) beyond the oil-sands family name.
+
+- Enforced by: CC-implemented directly (commit cites CB-027).
+  resource_economics.py (classify_commodities + RECORD_ONLY_COMMODITIES;
+  build_resource_economics_snapshot commodity_benchmarks list +
+  metadata.commodities/multi_commodity; infer_commodity now delegates —
+  single source of truth); app.py (multi-commodity header, per-benchmark
+  spot/linkage cards + trend + indexed charts via extracted render
+  helpers). Tests: 6 pins in test_resource_economics.py (family recording,
+  record-only marking, bare-gas pin, per-proxy benchmark blocks, legacy-key
+  back-compat, single-commodity shape unchanged).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
