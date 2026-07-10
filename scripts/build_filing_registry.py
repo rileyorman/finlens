@@ -199,6 +199,61 @@ FILING_MANIFEST = {
             "CB-009/CB-010 verified against the filing."
         ),
     },
+    "TOU_FY2025_sedar.json": {
+        "order": 16,
+        "ticker": "TOU",
+        "company_name": "Tourmaline Oil Corp.",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\TOU_FY2025.pdf",
+        "commit": None,
+        "notes": (
+            "First agent-fetched corpus fixture (with ARX #17): Sterling located the "
+            "issuer URL over the gateway channel, the ingest worker re-fetched "
+            "independently, sha256 byte-identical across 5 fetches by promotion. "
+            "CB-025 evidence base (rollup-printing gas producer: canonical revenue = "
+            "'Commodity sales from production' 4,940,024; the printed net-of-royalties "
+            "'Total revenue' 6,019,970 is suppressed via suppressed_default_aliases and "
+            "preserved in unmapped[]) and CB-026 carrier (combined DD&A+impairment maps "
+            "with includes_impairment semantics). Cross-extractor FLAGGED (soft) with "
+            "11/11 value agreement — the single net_income label-scope flag "
+            "dispositioned deliberate_mapping_decision (moat record 222). HUMAN "
+            "GROUND-TRUTH: PASS (Riley, 2026-07-10, transcription protocol — full "
+            "three-statement row inventory transcribed, 92/92 rows tie to source "
+            "incl. all 11 mapped fields; net_income's clean-row provenance confirmed "
+            "as the cash-flow opening line; the filer prints NO standalone total-"
+            "liabilities subtotal, honest absence confirmed). Benign observation: "
+            "the 6,019,970 revenue subtotal is printed UNLABELED; the stored 'Total "
+            "revenue' label is extraction-assigned (value ties both years)."
+        ),
+    },
+    "ARX_FY2025_sedar.json": {
+        "order": 17,
+        "ticker": "ARX",
+        "company_name": "ARC Resources Ltd.",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\ARX_FY2025.pdf",
+        "commit": None,
+        "notes": (
+            "First agent-fetched, zero-human-upload filer to reach VERIFIED (Gemini "
+            "12/12 AGREE first run, 2026-07-09). Second CB-025 carrier (canonical "
+            "revenue = 'Commodity sales from production' 5,421.7; printed net 'Total "
+            "revenue' 6,075.7 suppressed, preserved in unmapped[]). Typographic-"
+            "apostrophe fold evidence base: 'Total shareholders' equity' 8,264.0 maps "
+            "only after the U+2019 fold (CB-025 mechanism 5), which arms the "
+            "balance-sheet identity — ties exactly (7,046.3 + 8,264.0 = 15,310.3). "
+            "HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision; the PDF "
+            "blocks text copy): CC VISUAL READ instead — statement pages rendered to "
+            "pixels (pypdfium2, independent of the extraction's text layer) and all "
+            "12 mapped fields + full statement pages verified, incl. the printed "
+            "net-of-royalties 'Total revenue' 6,075.7 (ties: 5,421.7 − 536.8 + "
+            "1,190.8) staying unmapped and the curly-apostrophe equity label in "
+            "print. Benign observations: unlabeled current-asset/liability subtotals "
+            "stored under standard names; tax rows stored contextualized ('Current' "
+            "→ 'Current income taxes'). Alias candidate (n=1, deferred): "
+            "'Exploration and evaluation asset expenditures' −53.6 matches no CB-009 "
+            "alias — ARX FCF capex is honestly PP&E-only."
+        ),
+    },
 }
 
 

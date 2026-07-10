@@ -1168,6 +1168,174 @@ def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
     _assert_unmapped_labels_are_verbatim(data, result)
 
 
+def test_tou_fixture_first_agent_fetched_rollup_printing_gas_producer():
+    """
+    TOU (Tourmaline Oil, gas-weighted O&G producer, IFRS, CAD thousands) —
+    fixture #16, one of the first two AGENT-FETCHED corpus fixtures (with
+    ARX #17): Sterling located the issuer URL, the ingest worker re-fetched
+    independently, and the sha256 was byte-identical across 5 independent
+    fetches by promotion (2026-07-09). Cross-extractor: FLAGGED (soft) with
+    11/11 value agreement; the single net_income label-scope flag was
+    dispositioned deliberate_mapping_decision (moat record 222).
+
+    TOU is a CB-025 motivating filer — the rollup-printing shape:
+    - canonical revenue = GROSS "Commodity sales from production", NOT the
+      printed "Total revenue" (which is NET of royalties; component sums tie
+      exactly). The default revenue rollup aliases are machine-suppressed via
+      resource_sector suppressed_default_aliases; the net line stays visible
+      in unmapped[].
+    - "Current debt" maps short_term_debt (the IFRS current/non-current pair).
+    - cash-flow-scoped capex: the CF "Property, plant and equipment" line maps
+      while the identically-labeled balance-sheet asset STOCK stays unmapped
+      (CB-009 statement-scoping pattern).
+    And a CB-026 carrier: the combined "Depletion, depreciation, amortization
+    and impairment" line maps WITH includes_impairment semantics.
+
+    HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-10, transcription protocol) —
+    full three-statement row inventory transcribed from the source PDF,
+    92/92 rows tie including all 11 mapped fields; net_income's clean-row
+    provenance confirmed as the cash-flow opening line; no standalone
+    total-liabilities subtotal printed (honest absence, CB-013 negative
+    rule). This test freezes that verified state.
+    """
+    data = _load_fixture("TOU_FY2025_sedar.json")
+    assert data["currency"] == "CAD"
+    assert data["scale"] == "thousands"
+    assert data["sector_inferred"] == "Upstream Oil & Gas"
+    assert data["filing_date"] == "2026-03-04"
+    provenance = data["source_provenance"]
+    assert provenance["sha256"] == (
+        "16c2e1132c1b3928745739c3f9bea7d015242c86e8fc12af68ce982960e72214"
+    )
+    assert "Agent-fetched" in provenance["retrieval_method"]
+    assert "re-fetched independently" in provenance["retrieval_method"]
+
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+    assert result["meta"]["sector_profile"] == "resource_sector"
+
+    # CB-025: gross revenue; the net-of-royalties rollup is suppressed but visible.
+    assert mapped["revenue"]["source_label"] == "Commodity sales from production"
+    assert mapped["revenue"]["value"] == 4940024
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Total revenue" in unmapped_labels  # 6,019,970 net line, by design
+    assert mapped["royalties"]["value"] == -513879
+
+    # CB-026: combined DD&A+impairment maps with disclosed semantics.
+    dda = mapped["depletion_depreciation_amortization"]
+    assert dda["value"] == 3000251
+    assert dda["semantics"] == {"includes_impairment": True}
+
+    # CB-025 cash-flow-scoped capex; the balance-sheet PP&E stock (19.6B)
+    # with the identical label stays honestly unmapped.
+    assert mapped["capex"]["value"] == -2988595
+    assert "Property, plant and equipment" in unmapped_labels
+
+    assert mapped["short_term_debt"]["source_label"] == "Current debt"
+    assert mapped["short_term_debt"]["value"] == 800000
+    assert mapped["long_term_debt"]["value"] == 1052914
+    assert mapped["pretax_income"]["value"] == 343906
+    assert mapped["net_income"]["value"] == 262672
+    assert mapped["operating_cash_flow"]["value"] == 3387019
+    assert mapped["total_assets"]["value"] == 22621607
+    assert mapped["total_equity"]["value"] == 15436278
+
+    assert result["meta"]["mapped_count"] == 11
+    assert result["meta"]["collisions"] == []
+    assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
+def test_arx_fixture_first_agent_fetched_filer_to_reach_verified():
+    """
+    ARX (ARC Resources, gas-weighted O&G producer, IFRS, CAD millions) —
+    fixture #17, the FIRST agent-fetched, zero-human-upload filer to reach
+    VERIFIED (Gemini cross-extractor 12/12 AGREE first run, 2026-07-09);
+    sha256 byte-identical across 3 independent fetches by promotion.
+
+    Second CB-025 carrier (n=2 for the rollup-printing shape) and the
+    typographic-apostrophe evidence base: ARX prints "Total shareholders'
+    equity" with U+2019, which defeated every CB-013 alias until the
+    _normalize_label apostrophe fold (CB-025 mechanism 5). With total_equity
+    AND total_liabilities both mapped, the sedar_balance_sheet_identity rule
+    arms and ties exactly: 7,046.3 + 8,264.0 = 15,310.3.
+
+    HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision — the PDF
+    blocks text copy). CC VISUAL READ instead: statement pages rendered to
+    pixels (independent of the extraction's text layer); all 12 mapped
+    fields verified against the rendered statements, including the printed
+    net "Total revenue" 6,075.7 staying unmapped and the curly-apostrophe
+    equity label in print. Combined with Gemini 12/12 AGREE, ARX carries
+    two independent machine verifications; TOU (#16) carries the pair's
+    full human stamp.
+    """
+    data = _load_fixture("ARX_FY2025_sedar.json")
+    assert data["currency"] == "CAD"
+    assert data["scale"] == "millions"
+    assert data["sector_inferred"] == "Upstream Oil & Gas"
+    assert data["filing_date"] == "2026-02-05"
+    provenance = data["source_provenance"]
+    assert provenance["sha256"] == (
+        "d6a50819e9fd12f0cbba3f38595978444478d4ce92d71d12811fbae3197848f5"
+    )
+    assert "Agent-fetched" in provenance["retrieval_method"]
+
+    result = map_line_items(
+        _all_statement_line_items(data),
+        data["accounting_standard"],
+        sector=data["sector_inferred"],
+    )
+    mapped = result["mapped"]
+    assert result["meta"]["sector_profile"] == "resource_sector"
+
+    # CB-025: gross revenue; the net rollup stays visible in unmapped[].
+    assert mapped["revenue"]["source_label"] == "Commodity sales from production"
+    assert mapped["revenue"]["value"] == 5421.7
+    unmapped_labels = [item["label"] for item in result["unmapped"]]
+    assert "Total revenue" in unmapped_labels  # 6,075.7 net line, by design
+    assert mapped["royalties"]["value"] == -536.8
+
+    # CB-026: ARX's combined line names PP&E explicitly; semantics disclosed.
+    dda = mapped["depletion_depreciation_amortization"]
+    assert dda["value"] == 1547.2
+    assert dda["semantics"] == {"includes_impairment": True}
+
+    # Apostrophe fold: compare with U+2019 normalized so the assert is
+    # robust to the filer's typographic form.
+    equity_label = mapped["total_equity"]["source_label"].replace("’", "'")
+    assert equity_label == "Total shareholders' equity"
+    assert mapped["total_equity"]["value"] == 8264.0
+    assert mapped["total_liabilities"]["value"] == 7046.3
+    assert mapped["total_assets"]["value"] == 15310.3
+    # the identity the fold armed (CB-013 rule fires on this filer)
+    assert abs(
+        mapped["total_liabilities"]["value"]
+        + mapped["total_equity"]["value"]
+        - mapped["total_assets"]["value"]
+    ) < 0.01
+
+    assert mapped["pretax_income"]["source_label"] == "Net income before income taxes"
+    assert mapped["pretax_income"]["value"] == 1633.9
+    assert mapped["net_income"]["value"] == 1275.1
+    assert mapped["short_term_debt"]["source_label"] == "Current portion of long-term debt"
+    assert mapped["short_term_debt"]["value"] == 450.0
+    assert mapped["long_term_debt"]["value"] == 2428.1
+    assert mapped["operating_cash_flow"]["value"] == 3093.5
+    assert mapped["capex"]["source_label"] == "Property, plant and equipment development expenditures"
+    assert mapped["capex"]["value"] == -1819.1
+
+    assert result["meta"]["mapped_count"] == 12
+    assert result["meta"]["collisions"] == []
+    assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
+    _assert_conservation(result)
+    _assert_unmapped_labels_are_verbatim(data, result)
+
+
 def test_cb010_cash_collision_resolves_to_most_specific_alias():
     """CB-010 (ratified 2026-07-06): the SIG shape — the balance-sheet total
     "Cash and cash equivalents (Note 4)" and the note-breakdown sub-component
@@ -1688,8 +1856,11 @@ def test_cb013_shop_total_liabilities_honestly_unmapped_no_derivation():
 def test_cb013_balance_sheet_identity_closes_on_all_mapped_fixtures():
     """CB-013 self-validation: on every fixture where all three canonical
     balance-sheet fields map, assets == liabilities + equity within the rule
-    tolerance. Pins the count at 14 (all but SHOP) so a silent coverage
-    shrink fails loudly."""
+    tolerance. Pins the count at 15 (all but SHOP and TOU — neither prints a
+    standalone total-liabilities subtotal, honestly unmapped by the CB-013
+    negative rule, never derived) so a silent coverage shrink fails loudly.
+    Raised 14→15 on 2026-07-10 when ARX (fixture #17) joined the identity
+    set (7,046.3 + 8,264.0 = 15,310.3, exact)."""
     fixture_paths = sorted(FIXTURES_DIR.glob("*_sedar*.json"))
     closed = 0
     for path in fixture_paths:
@@ -1701,7 +1872,7 @@ def test_cb013_balance_sheet_identity_closes_on_all_mapped_fixtures():
         combined = mapped["total_liabilities"]["value"] + mapped["total_equity"]["value"]
         assert abs(assets - combined) <= 0.5, path.name
         closed += 1
-    assert closed == 14
+    assert closed == 15
 
 
 def test_cb017_net_loss_bottom_line_maps_to_default_net_income():
