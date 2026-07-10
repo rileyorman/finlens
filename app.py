@@ -754,6 +754,26 @@ def _legacy_scaled_stale(financial_data: dict | None, schema_version: object) ->
     )
 
 
+def _fetch_market_data_for_filing(ticker: str | None, financial_data: dict | None) -> dict:
+    """Load-time market fetch through the wrong-issuer guard (free yfinance
+    call, no Claude spend). Library/registry entries store the analysis-time
+    market snapshot, which is stale by construction (prices move) and, for
+    entries that never fetched, empty — leaving Beta/valuation dark and
+    steering users to the unguarded manual lookup (the ARX/Accelerant path).
+    Returns {} when no ticker is available or the fetch fails."""
+    if not ticker or ticker == "—":
+        return {}
+    try:
+        fd = financial_data or {}
+        return get_market_data(
+            ticker,
+            company_name=fd.get("company_name"),
+            prefer_canadian=fd.get("source") == "sedar_pdf",
+        )
+    except Exception:
+        return {}
+
+
 def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     financial_data = cached.get("financial_data")
     if not isinstance(financial_data, dict):
@@ -768,6 +788,13 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
     market_data = cached.get("market_data") or {}
     if not market_data and cached.get("market_cap") is not None:
         market_data = {"market_cap": cached.get("market_cap")}
+    if not market_data.get("current_price"):
+        # Stored snapshot is empty/priceless — fetch fresh through the guard.
+        _live_md = _fetch_market_data_for_filing(
+            cached.get("ticker") or (entry or {}).get("ticker"), financial_data
+        )
+        if _live_md.get("current_price"):
+            market_data = _live_md
 
     st.session_state.financial_data = financial_data
     st.session_state.summary_data = summary_data
@@ -2335,9 +2362,14 @@ document.addEventListener('focusin', function(e) {
                                     st.session_state.bear_bull_data      = bb
                                     st.session_state.dashboard_data      = entry.get("dashboard_data")
                                     st.session_state.mda_sentiment       = entry.get("mda_sentiment")
-                                    st.session_state.market_data         = {}
+                                    # Direct-entry loads never stored market data — fetch
+                                    # fresh through the wrong-issuer guard at load time.
+                                    st.session_state.market_data = _fetch_market_data_for_filing(
+                                        ticker if ticker != "—" else None, fd
+                                    )
                                     try:
-                                        st.session_state.excel_bytes = create_excel_file(fd, sd, 0.0, bb)
+                                        _load_mc = st.session_state.market_data.get("market_cap") or 0.0
+                                        st.session_state.excel_bytes = create_excel_file(fd, sd, _load_mc, bb)
                                     except Exception:
                                         st.session_state.excel_bytes = None
                                     st.session_state.last_filename       = entry.get("file_name", "")
@@ -7021,10 +7053,22 @@ if st.session_state.financial_data:
             if st.button("Fetch Market Data", width='stretch', type="primary"):
                 if manual_ticker.strip():
                     with st.spinner(f"Fetching market data for {manual_ticker.strip().upper()}..."):
-                        fetched = get_market_data(manual_ticker.strip())
+                        # Session market data feeds THIS filing's valuation, so
+                        # the wrong-issuer guard applies here too — the ticker
+                        # box is auto-prefilled from the filing, and bare TSX
+                        # tickers collide with US listings (ARX = Accelerant).
+                        _loaded_fd = st.session_state.get("financial_data") or {}
+                        fetched = get_market_data(
+                            manual_ticker.strip(),
+                            company_name=_loaded_fd.get("company_name"),
+                            prefer_canadian=_loaded_fd.get("source") == "sedar_pdf",
+                        )
                         if fetched.get("current_price"):
                             st.session_state.market_data     = fetched
-                            st.session_state.resolved_ticker = manual_ticker.strip().upper()
+                            st.session_state.resolved_ticker = (
+                                fetched.get("resolved_symbol")
+                                or manual_ticker.strip().upper()
+                            )
                             mc = fetched.get("market_cap") or 0.0
                             try:
                                 st.session_state.excel_bytes = create_excel_file(
@@ -7037,11 +7081,21 @@ if st.session_state.financial_data:
                                 st.error(f"Could not regenerate Excel: {e}")
                             st.rerun()
                         else:
-                            st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
+                            _fetch_note = fetched.get("resolution_note")
+                            if _fetch_note:
+                                st.warning(f"Market data withheld: {_fetch_note}")
+                            else:
+                                st.warning(f"No market data found for '{manual_ticker.strip()}' — check the ticker and try again.")
                 else:
                     st.warning("Enter a ticker symbol first.")
 
         if market_data.get("current_price"):
+            # Per-figure legibility: name the listing these numbers came from.
+            if market_data.get("resolved_symbol") and market_data.get("resolved_name"):
+                st.caption(
+                    f"Market data: {market_data['resolved_symbol']} — "
+                    f"{market_data['resolved_name']}"
+                )
             price = market_data["current_price"]
             mc    = market_data["market_cap"]
             hi    = market_data.get("fifty_two_week_high")
