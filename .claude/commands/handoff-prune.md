@@ -1,6 +1,13 @@
 Prune `docs/SESSION_HANDOFF.md` by moving closed/historical content VERBATIM to `docs/SESSION_HANDOFF_ARCHIVE.md`, keeping the handoff readable at cold start. This encodes the prune discipline from commits 1f518f1 and 42fdd41 (2026-07-03) and the 2026-07-06 session-cleanup precedent — machine-prompted tier of the Minimize-Human-Error principle.
 
-RUN WHEN: `/handoff` can no longer print the doc in one response, or at session close after closures have accumulated. Doc-only change; commit on `dev`.
+RUN WHEN: `tests/test_handoff_size.py` fails (doc over 100,000 bytes — the machine-enforced ceiling), `/handoff` can no longer print the doc in one response, or at session close after closures have accumulated. Doc-only change; commit on `dev`.
+
+WRITE-TIME RULES (prevention, added 2026-07-10 — these apply whenever SESSION_HANDOFF.md is UPDATED, not just when pruning; they keep the doc from needing big prunes):
+
+- A. **Tombstone at closure.** When a commit closes an open-queue item, the SAME commit rewrites the item to its one-line ~~struck~~ tombstone (what closed it, commit hash/CB ID, "Full record: ..."), with the full original text moved to the archive then or at the next prune. Same discipline as casebook entries shipping in the same commit as their enforcement change.
+- B. **Cite, don't restate.** A new session block gives one line + pointer for anything that has a canonical home — casebook entries, CLAUDE.md definitions, audit docs, runbooks, commit messages. Full narrative belongs in those homes, not the handoff.
+- C. **One summary, not two.** When a new session block is written, the `Last updated` header paragraph is REWRITTEN to summarize only the new state (target ≤150 words) — the outgoing header paragraph is replaced, its text preserved in the archive if it contains anything its own session block doesn't (precedent: the "[archived] Original 'Last updated' header paragraph" sections).
+- D. **The ceiling is machine-enforced.** `tests/test_handoff_size.py` fails the suite past 100,000 bytes; the fix is this command, never deleting content or casually raising the ceiling.
 
 RULES (all mandatory, in order):
 
