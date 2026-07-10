@@ -79,6 +79,15 @@ from modules.peer_comparison import get_peer_data, peer_map, suggest_sector
 from modules.dcf_calculator import calculate_dcf
 from modules.economics.resource_display import build_commodity_display_text
 from modules.economics.resource_economics import build_resource_economics_snapshot
+from modules.agent_fetch import (
+    FetchedUpload,
+    build_provenance,
+    cache_fetched_pdf,
+    fetch_pdf_bytes,
+    gateway_config,
+    request_filing_url,
+    safe_fetch_filename,
+)
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
 from modules.analysis.munger_inversion import generate_inversion
@@ -5739,6 +5748,118 @@ with st.expander(
         help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
         key="canadian_sedar_upload",
     )
+
+    # --- CB-028: search-triggered agent fetch (the flywheel front door) ---
+    # The agent finds the issuer-hosted direct-PDF URL; the app re-fetches
+    # the bytes ITSELF (provenance receipt) and converges them on the same
+    # uploaded_file variable below, so every gate fires unchanged (R5).
+    st.markdown("---")
+    st.markdown(
+        "**Or fetch from the web** — name the company and filing; the agent "
+        "finds the issuer-hosted PDF and loads it here. Best for Canadian "
+        "filings. Takes 1–3 minutes; the page waits while it runs."
+    )
+    _af_config = gateway_config()
+    if _af_config is None:
+        st.caption(
+            "Agent fetch not configured on this machine — set "
+            "OPENCLAW_GATEWAY_URL, OPENCLAW_GATEWAY_TOKEN and "
+            "OPENCLAW_GATEWAY_SESSION_KEY in the secrets store to enable it."
+        )
+    else:
+        _af_c1, _af_c2 = st.columns(2)
+        with _af_c1:
+            _af_company = st.text_input(
+                "Company", key="agent_fetch_company",
+                placeholder="e.g. Tourmaline Oil",
+            )
+        with _af_c2:
+            _af_filing = st.text_input(
+                "Filing", key="agent_fetch_filing",
+                placeholder="e.g. FY2025 annual financial statements",
+            )
+        _af_canadian = st.checkbox(
+            "Canadian filing (SEDAR+ / IFRS)",
+            value=True,
+            key="agent_fetch_canadian_flag",
+            help="Routes the FETCHED PDF through the SEDAR+ IFRS pipeline — "
+                 "independent of the manual-upload checkbox above.",
+        )
+        if st.button(
+            "🔎 Fetch via agent",
+            key="agent_fetch_go",
+            disabled=not (_af_company or "").strip() or not (_af_filing or "").strip(),
+            help="Runs one agent turn (1–3 minutes). Fetching only LOADS the "
+                 "file — analysis stays your click, and its cost stays with it.",
+        ):
+            with st.status("Agent fetch in progress…", expanded=True) as _af_status:
+                st.write("① Agent searching the issuer's investor-relations site…")
+                _af_reply = request_filing_url(
+                    _af_company, _af_filing, _af_canadian, _af_config
+                )
+                _af_manual_fallback = (
+                    "Fallback: download the PDF in your browser and drop it "
+                    "in the uploader above — same pipeline, same gates."
+                )
+                if _af_reply["status"] != "found":
+                    _af_msgs = {
+                        "not_found": "The agent could not locate that filing with confidence (it never guesses a URL).",
+                        "blocked": "The issuer's site refused automated access (Cloudflare-class block).",
+                        "gateway_error": "The agent channel is unreachable.",
+                        "agent_reply_unparseable": "The agent's reply did not match the expected contract.",
+                    }
+                    st.error(
+                        f"{_af_msgs.get(_af_reply['status'], 'Fetch failed.')} "
+                        f"({_af_reply['status']}: {_af_reply.get('notes') or '—'}) "
+                        f"{_af_manual_fallback}"
+                    )
+                    _af_status.update(label="Agent fetch failed — see message", state="error")
+                else:
+                    st.write("② Agent returned a URL — verifying and fetching the bytes ourselves…")
+                    _af_result = fetch_pdf_bytes(_af_reply["url"])
+                    if not _af_result["ok"]:
+                        st.error(
+                            f"Could not verify the fetched document "
+                            f"({_af_result['reason']}: {_af_result['detail']}). "
+                            f"{_af_manual_fallback}"
+                        )
+                        _af_status.update(label="Agent fetch failed — see message", state="error")
+                    else:
+                        _af_name = safe_fetch_filename(_af_company, _af_filing)
+                        _af_provenance = build_provenance(
+                            _af_reply["url"], _af_result["sha256"], _af_result["byte_size"]
+                        )
+                        _af_disk = cache_fetched_pdf(_af_result["data"], _af_name)
+                        if _af_disk:
+                            _af_provenance["cached_pdf_path"] = _af_disk
+                        st.session_state["agent_fetched_upload"] = FetchedUpload(
+                            _af_result["data"], _af_name
+                        )
+                        st.session_state["agent_fetched_canadian"] = _af_canadian
+                        st.session_state["agent_fetch_provenance"] = _af_provenance
+                        st.write(
+                            f"③ Loaded {_af_name} "
+                            f"({_af_result['byte_size']:,} bytes, "
+                            f"sha256 {_af_result['sha256'][:16]}…)"
+                        )
+                        _af_status.update(label="✓ Fetched and loaded — ready to analyze", state="complete")
+                        st.rerun()
+        if (
+            st.session_state.get("agent_fetched_upload") is not None
+            and uploaded_file is None
+        ):
+            _af_loaded = st.session_state["agent_fetched_upload"]
+            _af_prov = st.session_state.get("agent_fetch_provenance") or {}
+            st.success(
+                f"Agent-fetched file loaded: **{_af_loaded.name}** "
+                f"(sha256 {str(_af_prov.get('sha256', ''))[:16]}…) — "
+                f"it analyzes exactly like a manual upload."
+            )
+            if st.button("Clear fetched file", key="agent_fetch_clear"):
+                st.session_state.pop("agent_fetched_upload", None)
+                st.session_state.pop("agent_fetched_canadian", None)
+                st.session_state.pop("agent_fetch_provenance", None)
+                st.rerun()
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
@@ -5832,6 +5953,22 @@ if st.session_state.get("reanalyse_no_text"):
     else:
         _doc_label = "Word document" if _reanalyse_file_type == "docx" else "PDF"
         st.info(f"Re-upload the {_doc_label} to re-analyse **{st.session_state.reanalyse_no_text}**.")
+
+# CB-028 R5: an agent-fetched filing converges on the SAME uploaded_file
+# variable, so the entire downstream chain — 20MB guard, docx branch, cache
+# key, CB-015 document-class gate, extraction, mapper, engine, moat log,
+# library — fires unchanged BY CONSTRUCTION (no second path to drift).
+# A manual upload always wins and clears the fetched file.
+_agent_fetched = st.session_state.get("agent_fetched_upload")
+if uploaded_file is not None and _agent_fetched is not None:
+    st.session_state.pop("agent_fetched_upload", None)
+    st.session_state.pop("agent_fetched_canadian", None)
+    st.session_state.pop("agent_fetch_provenance", None)
+    _agent_fetched = None
+if uploaded_file is None and _agent_fetched is not None:
+    _agent_fetched.seek(0)  # BytesIO position survives reruns; rewind before reuse
+    uploaded_file = _agent_fetched
+    canadian_filing = bool(st.session_state.get("agent_fetched_canadian")) or canadian_filing
 
 if uploaded_file is None:
     if (
@@ -6344,6 +6481,16 @@ if uploaded_file:
             if isinstance(financial_data, dict):
                 financial_data["document_class"] = _doc_class_result["document_class"]
                 financial_data["document_class_signals"] = _doc_class_result["signals"]
+
+            # CB-028 R4: the agent-fetch receipt (url + sha256) rides inside
+            # financial_data BEFORE save_cache, so the analysis cache, the
+            # library entry, and the Supabase copy all carry it additively.
+            if (
+                isinstance(financial_data, dict)
+                and st.session_state.get("agent_fetched_upload") is uploaded_file
+                and st.session_state.get("agent_fetch_provenance")
+            ):
+                financial_data["agent_fetch_provenance"] = st.session_state["agent_fetch_provenance"]
 
             # Step 3 — Call 2: generate investment signal
             summary_data = None
