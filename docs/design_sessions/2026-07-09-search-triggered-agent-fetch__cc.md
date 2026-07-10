@@ -1,9 +1,10 @@
 # Design Session — Search-Triggered Agent Fetch (2026-07-09) — CC ruling
 
-**Status: UNRATIFIED until Riley signs off.** Brief:
+**Status: RATIFIED (Riley, 2026-07-09, same evening — all 8 rulings + 4 open
+questions as recommended) → casebook CB-028; BUILT same evening (2d139d6)
+and live-evidenced on Whitecap Resources FY2025 through the real UI.** Brief:
 docs/design_briefs/2026-07-09-search-triggered-agent-fetch.md. CC-first seat
-per the 2026-07-07 workflow revision. Ratified rulings get casebook entry
-CB-028.
+per the 2026-07-07 workflow revision.
 
 ---
 
