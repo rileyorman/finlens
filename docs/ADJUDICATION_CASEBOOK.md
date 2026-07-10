@@ -1342,6 +1342,46 @@ OQ4 the fetch lane's Canadian checkbox stays independent of the manual one.
   Tests: 12 pins in tests/test_agent_fetch.py (T1–T6 + T8 module half; T7
   structural via the blocking st.status flow).
 
+## CB-029: ARX deferred alias candidates promoted — E&E expenditures + "Interest and financing" (n=1 triage)
+
+DECIDED 2026-07-10 (Riley — ratified during the browser ground-truth
+verification session: CC read the ARX FY2025 statements directly off the
+issuer 2025 Annual Report PDF at arcresources.com, confirmed all 12
+then-mapped fixture values against print, and surfaced both gaps; Riley:
+"Add the E&E and interest aliases as triage candidates"). Both are
+concept-unambiguous label variants of already-ruled concepts — the CB-025
+ruling-4 triage-alias family pattern, no new judgment. Both n=1 (ARX only;
+TOU prints neither label).
+
+RULINGS:
+1. `capitalized_exploration_additions` (resource_sector) += "exploration and
+   evaluation asset expenditures", CASH_FLOW-scoped (ARX −53.6, stored
+   as-presented). This was the promotion note's recorded deferred candidate.
+   Consequence per CB-021: E&E presence is the sector signal, so ARX's FCF
+   capex composition flips from honest PP&E-only to PP&E + E&E —
+   FCF = 3,093.5 − (1,819.1 + 53.6) = 1,220.8, card disclosure updates by
+   construction. ARX's balance-sheet "Exploration and evaluation assets"
+   442.4 (the STOCK) cannot match — CB-009 stock/flow scoping.
+2. `interest_expense` (resource_sector) += "interest and financing",
+   INCOME_STATEMENT-scoped (ARX 151.3, presented positive among expenses).
+   Arms EBIT/EBITDA/interest-cover on ARX per CB-023 (no printed operating
+   income: EBIT = 1,633.9 + 151.3 = 1,785.2). Scoping keeps ARX's cash-flow
+   "Interest paid in cash" 129.5 and income line "Interest and other income"
+   unmapped; TOU's "Lease interest expense" (a component, different label)
+   is untouched.
+3. Cross-extractor consequence (CB-014 family): the two new line-item-backed
+   fields have no Gemini disposition yet — ARX's 12/12 AGREE record predates
+   them; they enter the comparison denominator at the next cross-extractor
+   run. No re-adjudication of the existing 12.
+
+- Enforced by: CC-implemented directly (commit cites CB-029).
+  sedar_aliases.json (both aliases, source strings cite CB-029); ARX fixture
+  stored mapping regenerated via attach_mapping (12 → 14 mapped fields, the
+  two labels left unmapped[]); filing_registry.json regenerated — ARX 14/14
+  campaign_validated, all 16 other filers' counts unchanged (the aliases
+  matched nothing unintended corpus-wide); registry manifest note updated in
+  scripts/build_filing_registry.py.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

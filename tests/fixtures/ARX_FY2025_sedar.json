@@ -799,6 +799,12 @@
         "match_type": "exact",
         "confidence": 0.95
       },
+      "interest_expense": {
+        "value": 151.3,
+        "source_label": "Interest and financing",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
       "depletion_depreciation_amortization": {
         "value": 1547.2,
         "source_label": "Depletion, depreciation and amortization and impairment of property, plant and equipment",
@@ -861,6 +867,12 @@
         "source_label": "Property, plant and equipment development expenditures",
         "match_type": "exact",
         "confidence": 0.95
+      },
+      "capitalized_exploration_additions": {
+        "value": -53.6,
+        "source_label": "Exploration and evaluation asset expenditures",
+        "match_type": "exact",
+        "confidence": 0.95
       }
     },
     "unmapped": [
@@ -899,10 +911,6 @@
       {
         "label": "General and administrative",
         "value": 175.6
-      },
-      {
-        "label": "Interest and financing",
-        "value": 151.3
       },
       {
         "label": "Impairment (reversal of impairment) of financial assets",
@@ -1153,10 +1161,6 @@
         "value": 4.0
       },
       {
-        "label": "Exploration and evaluation asset expenditures",
-        "value": -53.6
-      },
-      {
         "label": "Long-term investments",
         "value": -3.5
       },
@@ -1197,8 +1201,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "resource_sector",
       "total": 94,
-      "mapped_count": 12,
-      "unmapped_count": 82,
+      "mapped_count": 14,
+      "unmapped_count": 80,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
@@ -1209,7 +1213,7 @@
   "source_provenance": {
     "pdf_origin_url": "https://www.arcresources.com/wp-content/uploads/2026/03/2025-ARC-Annual-Report_web.pdf",
     "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
-    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T23:05Z); review-gate re-fetches — sha256 byte-identical across 3 independent fetches by promotion (2026-07-09)",
+    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T23:05Z); review-gate re-fetches \u2014 sha256 byte-identical across 3 independent fetches by promotion (2026-07-09)",
     "document_note": "2025 Annual Report (2025-ARC-Annual-Report_web.pdf); consolidated financial statements within the annual-report document",
     "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md; first agent-fetched corpus fixtures (with TOU #16)",
     "sha256": "d6a50819e9fd12f0cbba3f38595978444478d4ce92d71d12811fbae3197848f5",

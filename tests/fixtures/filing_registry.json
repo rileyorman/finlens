@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-10T14:36:29Z",
+  "generated_at": "2026-07-10T15:01:54Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -319,11 +319,11 @@
         "issuer_url": "https://www.arcresources.com/wp-content/uploads/2026/03/2025-ARC-Annual-Report_web.pdf",
         "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T23:05Z); review-gate re-fetches \u2014 sha256 byte-identical across 3 independent fetches by promotion (2026-07-09)"
       },
-      "stored_field_count": 12,
-      "resolved_field_count": 12,
+      "stored_field_count": 14,
+      "resolved_field_count": 14,
       "filing_date": "2026-02-05",
       "commit": null,
-      "notes": "First agent-fetched, zero-human-upload filer to reach VERIFIED (Gemini 12/12 AGREE first run, 2026-07-09). Second CB-025 carrier (canonical revenue = 'Commodity sales from production' 5,421.7; printed net 'Total revenue' 6,075.7 suppressed, preserved in unmapped[]). Typographic-apostrophe fold evidence base: 'Total shareholders' equity' 8,264.0 maps only after the U+2019 fold (CB-025 mechanism 5), which arms the balance-sheet identity \u2014 ties exactly (7,046.3 + 8,264.0 = 15,310.3). HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision; the PDF blocks text copy): CC VISUAL READ instead \u2014 statement pages rendered to pixels (pypdfium2, independent of the extraction's text layer) and all 12 mapped fields + full statement pages verified, incl. the printed net-of-royalties 'Total revenue' 6,075.7 (ties: 5,421.7 \u2212 536.8 + 1,190.8) staying unmapped and the curly-apostrophe equity label in print. Benign observations: unlabeled current-asset/liability subtotals stored under standard names; tax rows stored contextualized ('Current' \u2192 'Current income taxes'). Alias candidate (n=1, deferred): 'Exploration and evaluation asset expenditures' \u221253.6 matches no CB-009 alias \u2014 ARX FCF capex is honestly PP&E-only."
+      "notes": "First agent-fetched, zero-human-upload filer to reach VERIFIED (Gemini 12/12 AGREE first run, 2026-07-09). Second CB-025 carrier (canonical revenue = 'Commodity sales from production' 5,421.7; printed net 'Total revenue' 6,075.7 suppressed, preserved in unmapped[]). Typographic-apostrophe fold evidence base: 'Total shareholders' equity' 8,264.0 maps only after the U+2019 fold (CB-025 mechanism 5), which arms the balance-sheet identity \u2014 ties exactly (7,046.3 + 8,264.0 = 15,310.3). HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision; the PDF blocks text copy): CC VISUAL READ instead \u2014 statement pages rendered to pixels (pypdfium2, independent of the extraction's text layer) and all 12 mapped fields + full statement pages verified, incl. the printed net-of-royalties 'Total revenue' 6,075.7 (ties: 5,421.7 \u2212 536.8 + 1,190.8) staying unmapped and the curly-apostrophe equity label in print. Benign observations: unlabeled current-asset/liability subtotals stored under standard names; tax rows stored contextualized ('Current' \u2192 'Current income taxes'). CB-029 (2026-07-10) promoted the deferred alias candidates surfaced at promotion: 'Exploration and evaluation asset expenditures' \u221253.6 \u2192 capitalized_exploration_additions (cash_flow-scoped; FCF capex is now PP&E + E&E per CB-021) and 'Interest and financing' 151.3 \u2192 interest_expense (income_statement-scoped; arms EBIT/EBITDA/interest-cover per CB-023). Stored mapping regenerated 12 \u2192 14 fields."
     }
   ],
   "registry_notes": [
