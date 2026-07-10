@@ -1158,6 +1158,105 @@ Resource-only: gated on transportation_costs, which maps only for O&G filers
 
 ---
 
+## CB-025: Resource gross revenue on rollup-printing filers — `suppressed_default_aliases` mechanism; TOU/ARX triage aliases
+
+DECIDED 2026-07-09 (Riley; the TOU FY2025 + ARX FY2025 agent-ingestion triage
+session — the first n=2 adjudication produced entirely by the worker
+pipeline). HEADLINE FINDING (CC, beyond the worker's 7 questions): both
+bundles carried a WRONG-CONCEPT canonical revenue. Each filer prints a
+"Total revenue" rollup that is NET of royalties — component sums tie exactly
+(TOU 6,019,970 = 4,940,024 commodity sales + 1,230,294 risk-mgmt premiums +
+132,679 marketing − 513,879 royalties + 31,399 other + 420,981 realized
+gains − 221,528 unrealized; ARX 6,075.7 = 5,421.7 − 536.8 + 1,190.8) — and
+the DEFAULT profile's "total revenue" alias captured it. The gross-of-royalties
+NEGATIVE RULE (CNQ ruling, 2026-06-17) only forbade ADDING a resource alias
+for net lines; it had no machine enforcement against default aliases, and CNQ
+never tripped it because CNQ prints no "Total revenue" line. Unfixed, CB-024's
+netback margin would also double-subtract royalties.
+
+RULINGS:
+1. Canonical `revenue` for TOU/ARX = "Commodity sales from production"
+   (gross production top line, CNQ "Product sales" precedent; new resource
+   alias, n=2). Marketing revenue / hedging premiums / rollup lines stay
+   unmapped as components.
+2. NEW MECHANISM `suppressed_default_aliases`: a sector profile may suppress
+   named default aliases for a named canonical field. resource_sector
+   suppresses ALL FOUR default revenue rollup aliases ("total revenue",
+   "total revenues", "revenue total", "revenues") — the negative rule is now
+   MACHINE-ENFORCED, not documentation. Suppressed lines stay visible in
+   unmapped[] (same honest behavior as CNQ's bare net "Revenue").
+3. Bare `royalties` alias (resource, income-statement-scoped) — n=2, negative
+   as-presented on both filers, consistent with the stored-NEGATIVE rule.
+   Ships WITH ruling 1 (royalties against a net revenue would double-count).
+4. Triage alias family (concept-unambiguous, no new judgment): pretax_income
+   += "net income before income taxes" (ARX); operating_cash_flow +=
+   "total cash flow from operating activities" (TOU) + "cash flow from
+   operating activities" (ARX); capex (resource) += "property, plant and
+   equipment" CASH_FLOW-SCOPED (TOU; the identical label is the balance-sheet
+   asset stock — CB-009 stock/flow pattern) + "property, plant and equipment
+   development expenditures" (ARX); short_term_debt += "current debt" (TOU).
+5. Typographic-apostrophe normalization: `_normalize_label` folds U+2019/U+2018
+   to ASCII "'" — ARX prints "Total shareholders’ equity" (grand total,
+   identity ties 7,046.3 + 8,264.0 = 15,310.3) and the curly quote defeated
+   every CB-013 alias. Pure-logic change; _MAPPER_LOGIC_REV bumped 1→2.
+6. LABELED ADDITION (beyond the ratified list, surfaced by the corpus drift
+   check): long_term_debt += "non-current debt" (DIR.UN). The ratified
+   "current debt" alias fires on DIR.UN's balance sheet, and alone it would
+   compute an understated D/E (870,407 current-only vs true total debt
+   2,968,950). The IFRS current/non-current pair maps as a PAIR.
+7. DEFERRED (Riley, explicit): bare "Operating" / "Transportation" expense
+   labels (n=2 but dangerously generic) — netback margin stays honestly
+   unavailable on TOU/ARX until a scoped ruling.
+8. Q-noise closed with no action: TOU's combined "Net income and comprehensive
+   income" row (bottom line already maps from the clean "Net income" row,
+   same value); per-share rows (no canonical consumer — fails the
+   mapping-utility gate).
+
+- Enforced by: CC-implemented directly (commit cites CB-025).
+  sedar_mapper.py (suppressed_default_aliases in _build_match_indexes;
+  apostrophe fold in _normalize_label; _MAPPER_LOGIC_REV 2);
+  sedar_aliases.json (all aliases above + resource suppression block).
+  Tests: tests/test_cb025_tou_arx_triage.py (16 pins incl. suppression
+  scoped-to-resource, stock/flow fail-closed, DIR.UN debt pair);
+  DIR.UN fixture re-stored 9→11 (only the debt pair added, zero value
+  changes, machine-verified) + registry regenerated; full suite 485 green.
+
+## CB-026: Combined "DD&A and impairment" line — maps WITH `includes_impairment` semantics; EBITDA composition disclosed
+
+DECIDED 2026-07-09 (Riley — RE-RATIFIED same day: the morning triage ruled
+"leave unmapped"; Riley then surfaced the standard-practice evidence that
+BOTH DD&A and impairment are non-cash EBITDA add-backs, and re-ratified to
+map-with-disclosure). Evidence n=2: TOU "Depletion, depreciation,
+amortization and impairment" 3,000,251; ARX "Depletion, depreciation and
+amortization and impairment of property, plant and equipment" 1,547.2 —
+combining is the sector norm on gas-weighted filers.
+
+RULING: the combined line maps to `depletion_depreciation_amortization` with
+semantics {"includes_impairment": true} (ATD `excludes_da` tag precedent),
+income-statement-scoped (the cash-flow add-back twin stays unmapped).
+EBITDA = EBIT + this line — "EBITDA excluding impairment", the conventional
+metric — and the composition is DISCLOSED: the EBITDA-margin caption reads
+"(EBIT + D&A incl. impairment)" via the new `da_basis` metrics key.
+
+CONSUMER FIX REQUIRED BY THE RULING: `_calc_summary_metrics` D&A was a bare
+cash-flow-row scrape (_DA_LABELS carries bare "depreciation"/"amortization"
+keywords) which would have matched the combined line SILENTLY — impairment
+inside EBITDA with no caption saying so. D&A is now canonical-first
+(promoted `depletion_depreciation_amortization`, scrape fallback for
+non-mapped paths), reading the semantics tag for the disclosure.
+
+HONEST CAVEAT (recorded, accepted): cross-filer EBITDA comparability — CNQ's
+pure D&A line carries no impairment; in a big-impairment year TOU's EBITDA
+add-back is a disclosed different composition. The caption is the mitigation.
+
+- Enforced by: CC-implemented directly (commit cites CB-026).
+  sedar_aliases.json (two combined-line aliases with semantics, resource);
+  excel_exporter.py (_calc_summary_metrics canonical-first D&A + da_basis +
+  caption disclosure). Tests: 5 pins in test_cb025_tou_arx_triage.py (both
+  label forms, CNQ pure line carries NO tag, caption with/without tag).
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added

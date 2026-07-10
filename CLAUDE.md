@@ -185,6 +185,14 @@ re-mint sector names for the same concept (that was the Task A bug, fixed
   net-of-royalties lines stay UNMAPPED BY DESIGN — canonical revenue = gross.
   Bare "revenue" is never a safe alias in this sector (it would capture the
   net line and collapse the gross/royalty split). Pinned by test.
+  MACHINE-ENFORCED since CB-025 (2026-07-09): the negative rule also binds
+  the DEFAULT rollup aliases. TOU and ARX both print a "Total revenue" line
+  that is NET of royalties (component sums tie exactly), and the default
+  "total revenue" alias captured it — so resource_sector now SUPPRESSES all
+  four default revenue rollup aliases via `suppressed_default_aliases` in
+  sedar_aliases.json (new mapper mechanism; suppressed lines stay visible in
+  unmapped[]). Gross top line on rollup-printing filers = "Commodity sales
+  from production" (TOU 4,940,024; ARX 5,421.7).
 - `rental_revenue` (reit_sector): rental-only revenue per the NOI rule —
   DELIBERATELY a different concept from a REIT's blended total (which, where
   a "Total revenue" line exists, maps to default `revenue` separately).
@@ -429,7 +437,11 @@ CB-017 interest guards) is the fallback for non-mapped EDGAR/manual paths.
 DEFINITION (decided by Riley 2026-07-07, casebook CB-022): interest-bearing
 borrowings. `long_term_debt` = "long-term debt"; `short_term_debt` = "current
 portion of long-term debt". Both DEFAULT, balance-sheet-scoped, presented
-positive.
+positive. CB-025 (2026-07-09) adds the IFRS current/non-current pair:
+`long_term_debt` += "non-current debt" [DIR.UN], `short_term_debt` +=
+"current debt" [TOU, DIR.UN]. PAIR RULE: these two aliases ship together —
+"current debt" alone computes an understated D/E on filers printing the
+paired form (DIR.UN: 870,407 current-only vs true total 2,968,950).
 
 TOTAL DEBT = long_term_debt + short_term_debt → Debt/Equity = total_debt /
 total_equity. EXCLUDES leases (filers break lease obligations out under
@@ -452,6 +464,14 @@ EBIT = pre-tax income + interest expense (standard add-back), used when the
 filer prints NO operating-income line (O&G like CNQ); a printed operating
 income is preferred where present. EBITDA = EBIT + D&A → EBITDA Margin,
 Interest Cover (= EBIT / interest), and Leverage (= net-debt / EBITDA).
+CB-026 (2026-07-09): D&A is canonical-first (promoted
+`depletion_depreciation_amortization`, scrape fallback). A combined
+"DD&A and impairment" line (TOU/ARX — the gas-filer norm) maps with
+semantics {"includes_impairment": true} and IS added back (both are
+non-cash; standard EBITDA practice), with the composition DISCLOSED in the
+caption via `da_basis` ("EBIT + D&A incl. impairment"). Never let the
+_DA_LABELS scrape match a combined line silently — that was the defect
+class CB-026 closed.
 GATED OFF financial_sector / insurance_sector — interest is core to a
 bank/insurer, so EBIT/EBITDA/interest-cover are honest N/A there (pretax_income
 still maps; only the derived metrics are withheld). The EBIT add-back and the

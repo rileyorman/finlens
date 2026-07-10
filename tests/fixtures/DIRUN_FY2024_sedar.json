@@ -743,6 +743,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "long_term_debt": {
+        "value": 2098543,
+        "source_label": "Non-current debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "short_term_debt": {
+        "value": 870407,
+        "source_label": "Current debt",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_liabilities": {
         "value": 3391481,
         "source_label": "Total liabilities",
@@ -858,10 +870,6 @@
         "value": 13756
       },
       {
-        "label": "Non-current debt",
-        "value": 2098543
-      },
-      {
         "label": "Deferred income tax liabilities, net",
         "value": 53727
       },
@@ -872,10 +880,6 @@
       {
         "label": "Total non-current liabilities",
         "value": 2223472
-      },
-      {
-        "label": "Current debt",
-        "value": 870407
       },
       {
         "label": "Subsidiary redeemable units",
@@ -918,8 +922,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 48,
-      "mapped_count": 9,
-      "unmapped_count": 39,
+      "mapped_count": 11,
+      "unmapped_count": 37,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
