@@ -1127,7 +1127,7 @@ Before deployment or demo:
 1. Confirm work is on `dev`.
 2. Run `python -m py_compile app.py`.
 3. Start Streamlit locally (secrets injected) and confirm the app loads.
-4. Run the full suite with secrets injected: `sops exec-env <store> "python -m pytest -q"` — expect green.
+4. Run the full suite: `python -m pytest -q` — expect green (no secrets needed since 2026-07-09; see the secrets note above).
 5. Test the affected user flow.
 6. Confirm `.streamlit/secrets.toml` is not committed (the `.env` is gone/gitignored; SOPS store lives outside the repo).
 7. Confirm generated reports and PDFs are not committed.
