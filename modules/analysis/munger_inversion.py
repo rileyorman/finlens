@@ -64,7 +64,10 @@ def _api_key() -> str:
 
 def _strip_json_fences(raw: str) -> str:
     text = (raw or "").strip()
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    # Closing fence optional: a max_tokens truncation eats it, and requiring
+    # it left the leading ``` in place — json.loads then failed at char 0
+    # (Call 4 bug class, fixed codebase-wide 2026-07-11).
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*(?:```|$)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     return text

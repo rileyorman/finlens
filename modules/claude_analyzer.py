@@ -273,6 +273,21 @@ def _text_content(response) -> str:
     return next((b.text for b in response.content if b.type == "text"), "")
 
 
+def _strip_json_fences(raw: str) -> str:
+    """Strip markdown code fences when Claude wraps its JSON in them.
+
+    The closing fence is OPTIONAL: a max_tokens truncation eats it, and the
+    old both-fences-required regex left the leading ``` in place — json.loads
+    then failed at "char 0", the misleading "empty response" signature that
+    hid the Call 4 truncation bug (six corpus filers, fixed 2026-07-11).
+    Bare JSON with no fences passes through unchanged.
+    """
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*(?:```|$)", raw, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return raw
+
+
 # Typography that Claude emits in prose, mapped to readable ASCII equivalents.
 # Do not revert _sanitize to a blanket '?' replace: em-dashes in analyst text
 # were stored as "?" and displayed that way permanently (cache holds the result).
@@ -651,12 +666,9 @@ def analyze_financials(
     )
 
     print(log_cache_usage("analyze_financials", response.usage, response.model))
-    raw = response.content[0].text
+    raw = _text_content(response)
 
-    # Strip markdown code fences if Claude wraps the JSON in them
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-    if match:
-        raw = match.group(1)
+    raw = _strip_json_fences(raw)
 
     financial_data = json.loads(raw)
 
@@ -796,19 +808,18 @@ def analyze_summary(
     else:
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            # 2048 (was 1024): sonnet-5 writes data-rich JSON that ran to ~75%
+            # of the old cap on real filers — headroom, not a behavior change.
+            max_tokens=2048,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
-            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
         )
 
     print(log_cache_usage("analyze_summary", response.usage, response.model))
     raw = _text_content(response)
 
-    # Strip markdown code fences if Claude wraps the JSON in them
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-    if match:
-        raw = match.group(1)
+    raw = _strip_json_fences(raw)
 
     try:
         data = json.loads(raw)
@@ -820,8 +831,10 @@ def analyze_summary(
             item["text"] = _sanitize(item.get("text") or "")
         return data
     except json.JSONDecodeError as e:
+        truncated = getattr(response, "stop_reason", None) == "max_tokens"
+        note = " (response truncated at max_tokens)" if truncated else ""
         return {
-            "error": f"Call 2 response could not be parsed as JSON: {e}",
+            "error": f"Call 2 response could not be parsed as JSON: {e}{note}",
             "raw_response": raw,
             "signal": None,
             "thesis": None,
@@ -910,19 +923,18 @@ def analyze_bear_bull(
     else:
         response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            # 2048 (was 1024): sonnet-5 writes data-rich JSON that ran to ~75%
+            # of the old cap on real filers — headroom, not a behavior change.
+            max_tokens=2048,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": user_message}],
-            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 1024-tok JSON)
+            thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
         )
 
     print(log_cache_usage("analyze_bear_bull", response.usage, response.model))
     raw = _text_content(response)
 
-    # Strip markdown code fences if Claude wraps the JSON in them
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-    if match:
-        raw = match.group(1)
+    raw = _strip_json_fences(raw)
 
     try:
         data = json.loads(raw)
@@ -934,8 +946,10 @@ def analyze_bear_bull(
             item["detail"] = _sanitize(_strip_latex(item.get("detail") or ""))
         return data
     except json.JSONDecodeError as e:
+        truncated = getattr(response, "stop_reason", None) == "max_tokens"
+        note = " (response truncated at max_tokens)" if truncated else ""
         return {
-            "error": f"Call 3 response could not be parsed as JSON: {e}",
+            "error": f"Call 3 response could not be parsed as JSON: {e}{note}",
             "bull_case": [],
             "bear_case": [],
         }
@@ -1011,6 +1025,7 @@ def analyze_dashboard_insights(
     (raw text not stored); the model generates insights from structured data alone.
     """
     raw = ""
+    stop_reason = None
     try:
         client      = _make_client(api_key)
 
@@ -1047,19 +1062,23 @@ def analyze_dashboard_insights(
         else:
             response = client.messages.create(
                 model     = model,
-                max_tokens= 1200,
+                # 4000 (was 1200): sonnet-5's data-rich answers ran to ~1500+
+                # tokens and were cut mid-JSON at 1200 on SIX corpus filers
+                # (WCP/AP.UN/SU/CNQ/REI.UN/PLD library entries + ARX live,
+                # 2026-07-11 — every failed call logged exactly 1200 output
+                # tokens in ~/.finlens/usage_log.jsonl).
+                max_tokens= 4000,
                 system    = [{"type": "text", "text": SYSTEM_PROMPT,
                               "cache_control": _cache_control()}],
                 messages  = [{"role": "user", "content": user_message}],
-                thinking  = {"type": "disabled"},  # sonnet-5: no thinking (would truncate 1200-tok JSON)
+                thinking  = {"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
             )
 
+        stop_reason = getattr(response, "stop_reason", None)
         print(log_cache_usage("analyze_dashboard_insights", response.usage, response.model))
         raw = _text_content(response)
 
-        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
-        if m:
-            raw = m.group(1)
+        raw = _strip_json_fences(raw)
 
         data = json.loads(raw)
         for key in ("dalio_view", "lynch_category", "lynch_story", "marks_view",
@@ -1072,8 +1091,9 @@ def analyze_dashboard_insights(
         return data
 
     except Exception as e:
+        note = " (response truncated at max_tokens)" if stop_reason == "max_tokens" else ""
         return {
-            "error":              f"Call 4 failed ({type(e).__name__}): {e}",
+            "error":              f"Call 4 failed ({type(e).__name__}): {e}{note}",
             "raw_response":       raw,
             "dalio_view":         "",
             "lynch_category":     "",

@@ -538,6 +538,21 @@ def _reanalyse_text_for_entry(entry: dict) -> str | None:
     return text
 
 
+def _dashboard_or_none(dashboard_data):
+    """Treat a persisted Call 4 failure as missing dashboard insights.
+
+    Six corpus library entries stored {"error": "Call 4 failed..."} dicts from
+    the pre-2026-07-11 max_tokens=1200 truncation bug. A stored error-dict is
+    not None, so the load-time regeneration (the `if dashboard_data is None`
+    branch on the dashboard) never fired and the error banner persisted
+    forever. Returning None here lets that regeneration heal the entry on its
+    next load — one cheap Call 4, no full Re-Analyse needed.
+    """
+    if isinstance(dashboard_data, dict) and dashboard_data.get("error"):
+        return None
+    return dashboard_data
+
+
 def _supabase_row_to_library_entry(row: dict) -> dict:
     data = row.get("data") or {}
     if not isinstance(data, dict):
@@ -784,7 +799,9 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
 
     summary_data = cached.get("summary_data") or cached.get("summary")
     bear_bull_data = cached.get("bear_bull_data") or cached.get("bear_bull")
-    dashboard_data = cached.get("dashboard_data") or cached.get("dashboard_insights")
+    dashboard_data = _dashboard_or_none(
+        cached.get("dashboard_data") or cached.get("dashboard_insights")
+    )
     market_data = cached.get("market_data") or {}
     if not market_data and cached.get("market_cap") is not None:
         market_data = {"market_cap": cached.get("market_cap")}
@@ -2365,7 +2382,7 @@ document.addEventListener('focusin', function(e) {
                                     st.session_state.financial_data      = fd
                                     st.session_state.summary_data        = sd
                                     st.session_state.bear_bull_data      = bb
-                                    st.session_state.dashboard_data      = entry.get("dashboard_data")
+                                    st.session_state.dashboard_data      = _dashboard_or_none(entry.get("dashboard_data"))
                                     st.session_state.mda_sentiment       = entry.get("mda_sentiment")
                                     # Direct-entry loads never stored market data — fetch
                                     # fresh through the wrong-issuer guard at load time.
@@ -6388,7 +6405,7 @@ if uploaded_file:
             financial_data = normalize_financial_data(_heal_sedar_mapping(cached["financial_data"]))
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
-            dashboard_data = cached.get("dashboard_data")
+            dashboard_data = _dashboard_or_none(cached.get("dashboard_data"))
             mda_sentiment  = cached.get("mda_sentiment")
             if _healed_stale:
                 # Persist the free re-map so future loads are instant and the
