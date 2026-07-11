@@ -28,6 +28,7 @@ CHECK_IDS = (
     "revenue_growth_yoy", "gross_margin", "operating_income",
     "net_income", "free_cash_flow", "current_ratio",
     "net_debt_to_ebitda", "interest_coverage",
+    "derivative_gains_concentration",
 )
 
 SECTOR_FLAG_RULES: dict[str, dict[str, dict]] = {
@@ -207,6 +208,30 @@ def detect_flags(financial_data: dict) -> dict:
                     "Low interest coverage",
                     f"Interest coverage is {ic:.2f}x — limited cushion above debt service.",
                     ic, "< 3.0")
+
+    # ── Derivative gains concentration (CB-034) ───────────────────────────────
+    # Earnings-quality check: realized derivative gains as a share of pre-tax
+    # earnings. Both inputs are mapped SEDAR canonical fields promoted to
+    # top-level keys — the check honestly skips when either is unmapped.
+    # Reference: Peyto FY2025, 248,737 / 535,822 = 46% (the cold-load drill
+    # finding that motivated the hedging-book session).
+    _rdg = financial_data.get("realized_derivative_gains")
+    _ptx = financial_data.get("pretax_income")
+    if isinstance(_rdg, (int, float)) and isinstance(_ptx, (int, float)) and _ptx > 0:
+        _conc = abs(_rdg) / _ptx * 100.0
+        if _conc >= 50.0:
+            _red("derivative_gains_concentration",
+                 "Earnings dominated by derivative gains",
+                 f"Realized derivative gains are {_conc:.0f}% of pre-tax earnings — "
+                 "run-rate profitability depends heavily on the hedge book, which "
+                 "rolls off at market prices.",
+                 _conc, ">= 50%")
+        elif _conc >= 25.0:
+            _yellow("derivative_gains_concentration",
+                    "Significant derivative-gains reliance",
+                    f"Realized derivative gains are {_conc:.0f}% of pre-tax earnings — "
+                    "check what earnings look like once current hedges expire.",
+                    _conc, ">= 25%")
 
     # ── Step 2: resolve sector profile ────────────────────────────────────────
     profile      = _resolve_sector_profile(financial_data)

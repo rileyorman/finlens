@@ -793,6 +793,12 @@
         "match_type": "exact",
         "confidence": 0.98
       },
+      "realized_derivative_gains": {
+        "value": 420981,
+        "source_label": "Realized gain on financial instruments",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
       "operating_expense": {
         "value": 1148182,
         "source_label": "Operating",
@@ -820,6 +826,12 @@
         "match_type": "exact",
         "confidence": 0.98
       },
+      "net_income": {
+        "value": 262672,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
       "total_assets": {
         "value": 22621607,
         "source_label": "Total Assets",
@@ -841,12 +853,6 @@
       "total_equity": {
         "value": 15436278,
         "source_label": "Total shareholders' equity",
-        "match_type": "exact",
-        "confidence": 0.98
-      },
-      "net_income": {
-        "value": 262672,
-        "source_label": "Net income",
         "match_type": "exact",
         "confidence": 0.98
       },
@@ -875,10 +881,6 @@
       {
         "label": "Other income",
         "value": 31399
-      },
-      {
-        "label": "Realized gain on financial instruments",
-        "value": 420981
       },
       {
         "label": "Unrealized (loss) on financial instruments",
@@ -935,10 +937,6 @@
       {
         "label": "Deferred tax expense",
         "value": 36742
-      },
-      {
-        "label": "Net income and comprehensive income",
-        "value": 262672
       },
       {
         "label": "Net income per share - Basic",
@@ -1179,25 +1177,38 @@
       {
         "label": "Cash, end of period",
         "value": 0
+      },
+      {
+        "label": "Net income and comprehensive income",
+        "value": 262672
       }
     ],
     "meta": {
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "resource_sector",
       "total": 92,
-      "mapped_count": 13,
-      "unmapped_count": 79,
+      "mapped_count": 14,
+      "unmapped_count": 78,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,
       "collisions": [],
-      "resolved_collisions": []
+      "resolved_collisions": [
+        {
+          "canonical_field": "net_income",
+          "rule": "prefer_primary_alias",
+          "chosen_label": "Net income",
+          "rejected_labels": [
+            "Net income and comprehensive income"
+          ]
+        }
+      ]
     }
   },
   "source_provenance": {
     "pdf_origin_url": "https://tourmaline.cdn.prismic.io/tourmaline/aaidt1xvIZEnjVXx_FinalQ42025MDAFinancialStatements.pdf",
     "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
-    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches \u2014 sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)",
+    "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches — sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)",
     "document_note": "Q4 2025 MD&A + annual consolidated financial statements pack (FinalQ42025MDAFinancialStatements.pdf)",
     "future_pattern": "issuer-hosted PDF is the established campaign protocol per docs/FETCH_CAMPAIGN_LOG.md; first agent-fetched corpus fixtures (with ARX #17)",
     "sha256": "16c2e1132c1b3928745739c3f9bea7d015242c86e8fc12af68ce982960e72214",

@@ -1253,7 +1253,15 @@ def test_tou_fixture_first_agent_fetched_rollup_printing_gas_producer():
     assert mapped["transportation_costs"]["source_label"] == "Transportation"
     assert mapped["transportation_costs"]["value"] == 1198061
 
-    assert result["meta"]["mapped_count"] == 13
+    # CB-034 (2026-07-11, hedging-book session): the clean REALIZED-only
+    # line maps; the separate "Unrealized (loss) on financial instruments"
+    # (-221,528, blends MTM) stays honestly unmapped by design.
+    assert mapped["realized_derivative_gains"]["value"] == 420981
+    assert (mapped["realized_derivative_gains"]["source_label"]
+            == "Realized gain on financial instruments")
+    assert "Unrealized (loss) on financial instruments" in unmapped_labels
+
+    assert result["meta"]["mapped_count"] == 14
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)

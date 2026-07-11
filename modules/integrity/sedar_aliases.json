@@ -255,6 +255,23 @@
       ],
       "patterns": []
     },
+    "realized_derivative_gains": {
+      "aliases": [
+        {
+          "label": "realized gain on derivative financial instruments",
+          "standards": ["IFRS"],
+          "source": "CB-034 PEY.TO_FY2025 — clean REALIZED-only line +248,737 (46% of pretax earnings; the concentration-flag input). Signed as-presented. Combined/net lines (ARX 'Gain on risk management contracts', CNQ 'Risk management loss (gain)', WCP 'Net gain (loss) on commodity contracts') are deliberately NOT aliased — they blend unrealized MTM, a different concept",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "realized gain on financial instruments",
+          "standards": ["IFRS"],
+          "source": "CB-034 TOU_FY2025 — clean REALIZED-only line +420,981 (the separate 'Unrealized (loss) on financial instruments' −221,528 stays unmapped by design)",
+          "statements": ["income_statement"]
+        }
+      ],
+      "patterns": []
+    },
     "long_term_debt": {
       "aliases": [
         {

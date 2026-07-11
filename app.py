@@ -29,7 +29,12 @@ from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
-from sedar_extractor import SedarExtractionError, attach_mapping, extract_sedar_filing
+from sedar_extractor import (
+    SedarExtractionError,
+    attach_mapping,
+    extract_hedging_note,
+    extract_sedar_filing,
+)
 from modules.claude_analyzer import (
     FabricatedExtractionError,
     analyze_financials,
@@ -501,6 +506,35 @@ def _reanalyse_pdf_path_for_entry(entry: dict) -> str | None:
                 if resolved is not None:
                     return str(resolved)
                 break
+    return None
+
+
+def _hedging_pdf_path_for_current(ticker: str | None, financial_data: dict | None) -> str | None:
+    """On-disk PDF for the currently loaded SEDAR filing (hedging-note pass).
+
+    Chain: the per-filing PDF cache (upload flow caches there), then the
+    canonical campaign PDF via the registry (registry loads store no bytes;
+    matched by ticker root + fiscal year digits since the entry id isn't in
+    scope at render time). Same resolution family as
+    _reanalyse_pdf_path_for_entry.
+    """
+    fd = financial_data or {}
+    period = fd.get("fiscal_year") or fd.get("period") or ""
+    cached = _pdf_cache_path(ticker, period)
+    if cached and Path(cached).exists():
+        return cached
+    root = (ticker or "").split(".")[0].upper()
+    year_match = re.search(r"(\d{4})", str(period))
+    year = year_match.group(1) if year_match else None
+    if not root or not year:
+        return None
+    for filing in _load_filing_registry().get("filings") or []:
+        f_ticker = str(filing.get("ticker") or "").split(".")[0].upper()
+        f_year = re.search(r"(\d{4})", str(filing.get("fiscal_year") or ""))
+        if f_ticker == root and f_year and f_year.group(1) == year:
+            resolved = resolve_campaign_pdf(filing)
+            if resolved is not None:
+                return str(resolved)
     return None
 
 
@@ -1002,12 +1036,17 @@ def _heal_sedar_mapping(financial_data: dict) -> dict:
         return financial_data
     try:
         healed_extraction = attach_mapping(financial_data["sedar_extraction"])
-        return _sedar_extraction_to_financial_data(
+        healed = _sedar_extraction_to_financial_data(
             healed_extraction,
             file_name=financial_data.get("company_name") or "",
             company_name=financial_data.get("company_name"),
             ticker=financial_data.get("ticker"),
         )
+        # The hedging book is a separate PAID extraction stored top-level —
+        # a free re-map must never drop it (CB-034; sibling-path check).
+        if isinstance(financial_data.get("hedging_book"), dict):
+            healed["hedging_book"] = financial_data["hedging_book"]
+        return healed
     except Exception:
         return financial_data
 
@@ -9439,6 +9478,184 @@ if st.session_state.financial_data:
                         st.warning(f"Company fetch error: {_econ_fetch_errs['company']}")
                     if _econ_fetch_errs.get("commodity"):
                         st.warning(f"Commodity fetch error: {_econ_fetch_errs['commodity']}")
+
+            # =============================================================
+            # Hedging Book — as disclosed in the statement notes (CB-034,
+            # design: docs/HEDGING_BOOK_SPEC.md). On-demand extraction
+            # (Riley's ratified trigger): analysis stays your click.
+            # =============================================================
+            st.divider()
+            _hb = financial_data.get("hedging_book") if isinstance(financial_data, dict) else None
+
+            if not isinstance(_hb, dict):
+                st.markdown("#### 🔒 Hedging Book")
+                _hb_pdf = _hedging_pdf_path_for_current(ticker, financial_data)
+                if not _hb_pdf:
+                    st.caption(
+                        "Extracts the derivative/hedging note (volumes, prices, tenor, "
+                        "fair values) from the filed statements. The source PDF is not "
+                        "cached for this filing — re-load or re-upload it to enable."
+                    )
+                else:
+                    st.caption(
+                        "Extract the derivative/hedging note — positions, prices, tenor, "
+                        "fair values, as disclosed. One targeted Claude pass (~$0.05–0.15)."
+                    )
+                    if st.button("🔒 Extract Hedging Book $", key="hedging_extract_go"):
+                        with st.spinner("Extracting the derivative note (30–90 seconds)..."):
+                            try:
+                                _hb_book = extract_hedging_note(_hb_pdf)
+                            except SedarExtractionError as _hb_exc:
+                                st.error(f"Hedging-note extraction failed: {_hb_exc}")
+                                _hb_book = None
+                            except Exception as _hb_exc:
+                                st.error(f"Hedging-note extraction failed: {_hb_exc} — try again.")
+                                _hb_book = None
+                        if _hb_book is not None:
+                            financial_data["hedging_book"] = _hb_book
+                            # Re-run integrity so the CB-034 fair-value tie rule
+                            # arms with the new data (fresh moat-log record).
+                            _hb_fd = _run_integrity_checks(
+                                financial_data,
+                                st.session_state.get("summary_data"),
+                                ticker,
+                                financial_data.get("source", "sedar"),
+                                filing_date=financial_data.get("sedar_filing_date"),
+                            )
+                            if isinstance(_hb_fd, dict):
+                                st.session_state.financial_data = _hb_fd
+                            _save_analysis_cache(
+                                ticker,
+                                financial_data.get("fiscal_year") or financial_data.get("period"),
+                                financial_data.get("source", "sedar"),
+                            )
+                            st.rerun()
+            elif _hb.get("status") == "no_note_detected":
+                st.markdown("#### 🔒 Hedging Book")
+                st.info(
+                    "No derivative/hedging note was detected in this filing — "
+                    "itself a finding: the filer discloses no hedge positions in "
+                    "the pages scanned."
+                )
+            else:
+                st.markdown("#### 🔒 Hedging Book — as disclosed")
+                _hb_fp = _hb.get("figure_presence") or {}
+                _hb_positions = _hb.get("commodity_positions") or []
+                _hb_fx = _hb.get("fx_positions") or []
+                _hb_ir = _hb.get("interest_rate_positions") or []
+                _hb_subs = _hb.get("subsequent_event_positions") or []
+
+                # Summary strip
+                _hb_c1, _hb_c2, _hb_c3 = st.columns(3)
+                with _hb_c1:
+                    _hb_fv = _hb.get("fair_value_total")
+                    if _hb_fv is not None:
+                        st.metric("Net fair value (as printed)",
+                                  f"{_hb_fv:,.0f} {_hb.get('fair_value_scale') or ''}")
+                    else:
+                        _hb_mtms = _hb.get("mtm_disclosures") or []
+                        _hb_mtm_sum = sum(m.get("amount") or 0 for m in _hb_mtms
+                                          if isinstance(m.get("amount"), (int, float)))
+                        st.metric("MTM disclosures (sum)",
+                                  f"{_hb_mtm_sum:,.1f}" if _hb_mtms else "—")
+                with _hb_c2:
+                    st.metric("Positions", f"{len(_hb_positions)} commodity · "
+                                           f"{len(_hb_fx)} FX · {len(_hb_ir)} IR")
+                with _hb_c3:
+                    if _hb_fp.get("missing_count", 0) == 0 and _hb_fp.get("checked"):
+                        st.metric("Figure presence", f"{_hb_fp['checked']}/{_hb_fp['checked']} ✓")
+                    else:
+                        st.metric("Figure presence",
+                                  f"{_hb_fp.get('missing_count', '?')} UNVERIFIED")
+                if _hb_fp.get("missing_count"):
+                    st.warning(
+                        f"⚠️ {_hb_fp['missing_count']} extracted value(s) were NOT found "
+                        "verbatim in the note text — treat those figures as unverified "
+                        "and check the source pages."
+                    )
+
+                # Roll-off view: hedged volume by start year per commodity+unit.
+                _hb_rolloff: dict = {}
+                for _pos in _hb_positions:
+                    _yr = _pos.get("period_start_year")
+                    _vol = _pos.get("volume")
+                    if not isinstance(_yr, (int, float)) or not isinstance(_vol, (int, float)):
+                        continue
+                    _rk = (_pos.get("commodity") or "?", _pos.get("volume_unit") or "")
+                    _hb_rolloff.setdefault(_rk, {})
+                    _hb_rolloff[_rk][int(_yr)] = _hb_rolloff[_rk].get(int(_yr), 0) + _vol
+                if _hb_rolloff:
+                    st.caption(
+                        "Hedged volume by start year (sum of disclosed position rows — "
+                        "quarterly rows sum within a year; the roll-off cliff is the story):"
+                    )
+                    _hb_years = sorted({y for row in _hb_rolloff.values() for y in row})
+                    _hb_table = [
+                        {"Commodity / unit": f"{ck} ({cu})",
+                         **{str(y): f"{row.get(y, 0):,.0f}" for y in _hb_years}}
+                        for (ck, cu), row in sorted(_hb_rolloff.items())
+                    ]
+                    st.dataframe(_hb_table, hide_index=True, width='stretch')
+
+                with st.expander(
+                    f"All positions — the receipt ({len(_hb_positions) + len(_hb_fx) + len(_hb_ir)} "
+                    f"current + {len(_hb_subs)} subsequent)", expanded=False,
+                ):
+                    if _hb_positions:
+                        st.markdown("**Commodity contracts** (as disclosed)")
+                        st.dataframe([
+                            {"Index": p.get("index"), "Period": p.get("period_label"),
+                             "Type": p.get("instrument"), "Volume": p.get("volume"),
+                             "Unit": p.get("volume_unit"), "Price": p.get("price"),
+                             "Floor": p.get("price_floor"), "Ceiling": p.get("price_ceiling"),
+                             "Price unit": p.get("price_unit"), "Fair value": p.get("fair_value"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_positions
+                        ], hide_index=True, width='stretch')
+                    if _hb_fx:
+                        st.markdown("**FX contracts**")
+                        st.dataframe([
+                            {"Type": p.get("instrument"), "Direction": p.get("direction"),
+                             "Period": p.get("period_label"), "Amount": p.get("amount"),
+                             "Unit": p.get("amount_unit"), "Rate": p.get("rate"),
+                             "Floor": p.get("rate_floor"), "Ceiling": p.get("rate_ceiling"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_fx
+                        ], hide_index=True, width='stretch')
+                    if _hb_ir:
+                        st.markdown("**Interest-rate contracts**")
+                        st.dataframe([
+                            {"Term": p.get("term_label"), "Notional": p.get("notional"),
+                             "Unit": p.get("notional_unit"), "Fixed %": p.get("fixed_rate_pct"),
+                             "Floating": p.get("floating_benchmark"), "Page": p.get("source_page")}
+                            for p in _hb_ir
+                        ], hide_index=True, width='stretch')
+                    if _hb_subs:
+                        st.markdown("**Entered AFTER period end** (subsequent events)")
+                        st.dataframe([
+                            {"Index": p.get("index") or p.get("direction") or p.get("term_label"),
+                             "Period": p.get("period_label"), "Type": p.get("instrument"),
+                             "Volume/Amount": p.get("volume") if p.get("volume") is not None else p.get("amount"),
+                             "Unit": p.get("volume_unit") or p.get("amount_unit"),
+                             "Price/Rate": p.get("price") if p.get("price") is not None else p.get("rate"),
+                             "Floor": p.get("price_floor") or p.get("rate_floor"),
+                             "Ceiling": p.get("price_ceiling") or p.get("rate_ceiling"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_subs
+                        ], hide_index=True, width='stretch')
+                    for _mtm in _hb.get("mtm_disclosures") or []:
+                        st.caption(f"MTM ({_mtm.get('scope')}): {_mtm.get('verbatim') or _mtm.get('amount')}")
+                    for _sens in _hb.get("sensitivities") or []:
+                        st.caption(f"Sensitivity: {_sens.get('verbatim')}")
+
+                _hb_pages = ", ".join(str(p) for p in _hb.get("source_pages") or [])
+                st.caption(
+                    f"Extracted from note pages {_hb_pages} of the filed statements; "
+                    f"volumes, prices and periods as disclosed (extraction confidence "
+                    f"{_hb.get('extraction_confidence', 0):.2f}). Hedge coverage % and "
+                    "hedge-price-vs-strip need production volumes / futures data — "
+                    "MD&A-fetcher era, planned."
+                )
 
 else:
     if not uploaded_file:
