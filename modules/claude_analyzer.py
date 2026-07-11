@@ -666,6 +666,18 @@ def analyze_financials(
     )
 
     print(log_cache_usage("analyze_financials", response.usage, response.model))
+
+    # Honest truncation error BEFORE the JSON parser can misreport it as a
+    # confusing JSONDecodeError (same pattern as sedar_extractor's
+    # _raise_if_truncated; retrying at the same budget can never succeed).
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise ValueError(
+            "Call 1 extraction hit its 8192-token output budget before the "
+            "JSON completed (stop_reason=max_tokens). This filing's extraction "
+            "is unusually large — it needs a bigger output budget or the "
+            "streaming extraction path, not a retry."
+        )
+
     raw = _text_content(response)
 
     raw = _strip_json_fences(raw)
@@ -1221,10 +1233,12 @@ def analyze_mda_sentiment(
         else:
             response = client.messages.create(
                 model=model,
-                max_tokens=512,
+                # 1024 (was 512): cheap insurance against the Call 4 truncation
+                # bug class — haiku's observed max here is 157 tokens.
+                max_tokens=1024,
                 system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
                 messages=[{"role": "user", "content": user_message}],
-                thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate 512-tok JSON)
+                thinking={"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
             )
 
         print(log_cache_usage("analyze_mda_sentiment", response.usage, response.model))
