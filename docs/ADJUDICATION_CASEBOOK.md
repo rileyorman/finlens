@@ -1429,6 +1429,117 @@ RULINGS:
 
 ---
 
+## CB-031: Resource gross-revenue label family n=4 — "Petroleum and natural gas sales" (WCP) + "Natural gas and natural gas liquid sales" (Peyto)
+
+DECIDED 2026-07-11 (Riley — ratified in the Peyto cold-load drill triage,
+same session the drill ran; closes the queued WCP n=3
+resource-revenue-label event, which the drill advanced to n=4).
+
+RULINGS:
+1. resource_sector `revenue` += "petroleum and natural gas sales"
+   [WCP_FY2025, 5,908.8] and "natural gas and natural gas liquid sales"
+   [PEY.TO_FY2025, 1,080,438]. Both are gross-of-royalties production top
+   lines per the canonical definition (2026-06-17 ground-truth decision);
+   each filer's "…net of royalties" line ties arithmetically
+   (WCP 5,908.8 − 739.1 = 5,169.7; Peyto 1,080,438 + 23,118 − 47,203 =
+   1,056,353) and stays unmapped. Exact-normalized-label matching means the
+   longer net-of-royalties labels cannot match the new gross aliases.
+2. NEGATIVE-RULE EVIDENCE (CB-025 held cold): Peyto's "Total revenue,
+   other income, and derivative financial instruments" 1,320,055 — polluted
+   with realized derivative gains 248,737 and other income — stayed
+   honestly unmapped on the cold load via suppressed_default_aliases,
+   BEFORE any triage. The suppression did its job on a filer nobody had
+   looked at.
+3. The gross-revenue label family now spans four forms: "Product sales"
+   (CNQ), "Gross revenues" (SU), "Commodity sales from production"
+   (TOU/ARX), and the two CB-031 forms. Future variants join by the same
+   two tests: gross-of-royalties scope + the filer's own net line ties.
+
+- Enforced by: sedar_aliases.json (both aliases, sources cite CB-031);
+  tests/test_cb031_032_peyto_cold_load.py (Peyto + WCP shapes: gross maps,
+  net-of-royalties and polluted rollup stay unmapped). No fixture counts
+  changed (neither label appears in fixture filers — full suite green is
+  the machine check). Netback Margin arms on both filers (Peyto 76.7%,
+  WCP at its next load-time re-map).
+
+---
+
+## CB-032: Peyto cold-load alias pack — bottom line, plain D&D, bare "Operating activities" OCF, PP&E-additions capex; net_income gains prefer_primary_alias
+
+DECIDED 2026-07-11 (Riley — same triage session; all concepts follow
+existing canonical definitions, so this is alias work under the
+CB-020/021/026 rulings, not new judgment).
+
+RULINGS:
+1. Default `net_income` += "earnings for the year" [PEY.TO, 418,586] and
+   "net income and comprehensive income" [WCP_FY2025, 984.6 — the
+   profit-year sibling of AP.UN's combined-SCI loss form], both
+   income_statement-scoped. CB-020's sign rule applies unchanged.
+2. COLLISION MECHANISM: `net_income` gains
+   collision_resolution=prefer_primary_alias (CB-013's total_equity
+   mechanism). Evidence: the value-snapshot suite caught TOU DROPPING
+   net_income when ruling 1 landed — TOU prints BOTH a cash-flow
+   "Net income" opener row and an income-statement "Net income and
+   comprehensive income" line, and the mapper refuses two-alias
+   collisions. prefer_primary_alias keeps the earliest-declared
+   "net income" (262,672, byte-identical to the stored fixture) and
+   records the resolution in meta.resolved_collisions. The
+   drop-then-resolve sequence is itself proof the collision guard works.
+3. resource_sector `depletion_depreciation_amortization` += plain
+   "depletion and depreciation" [PEY.TO, 387,533] — CB-026 family, no
+   impairment word, no semantics tag.
+4. Default `operating_cash_flow` += bare "operating activities" [PEY.TO,
+   857,562], cash_flow-scoped. RISK ACKNOWLEDGED at ratification (loosest
+   alias in the slate — a bare section heading): the safety argument is
+   the statement scoping plus the observation that a VALUE-BEARING row
+   under this label on a cash-flow statement is the operating subtotal by
+   construction. Pinned both ways (maps on cash_flow, refuses on
+   income_statement).
+5. Default `capex` += "additions to property, plant, and equipment"
+   [PEY.TO, −473,349], cash_flow-scoped, negative as-presented; pure
+   additions — CB-021's M&A exclusion holds.
+
+- Enforced by: sedar_aliases.json (five aliases + the net_income
+  collision_resolution key, sources cite CB-032);
+  tests/test_cb031_032_peyto_cold_load.py (8 pins incl. the TOU collision
+  regression and the OCF scoping both-ways pin). Peyto re-maps 10 → 15
+  fields (verified via attach_mapping before commit); PEY.TO and WCP
+  library entries heal free on next load via the mapper-version stamp.
+  Full suite green; zero fixture count changes (machine-checked by the
+  registry-sync + value-snapshot suites).
+
+---
+
+## CB-033: Inferred labels on unlabeled subtotals — FINDING RECORDED, fix design-session-gated
+
+FOUND 2026-07-11 (Peyto cold-load drill ground-truth; recorded with
+Riley's ratification, no enforcement change shipped).
+
+FINDING: Peyto's balance sheet prints its subtotals as BARE NUMBERS with
+no text labels (current assets 360,297; non-current liabilities 2,241,748;
+equity 2,851,734; total assets 5,459,392). The SEDAR extractor INVENTED
+labels for these rows — correctly scoped for assets and equity, but it
+labeled the non-current-liabilities block subtotal "Total liabilities"
+(Peyto prints NO true total-liabilities line anywhere; 365,910 + 2,241,748
+= 2,607,658 never appears in the filing). The mapper then mapped the
+invented label. `sedar_balance_sheet_identity` FAILED by exactly the
+missing current-liabilities amount (365,910) — flagged, never silent —
+precisely the CB-013 residual-risk backstop behavior.
+
+WHY DESIGN-GATED, NOT FIXED NOW: the correct fix is at extraction (mark
+inferred labels, e.g. label_inferred: true, so the mapper can refuse or
+flag them; Peyto is SHOP-class under CB-013's negative rule — no printed
+total means honest-unmapped). That touches the shared extraction
+prompt/schema — the Option A cross-filer drift-risk class — and must NOT
+ship ad-hoc. Until then the identity rule is the (proven) backstop, and
+PEY.TO's library entry honestly carries status=warnings.
+
+- Enforced by: nothing new (deliberate). Backstop already live:
+  sedar_balance_sheet_identity. Design session queued in
+  SESSION_HANDOFF.md.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added

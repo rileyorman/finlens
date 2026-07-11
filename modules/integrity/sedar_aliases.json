@@ -69,6 +69,7 @@
       "patterns": []
     },
     "net_income": {
+      "collision_resolution": "prefer_primary_alias",
       "aliases": [
         {
           "label": "net income",
@@ -104,6 +105,18 @@
           "label": "profit for the year",
           "standards": ["IFRS"],
           "source": "TECKB_FY2025"
+        },
+        {
+          "label": "earnings for the year",
+          "standards": ["IFRS"],
+          "source": "CB-032 PEY.TO_FY2025 cold-load drill — bottom line 418,586; profit-year form, CB-020 sign rule applies unchanged",
+          "statements": ["income_statement"]
+        },
+        {
+          "label": "net income and comprehensive income",
+          "standards": ["IFRS"],
+          "source": "CB-032 WCP_FY2025 — combined-SCI bottom line 984.6 (profit-year sibling of AP.UN's 'net loss and comprehensive loss' form)",
+          "statements": ["income_statement"]
         }
       ],
       "patterns": []
@@ -215,6 +228,12 @@
           "standards": ["IFRS"],
           "source": "CB-025 ARX_FY2025 triage — OCF subtotal variant (singular)",
           "statements": ["cash_flow"]
+        },
+        {
+          "label": "operating activities",
+          "standards": ["IFRS"],
+          "source": "CB-032 PEY.TO_FY2025 cold-load drill — bare section-heading form carrying the subtotal value 857,562; Riley ratified with the risk flagged (loosest alias in the slate): cash_flow-scoped, and a value-bearing row under this label is the operating subtotal by construction",
+          "statements": ["cash_flow"]
         }
       ],
       "patterns": []
@@ -225,6 +244,12 @@
           "label": "net expenditures on property, plant and equipment",
           "standards": ["IFRS"],
           "source": "CB-021 CNQ_FY2024 — PP&E additions; acquisitions/M&A EXCLUDED by design (see negative rule)",
+          "statements": ["cash_flow"]
+        },
+        {
+          "label": "additions to property, plant, and equipment",
+          "standards": ["IFRS"],
+          "source": "CB-032 PEY.TO_FY2025 cold-load drill — pure PP&E additions −473,349, stored negative as-presented; no M&A component (CB-021 exclusion holds)",
           "statements": ["cash_flow"]
         }
       ],
@@ -429,6 +454,16 @@
               "label": "commodity sales from production",
               "standards": ["IFRS"],
               "source": "CB-025 TOU_FY2025 + ARX_FY2025 triage — gross production top line; both filers' printed 'Total revenue' is NET of royalties and stays unmapped via suppressed_default_aliases (negative rule, machine-enforced)"
+            },
+            {
+              "label": "petroleum and natural gas sales",
+              "standards": ["IFRS"],
+              "source": "CB-031 WCP_FY2025 — gross top line 5,908.8 (n=4 resource-revenue-label adjudication, Peyto cold-load drill session); the filer's 'Petroleum and natural gas sales, net of royalties' 5,169.7 ties (5,908.8 − 739.1) and stays unmapped per the gross-of-royalties canonical definition"
+            },
+            {
+              "label": "natural gas and natural gas liquid sales",
+              "standards": ["IFRS"],
+              "source": "CB-031 PEY.TO_FY2025 cold-load drill — gross top line 1,080,438; the filer's net-of-royalties line 1,056,353 ties (1,080,438 + 23,118 marketing − 47,203 royalties) and stays unmapped; the derivative-polluted 'Total revenue, other income, and derivative financial instruments' rollup stays suppressed/unmapped (CB-025 negative rule held cold)"
             }
           ],
           "patterns": []
@@ -468,6 +503,12 @@
               "standards": ["IFRS"],
               "source": "CB-026 ARX_FY2025 triage — combined non-cash line 1,547.2; same includes_impairment ruling as the TOU form",
               "semantics": {"includes_impairment": true},
+              "statements": ["income_statement"]
+            },
+            {
+              "label": "depletion and depreciation",
+              "standards": ["IFRS"],
+              "source": "CB-032 PEY.TO_FY2025 cold-load drill — plain D&D 387,533 (no amortization word, no impairment; CB-026 family, no semantics needed)",
               "statements": ["income_statement"]
             }
           ],
