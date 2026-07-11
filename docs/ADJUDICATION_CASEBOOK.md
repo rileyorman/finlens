@@ -1540,6 +1540,64 @@ PEY.TO's library entry honestly carries status=warnings.
 
 ---
 
+## CB-034: Hedging book — notes extraction, `realized_derivative_gains`, concentration flag, fair-value tie
+
+DECIDED 2026-07-11 (Riley — the hedging-book design session, ratified via
+plan approval + three explicit decisions: on-demand trigger, full-note v1
+scope, ship the concentration flag with the new canonical field). Design
+doc: docs/HEDGING_BOOK_SPEC.md.
+
+RULINGS:
+1. HEDGING-NOTE EXTRACTION is a SEPARATE targeted pass
+   (sedar_extractor.extract_hedging_note) over the derivative note of
+   already-ingested statement PDFs — the statement extraction prompt
+   forbids notes and stays untouched (Option A drift-risk class). Both
+   disclosure geometries (Peyto quarterly rows; TOU instrument×year
+   matrix) normalize to flat position records with verbatim
+   indices/periods + source-page receipts. Figure-presence guard: every
+   extracted number must appear in the note text; misses surface as an
+   UNVERIFIED warning, never silently.
+2. New default canonical field `realized_derivative_gains`
+   (income-statement-scoped, signed as-presented): "realized gain on
+   derivative financial instruments" [PEY.TO +248,737] + "realized gain
+   on financial instruments" [TOU +420,981]. NEGATIVE RULE: combined/net
+   lines that blend unrealized MTM (ARX "Gain on risk management
+   contracts", CNQ "Risk management loss (gain)" — also sign-inverted,
+   WCP "Net gain (loss) on commodity contracts") are deliberately NOT
+   aliased — different concept. Loss-form labels ("realized loss on…")
+   deferred: they need CB-020-style label semantics; honest unmapped
+   until a real loss-year filer arrives.
+3. RED FLAG `derivative_gains_concentration` = |realized gains| / pretax:
+   yellow ≥ 25%, red ≥ 50%. Peyto fires yellow at 46% — the cold-load
+   drill finding made structural. Honest skip when either field is
+   unmapped or pretax ≤ 0.
+4. INTEGRITY RULE `hedging_fair_value_bs_tie` (warn, 5% relative
+   tolerance to start): note-side net fair value (unit-parsed to raw
+   dollars — unparseable units skip, never guess) vs balance-sheet rows
+   explicitly labeled derivative/risk-management ('liabilit' in label
+   subtracts). Ambiguous BS shapes (TOU's four identical "Fair value of
+   financial instruments" rows, which also blend non-commodity
+   derivatives) deliberately do NOT match → honest skip. LIVE EVIDENCE:
+   Peyto ties at 0.04% (note 123,700,000 vs BS 123,651,000), moat-log
+   record on disk 2026-07-11.
+5. TRIGGER: on-demand button (Economics tab, resource-gated) — analysis
+   stays the user's click. Promotion to automatic is a future decision,
+   made with cost/quality evidence.
+
+- Enforced by: sedar_extractor.py (locator + extraction + schema +
+  figure-presence), sedar_aliases.json (aliases cite CB-034),
+  claude_analyzer._CANONICAL_SCALE_FIELDS (machine-enforced whitelist),
+  red_flag_detector (new check_id), rules.py + engine.py (tie rule +
+  handler + ctx fields), app.py (button/panel/persistence; heal carries
+  hedging_book through — sibling-path catch). TOU fixture 13 → 14 +
+  registry regen. Tests: test_hedging_note_extraction.py (11) +
+  test_cb034_hedging_rules.py (12) + TOU fixture pins. Live verification:
+  Peyto extracted 69s conf 0.93, 149/149 figures present, panel + roll-off
+  + flag + tie all confirmed in the UI; TOU verified offline (223,703
+  exact, stage-1 gate).
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added
