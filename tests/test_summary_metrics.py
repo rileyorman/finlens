@@ -422,10 +422,38 @@ def test_netback_margin_for_resource_filer():
 
 
 def test_netback_margin_none_without_transportation():
-    # Non-O&G (no transportation cost) -> no netback; card falls back to Gross Margin.
+    # Missing an input -> no netback number, but royalties mapping marks the
+    # filer resource-shaped, so the card shows "Netback Margin —" (CB-030),
+    # never a Gross Margin dash that reads as a missing-COGS problem.
     fd = _fd()
     fd["revenue"] = 100_000_000_000
     fd["royalties"] = -1_000_000_000
     fd["operating_expense"] = 20_000_000_000
     m = _calc_summary_metrics(fd)
     assert m["netback_margin"] is None
+    assert m["netback_expected"] is True
+
+
+def test_netback_not_expected_without_royalties():
+    # Non-resource filer (no royalties) -> Gross Margin card, no netback claim.
+    fd = _fd()
+    fd["revenue"] = 100_000_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["netback_margin"] is None
+    assert m["netback_expected"] is False
+
+
+def test_netback_margin_arx_bare_labels():
+    # CB-030: ARX FY2025 — the bare "Operating"/"Transportation" labels
+    # (deferred at CB-025 ruling 7, un-deferred with resource+income-statement
+    # scoping) arm the netback on the gas filers. Values in raw CAD.
+    fd = _fd()
+    fd["revenue"] = 5_421_700_000            # Commodity sales from production
+    fd["royalties"] = -536_800_000
+    fd["operating_expense"] = 735_800_000    # printed bare "Operating"
+    fd["transportation_costs"] = 689_100_000  # printed bare "Transportation"
+    fd["mapping"] = {"meta": {"sector_profile": "resource_sector"}}
+    m = _calc_summary_metrics(fd)
+    # net revenue 4,884.9M; netback 3,460.0M; margin = 70.8% (low-cost Montney)
+    assert round(m["netback_margin"], 1) == 70.8
+    assert m["netback_expected"] is True

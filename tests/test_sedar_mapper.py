@@ -1244,7 +1244,16 @@ def test_tou_fixture_first_agent_fetched_rollup_printing_gas_producer():
     assert mapped["total_assets"]["value"] == 22621607
     assert mapped["total_equity"]["value"] == 15436278
 
-    assert result["meta"]["mapped_count"] == 11
+    # CB-030 (2026-07-10): the bare production-cost labels, deferred at
+    # CB-025 ruling 7 as dangerously generic, un-deferred with tight scoping
+    # (resource_sector + income_statement). Arms the CB-024 netback:
+    # (4,426,145 - 1,148,182 - 1,198,061) / 4,426,145 = 47.0%.
+    assert mapped["operating_expense"]["source_label"] == "Operating"
+    assert mapped["operating_expense"]["value"] == 1148182
+    assert mapped["transportation_costs"]["source_label"] == "Transportation"
+    assert mapped["transportation_costs"]["value"] == 1198061
+
+    assert result["meta"]["mapped_count"] == 13
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)
@@ -1343,7 +1352,13 @@ def test_arx_fixture_first_agent_fetched_filer_to_reach_verified():
     assert "Interest paid in cash" in unmapped_labels
     assert "Exploration and evaluation assets" in unmapped_labels  # the stock
 
-    assert result["meta"]["mapped_count"] == 14
+    # CB-030 (2026-07-10): bare "Operating"/"Transportation" un-deferred
+    # (CB-025 ruling 7 superseded, resource + income_statement scoped).
+    # Netback: (4,884.9 - 735.8 - 689.1) / 4,884.9 = 70.8% (Montney low-cost).
+    assert mapped["operating_expense"]["value"] == 735.8
+    assert mapped["transportation_costs"]["value"] == 689.1
+
+    assert result["meta"]["mapped_count"] == 16
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)

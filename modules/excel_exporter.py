@@ -882,6 +882,11 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     _nb_prod = _num2(financial_data.get("operating_expense"))
     _nb_trans = _num2(financial_data.get("transportation_costs"))
     net_revenue_c = netback_c = netback_margin = None
+    # Royalties only map under resource-family revenue semantics, so their
+    # presence marks a filer whose gross-margin analog IS the netback — the
+    # card should say "Netback Margin —" (inputs unmapped), never fall back
+    # to a Gross Margin label that reads as a missing-COGS problem (CB-030).
+    netback_expected = _nb_roy is not None
     if (rev_c is not None and _nb_roy is not None
             and _nb_prod is not None and _nb_trans is not None):
         net_revenue_c = rev_c - abs(_nb_roy)
@@ -924,6 +929,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "rev_c": rev_c,       "yoy_rev": yoy_rev,
         "gp_c": gp_c,         "gp_margin": gp_margin,
         "netback_margin": netback_margin,
+        "netback_expected": netback_expected,
         "ebitda_c": ebitda_c, "ebitda_margin": ebitda_margin,
         "ni_c": ni_c,         "ni_margin": ni_margin,
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,

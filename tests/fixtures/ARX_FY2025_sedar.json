@@ -799,6 +799,18 @@
         "match_type": "exact",
         "confidence": 0.95
       },
+      "operating_expense": {
+        "value": 735.8,
+        "source_label": "Operating",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
+      "transportation_costs": {
+        "value": 689.1,
+        "source_label": "Transportation",
+        "match_type": "exact",
+        "confidence": 0.95
+      },
       "interest_expense": {
         "value": 151.3,
         "source_label": "Interest and financing",
@@ -895,14 +907,6 @@
       {
         "label": "Total revenue, interest and other income, and gain on risk management contracts",
         "value": 6107.1
-      },
-      {
-        "label": "Operating",
-        "value": 735.8
-      },
-      {
-        "label": "Transportation",
-        "value": 689.1
       },
       {
         "label": "Third-party purchases",
@@ -1201,8 +1205,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "resource_sector",
       "total": 94,
-      "mapped_count": 14,
-      "unmapped_count": 80,
+      "mapped_count": 16,
+      "unmapped_count": 78,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

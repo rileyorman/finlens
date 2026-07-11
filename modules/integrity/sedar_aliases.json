@@ -483,6 +483,12 @@
               "label": "production",
               "standards": ["IFRS"],
               "source": "CNQ_FY2024"
+            },
+            {
+              "label": "operating",
+              "standards": ["IFRS"],
+              "source": "CB-030 TOU_FY2025 (1,148,182) + ARX_FY2025 (735.8) — bare production-cost label, the gas-filer norm; deferred at CB-025 ruling 7 as dangerously generic, un-deferred with tight scoping (resource_sector + income_statement only); arms the CB-024 netback on both filers",
+              "statements": ["income_statement"]
             }
           ],
           "patterns": []
@@ -527,6 +533,12 @@
               "label": "transportation, blending and feedstock",
               "standards": ["IFRS"],
               "source": "CB-024 CNQ_FY2024 — field transportation cost; netback component",
+              "statements": ["income_statement"]
+            },
+            {
+              "label": "transportation",
+              "standards": ["IFRS"],
+              "source": "CB-030 TOU_FY2025 (1,198,061) + ARX_FY2025 (689.1) — bare transportation-cost label; same un-deferral and scoping as the bare 'operating' alias (CB-025 ruling 7 superseded)",
               "statements": ["income_statement"]
             }
           ],
