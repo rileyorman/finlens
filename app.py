@@ -88,6 +88,7 @@ from modules.agent_fetch import (
     request_filing_url,
     safe_fetch_filename,
 )
+from modules.campaign_pdf import resolve_campaign_pdf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
 from modules.analysis.munger_inversion import generate_inversion
@@ -475,6 +476,32 @@ def _library_pdf_cache_path(entry: dict) -> str | None:
         ticker = None
     period = entry.get("fiscal_year") or entry.get("period", "")
     return _pdf_cache_path(ticker, period)
+
+
+def _reanalyse_pdf_path_for_entry(entry: dict) -> str | None:
+    """On-disk PDF path for a paid Re-Analyse of a SEDAR entry, or None.
+
+    Chain: the per-entry PDF cache (pdfs/_cache/), then — for registry-loaded
+    entries, which store no bytes by design — the canonical campaign PDF
+    resolved by its recorded filename in ~/.finlens/pdfs
+    (modules/campaign_pdf.py, per docs/CAMPAIGN_PDF_RESOLVER_SPEC.md).
+
+    Closes the registry-entry Re-Analyse dead-end (queued 2026-07-02, hit
+    live on ARX 2026-07-10): the honest "SEDAR+ PDF is no longer cached"
+    error fired even though the canonical PDF sat on disk one directory up.
+    """
+    cached = _library_pdf_cache_path(entry)
+    if cached and Path(cached).exists():
+        return cached
+    entry_id = str(entry.get("id", ""))
+    if entry_id.startswith("registry::"):
+        for filing in _load_filing_registry().get("filings") or []:
+            if _registry_entry_id(filing) == entry_id:
+                resolved = resolve_campaign_pdf(filing)
+                if resolved is not None:
+                    return str(resolved)
+                break
+    return None
 
 
 def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
@@ -2109,7 +2136,7 @@ document.addEventListener('focusin', function(e) {
                                          width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
                                 _entry_text = _reanalyse_text_for_entry(entry)
-                                _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
+                                _entry_pdf_path = _reanalyse_pdf_path_for_entry(entry) if entry.get("source") == "sedar" else None
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
                                         "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
@@ -2127,16 +2154,25 @@ document.addEventListener('focusin', function(e) {
                                 else:
                                     _period = entry.get("fiscal_year") or entry.get("period", "")
                                     _pdf_bytes = None
+                                    # Resolved Re-Analyse pdf_path first (covers
+                                    # registry entries via the canonical campaign
+                                    # PDF) — sibling of the library-flow probe.
                                     try:
-                                        _pdf_path = _pdf_cache_path(
-                                            ticker if ticker != "—" else None,
-                                            _period,
-                                        )
-                                        if _pdf_path and Path(_pdf_path).exists():
-                                            with Path(_pdf_path).open("rb") as _f:
-                                                _pdf_bytes = _f.read()
+                                        if _entry_pdf_path and Path(_entry_pdf_path).exists():
+                                            _pdf_bytes = Path(_entry_pdf_path).read_bytes()
                                     except Exception:
                                         _pdf_bytes = None
+                                    if _pdf_bytes is None:
+                                        try:
+                                            _pdf_path = _pdf_cache_path(
+                                                ticker if ticker != "—" else None,
+                                                _period,
+                                            )
+                                            if _pdf_path and Path(_pdf_path).exists():
+                                                with Path(_pdf_path).open("rb") as _f:
+                                                    _pdf_bytes = _f.read()
+                                        except Exception:
+                                            _pdf_bytes = None
                                     if _pdf_bytes is None:
                                         _pdf_bytes = supabase_storage.load_pdf(
                                             ticker if ticker != "—" else None,
@@ -2481,7 +2517,7 @@ document.addEventListener('focusin', function(e) {
                                              width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
                                     _entry_text = _reanalyse_text_for_entry(entry)
-                                    _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
+                                    _entry_pdf_path = _reanalyse_pdf_path_for_entry(entry) if entry.get("source") == "sedar" else None
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
                                             "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
@@ -5966,6 +6002,17 @@ if st.session_state.get("reanalyse_no_text"):
             st.stop()
     # Try session-state preload (set by Load button), then fall back to disk
     _cached_bytes = st.session_state.get("cached_pdf_bytes")
+    if _cached_bytes is None:
+        # The resolved Re-Analyse pdf_path (per-entry cache, or the canonical
+        # campaign PDF for registry-loaded entries) is the authoritative
+        # source — without this probe, registry entries dead-ended at
+        # "Re-upload the PDF" while the canonical PDF sat on disk.
+        try:
+            _rp = _pdf_info.get("pdf_path")
+            if _rp and Path(_rp).exists():
+                _cached_bytes = Path(_rp).read_bytes()
+        except Exception:
+            _cached_bytes = None
     if _cached_bytes is None:
         try:
             _cp = _pdf_cache_path(_pdf_info.get("ticker"), _pdf_info.get("period"))
