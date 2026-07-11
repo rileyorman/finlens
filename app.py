@@ -2298,6 +2298,11 @@ document.addEventListener('focusin', function(e) {
                         row_period  = fy or "Unknown period"
                         if entry.get("source") == "edgar":
                             row_period = f"{row_period} · EDGAR"
+                        elif entry.get("source") == "fmp":
+                            # Aggregator-sourced quick analysis — never claim a
+                            # document class it doesn't have (was falling
+                            # through to "· PDF").
+                            row_period = f"{row_period} · FMP (unvalidated)"
                         elif entry.get("file_type") == "docx":
                             row_period = f"{row_period} · DOCX"
                         else:
@@ -4998,7 +5003,7 @@ if page == "Stock Tracker":
                 '</table></div>'
             )
             st.markdown(table_html, unsafe_allow_html=True)
-            st.caption("Source: Financial Modeling Prep")
+            st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
 
     with tab2:
         fmp_financials_key = f"fmp_financials_{cur_ticker}"
@@ -5071,7 +5076,7 @@ if page == "Stock Tracker":
                 )
                 st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
                 st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
-            st.caption("Source: Financial Modeling Prep")
+            st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
 
     with tab6:
         company_filings = _fiscal_session_cached(
@@ -5662,6 +5667,11 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"), _quick_preview_scale)},
             ]
         st.dataframe(preview_df, hide_index=True, width='stretch')
+        st.caption(
+            "Source: Financial Modeling Prep — unvalidated aggregator data. "
+            "Analyses built from it are badged on the dashboard and library, "
+            "and are not part of the verified corpus."
+        )
         if selected_period == "Last 4 Quarters (TTM)":
             st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
@@ -6936,6 +6946,20 @@ if st.session_state.financial_data:
 
         if st.session_state.get("loaded_from_quick"):
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
+
+        # Trust badge: FMP-sourced analyses render through the same dashboard
+        # as validated filings but carry NO receipts to an as-filed document.
+        # Keyed on financial_data.source (not the session flag) so library
+        # re-loads of FMP entries stay badged too. FMP is an unreliable
+        # witness (CLAUDE.md; JPM phantom-OCF proof case) — say so on-screen.
+        if isinstance(financial_data, dict) and financial_data.get("source") == "fmp":
+            st.warning(
+                "⚠️ **Unvalidated aggregator data (FMP).** These figures come from "
+                "a third-party feed, not an as-filed document, and are not part of "
+                "FinLens's verified corpus — no per-figure receipts exist for them. "
+                "Treat this as a quick look; for verified numbers, analyse the "
+                "company's actual filing (SEDAR+/EDGAR or PDF upload)."
+            )
 
         _mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
         if isinstance(_mapping, dict):
