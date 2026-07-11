@@ -3495,7 +3495,7 @@ if page == "Portfolio Manager":
 if page == "Filing Comparison":
 
     if not API_KEY:
-        st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+        st.error("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
         st.stop()
 
     st.markdown("### Filing Comparison")
@@ -5181,7 +5181,7 @@ if page != "Single Analysis":
     st.stop()
 
 if not API_KEY:
-    st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+    st.error("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
     st.stop()
 
 st.markdown("""

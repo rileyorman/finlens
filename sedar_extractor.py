@@ -388,7 +388,7 @@ def _api_key() -> str:
     load_dotenv()
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
-        raise SedarExtractionError("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+        raise SedarExtractionError("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
     return api_key
 
 
