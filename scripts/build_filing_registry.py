@@ -378,7 +378,7 @@ def _build_entry(fixture_path: Path) -> dict:
         else "stale_mapping_pending_reextract"
     )
 
-    return {
+    entry = {
         "ticker": manifest_entry["ticker"],
         "company_name": manifest_entry["company_name"],
         "fiscal_year": manifest_entry["fiscal_year"],
@@ -394,6 +394,12 @@ def _build_entry(fixture_path: Path) -> dict:
         "commit": manifest_entry.get("commit"),
         "notes": manifest_entry.get("notes", ""),
     }
+    # Optional second document slot (docs/MDA_FETCHER_SPEC.md Stage 0):
+    # a standalone-MD&A PDF for filers whose statement pack lacks the MD&A
+    # prose. Additive — entries without one carry no key.
+    if manifest_entry.get("mda_pdf_path"):
+        entry["mda_pdf_path"] = manifest_entry["mda_pdf_path"]
+    return entry
 
 
 def build_registry() -> dict:

@@ -9,11 +9,23 @@ guard. This module classifies extracted document text with deterministic
 structural heuristics (zero API cost) so ingest flows can refuse or warn
 honestly BEFORE any Claude spend.
 
-Classes (CB-015 ruling 2):
+Classes (CB-015 ruling 2; `mda` added 2026-07-12 per docs/MDA_FETCHER_SPEC.md
+Stage 0):
   statements_audited        >=3 of 4 statement families + notes + auditor's report
   statements_unaudited      >=3 of 4 statement families + notes, NO auditor's report
                             (the CNQ FY2024 interim-pack signature)
-  no_statements_detected    the target failure class (MD&A-only, press release, ...)
+  mda                       no statement signature, but the spelled-out
+                            "Management's Discussion and Analysis" phrase is
+                            present — a standalone MD&A document. Still REFUSED
+                            for statement analysis (analyzing an MD&A as
+                            statements is the exact CB-015 failure class); the
+                            class exists so the MD&A-metrics lane can ACCEPT it.
+                            Statement packs that merely cross-reference the
+                            MD&A are unaffected: the statement signature is
+                            checked first. Press releases citing "MD&A" by
+                            abbreviation do not match (the pattern requires the
+                            spelled-out phrase).
+  no_statements_detected    the target failure class (press release, prospectus, ...)
   extraction_empty          no usable text (scanned/image-based PDF)
 
 Calibration evidence (2026-07-06): the marker set classified 18/18 real
@@ -34,6 +46,7 @@ import re
 
 DOC_CLASS_STATEMENTS_AUDITED = "statements_audited"
 DOC_CLASS_STATEMENTS_UNAUDITED = "statements_unaudited"
+DOC_CLASS_MDA = "mda"
 DOC_CLASS_NO_STATEMENTS = "no_statements_detected"
 DOC_CLASS_EXTRACTION_EMPTY = "extraction_empty"
 
@@ -128,6 +141,11 @@ def classify_document_text(text: str | None) -> dict:
             document_class = DOC_CLASS_STATEMENTS_AUDITED
         else:
             document_class = DOC_CLASS_STATEMENTS_UNAUDITED
+    elif signals["mda_marker"]:
+        # Standalone MD&A (docs/MDA_FETCHER_SPEC.md Stage 0). Reached only
+        # when the statement signature failed, so combined statement+MD&A
+        # packs are unaffected. Still refused for statement analysis.
+        document_class = DOC_CLASS_MDA
     else:
         document_class = DOC_CLASS_NO_STATEMENTS
 
@@ -149,6 +167,24 @@ def refusal_message(signals: dict) -> str:
         f"statements ({notes_text}). If this IS a filing, it may be scanned "
         "without a text layer, or a non-English filing (not yet supported by "
         "this check)."
+    )
+
+
+def mda_refusal_message(signals: dict) -> str:
+    """Honest refusal text for the `mda` class on STATEMENT-analysis flows —
+    names the observed class and points at the right lane instead of a bare
+    verdict. The MD&A-metrics lane (docs/MDA_FETCHER_SPEC.md) is the flow
+    that accepts this class."""
+    found = signals.get("statement_families_found") or []
+    found_text = ", ".join(found) if found else "none"
+    return (
+        "This document looks like a standalone MD&A (Management's Discussion "
+        "and Analysis), not a set of financial statements — statement "
+        f"headings found: {found_text}. FinLens will not run a statements "
+        "analysis on it (analyzing the wrong document class produces "
+        "confidently wrong output). To analyze this company, load its "
+        "financial-statements PDF; MD&A operational metrics are extracted "
+        "separately via the Economics tab once the statements analysis exists."
     )
 
 

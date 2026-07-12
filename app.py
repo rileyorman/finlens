@@ -58,9 +58,11 @@ from modules.integrity.receipts import (
 )
 from modules.integrity.document_class import (
     DOC_CLASS_EXTRACTION_EMPTY,
+    DOC_CLASS_MDA,
     DOC_CLASS_NO_STATEMENTS,
     DOC_CLASS_STATEMENTS_UNAUDITED,
     classify_document_text,
+    mda_refusal_message,
     refusal_message,
     unaudited_warning_message,
 )
@@ -222,6 +224,15 @@ def _gate_document_class(raw_text: str | None, *, warn_only: bool = False) -> di
             st.warning(refusal_message(signals))
         else:
             st.error(refusal_message(signals))
+            st.stop()
+    elif doc_class == DOC_CLASS_MDA:
+        # A standalone MD&A is still refused for STATEMENT analysis — the
+        # class exists so the MD&A-metrics lane can accept it separately
+        # (docs/MDA_FETCHER_SPEC.md Stage 0).
+        if warn_only:
+            st.warning(mda_refusal_message(signals))
+        else:
+            st.error(mda_refusal_message(signals))
             st.stop()
     elif doc_class == DOC_CLASS_STATEMENTS_UNAUDITED:
         st.warning(unaudited_warning_message(signals))
