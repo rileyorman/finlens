@@ -911,7 +911,15 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
             if ebitda_margin is not None else None),
         "ni_margin": (f"net income {_fmt_compact(ni_c)} ÷ revenue {_fmt_compact(rev_c)}"
                       if ni_margin is not None else None),
-        "fcf": (f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
+        # CB-036 / ratified 2026-07-10: on resource-family filers the caption
+        # discloses that this statements-basis FCF is NOT the issuer's
+        # non-GAAP funds flow (FFO/FFF exclude working-capital changes and
+        # deduct capex differently) — the TOU live case: statements FCF
+        # $398M vs issuer funds flow ~$3.4B feeding a -303.8% MoS.
+        "fcf": ((f"OCF {_fmt_compact(ocf_c)} − CapEx {_fmt_compact(capex_c)} ({capex_basis})"
+                 + (" · statements basis — the issuer's non-GAAP funds flow"
+                    " (FFO/FFF) is a different measure"
+                    if netback_expected else ""))
                 if fcf_c is not None else None),
         "debt_equity": (
             f"total debt {_fmt_compact(total_debt_c)} ÷ equity {_fmt_compact(te_c)} ({_debt_basis})"

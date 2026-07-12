@@ -265,6 +265,23 @@ def test_fcf_capex_includes_ee_for_resource_mining():
     assert m["calcs"]["ni_margin"] == "net income 6.11B ÷ revenue 41.51B"
 
 
+def test_fcf_caption_discloses_funds_flow_divergence_on_resource_filers():
+    """CB-036 / ratified 2026-07-10: on a resource-family filer (royalties
+    mapped — the same signal as netback_expected) the FCF caption discloses
+    that statements-basis FCF is NOT the issuer's non-GAAP funds flow. The
+    TOU live case: statements FCF $398M vs issuer funds flow ~$3.4B feeding
+    a -303.8% MoS. Non-resource filers keep the plain caption (pinned by
+    the exact-string asserts above)."""
+    fd = _fd(is_rows=[_row("Total revenue", 4_940_024_000, "total")])
+    fd["operating_cash_flow"] = 3_387_019_000
+    fd["capex"] = -2_988_595_000
+    fd["royalties"] = -513_879_000  # resource-family marker
+    m = _calc_summary_metrics(fd)
+    assert m["calcs"]["fcf"].startswith("OCF 3.39B − CapEx 2.99B (PP&E)")
+    assert "statements basis" in m["calcs"]["fcf"]
+    assert "funds flow" in m["calcs"]["fcf"]
+
+
 def test_capex_canonical_outranks_scrape():
     # A cash-flow row the scrape would match must not override the mapped capex.
     fd = _fd(cf_rows=[_row("Purchases of property, plant and equipment", -9_999)])
