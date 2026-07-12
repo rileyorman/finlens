@@ -2044,6 +2044,14 @@ document.addEventListener('focusin', function(e) {
                                 is_valid = False
                         if is_valid:
                             if reg_add_ticker(sel_pf, t_up):
+                                # Wrong-issuer receipt (2026-07-12): name the
+                                # resolved listing so a bare-ticker collision
+                                # (ARX = Accelerant, not ARC) is VISIBLE at
+                                # add time instead of silently poisoning the
+                                # portfolio's market data.
+                                st.session_state.pm_ticker_added_receipt = (
+                                    f"{t_up} — {vmd.get('resolved_name') or 'listing name unavailable'}"
+                                )
                                 st.rerun()
                             else:
                                 st.warning(f"{t_up} already in portfolio.")
@@ -2051,6 +2059,14 @@ document.addEventListener('focusin', function(e) {
                             st.session_state.pm_ticker_not_found = t_up
                     else:
                         st.warning("Enter a ticker symbol.")
+
+                if st.session_state.get("pm_ticker_added_receipt"):
+                    st.info(
+                        f"Added {st.session_state.pm_ticker_added_receipt}. "
+                        "Not the company you meant? Remove it and use the "
+                        "exchange suffix (e.g. ARX.TO for the TSX listing)."
+                    )
+                    st.session_state.pm_ticker_added_receipt = None
 
                 if st.session_state.get("pm_ticker_not_found"):
                     _nf = st.session_state.pm_ticker_not_found
@@ -5462,7 +5478,9 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _edgar_md = {}
                     if _tk and re.fullmatch(r"[A-Z]{1,5}", _tk):
                         with st.spinner(f"Fetching market data for {_tk}..."):
-                            _edgar_md = get_market_data(_tk)
+                            # Wrong-issuer guard (2026-07-12): EDGAR knows the
+                            # filer's name authoritatively — arm the check.
+                            _edgar_md = get_market_data(_tk, company_name=_company_name)
                     _market_cap = _edgar_md.get("market_cap") or 0.0
                     try:
                         _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
@@ -5821,7 +5839,14 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             _quick_market_data = {}
             with st.spinner(f"Fetching market data for {_quick_ticker}..."):
                 try:
-                    _quick_market_data = get_market_data(_quick_ticker)
+                    # Wrong-issuer guard (2026-07-12): the FMP profile's
+                    # company name arms the name-agreement check so the
+                    # market data can never belong to a different issuer
+                    # than the statements on screen.
+                    _quick_market_data = get_market_data(
+                        _quick_ticker,
+                        company_name=_quick_fd.get("company_name") or _quick_fd.get("company"),
+                    )
                 except Exception:
                     _quick_market_data = {}
 
