@@ -183,7 +183,13 @@ unusable for derivation (honest exclusion).
   {10-Q,10-Q/A} facts; duration taxonomy; chain validators) + the TTM
   and discrete-quarter assemblers + pins (probe-shaped synthetic
   fixtures: the fp-lie case, YTD-only OCF, chain-violation negatives,
-  degenerate-TTM-equals-FY, restatement dedupe).
+  degenerate-TTM-equals-FY, restatement dedupe). **DONE 2026-07-12
+  (build_quarterly_financial_data_from_edgar_facts + 11 pins in
+  tests/test_edgar_quarterly_ttm_builder.py; casebook CB-039 shipped
+  same commit). Implementation note: flow values are ANCHOR-GATED on
+  revenue's derived window (flows by window end, balance items by
+  as-of instant) — a stale instant or off-window derivation is honest
+  N/A, extending the CB-038 receipt corollary to derived periods.**
 - **Stage 2** — wire the Latest Quarter + TTM Quick options to the
   builders; FMP retires from the Quick tab entirely (its remaining
   surface: Stock Tracker cards + earnings calendar, per CB-038);

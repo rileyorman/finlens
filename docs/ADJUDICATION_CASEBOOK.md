@@ -1792,6 +1792,59 @@ composition disclosed.
   accession-path pins prove zero drift. Stage 2 (app wiring + receipts
   display) queued per the spec.
 
+## CB-039: Quarterly + TTM from company-facts — YTD differencing under a strict date-chain gate; the fp field is never trusted
+
+DECIDED 2026-07-12 (Riley — three decisions ratified in the night design
+session; canonical spec docs/EDGAR_COMPANY_FACTS_SPEC.md Phase-2 section;
+this is Phase 2 of CB-038).
+
+RATIFIED: (1) YTD DIFFERENCING for discrete flow quarters (Q1 = YTD1;
+Qn = YTDn − YTDn−1; Q4 = FY − YTD_Q3), every derived value carrying a
+COMPOSITE receipt that names its component facts (accessions + windows);
+balance items use the latest instant directly. (2) STRICT DATE-CHAIN GATE
+on every derived value — any violation makes the field honest-N/A with no
+receipt. (3) AMENDMENTS INCLUDED: the quarterly path selects from
+{10-Q, 10-Q/A} (+ {10-K, 10-K/A} for FY components) — an amendment is the
+most corrected statement of a period, and latest-`filed` restatement
+resolution prefers it naturally. The v1 annual path's 10-K-only filter is
+deliberately untouched until its own review.
+
+EVIDENCE-FORCED FOUNDATION (NVDA 10-Q probe, 2026-07-12): operating cash
+flow is YTD-ONLY in 10-Qs — no discrete quarterly OCF facts exist — so
+TTM = FY + YTD_current − YTD_prior is the ONLY viable construction;
+sum-of-4-discrete-quarters is impossible for cash-flow items from raw
+facts. And the `fp` FIELD LIES: the probe caught a 181-day H1 fact
+carrying fp="Q2". Period identity therefore comes from date arithmetic
+ONLY — nothing in the implementation reads fp.
+
+THE CHAIN RULES (operational form, from the spec): TTM_current.start ==
+FY.end + 1 day; TTM_prior.start == FY.start with a day-count within ±7 of
+YTD_current's (same ordinal without trusting fp); quarter differencing
+requires a shared start and a 60–120-day end gap; Q4 requires
+YTD_Q3.start == FY.start and a 60–120-day FY-end remainder. Duration
+taxonomy by day counts only: Q 60–120 · H1 150–210 · 9M 240–299 ·
+FY ≥300. Dual-tagged discrete facts (mid-year starts) fall out of the
+YTD chain by the start filter — a wrong-valued dual-tag fact can never
+be selected.
+
+ANCHOR GATE (same-window discipline): revenue's derived window anchors
+the period; every other flow emits only if its derived window ends at the
+anchor end, and every balance instant must be as-of exactly that end —
+a stale instant (e.g. an equity fact only at the FY end when the anchor
+is Q2) stays honestly absent rather than rendering as current. No post-FY
+10-Q yet → TTM degenerates to FY exactly and the receipt says so.
+
+- Enforced by: modules/edgar_fetcher.py (_window_class duration taxonomy,
+  _concept_window_facts / _concept_instant_facts with window-exact
+  restatement dedupe, _competing_quarterly_flow / _competing_quarterly_instant
+  recency competition, _latest_discrete_quarter, _ttm_flow,
+  build_quarterly_financial_data_from_edgar_facts); 11 pins
+  (tests/test_edgar_quarterly_ttm_builder.py — the fp-lie + dual-tag case,
+  YTD-only OCF, the TTM identity, chain-violation negatives, stale-instant
+  gating, Q4, degenerate TTM, the 10-Q/A amendment, anchor refusal).
+  Stage 2 (Quick-tab wiring; FMP retires from the Quick tab entirely)
+  queued per the spec.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
