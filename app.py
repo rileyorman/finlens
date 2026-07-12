@@ -9715,9 +9715,20 @@ if st.session_state.financial_data:
                                 _mm_result = None
                         if _mm_result is not None:
                             financial_data["mda_metrics"] = _mm_result
-                            st.session_state.financial_data = financial_data
-                            # No integrity re-run yet: no rule consumes
-                            # mda_metrics until the Stage 3 tie rules land.
+                            # Re-run integrity so the Stage 3 tie rules arm
+                            # with the new data (netback internal tie + FFO
+                            # anchor tie; fresh moat-log record).
+                            _mm_fd = _run_integrity_checks(
+                                financial_data,
+                                st.session_state.get("summary_data"),
+                                ticker,
+                                financial_data.get("source", "sedar"),
+                                filing_date=financial_data.get("sedar_filing_date"),
+                            )
+                            if isinstance(_mm_fd, dict):
+                                st.session_state.financial_data = _mm_fd
+                            else:
+                                st.session_state.financial_data = financial_data
                             _save_analysis_cache(
                                 ticker,
                                 financial_data.get("fiscal_year") or financial_data.get("period"),
@@ -9769,7 +9780,15 @@ if st.session_state.financial_data:
                         if v.get("product") == "total_boe"
                         and isinstance(v.get("volume"), (int, float))
                     ]
-                    _mm_vol_headline = _mm_latest_year(_mm_boe_vols)
+                    # Prefer the annual row (same rule as the netback
+                    # headline) — TOU's Q4 and FY rows share the year, and
+                    # max() alone picked the quarterly 659,204 over the
+                    # annual 638,196 (found live 2026-07-12).
+                    _mm_annual_vols = [
+                        v for v in _mm_boe_vols
+                        if "year" in str(v.get("period_label") or "").lower()
+                    ]
+                    _mm_vol_headline = _mm_latest_year(_mm_annual_vols or _mm_boe_vols)
                     if _mm_vol_headline is not None:
                         st.metric(
                             "Total production",
