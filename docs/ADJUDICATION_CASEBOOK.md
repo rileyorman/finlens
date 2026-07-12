@@ -1668,6 +1668,76 @@ it — same metric name, materially different composition).
   prompt contract; Economics-tab panel captions; rules.py/engine.py tie
   rules (mda_netback_internal_tie, mda_ffo_anchor_tie) + their pins.
 
+## CB-037: Structural-subtotal classifier — labels never trusted for structure; SUPERSEDES CB-033's extraction-prompt fix
+
+DECIDED 2026-07-12 (Riley — three decisions ratified in the evening design
+session; canonical spec docs/STRUCTURAL_SUBTOTAL_SPEC.md).
+
+THE INSIGHT: a row's structure is PROVABLE by arithmetic — a value that
+ties as the sum of the contiguous rows above it (since the last inferred
+subtotal) is a block subtotal; one that ties as the sum of prior subtotals
+is a grand total — whatever its label says. Deterministic, zero-API,
+post-extraction: the shared extraction prompt is untouched, so the Option A
+drift risk that gated CB-033's `label_inferred` fix evaporates. **CB-033's
+extraction-prompt change is SUPERSEDED and retired** (ratified decision 2).
+
+RULINGS:
+1. Classifier (modules/integrity/structure.py): block-sum + grand-total
+   hypotheses tested separately per period column; multi-period agreement
+   required; tolerance max(1 unit, 0.5%); recall-biased — a row that
+   proves nothing stays "data" (meaning not-proven), never wrongly
+   classified. CONTRADICTION is category- and qualifier-aware: only an
+   UNQUALIFIED grand-category label ("total liabilities" — never "total
+   non-current assets") tying ONLY as a block sum while a prior
+   same-category subtotal sits outside its sum ("Total equity" as a
+   legitimate block subtotal stays clean).
+2. Boundary annotation: attach_mapping annotates every statement's rows
+   (structure / structure_conflict, additive keys, input never mutated)
+   and the mapper's line_items carry the facts — the Stage 2 gate and
+   requires_structure aliases consume them.
+3. `structure_label_contradiction` integrity rule (warn): validation-time
+   classification over the normalized rows; None-statements skip honestly;
+   empty-conflicts is a real PASS.
+
+EVIDENCE: corpus sweep 2026-07-12 — ZERO conflicts across all 17 fixtures
+(106 subtotals + 19 totals classified; precision-clean on clean data). The
+real Peyto extraction: every genuine subtotal/total classifies, the
+income-statement "net of royalties" line proves structurally derived
+(confirming CB-025/031 semantics arithmetically), cash-flow sections +
+"Net change in cash" classify textbook. LIVE ARMING (moat records
+2026-07-12T19:08Z): PEY.TO WARNS on the invented "Total liabilities"
+(the CB-033 defect, now caught at the boundary); TOU + ARX PASS clean.
+
+STAGES 2–3 SHIPPED SAME SESSION (5877c1d gate + mechanism; 6005998
+promotion; Stage 3 consumers): the mapper gate + requires_structure
+aliases live; `cash` + `total_current_assets` + `total_current_liabilities`
+promoted to default (+34 mapped fields corpus-wide, zero drops; honest
+negatives held — RY/SLF liquidity-ordered balance sheets map nothing new,
+TOU gains the current pair but no cash so its Leverage N/A stands);
+schema 7→8; the explorer cash pair gained prefer_profile to preserve
+CB-010 (whitelist pin extended); a LATENT MERGE GAP found and fixed
+(_iter_target_fields dropped a profile's collision_resolution when a
+same-named default existed). Liquidity/Leverage inputs canonical-first in
+_calc_summary_metrics (scrape fallback retained).
+
+PAYOFF VERIFIED ON THE REAL PEYTO EXTRACTION (2026-07-12 evening): heal
+fires on load; mapped 16→18 — gains cash (bare "Cash"), and BOTH current
+subtotals via the structure-gated bare aliases (they matched ONLY because
+the classifier proved the rows); LOSES total_liabilities — the gate
+unmapped the CB-033 invented wrong-scope value (honest absence, row
+visible in unmapped[]). Liquidity ≈0.98 and Leverage arm on next load;
+the balance-sheet identity rule stops failing because the wrong number
+is gone.
+
+- Enforced by: modules/integrity/structure.py + sedar_extractor
+  attach_mapping annotation + rules.py/engine.py rule + sedar_mapper gate,
+  requires_structure scoping, merge fix + sedar_aliases.json promotion +
+  claude_analyzer scaling whitelist + analysis_cache schema 8 +
+  excel_exporter canonical-first inputs. Pins: test_structure_classifier
+  (17) + test_summary_metrics CB-037 pair + 17 extended fixture count pins
+  + the prefer_profile whitelist pin. Corpus remap + registry regen; full
+  suite 649 green.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

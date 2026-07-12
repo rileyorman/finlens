@@ -32,7 +32,8 @@
           "December 31, 2025": 2866053,
           "December 31, 2024": 926431
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Inventories (Note 7)",
@@ -40,7 +41,8 @@
           "December 31, 2025": 1698830,
           "December 31, 2024": 1510716
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes recoverable",
@@ -48,7 +50,8 @@
           "December 31, 2025": 9435,
           "December 31, 2024": 26432
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Fair value of derivative financial instruments (Notes 6 and 21)",
@@ -56,7 +59,8 @@
           "December 31, 2025": 34428,
           "December 31, 2024": 1348
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other current assets (Note 8A)",
@@ -64,7 +68,8 @@
           "December 31, 2025": 385196,
           "December 31, 2024": 340354
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total current assets",
@@ -72,7 +77,8 @@
           "December 31, 2025": 4993942,
           "December 31, 2024": 2805281
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Goodwill (Notes 23 and 24)",
@@ -80,7 +86,8 @@
           "December 31, 2025": 4157672,
           "December 31, 2024": 4157672
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Property, plant and mine development (Note 9)",
@@ -88,7 +95,8 @@
           "December 31, 2025": 22850540,
           "December 31, 2024": 21466499
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investments (Notes 6 and 10)",
@@ -96,7 +104,8 @@
           "December 31, 2025": 1508252,
           "December 31, 2024": 612889
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income and mining tax asset (Note 25)",
@@ -104,7 +113,8 @@
           "December 31, 2025": 17821,
           "December 31, 2024": 29198
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other assets (Note 8B)",
@@ -112,7 +122,8 @@
           "December 31, 2025": 943064,
           "December 31, 2024": 915479
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total assets",
@@ -120,7 +131,8 @@
           "December 31, 2025": 34471291,
           "December 31, 2024": 29987018
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilities (Note 11)",
@@ -128,7 +140,8 @@
           "December 31, 2025": 1033444,
           "December 31, 2024": 823412
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Share based liabilities (Note 17)",
@@ -136,7 +149,8 @@
           "December 31, 2025": 31722,
           "December 31, 2024": 27290
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes payable",
@@ -144,7 +158,8 @@
           "December 31, 2025": 1226347,
           "December 31, 2024": 372197
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Current portion of long-term debt (Note 14)",
@@ -152,7 +167,8 @@
           "December 31, 2025": 0,
           "December 31, 2024": 90000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reclamation provision (Note 12)",
@@ -160,7 +176,8 @@
           "December 31, 2025": 144537,
           "December 31, 2024": 58579
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lease obligations (Note 13)",
@@ -168,7 +185,8 @@
           "December 31, 2025": 30480,
           "December 31, 2024": 40305
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Fair value of derivative financial instruments (Notes 6 and 21)",
@@ -176,7 +194,8 @@
           "December 31, 2025": 5676,
           "December 31, 2024": 100182
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total current liabilities",
@@ -184,7 +203,8 @@
           "December 31, 2025": 2472206,
           "December 31, 2024": 1511965
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Long-term debt (Note 14)",
@@ -192,7 +212,8 @@
           "December 31, 2025": 196271,
           "December 31, 2024": 1052956
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reclamation provision (Note 12)",
@@ -200,7 +221,8 @@
           "December 31, 2025": 1318476,
           "December 31, 2024": 1026628
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lease obligations (Note 13)",
@@ -208,7 +230,8 @@
           "December 31, 2025": 94719,
           "December 31, 2024": 98921
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Share based liabilities (Note 17)",
@@ -216,7 +239,8 @@
           "December 31, 2025": 23921,
           "December 31, 2024": 12505
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income and mining tax liabilities (Note 25)",
@@ -224,7 +248,8 @@
           "December 31, 2025": 5373013,
           "December 31, 2024": 5162249
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other liabilities (Note 15)",
@@ -232,7 +257,8 @@
           "December 31, 2025": 250221,
           "December 31, 2024": 288894
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities",
@@ -240,7 +266,8 @@
           "December 31, 2025": 9728827,
           "December 31, 2024": 9154118
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Common shares – Outstanding – 500,768,400 common shares issued, less 721,800 shares held in trust",
@@ -248,7 +275,8 @@
           "December 31, 2025": 18699862,
           "December 31, 2024": 18675660
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Stock options (Notes 16 and 17)",
@@ -256,7 +284,8 @@
           "December 31, 2025": 166775,
           "December 31, 2024": 172145
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Retained earnings",
@@ -264,7 +293,8 @@
           "December 31, 2025": 5463906,
           "December 31, 2024": 2026242
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other reserves (Note 18)",
@@ -272,7 +302,8 @@
           "December 31, 2025": 411921,
           "December 31, 2024": -41147
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total equity",
@@ -280,7 +311,8 @@
           "December 31, 2025": 24742464,
           "December 31, 2024": 20832900
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities and equity",
@@ -288,7 +320,8 @@
           "December 31, 2025": 34471291,
           "December 31, 2024": 29987018
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -298,7 +331,8 @@
           "Year Ended December 31, 2025": 11907851,
           "Year Ended December 31, 2024": 8285753
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Production (i)",
@@ -306,7 +340,8 @@
           "Year Ended December 31, 2025": 3340684,
           "Year Ended December 31, 2024": 3086080
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Exploration and corporate development",
@@ -314,7 +349,8 @@
           "Year Ended December 31, 2025": 206684,
           "Year Ended December 31, 2024": 219610
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of property, plant and mine development (Note 9)",
@@ -322,7 +358,8 @@
           "Year Ended December 31, 2025": 1645297,
           "Year Ended December 31, 2024": 1514076
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "General and administrative",
@@ -330,7 +367,8 @@
           "Year Ended December 31, 2025": 235947,
           "Year Ended December 31, 2024": 207450
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Finance costs (Note 14)",
@@ -338,7 +376,8 @@
           "Year Ended December 31, 2025": 91145,
           "Year Ended December 31, 2024": 126738
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "(Gain) loss on derivative financial instruments (Note 21)",
@@ -346,7 +385,8 @@
           "Year Ended December 31, 2025": -223960,
           "Year Ended December 31, 2024": 155819
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Impairment reversal (Note 24)",
@@ -354,7 +394,8 @@
           "Year Ended December 31, 2025": -229000,
           "Year Ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Foreign currency translation (gain) loss",
@@ -362,7 +403,8 @@
           "Year Ended December 31, 2025": -25654,
           "Year Ended December 31, 2024": 9383
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Care and maintenance",
@@ -370,7 +412,8 @@
           "Year Ended December 31, 2025": 69802,
           "Year Ended December 31, 2024": 60574
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other income and expenses (Note 22)",
@@ -378,7 +421,8 @@
           "Year Ended December 31, 2025": 92995,
           "Year Ended December 31, 2024": 84468
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income before income and mining taxes",
@@ -386,7 +430,8 @@
           "Year Ended December 31, 2025": 6703911,
           "Year Ended December 31, 2024": 2821555
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income and mining taxes expense (Note 25)",
@@ -394,7 +439,8 @@
           "Year Ended December 31, 2025": 2242450,
           "Year Ended December 31, 2024": 925974
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income for the year",
@@ -402,7 +448,8 @@
           "Year Ended December 31, 2025": 4461461,
           "Year Ended December 31, 2024": 1895581
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income per share – basic (Note 16)",
@@ -410,7 +457,8 @@
           "Year Ended December 31, 2025": 8.89,
           "Year Ended December 31, 2024": 3.79
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income per share – diluted (Note 16)",
@@ -418,7 +466,8 @@
           "Year Ended December 31, 2025": 8.86,
           "Year Ended December 31, 2024": 3.78
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash dividends declared per common share",
@@ -426,7 +475,8 @@
           "Year Ended December 31, 2025": 1.6,
           "Year Ended December 31, 2024": 1.6
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income for the year",
@@ -434,7 +484,8 @@
           "Year Ended December 31, 2025": 4461461,
           "Year Ended December 31, 2024": 1895581
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reclassified from the cash flow hedge reserve to net income",
@@ -442,7 +493,8 @@
           "Year Ended December 31, 2025": 1176,
           "Year Ended December 31, 2024": 1176
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Remeasurement loss on pension benefit obligations",
@@ -450,7 +502,8 @@
           "Year Ended December 31, 2025": -2704,
           "Year Ended December 31, 2024": -2254
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Income tax impact (pension benefit obligations)",
@@ -458,7 +511,8 @@
           "Year Ended December 31, 2025": 43,
           "Year Ended December 31, 2024": 46
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Net change in fair value of equity securities",
@@ -466,7 +520,8 @@
           "Year Ended December 31, 2025": 790066,
           "Year Ended December 31, 2024": 56944
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Income tax impact (equity securities)",
@@ -474,7 +529,8 @@
           "Year Ended December 31, 2025": -110975,
           "Year Ended December 31, 2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Other comprehensive income for the year",
@@ -482,7 +538,8 @@
           "Year Ended December 31, 2025": 677606,
           "Year Ended December 31, 2024": 55912
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Comprehensive income for the year",
@@ -490,7 +547,8 @@
           "Year Ended December 31, 2025": 5139067,
           "Year Ended December 31, 2024": 1951493
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -500,7 +558,8 @@
           "Year Ended December 31, 2025": 4461461,
           "Year Ended December 31, 2024": 1895581
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of property, plant and mine development (Note 9)",
@@ -508,7 +567,8 @@
           "Year Ended December 31, 2025": 1645297,
           "Year Ended December 31, 2024": 1514076
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income and mining taxes (Note 25)",
@@ -516,7 +576,8 @@
           "Year Ended December 31, 2025": 162158,
           "Year Ended December 31, 2024": 213845
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Unrealized (gain) loss on currency and commodity derivatives (Note 21)",
@@ -524,7 +585,8 @@
           "Year Ended December 31, 2025": -127585,
           "Year Ended December 31, 2024": 142396
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Unrealized gain on warrants (Note 21)",
@@ -532,7 +594,8 @@
           "Year Ended December 31, 2025": -111203,
           "Year Ended December 31, 2024": -20383
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Stock-based compensation (Note 17)",
@@ -540,7 +603,8 @@
           "Year Ended December 31, 2025": 97545,
           "Year Ended December 31, 2024": 77404
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Impairment reversal (Note 24)",
@@ -548,7 +612,8 @@
           "Year Ended December 31, 2025": -229000,
           "Year Ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Foreign currency translation (gain) loss",
@@ -556,7 +621,8 @@
           "Year Ended December 31, 2025": -25654,
           "Year Ended December 31, 2024": 9383
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other",
@@ -564,7 +630,8 @@
           "Year Ended December 31, 2025": 139797,
           "Year Ended December 31, 2024": 48566
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes",
@@ -572,7 +639,8 @@
           "Year Ended December 31, 2025": 886371,
           "Year Ended December 31, 2024": 259327
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Inventories",
@@ -580,7 +648,8 @@
           "Year Ended December 31, 2025": -160744,
           "Year Ended December 31, 2024": -208300
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other current assets",
@@ -588,7 +657,8 @@
           "Year Ended December 31, 2025": -43969,
           "Year Ended December 31, 2024": 1166
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilities",
@@ -596,7 +666,8 @@
           "Year Ended December 31, 2025": 122639,
           "Year Ended December 31, 2024": 27831
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash provided by operating activities",
@@ -604,7 +675,8 @@
           "Year Ended December 31, 2025": 6817113,
           "Year Ended December 31, 2024": 3960892
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Additions to property, plant and mine development (Note 9)",
@@ -612,7 +684,8 @@
           "Year Ended December 31, 2025": -2418200,
           "Year Ended December 31, 2024": -1817949
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchase of O3 Mining, net of cash and cash equivalents acquired (Note 5)",
@@ -620,7 +693,8 @@
           "Year Ended December 31, 2025": -121960,
           "Year Ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Contributions for acquisition of mineral assets",
@@ -628,7 +702,8 @@
           "Year Ended December 31, 2025": -14972,
           "Year Ended December 31, 2024": -16296
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchase of equity securities and other investments",
@@ -636,7 +711,8 @@
           "Year Ended December 31, 2025": -447494,
           "Year Ended December 31, 2024": -183021
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of equity securities and other investments",
@@ -644,7 +720,8 @@
           "Year Ended December 31, 2025": 402720,
           "Year Ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other investing activities",
@@ -652,7 +729,8 @@
           "Year Ended December 31, 2025": 1611,
           "Year Ended December 31, 2024": 10152
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash used in investing activities",
@@ -660,7 +738,8 @@
           "Year Ended December 31, 2025": -2598295,
           "Year Ended December 31, 2024": -2007114
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Proceeds from Credit Facility (Note 14)",
@@ -668,7 +747,8 @@
           "Year Ended December 31, 2025": 0,
           "Year Ended December 31, 2024": 600000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of Credit Facility (Note 14)",
@@ -676,7 +756,8 @@
           "Year Ended December 31, 2025": 0,
           "Year Ended December 31, 2024": -600000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of Term Loan Facility (Note 14)",
@@ -684,7 +765,8 @@
           "Year Ended December 31, 2025": 0,
           "Year Ended December 31, 2024": -600000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of Senior Notes (Note 14)",
@@ -692,7 +774,8 @@
           "Year Ended December 31, 2025": -950000,
           "Year Ended December 31, 2024": -100000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt financing and extinguishment costs (Note 14)",
@@ -700,7 +783,8 @@
           "Year Ended December 31, 2025": -8245,
           "Year Ended December 31, 2024": -3544
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of lease obligations",
@@ -708,7 +792,8 @@
           "Year Ended December 31, 2025": -36043,
           "Year Ended December 31, 2024": -47319
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Dividends paid",
@@ -716,7 +801,8 @@
           "Year Ended December 31, 2025": -728077,
           "Year Ended December 31, 2024": -671655
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repurchase of common shares (Notes 16 and 17)",
@@ -724,7 +810,8 @@
           "Year Ended December 31, 2025": -682890,
           "Year Ended December 31, 2024": -169357
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from exercise of stock options (Note 17A)",
@@ -732,7 +819,8 @@
           "Year Ended December 31, 2025": 75749,
           "Year Ended December 31, 2024": 198532
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Common shares issued (Note 16)",
@@ -740,7 +828,8 @@
           "Year Ended December 31, 2025": 42363,
           "Year Ended December 31, 2024": 37012
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash used in financing activities",
@@ -748,7 +837,8 @@
           "Year Ended December 31, 2025": -2287143,
           "Year Ended December 31, 2024": -1356331
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Effect of exchange rate changes on cash and cash equivalents",
@@ -756,7 +846,8 @@
           "Year Ended December 31, 2025": 7947,
           "Year Ended December 31, 2024": -9664
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net increase in cash and cash equivalents during the year",
@@ -764,7 +855,8 @@
           "Year Ended December 31, 2025": 1939622,
           "Year Ended December 31, 2024": 587783
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, beginning of year",
@@ -772,7 +864,8 @@
           "Year Ended December 31, 2025": 926431,
           "Year Ended December 31, 2024": 338648
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, end of year",
@@ -780,7 +873,8 @@
           "Year Ended December 31, 2025": 2866053,
           "Year Ended December 31, 2024": 926431
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest paid",
@@ -788,7 +882,8 @@
           "Year Ended December 31, 2025": 46875,
           "Year Ended December 31, 2024": 103692
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income and mining taxes paid",
@@ -796,7 +891,8 @@
           "Year Ended December 31, 2025": 1177927,
           "Year Ended December 31, 2024": 474028
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ]
   },
@@ -862,6 +958,18 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "cash": {
+        "value": 2866053,
+        "source_label": "Cash and cash equivalents (Note 20)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_current_assets": {
+        "value": 4993942,
+        "source_label": "Total current assets",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
       "total_assets": {
         "value": 34471291,
         "source_label": "Total assets",
@@ -871,6 +979,12 @@
       "short_term_debt": {
         "value": 0,
         "source_label": "Current portion of long-term debt (Note 14)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "total_current_liabilities": {
+        "value": 2472206,
+        "source_label": "Total current liabilities",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -967,10 +1081,6 @@
         "value": 5139067
       },
       {
-        "label": "Cash and cash equivalents (Note 20)",
-        "value": 2866053
-      },
-      {
         "label": "Inventories (Note 7)",
         "value": 1698830
       },
@@ -985,10 +1095,6 @@
       {
         "label": "Other current assets (Note 8A)",
         "value": 385196
-      },
-      {
-        "label": "Total current assets",
-        "value": 4993942
       },
       {
         "label": "Goodwill (Notes 23 and 24)",
@@ -1033,10 +1139,6 @@
       {
         "label": "Fair value of derivative financial instruments (Notes 6 and 21)",
         "value": 5676
-      },
-      {
-        "label": "Total current liabilities",
-        "value": 2472206
       },
       {
         "label": "Reclamation provision (Note 12)",
@@ -1235,8 +1337,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_sector",
       "total": 96,
-      "mapped_count": 11,
-      "unmapped_count": 84,
+      "mapped_count": 14,
+      "unmapped_count": 81,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

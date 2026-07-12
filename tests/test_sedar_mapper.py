@@ -126,7 +126,7 @@ def test_cnr_fixture_maps_required_income_statement_fields():
         data, "Current portion of long-term debt")
     # CB-023: pretax_income ("Income before income taxes") for the EBIT add-back.
     assert mapped["pretax_income"]["value"] == _source_value(data, "Income before income taxes")
-    assert result["meta"]["mapped_count"] == 10
+    assert result["meta"]["mapped_count"] == 13  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -141,7 +141,7 @@ def test_csu_fixture_maps_required_fields_and_keeps_duplicate_net_income_unmappe
     assert mapped["revenue"]["value"] == _source_value(data, "Revenue total")
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == _source_value(data, "Net income (loss)")
-    assert result["meta"]["mapped_count"] == 6
+    assert result["meta"]["mapped_count"] == 7  # CB-037 promotion 2026-07-12: +1 (cash/current subtotals)
 
     # "Net income (loss)" appears twice in CSU IS with the same value — benign duplicate.
     # The first occurrence maps to net_income; the second is benign-skipped.
@@ -215,7 +215,7 @@ def test_insurance_sector_routes_before_financial_and_preserves_defaults():
     assert ifc_mapped["net_insurance_service_result"]["source_label"] == "Insurance service result"
     assert ifc_mapped["insurance_finance_result"]["source_label"] == "Insurance finance income (expense)"
     assert ifc_mapped["net_investment_result"]["source_label"] == "Net investment return"
-    assert ifc_result["meta"]["mapped_count"] == 10  # +pretax_income (CB-023)
+    assert ifc_result["meta"]["mapped_count"] == 11  # +pretax_income (CB-023)  # CB-037 promotion 2026-07-12: +1 (cash/current subtotals)
     _assert_conservation(ifc_result)
     _assert_unmapped_labels_are_verbatim(ifc, ifc_result)
 
@@ -322,7 +322,10 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
     explorers keep their net_loss spine via the override) + CB-021's explorer
     operating cash flow (the same label became a DEFAULT operating_cash_flow
     alias for producers/miners; explorers keep net_cash_used_in_operating_
-    activities via the override). Any new use is a ruling-level decision, not a
+    activities via the override) + CB-037's explorer cash pair (the same
+    labels became DEFAULT balance_sheet-scoped cash aliases in the 2026-07-12
+    promotion; explorers keep their CB-010 unscoped matching + collision rule
+    via the override). Any new use is a ruling-level decision, not a
     convenience."""
     alias_table = sedar_mapper._load_alias_table()
     uses = []
@@ -333,6 +336,8 @@ def test_prefer_profile_escape_hatch_is_limited_to_ratified_uses():
                     uses.append((profile_name, field_name, alias["label"]))
 
     assert sorted(uses) == [
+        ("mining_exploration_sector", "cash", "cash"),
+        ("mining_exploration_sector", "cash", "cash and cash equivalents"),
         ("mining_exploration_sector", "net_cash_used_in_operating_activities",
          "cash flows from operating activities"),
         ("mining_exploration_sector", "net_loss", "net loss and comprehensive loss"),
@@ -439,7 +444,7 @@ def test_shop_fixture_maps_four_fields_us_gaap():
     assert mapped["revenue"]["source_label"] == "Total revenues"
     assert "interest_expense" not in mapped
 
-    assert result["meta"]["mapped_count"] == 7  # +pretax_income (CB-023)
+    assert result["meta"]["mapped_count"] == 10  # +pretax_income (CB-023)  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
 
@@ -497,7 +502,7 @@ def test_atd_fixture_maps_five_fields_with_derived_gross_profit():
     assert mapped["gross_profit"]["excludes_da"] is True
     assert abs(mapped["gross_profit"]["value"] - 13021.3) < 0.01
 
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 11  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["gross_profit_derived"] is True
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
@@ -603,7 +608,7 @@ def test_reiun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     # CB-012: the printed "Total operating costs" line no longer counts as
     # mapped (derived entries are excluded from mapped_count) — 7 -> 6.
     # CB-023: +pretax_income ("Income before income taxes") -> 9.
-    assert result["meta"]["mapped_count"] == 9
+    assert result["meta"]["mapped_count"] == 10  # CB-037 promotion 2026-07-12: +1 (cash/current subtotals)
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -731,7 +736,7 @@ def test_cnq_fixture_maps_resource_sector_profile_without_replacing_defaults():
     assert mapped["transportation_costs"]["value"] == 9984
 
     assert result["meta"]["sector_profile"] == "resource_sector"
-    assert result["meta"]["mapped_count"] == 13
+    assert result["meta"]["mapped_count"] == 16  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net earnings"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -820,7 +825,7 @@ def test_aem_fixture_maps_mining_sector_profile_without_replacing_defaults():
         data, "Current portion of long-term debt (Note 14)")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 11
+    assert result["meta"]["mapped_count"] == 14  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["benign_skipped_count"] == 1  # second "Net income for the year"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -876,7 +881,7 @@ def test_teckb_fixture_resolves_existing_mining_sector_profile_without_new_alias
     assert mapped["gross_profit"]["value"] == _source_value(data, "Gross profit")
 
     assert result["meta"]["sector_profile"] == "mining_sector"
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 8  # CB-037 promotion 2026-07-12: +1 (cash/current subtotals)
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Gross profit" not in unmapped_labels
@@ -990,7 +995,7 @@ def test_nfg_fixture_maps_mining_exploration_sector_without_producer_spine():
     assert mapped["capitalized_exploration_additions"]["value"] == -3853119
 
     assert result["meta"]["sector_profile"] == "mining_exploration_sector"
-    assert result["meta"]["mapped_count"] == 9
+    assert result["meta"]["mapped_count"] == 11  # CB-037 promotion 2026-07-12: +2 (cash/current subtotals)
     assert result["meta"]["collisions"] == []
     _assert_conservation(result)
     _assert_unmapped_labels_are_verbatim(data, result)
@@ -1094,7 +1099,7 @@ def test_cb009_nfg_purchases_line_maps_to_capitalized_additions():
     # the balance-sheet asset STOCK stays honestly unmapped
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert "Exploration and evaluation assets" in unmapped_labels
-    assert result["meta"]["mapped_count"] == 9
+    assert result["meta"]["mapped_count"] == 11  # CB-037 promotion 2026-07-12: +2 (cash/current subtotals)
 
 
 def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
@@ -1161,7 +1166,7 @@ def test_sig_fixture_explorer_n2_maps_with_cb009_and_cb010_live():
     unmapped_labels = [item["label"] for item in result["unmapped"]]
     assert any("xploration and evaluation assets" in label for label in unmapped_labels)
 
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 10  # CB-037 promotion 2026-07-12: +2 (cash/current subtotals)
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)
@@ -1271,7 +1276,7 @@ def test_tou_fixture_first_agent_fetched_rollup_printing_gas_producer():
     assert mapped["interest_expense"]["value"] == 111385
     assert "Lease interest expense" in unmapped_labels
 
-    assert result["meta"]["mapped_count"] == 15
+    assert result["meta"]["mapped_count"] == 17  # CB-037 promotion 2026-07-12: +2 (cash/current subtotals)
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)
@@ -1376,7 +1381,7 @@ def test_arx_fixture_first_agent_fetched_filer_to_reach_verified():
     assert mapped["operating_expense"]["value"] == 735.8
     assert mapped["transportation_costs"]["value"] == 689.1
 
-    assert result["meta"]["mapped_count"] == 16
+    assert result["meta"]["mapped_count"] == 19  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)
@@ -1469,7 +1474,7 @@ def test_teckb_cb011_extension_maps_revenue_cost_of_sales_and_profit():
     # shareholders line (1,401) — consistent with existing net_income semantics
     assert result["mapped"]["net_income"]["source_label"] == "Profit for the year"
     assert result["mapped"]["net_income"]["value"] == 1072
-    assert result["meta"]["mapped_count"] == 7
+    assert result["meta"]["mapped_count"] == 8  # CB-037 promotion 2026-07-12: +1 (cash/current subtotals)
     assert result["meta"]["collisions"] == []
 
 
@@ -1546,7 +1551,7 @@ def test_carun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["net_income"]["source_label"] == "Net income (loss)"
     assert mapped["net_income"]["value"] == 292742
 
-    assert result["meta"]["mapped_count"] == 8
+    assert result["meta"]["mapped_count"] == 11  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]
@@ -1622,7 +1627,7 @@ def test_dirun_fixture_maps_reit_sector_profile_without_replacing_defaults():
     assert mapped["short_term_debt"]["source_label"] == "Current debt"
     assert mapped["short_term_debt"]["value"] == 870407
 
-    assert result["meta"]["mapped_count"] == 11  # +debt pair (CB-025)
+    assert result["meta"]["mapped_count"] == 14  # +debt pair (CB-025)  # CB-037 promotion 2026-07-12: +3 (cash/current subtotals)
     assert result["meta"]["sector_profile"] == "reit_sector"
 
     unmapped_labels = [item["label"] for item in result["unmapped"]]

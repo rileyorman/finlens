@@ -174,6 +174,71 @@
       ],
       "patterns": []
     },
+    "cash": {
+      "aliases": [
+        {
+          "label": "cash and cash equivalents",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion 2026-07-12 — 9 corpus filers across 4 profiles; consumers: Liquidity (current ratio) + Leverage (net debt). Balance_sheet-scoped so cash-flow closing rows stay out; the explorer profile keeps its unscoped variants + CB-010 collision rule.",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "cash",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion — Peyto's exact bare label (n=1 candidate recorded 2026-07-12 morning); exact-match semantics keep 'cash held in trust' etc. out; balance_sheet-scoped.",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "cash and equivalents",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion — scrape-parity variant (the summary scrape accepted it; canonical-first now supersedes).",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "cash, cash equivalents and short-term investments",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion — scrape-parity variant.",
+          "statements": ["balance_sheet"]
+        }
+      ],
+      "patterns": []
+    },
+    "total_current_assets": {
+      "aliases": [
+        {
+          "label": "total current assets",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion 2026-07-12 — 9 corpus filers print this exact subtotal label; consumer: Liquidity (current ratio).",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "current assets",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion — the bare form (Peyto prints its subtotals unlabeled; the extractor assigns 'Current assets'); safe ONLY on a row the arithmetic classifier proved, hence requires_structure.",
+          "statements": ["balance_sheet"],
+          "requires_structure": "subtotal"
+        }
+      ],
+      "patterns": []
+    },
+    "total_current_liabilities": {
+      "aliases": [
+        {
+          "label": "total current liabilities",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion 2026-07-12 — mirror of total_current_assets; consumer: Liquidity (current ratio).",
+          "statements": ["balance_sheet"]
+        },
+        {
+          "label": "current liabilities",
+          "standards": ["IFRS", "US GAAP"],
+          "source": "CB-037 promotion — bare form, structure-gated (see total_current_assets).",
+          "statements": ["balance_sheet"],
+          "requires_structure": "subtotal"
+        }
+      ],
+      "patterns": []
+    },
     "total_liabilities": {
       "aliases": [
         {
@@ -779,12 +844,14 @@
             {
               "label": "cash",
               "standards": ["IFRS"],
-              "source": "NFG_FY2024"
+              "source": "NFG_FY2024; prefer_profile added by CB-037 (2026-07-12): the explorer profile keeps its CB-010 unscoped matching after the default cash promotion (the balance_sheet-scoped default would otherwise claim the label and fail closed on unattributed explorer items)",
+              "prefer_profile": true
             },
             {
               "label": "cash and cash equivalents",
               "standards": ["IFRS"],
-              "source": "NFG_FY2024"
+              "source": "NFG_FY2024; prefer_profile added by CB-037 (2026-07-12) — see the bare-cash alias note",
+              "prefer_profile": true
             },
             {
               "label": "cash at end of year",

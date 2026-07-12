@@ -361,6 +361,63 @@ def _mda_ffo_anchor_raw(mda_metrics) -> float | None:
     return max(candidates)[1]
 
 
+_STRUCTURE_STATEMENT_KEYS = ("income_statement", "balance_sheet", "cash_flow_statement")
+
+
+def _structure_conflicts(normalized_data: dict) -> list[dict] | None:
+    """STRUCTURAL_SUBTOTAL_SPEC Stage 1: run the arithmetic subtotal
+    classifier over the normalized statement rows and collect
+    label-vs-structure contradictions (the CB-033 class, caught at
+    validation instead of only by the downstream identity rule).
+
+    Values here are raw dollars (scaled at the boundary) — block-sum ties
+    are scale-invariant, so the classification is identical to the
+    filing-unit result. None when no statements are present (honest skip);
+    an empty list is a real 'checked, clean' result.
+    """
+    from .structure import classify_statement_structure
+
+    conflicts: list[dict] = []
+    found_statements = False
+    for key in _STRUCTURE_STATEMENT_KEYS:
+        rows = normalized_data.get(key)
+        if not isinstance(rows, list):
+            continue
+        adapted = [
+            {"label": row.get("line_item"),
+             "values": {"current": row.get("value"), "prior": row.get("value_prior")}}
+            for row in rows if isinstance(row, dict)
+        ]
+        if not adapted:
+            continue
+        found_statements = True
+        for item, annotation in zip(adapted, classify_statement_structure(adapted)):
+            if annotation["structure_conflict"]:
+                conflicts.append({
+                    "statement": key,
+                    "label": item["label"],
+                    "note": annotation["conflict_note"],
+                })
+    return conflicts if found_statements else None
+
+
+def _check_structure_label_contradiction(rule: dict, ctx: dict) -> tuple:
+    """A row whose label claims a grand-category total while its arithmetic
+    proves a block subtotal is a wrong-scope extraction (Peyto CB-033:
+    invented 'Total liabilities' on the non-current block). Warn, listing
+    every contradiction; pass when the statements are structurally clean."""
+    conflicts = ctx.get("structure_conflicts")
+    passed = not conflicts
+    detail = (
+        "statement rows structurally consistent (no label-vs-structure contradictions)"
+        if passed else
+        f"{len(conflicts)} label-vs-structure contradiction(s): " + "; ".join(
+            f"{c['statement']}: '{c['label']}' — {c['note']}" for c in conflicts
+        )
+    )
+    return len(conflicts or []), {}, passed, detail
+
+
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
     balance = normalized_data.get("balance_sheet", [])
@@ -445,6 +502,10 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
         # FFO reconciliation's annual CFO anchor (scale-parsed to raw dollars)
         # vs the promoted canonical operating_cash_flow (raw after
         # normalization). None → honest field_unavailable skip.
+        # STRUCTURAL_SUBTOTAL_SPEC Stage 1: label-vs-structure contradictions
+        # over the normalized statement rows (None = no statements → skip;
+        # empty list = checked and clean).
+        "structure_conflicts": _structure_conflicts(normalized_data),
         "mda_netback_groups": _mda_netback_groups(normalized_data.get("mda_metrics")),
         "mda_ffo_anchor_raw": _mda_ffo_anchor_raw(normalized_data.get("mda_metrics")),
         # Top-level (promoted, raw-scaled) copy ONLY — the mapping.mapped
@@ -835,6 +896,7 @@ _CHECKS = {
     "hedging_fair_value_tie":    _check_hedging_fair_value_tie,
     "mda_netback_internal_tie":  _check_mda_netback_internal_tie,
     "mda_ffo_anchor_tie":        _check_mda_ffo_anchor_tie,
+    "structure_label_contradiction": _check_structure_label_contradiction,
 }
 
 

@@ -15,7 +15,8 @@
           "2025": 1365,
           "2024": 1145
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt securities",
@@ -23,7 +24,8 @@
           "2025": 30959,
           "2024": 29771
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Preferred shares",
@@ -31,7 +33,8 @@
           "2025": 1548,
           "2024": 1660
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Common shares",
@@ -39,7 +42,8 @@
           "2025": 7190,
           "2024": 6350
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investment property",
@@ -47,7 +51,8 @@
           "2025": 701,
           "2024": 571
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Loans",
@@ -55,7 +60,8 @@
           "2025": 805,
           "2024": 785
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total investments",
@@ -63,7 +69,8 @@
           "2025": 42568,
           "2024": 40282
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Reinsurance contract assets",
@@ -71,7 +78,8 @@
           "2025": 4548,
           "2024": 4788
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes receivable",
@@ -79,7 +87,8 @@
           "2025": 68,
           "2024": 71
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred tax assets",
@@ -87,7 +96,8 @@
           "2025": 746,
           "2024": 744
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investments in associates and joint ventures",
@@ -95,7 +105,8 @@
           "2025": 1144,
           "2024": 940
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Property and equipment",
@@ -103,7 +114,8 @@
           "2025": 865,
           "2024": 820
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Intangible assets",
@@ -111,7 +123,8 @@
           "2025": 4901,
           "2024": 5060
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Goodwill",
@@ -119,7 +132,8 @@
           "2025": 4889,
           "2024": 4507
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other assets",
@@ -127,7 +141,8 @@
           "2025": 3139,
           "2024": 2314
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total assets",
@@ -135,7 +150,8 @@
           "2025": 62868,
           "2024": 59526
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Insurance contract liabilities",
@@ -143,7 +159,8 @@
           "2025": 32550,
           "2024": 31900
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes payable",
@@ -151,7 +168,8 @@
           "2025": 433,
           "2024": 142
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred tax liabilities",
@@ -159,7 +177,8 @@
           "2025": 497,
           "2024": 593
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt outstanding",
@@ -167,7 +186,8 @@
           "2025": 4426,
           "2024": 4681
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other liabilities",
@@ -175,7 +195,8 @@
           "2025": 4126,
           "2024": 4062
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities",
@@ -183,7 +204,8 @@
           "2025": 42032,
           "2024": 41378
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Common shares",
@@ -191,7 +213,8 @@
           "2025": 8089,
           "2024": 8126
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Preferred shares and other equity",
@@ -199,7 +222,8 @@
           "2025": 1766,
           "2024": 1619
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Share capital",
@@ -207,7 +231,8 @@
           "2025": 9855,
           "2024": 9745
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Contributed surplus",
@@ -215,7 +240,8 @@
           "2025": 343,
           "2024": 298
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Retained earnings",
@@ -223,7 +249,8 @@
           "2025": 10316,
           "2024": 7922
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accumulated other comprehensive income (loss)",
@@ -231,7 +258,8 @@
           "2025": 322,
           "2024": 183
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total equity",
@@ -239,7 +267,8 @@
           "2025": 20836,
           "2024": 18148
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities and equity",
@@ -247,7 +276,8 @@
           "2025": 62868,
           "2024": 59526
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -257,7 +287,8 @@
           "2025": 26950,
           "2024": 26523
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Insurance service expense",
@@ -265,7 +296,8 @@
           "2025": -21491,
           "2024": -22418
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Insurance service result from insurance contracts",
@@ -273,7 +305,8 @@
           "2025": 5459,
           "2024": 4105
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Expense from reinsurance contracts",
@@ -281,7 +314,8 @@
           "2025": -2363,
           "2024": -2579
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income from reinsurance contracts",
@@ -289,7 +323,8 @@
           "2025": 1198,
           "2024": 1660
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net expense from reinsurance contracts",
@@ -297,7 +332,8 @@
           "2025": -1165,
           "2024": -919
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Insurance service result",
@@ -305,7 +341,8 @@
           "2025": 4294,
           "2024": 3186
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Net investment income",
@@ -313,7 +350,8 @@
           "2025": 1632,
           "2024": 1559
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net gains (losses) on investment portfolio",
@@ -321,7 +359,8 @@
           "2025": 672,
           "2024": 148
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net investment return",
@@ -329,7 +368,8 @@
           "2025": 2304,
           "2024": 1707
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Insurance finance income (expense)",
@@ -337,7 +377,8 @@
           "2025": -1041,
           "2024": -1083
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reinsurance finance income (expense)",
@@ -345,7 +386,8 @@
           "2025": 162,
           "2024": 184
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net insurance financial result",
@@ -353,7 +395,8 @@
           "2025": -879,
           "2024": -899
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Net investment return and net insurance financial result",
@@ -361,7 +404,8 @@
           "2025": 1425,
           "2024": 808
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Share of profit from investments in associates and joint ventures",
@@ -369,7 +413,8 @@
           "2025": 67,
           "2024": 89
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other net gains (losses)",
@@ -377,7 +422,8 @@
           "2025": 95,
           "2024": 303
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other income and expense",
@@ -385,7 +431,8 @@
           "2025": -953,
           "2024": -879
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other finance costs",
@@ -393,7 +440,8 @@
           "2025": -225,
           "2024": -222
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Acquisition, integration and restructuring costs",
@@ -401,7 +449,8 @@
           "2025": -396,
           "2024": -407
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income before income taxes",
@@ -409,7 +458,8 @@
           "2025": 4307,
           "2024": 2878
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax benefit (expense)",
@@ -417,7 +467,8 @@
           "2025": -942,
           "2024": -568
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income",
@@ -425,7 +476,8 @@
           "2025": 3365,
           "2024": 2310
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income attributable to: Shareholders",
@@ -433,7 +485,8 @@
           "2025": 3365,
           "2024": 2297
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income attributable to: Non-controlling interests",
@@ -441,7 +494,8 @@
           "2025": 0,
           "2024": 13
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Basic",
@@ -449,7 +503,8 @@
           "2025": 18.39,
           "2024": 12.37
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Diluted",
@@ -457,7 +512,8 @@
           "2025": 18.35,
           "2024": 12.36
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Dividends paid per common share (in dollars)",
@@ -465,7 +521,8 @@
           "2025": 5.32,
           "2024": 4.84
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income",
@@ -473,7 +530,8 @@
           "2025": 3365,
           "2024": 2310
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "FVTOCI debt securities: Net changes in unrealized gains (losses)",
@@ -481,7 +539,8 @@
           "2025": 247,
           "2024": 89
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI debt securities: Reclassification of net losses (gains)",
@@ -489,7 +548,8 @@
           "2025": 1,
           "2024": 26
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI debt securities: Income tax benefit (expense)",
@@ -497,7 +557,8 @@
           "2025": -53,
           "2024": -30
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI debt securities subtotal",
@@ -505,7 +566,8 @@
           "2025": 195,
           "2024": 85
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Foreign currency gains (losses) on: Translation of foreign operations",
@@ -513,7 +575,8 @@
           "2025": -155,
           "2024": 811
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Foreign currency gains (losses) on: Net investment hedges",
@@ -521,7 +584,8 @@
           "2025": 90,
           "2024": -410
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Foreign currency gains (losses) on: Income tax benefit (expense)",
@@ -529,7 +593,8 @@
           "2025": 9,
           "2024": 18
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Foreign currency subtotal",
@@ -537,7 +602,8 @@
           "2025": -56,
           "2024": 419
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Items that may be reclassified subsequently to Net income",
@@ -545,7 +611,8 @@
           "2025": 139,
           "2024": 504
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Employee future benefits: Actuarial gains (losses), net of other surplus remeasurement",
@@ -553,7 +620,8 @@
           "2025": 226,
           "2024": 23
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Employee future benefits: Income tax benefit (expense)",
@@ -561,7 +629,8 @@
           "2025": -11,
           "2024": 6
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Employee future benefits subtotal",
@@ -569,7 +638,8 @@
           "2025": 215,
           "2024": 29
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "FVTOCI equity securities: Net changes in unrealized gains (losses)",
@@ -577,7 +647,8 @@
           "2025": 62,
           "2024": 167
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI equity securities: Realized gains (losses)",
@@ -585,7 +656,8 @@
           "2025": 48,
           "2024": 2
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI equity securities: Income tax benefit (expense)",
@@ -593,7 +665,8 @@
           "2025": -27,
           "2024": -54
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "FVTOCI equity securities subtotal",
@@ -601,7 +674,8 @@
           "2025": 83,
           "2024": 115
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Items that will not be reclassified subsequently to Net income",
@@ -609,7 +683,8 @@
           "2025": 298,
           "2024": 144
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Other comprehensive income (loss)",
@@ -617,7 +692,8 @@
           "2025": 437,
           "2024": 648
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss)",
@@ -625,7 +701,8 @@
           "2025": 3802,
           "2024": 2958
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss) attributable to: Shareholders",
@@ -633,7 +710,8 @@
           "2025": 3802,
           "2024": 2945
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss) attributable to: Non-controlling interests",
@@ -641,7 +719,8 @@
           "2025": 0,
           "2024": 13
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -651,7 +730,8 @@
           "2025": 4307,
           "2024": 2878
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax received (paid), net",
@@ -659,7 +739,8 @@
           "2025": -820,
           "2024": -745
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Adjustments for non-cash items",
@@ -667,7 +748,8 @@
           "2025": 36,
           "2024": 263
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Changes in other operating assets and liabilities",
@@ -675,7 +757,8 @@
           "2025": 865,
           "2024": 991
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows provided by (used in) operating activities",
@@ -683,7 +766,8 @@
           "2025": 4388,
           "2024": 3387
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Proceeds from sale of business",
@@ -691,7 +775,8 @@
           "2025": 0,
           "2024": 145
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of investments",
@@ -699,7 +784,8 @@
           "2025": 26845,
           "2024": 29989
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchase of investments",
@@ -707,7 +793,8 @@
           "2025": -28348,
           "2024": -31129
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of (purchases of) brokerages and other equity investments, net",
@@ -715,7 +802,8 @@
           "2025": -621,
           "2024": -190
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchase of intangibles and property and equipment, net",
@@ -723,7 +811,8 @@
           "2025": -457,
           "2024": -429
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows provided by (used in) investing activities",
@@ -731,7 +820,8 @@
           "2025": -2581,
           "2024": -1614
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Payment of lease liabilities",
@@ -739,7 +829,8 @@
           "2025": -91,
           "2024": -98
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of debt, net",
@@ -747,7 +838,8 @@
           "2025": 298,
           "2024": 298
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of debt",
@@ -755,7 +847,8 @@
           "2025": -524,
           "2024": -663
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Borrowing on (repayment of) the credit facility and commercial paper",
@@ -763,7 +856,8 @@
           "2025": 0,
           "2024": -105
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of common shares on exercise of stock options",
@@ -771,7 +865,8 @@
           "2025": 0,
           "2024": 11
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of preferred shares",
@@ -779,7 +874,8 @@
           "2025": 147,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repurchase of common shares for cancellation",
@@ -787,7 +883,8 @@
           "2025": -198,
           "2024": -24
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repurchase of common shares for share-based payment plans",
@@ -795,7 +892,8 @@
           "2025": -196,
           "2024": -180
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Payment of dividends on common shares and preferred shares, and other equity distributions",
@@ -803,7 +901,8 @@
           "2025": -1037,
           "2024": -953
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Payment of dividends to non-controlling interests",
@@ -811,7 +910,8 @@
           "2025": 0,
           "2024": -13
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cancellation of non-controlling interests",
@@ -819,7 +919,8 @@
           "2025": 0,
           "2024": -279
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows provided by (used in) financing activities",
@@ -827,7 +928,8 @@
           "2025": -1601,
           "2024": -2006
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Net increase (decrease) in cash and cash equivalents",
@@ -835,7 +937,8 @@
           "2025": 206,
           "2024": -233
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Cash and cash equivalents, net of bank overdraft, beginning of year",
@@ -843,7 +946,8 @@
           "2025": 997,
           "2024": 1171
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Exchange rate differences on cash and cash equivalents",
@@ -851,7 +955,8 @@
           "2025": 10,
           "2024": 59
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, net of bank overdraft, end of year",
@@ -859,7 +964,8 @@
           "2025": 1213,
           "2024": 997
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ]
   },
@@ -940,6 +1046,12 @@
       "net_income": {
         "value": 3365,
         "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cash": {
+        "value": 1365,
+        "source_label": "Cash and cash equivalents",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -1128,10 +1240,6 @@
         "value": 0
       },
       {
-        "label": "Cash and cash equivalents",
-        "value": 1365
-      },
-      {
         "label": "Debt securities",
         "value": 30959
       },
@@ -1240,8 +1348,8 @@
       "accounting_standard": "IFRS Accounting Standards",
       "sector_profile": "insurance_sector",
       "total": 79,
-      "mapped_count": 10,
-      "unmapped_count": 68,
+      "mapped_count": 11,
+      "unmapped_count": 67,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

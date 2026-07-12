@@ -15,7 +15,8 @@
           "December 31, 2025": 13628959,
           "December 31, 2024": 13839154
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Equity-accounted investments",
@@ -23,7 +24,8 @@
           "December 31, 2025": 159596,
           "December 31, 2024": 408588
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Residential inventory",
@@ -31,7 +33,8 @@
           "December 31, 2025": 236745,
           "December 31, 2024": 284050
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Mortgages and loans receivable",
@@ -39,7 +42,8 @@
           "December 31, 2025": 338331,
           "December 31, 2024": 470729
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Assets held for sale",
@@ -47,7 +51,8 @@
           "December 31, 2025": 46500,
           "December 31, 2024": 16707
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Receivables and other assets",
@@ -55,7 +60,8 @@
           "December 31, 2025": 339221,
           "December 31, 2024": 262573
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents",
@@ -63,7 +69,8 @@
           "December 31, 2025": 145040,
           "December 31, 2024": 190243
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total assets",
@@ -71,7 +78,8 @@
           "December 31, 2025": 14894392,
           "December 31, 2024": 15472044
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Debentures payable",
@@ -79,7 +87,8 @@
           "December 31, 2025": 4338865,
           "December 31, 2024": 4088654
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Mortgages payable",
@@ -87,7 +96,8 @@
           "December 31, 2025": 2184306,
           "December 31, 2024": 2851602
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Mortgages payable associated with assets held for sale",
@@ -95,7 +105,8 @@
           "December 31, 2025": 28343,
           "December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lines of credit and other bank loans",
@@ -103,7 +114,8 @@
           "December 31, 2025": 601194,
           "December 31, 2024": 383658
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and other liabilities",
@@ -111,7 +123,8 @@
           "December 31, 2025": 584421,
           "December 31, 2024": 589792
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities",
@@ -119,7 +132,8 @@
           "December 31, 2025": 7737129,
           "December 31, 2024": 7913706
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Unitholders' equity",
@@ -127,7 +141,8 @@
           "December 31, 2025": 7157263,
           "December 31, 2024": 7558338
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities and equity",
@@ -135,7 +150,8 @@
           "December 31, 2025": 14894392,
           "December 31, 2024": 15472044
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -145,7 +161,8 @@
           "2025": 1176428,
           "2024": 1137127
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Residential inventory sales",
@@ -153,7 +170,8 @@
           "2025": 244189,
           "2024": 84483
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Property management and other service fees",
@@ -161,7 +179,8 @@
           "2025": 15954,
           "2024": 17916
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total revenue",
@@ -169,7 +188,8 @@
           "2025": 1436571,
           "2024": 1239526
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Recoverable under tenant leases",
@@ -177,7 +197,8 @@
           "2025": 414386,
           "2024": 397042
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Non-recoverable costs",
@@ -185,7 +206,8 @@
           "2025": 41638,
           "2024": 37147
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Residential inventory cost of sales",
@@ -193,7 +215,8 @@
           "2025": 181831,
           "2024": 64389
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total operating costs",
@@ -201,7 +224,8 @@
           "2025": 637855,
           "2024": 498578
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Operating income",
@@ -209,7 +233,8 @@
           "2025": 798716,
           "2024": 740948
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest income",
@@ -217,7 +242,8 @@
           "2025": 38237,
           "2024": 42469
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income (loss) from equity-accounted investments",
@@ -225,7 +251,8 @@
           "2025": -236934,
           "2024": 38507
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Fair value loss on investment properties, net",
@@ -233,7 +260,8 @@
           "2025": -137359,
           "2024": -29353
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investment and other income (loss), net",
@@ -241,7 +269,8 @@
           "2025": -9094,
           "2024": 17531
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other income (loss)",
@@ -249,7 +278,8 @@
           "2025": -345150,
           "2024": 69154
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest costs, net",
@@ -257,7 +287,8 @@
           "2025": 277885,
           "2024": 257544
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "General and administrative",
@@ -265,7 +296,8 @@
           "2025": 44751,
           "2024": 59847
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Internal leasing costs",
@@ -273,7 +305,8 @@
           "2025": 13715,
           "2024": 13293
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Transaction and other costs",
@@ -281,7 +314,8 @@
           "2025": 47920,
           "2024": 6747
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other expenses",
@@ -289,7 +323,8 @@
           "2025": 384271,
           "2024": 337431
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income before income taxes",
@@ -297,7 +332,8 @@
           "2025": 69295,
           "2024": 472671
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Current income tax recovery",
@@ -305,7 +341,8 @@
           "2025": 0,
           "2024": -794
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income",
@@ -313,7 +350,8 @@
           "2025": 69295,
           "2024": 473465
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Basic",
@@ -321,7 +359,8 @@
           "2025": 0.23,
           "2024": 1.58
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Diluted",
@@ -329,7 +368,8 @@
           "2025": 0.23,
           "2024": 1.58
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income",
@@ -337,7 +377,8 @@
           "2025": 69295,
           "2024": 473465
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Unrealized gain during the year - Interest rate swap agreements",
@@ -345,7 +386,8 @@
           "2025": 1132,
           "2024": 767
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Reclassified during the year to income - Interest rate swap agreements",
@@ -353,7 +395,8 @@
           "2025": -1991,
           "2024": -9404
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Unrealized gain during the year - Bond forward agreement",
@@ -361,7 +404,8 @@
           "2025": 0,
           "2024": 1997
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Realized loss during the year - Bond forward agreement",
@@ -369,7 +413,8 @@
           "2025": 0,
           "2024": -6354
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Reclassified during the year to income - Bond forward agreement",
@@ -377,7 +422,8 @@
           "2025": -7411,
           "2024": -8269
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Other comprehensive income (loss) from equity-accounted investments",
@@ -385,7 +431,8 @@
           "2025": 340,
           "2024": -769
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Actuarial gain on pension plan",
@@ -393,7 +440,8 @@
           "2025": 48,
           "2024": 142
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Other comprehensive loss, net of tax",
@@ -401,7 +449,8 @@
           "2025": -7882,
           "2024": -21890
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Comprehensive income, net of tax",
@@ -409,7 +458,8 @@
           "2025": 61413,
           "2024": 451575
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -419,7 +469,8 @@
           "2025": 69295,
           "2024": 473465
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Depreciation and amortization",
@@ -427,7 +478,8 @@
           "2025": 1510,
           "2024": 1450
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of straight-line rent",
@@ -435,7 +487,8 @@
           "2025": -9216,
           "2024": -11234
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of bond forward hedge settlement",
@@ -443,7 +496,8 @@
           "2025": -7411,
           "2024": -8269
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of deferred financing charges",
@@ -451,7 +505,8 @@
           "2025": 5870,
           "2024": 5951
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Unit-based compensation expense",
@@ -459,7 +514,8 @@
           "2025": 10197,
           "2024": 10385
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Impairment of residential inventory",
@@ -467,7 +523,8 @@
           "2025": 1160,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Inventory gain from transfer of residential inventory to investment property",
@@ -475,7 +532,8 @@
           "2025": -4635,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Allowance for credit loss on mortgages and loans receivables",
@@ -483,7 +541,8 @@
           "2025": 16477,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Provision for guarantee loss",
@@ -491,7 +550,8 @@
           "2025": 37819,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Loss (income) from equity-accounted investments",
@@ -499,7 +559,8 @@
           "2025": 236934,
           "2024": -38507
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Fair value loss on investment properties, net",
@@ -507,7 +568,8 @@
           "2025": 137359,
           "2024": 29353
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Fair value gain on marketable securities",
@@ -515,7 +577,8 @@
           "2025": 0,
           "2024": -6645
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Transaction losses, net on disposition of investment properties",
@@ -523,7 +586,8 @@
           "2025": 5721,
           "2024": 6
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from bond forward hedge settlement in hedge reserve",
@@ -531,7 +595,8 @@
           "2025": 0,
           "2024": -6354
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Adjustments for changes in other working capital items",
@@ -539,7 +604,8 @@
           "2025": -67012,
           "2024": -71321
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash provided by operating activities",
@@ -547,7 +613,8 @@
           "2025": 434068,
           "2024": 378280
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Acquisitions of investment properties",
@@ -555,7 +622,8 @@
           "2025": -168739,
           "2024": -41642
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Construction expenditures on properties under development",
@@ -563,7 +631,8 @@
           "2025": -157266,
           "2024": -192099
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Capital expenditures on income producing properties",
@@ -571,7 +640,8 @@
           "2025": -95768,
           "2024": -104839
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of investment properties",
@@ -579,7 +649,8 @@
           "2025": 338531,
           "2024": 104119
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Earn-outs on investment properties",
@@ -587,7 +658,8 @@
           "2025": -180,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Contributions to equity-accounted investments",
@@ -595,7 +667,8 @@
           "2025": -7486,
           "2024": -20077
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Distributions received from equity-accounted investments",
@@ -603,7 +676,8 @@
           "2025": 6447,
           "2024": 13166
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from disposition of equity-accounted investments",
@@ -611,7 +685,8 @@
           "2025": 0,
           "2024": 29601
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Advances of mortgages and loans receivable",
@@ -619,7 +694,8 @@
           "2025": -61896,
           "2024": -210527
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayments of mortgages and loans receivable",
@@ -627,7 +703,8 @@
           "2025": 201834,
           "2024": 43056
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchase of other investments",
@@ -635,7 +712,8 @@
           "2025": -20781,
           "2024": -15665
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from other investments",
@@ -643,7 +721,8 @@
           "2025": 919,
           "2024": 1020
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of marketable securities, net of selling costs",
@@ -651,7 +730,8 @@
           "2025": 0,
           "2024": 27294
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lease payments received from finance lease receivables",
@@ -659,7 +739,8 @@
           "2025": 5492,
           "2024": 5827
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash provided by (used in) investing activities",
@@ -667,7 +748,8 @@
           "2025": 41107,
           "2024": -360766
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Proceeds from mortgage financing, net of issue costs",
@@ -675,7 +757,8 @@
           "2025": 26103,
           "2024": 420419
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayments of mortgage principal",
@@ -683,7 +766,8 @@
           "2025": -498241,
           "2024": -368810
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Advances from bank credit lines, net of issue costs",
@@ -691,7 +775,8 @@
           "2025": 562935,
           "2024": 480995
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of bank credit lines",
@@ -699,7 +784,8 @@
           "2025": -380417,
           "2024": -977521
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of debentures, net of issue costs",
@@ -707,7 +793,8 @@
           "2025": 746957,
           "2024": 1443922
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of unsecured debentures",
@@ -715,7 +802,8 @@
           "2025": -500000,
           "2024": -600000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Distributions paid to Unitholders",
@@ -723,7 +811,8 @@
           "2025": -340586,
           "2024": -332011
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Units repurchased under normal course issuer bid",
@@ -731,7 +820,8 @@
           "2025": -127178,
           "2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Units repurchased for settlement of Unit compensation exercises and proceeds received from issuance of Units, net of issue costs",
@@ -739,7 +829,8 @@
           "2025": -7748,
           "2024": -11706
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayment of lease liabilities",
@@ -747,7 +838,8 @@
           "2025": -2203,
           "2024": -6793
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash provided by (used in) financing activities",
@@ -755,7 +847,8 @@
           "2025": -520378,
           "2024": 48495
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Net change in cash and cash equivalents",
@@ -763,7 +856,8 @@
           "2025": -45203,
           "2024": 66009
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Cash and cash equivalents, beginning of year",
@@ -771,7 +865,8 @@
           "2025": 190243,
           "2024": 124234
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, end of year",
@@ -779,7 +874,8 @@
           "2025": 145040,
           "2024": 190243
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ]
   },
@@ -916,6 +1012,12 @@
       "net_income": {
         "value": 69295,
         "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cash": {
+        "value": 145040,
+        "source_label": "Cash and cash equivalents",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -1064,10 +1166,6 @@
         "value": 339221
       },
       {
-        "label": "Cash and cash equivalents",
-        "value": 145040
-      },
-      {
         "label": "Debentures payable",
         "value": 4338865
       },
@@ -1104,8 +1202,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "reit_sector",
       "total": 50,
-      "mapped_count": 9,
-      "unmapped_count": 40,
+      "mapped_count": 10,
+      "unmapped_count": 39,
       "benign_skipped_count": 1,
       "benign_duplicates": [
         {

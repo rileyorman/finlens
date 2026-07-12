@@ -157,6 +157,8 @@ _CANONICAL_SCALE_FIELDS = frozenset({
     "production_costs",
     "property_operating_costs",
     "provision_for_credit_losses",
+    "total_current_assets",
+    "total_current_liabilities",
     "rd_expense",
     "realized_derivative_gains",
     "rental_revenue",

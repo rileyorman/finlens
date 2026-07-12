@@ -265,6 +265,44 @@ def test_fcf_capex_includes_ee_for_resource_mining():
     assert m["calcs"]["ni_margin"] == "net income 6.11B ÷ revenue 41.51B"
 
 
+def test_cb037_liquidity_and_leverage_inputs_canonical_first():
+    """CB-037 (2026-07-12): the promoted cash / total_current_assets /
+    total_current_liabilities canonical fields outrank the label scrape —
+    a contradicting scrape row must NOT override them. Peyto payoff shape:
+    canonical fields present, no scrape-matching labels at all."""
+    fd = _fd(bs_rows=[
+        # A scrape-matching row with a WRONG value — canonical must win.
+        _row("Total current assets", 999_999),
+    ])
+    fd["total_current_assets"] = 360_297_000
+    fd["total_current_liabilities"] = 365_910_000
+    fd["cash"] = 51_057_000
+    fd["long_term_debt"] = 1_074_273_000
+    fd["short_term_debt"] = 100_000_000
+    m = _calc_summary_metrics(fd)
+    assert m["current_ratio"] == 360_297_000 / 365_910_000   # Liquidity arms
+    # Leverage's net debt = debt − canonical cash.
+    # (nd_ebitda needs EBITDA too; net debt correctness shows via de_ratio
+    # inputs and the current_ratio above — pin net debt via nd_ebitda when
+    # EBITDA present.)
+    fd["operating_income"] = 500_000_000
+    fd["depletion_depreciation_amortization"] = 500_000_000
+    m2 = _calc_summary_metrics(fd)
+    expected_net_debt = (1_074_273_000 + 100_000_000) - 51_057_000
+    assert m2["nd_ebitda"] == expected_net_debt / 1_000_000_000
+
+
+def test_cb037_scrape_fallback_without_canonical_fields():
+    """Non-mapped paths (EDGAR/manual) keep the pre-existing scrape."""
+    fd = _fd(bs_rows=[
+        _row("Total current assets", 400, "subtotal"),
+        _row("Total current liabilities", 200, "subtotal"),
+        _row("Cash and cash equivalents", 50),
+    ])
+    m = _calc_summary_metrics(fd)
+    assert m["current_ratio"] == 2.0
+
+
 def test_fcf_caption_discloses_funds_flow_divergence_on_resource_filers():
     """CB-036 / ratified 2026-07-10: on a resource-family filer (royalties
     mapped — the same signal as netback_expected) the FCF caption discloses
