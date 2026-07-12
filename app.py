@@ -8797,6 +8797,18 @@ if st.session_state.financial_data:
                         f'</div>',
                         unsafe_allow_html=True,
                     )
+                # Trust-Is-Page-Level receipt: this card mixes bases. P/E is
+                # yfinance's trailing market ratio, NOT market cap ÷ filing
+                # net income (TOU 2026-07-12: 33.0x TTM vs ~84x on the
+                # impairment-year filing earnings — a silent 2.5x gap). The
+                # EV multiples use market cap WITHOUT net debt (proxy).
+                st.caption(
+                    "P/E: yfinance trailing (market TTM basis — can differ "
+                    "materially from filing-year earnings, e.g. impairment "
+                    "years). EV/EBITDA & EV/Revenue: market cap used as the "
+                    "EV proxy (net debt not added); EBITDA and revenue from "
+                    "the filing. MoS: from the DCF inputs above."
+                )
 
         st.divider()
 

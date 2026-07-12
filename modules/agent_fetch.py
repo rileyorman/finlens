@@ -114,7 +114,7 @@ def parse_agent_reply(text: str) -> dict:
         return {"status": "agent_reply_unparseable", "url": None,
                 "notes": "no JSON object found in agent reply"}
     try:
-        payload = json.loads(match.group(0))
+        payload = json.loads(match.group(0), strict=False)
     except json.JSONDecodeError as exc:
         return {"status": "agent_reply_unparseable", "url": None,
                 "notes": f"JSON parse error: {exc}"}

@@ -381,7 +381,7 @@ def _normalize_extraction_payload(data: dict) -> dict:
 
 
 def _parse_extraction_json(raw: str) -> dict:
-    return _normalize_extraction_payload(json.loads(_strip_json_fences(raw)))
+    return _normalize_extraction_payload(json.loads(_strip_json_fences(raw), strict=False))
 
 
 def _api_key() -> str:
@@ -795,7 +795,7 @@ def extract_hedging_note(pdf_path) -> dict:
     raw = _response_text(response)
 
     try:
-        payload = json.loads(_strip_json_fences(raw))
+        payload = json.loads(_strip_json_fences(raw), strict=False)
     except json.JSONDecodeError:
         fix_prompt = (
             f"{user_prompt}\n\nYour previous response was not valid JSON. "
@@ -808,7 +808,7 @@ def extract_hedging_note(pdf_path) -> dict:
         )
         _raise_if_truncated(retry, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
         try:
-            payload = json.loads(_strip_json_fences(_response_text(retry)))
+            payload = json.loads(_strip_json_fences(_response_text(retry)), strict=False)
         except json.JSONDecodeError as exc:
             raise SedarExtractionError(
                 f"Hedging-note response could not be parsed as JSON: {exc}", _response_text(retry)
@@ -1124,7 +1124,7 @@ def extract_mda_metrics(pdf_path) -> dict:
     raw = _response_text(response)
 
     try:
-        payload = json.loads(_strip_json_fences(raw))
+        payload = json.loads(_strip_json_fences(raw), strict=False)
     except json.JSONDecodeError:
         fix_prompt = (
             f"{user_prompt}\n\nYour previous response was not valid JSON. "
@@ -1137,7 +1137,7 @@ def extract_mda_metrics(pdf_path) -> dict:
         )
         _raise_if_truncated(retry, budget=MAX_MDA_OUTPUT_TOKENS, what="MD&A operational metrics")
         try:
-            payload = json.loads(_strip_json_fences(_response_text(retry)))
+            payload = json.loads(_strip_json_fences(_response_text(retry)), strict=False)
         except json.JSONDecodeError as exc:
             raise SedarExtractionError(
                 f"MD&A-metrics response could not be parsed as JSON: {exc}", _response_text(retry)

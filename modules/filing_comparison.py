@@ -21,12 +21,12 @@ def _safe_json(raw: str) -> dict:
     text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     try:
-        return json.loads(text)
+        return json.loads(text, strict=False)
     except Exception:
         m = re.search(r"\{.*\}", text, re.DOTALL)
         if m:
             try:
-                return json.loads(m.group())
+                return json.loads(m.group(), strict=False)
             except Exception:
                 pass
     return {"error": f"Could not parse response: {raw[:200]}"}
