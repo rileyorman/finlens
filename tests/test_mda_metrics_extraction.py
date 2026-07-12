@@ -21,6 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sedar_extractor import (
     MAX_MDA_PAGES,
     _locate_mda_pages_from_texts,
+    _mda_figure_presence,
+    _normalize_mda_payload,
+    extract_mda_metrics,
     locate_mda_pages,
 )
 
@@ -151,3 +154,149 @@ def test_cap_keeps_highest_scoring_pages_and_discloses_dropped():
     assert len(result["pages"]) == MAX_MDA_PAGES
     assert result["pages"] == list(range(MAX_MDA_PAGES))
     assert result["dropped_pages"] == [MAX_MDA_PAGES]
+
+
+# ---------------------------------------------------------------------------
+# Normalization — pure pins over transcribed real table rows (ARX FY2025
+# Q1-2026 netback Tables 12/12a and funds-flow figures from the verified
+# coverage-gap research; they double as schema documentation)
+# ---------------------------------------------------------------------------
+
+ARX_SHAPE_PAYLOAD = {
+    "as_of": "Three months ended March 31, 2026",
+    "production_volumes": [
+        {"product": "natural_gas", "label": "Natural gas (MMcf/d)",
+         "period_label": "Q1 2026", "volume": "1,533", "volume_unit": "MMcf/d",
+         "source_page": 21, "verbatim_notes": None},
+        {"product": "total_boe", "label": "Total (boe/d)",
+         "period_label": "2025", "volume": "374,336", "volume_unit": "boe/d",
+         "source_page": 21, "verbatim_notes": None},
+    ],
+    "commodity_mix": {"verbatim": "59% natural gas and 41% crude oil and liquids",
+                      "gas_pct": 59, "liquids_pct": "41", "source_page": 3},
+    "netback_definition_verbatim": "Operating netback is calculated as commodity sales less royalties, operating, and transportation expense.",
+    "netback_includes_hedging": False,
+    "netback_rows": [
+        {"label": "Commodity sales from production", "period_label": "Q1 2026",
+         "value": "44.05", "unit": "$/boe", "is_total": False, "source_page": 29},
+        {"label": "Royalties", "period_label": "Q1 2026",
+         "value": "(4.34)", "unit": "$/boe", "is_total": False, "source_page": 29},
+        {"label": "Transportation expense", "period_label": "Q1 2026",
+         "value": "(5.57)", "unit": "$/boe", "is_total": False, "source_page": 29},
+        {"label": "Operating expense", "period_label": "Q1 2026",
+         "value": "(5.00)", "unit": "$/boe", "is_total": False, "source_page": 29},
+        {"label": "Operating netback", "period_label": "Q1 2026",
+         "value": "29.14", "unit": "$/boe", "is_total": True, "source_page": 29},
+    ],
+    "funds_flow_definition_verbatim": "Funds from operations is cash flow from operating activities before changes in non-cash working capital.",
+    "funds_flow_rows": [
+        {"label": "Cash flow from operating activities", "period_label": "Q1 2026",
+         "value": "1,051", "unit_scale": "CAD millions", "per_share": False, "source_page": 40},
+        {"label": "Funds from operations", "period_label": "Q1 2026",
+         "value": "967", "unit_scale": "CAD millions", "per_share": False, "source_page": 40},
+    ],
+    "realized_prices": [
+        {"product": "natural_gas", "label": "Natural gas ($/Mcf)", "period_label": "Q1 2026",
+         "value": "3.51", "unit": "$/Mcf", "benchmark_label": None,
+         "benchmark_value": None, "source_page": 11},
+    ],
+    "guidance_disclosures": [
+        {"topic": "capex_program", "verbatim": "capital program of $473 million",
+         "value": "473", "unit": "CAD millions", "source_page": 5},
+    ],
+    "extraction_confidence": 0.95,
+}
+
+
+def test_normalize_mda_payload_parses_numbers_and_keeps_verbatim():
+    result = _normalize_mda_payload(ARX_SHAPE_PAYLOAD)
+
+    assert result["production_volumes"][0]["volume"] == 1533
+    assert result["production_volumes"][0]["volume_unit"] == "MMcf/d"
+    assert result["production_volumes"][1]["volume"] == 374336
+
+    # Parenthetical netback deductions parse negative; the total row is flagged.
+    values = {row["label"]: row["value"] for row in result["netback_rows"]}
+    assert values["Commodity sales from production"] == 44.05
+    assert values["Royalties"] == -4.34
+    assert values["Transportation expense"] == -5.57
+    assert values["Operating expense"] == -5.0
+    assert values["Operating netback"] == 29.14
+    total_rows = [r for r in result["netback_rows"] if r.get("is_total")]
+    assert [r["label"] for r in total_rows] == ["Operating netback"]
+
+    # The ratified trust policy: definition strings survive verbatim.
+    assert result["netback_definition_verbatim"].startswith("Operating netback is calculated")
+    assert result["netback_includes_hedging"] is False
+    assert result["funds_flow_definition_verbatim"].startswith("Funds from operations is cash flow")
+
+    assert result["funds_flow_rows"][0]["value"] == 1051
+    assert result["funds_flow_rows"][1]["value"] == 967
+    assert result["commodity_mix"]["gas_pct"] == 59
+    assert result["commodity_mix"]["liquids_pct"] == 41
+    assert result["realized_prices"][0]["value"] == 3.51
+    assert result["guidance_disclosures"][0]["value"] == 473
+    assert result["extraction_confidence"] == 0.95
+
+
+def test_normalize_mda_payload_empty_and_malformed():
+    result = _normalize_mda_payload({})
+    assert result["production_volumes"] == []
+    assert result["netback_rows"] == []
+    assert result["funds_flow_rows"] == []
+    assert result["commodity_mix"] is None
+    assert result["netback_definition_verbatim"] is None
+    assert result["netback_includes_hedging"] is None
+    assert result["extraction_confidence"] == 0.0
+
+    # Non-list blocks and non-dict records are dropped, not crashed on.
+    messy = _normalize_mda_payload(
+        {"netback_rows": "not a list", "production_volumes": [42, {"volume": "10"}]}
+    )
+    assert messy["netback_rows"] == []
+    assert messy["production_volumes"] == [{"volume": 10}]
+
+
+# ---------------------------------------------------------------------------
+# Figure-presence guard — fabrication surfaced, never silent
+# ---------------------------------------------------------------------------
+
+def test_mda_figure_presence_all_found():
+    metrics = _normalize_mda_payload(ARX_SHAPE_PAYLOAD)
+    page_text = (
+        "Natural gas 1,533 MMcf/d Total 374,336 boe/d 59% natural gas 41% liquids\n"
+        "Commodity sales from production 44.05 Royalties (4.34)\n"
+        "Transportation (5.57) Operating (5.00) Operating netback 29.14\n"
+        "Cash flow from operating activities 1,051 Funds from operations 967\n"
+        "Natural gas realized 3.51 capital program of $473 million"
+    )
+    presence = _mda_figure_presence(metrics, page_text)
+    assert presence["checked"] > 0
+    assert presence["missing_count"] == 0
+    assert presence["missing"] == []
+
+
+def test_mda_figure_presence_flags_fabricated_value():
+    metrics = _normalize_mda_payload(ARX_SHAPE_PAYLOAD)
+    # Page text missing the netback total: 29.14 must surface as missing.
+    page_text = (
+        "Natural gas 1,533 MMcf/d Total 374,336 boe/d 59% 41%\n"
+        "Commodity sales from production 44.05 Royalties (4.34)\n"
+        "Transportation (5.57) Operating (5.00)\n"
+        "Cash flow from operating activities 1,051 Funds from operations 967\n"
+        "3.51 473"
+    )
+    presence = _mda_figure_presence(metrics, page_text)
+    assert presence["missing_count"] == 1
+    assert presence["missing"] == ["29.14"]
+
+
+# ---------------------------------------------------------------------------
+# Zero-spend honest exit — a statements-only PDF must return no_mda_detected
+# BEFORE any client/API-key use (runs on the real fetched WCP PDF)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not WCP_PDF.exists(), reason="fetched WCP PDF not on this machine")
+def test_extract_mda_metrics_zero_spend_exit_on_statements_pack():
+    result = extract_mda_metrics(str(WCP_PDF))
+    assert result == {"status": "no_mda_detected", "source_pages": [], "dropped_pages": []}
