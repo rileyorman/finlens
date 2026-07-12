@@ -559,6 +559,51 @@ RULES:
   displayed figure that cannot be reproduced from its stated inputs is a
   finding, always.
 
+## Engineering Principle: Company-Defined Non-GAAP Measures Need a Receipt AND a Permanent Caption
+
+Ratified by Riley 2026-07-12 (the MDA_FETCHER_SPEC trust-policy decision;
+casebook CB-036). Confirmed FIVE times across the 2026-07-10/11 sector
+coverage-gap research (docs/research/): in every sector, the headline
+"earnings" number the market actually quotes is a COMPANY-DEFINED non-GAAP
+measure — prohibited from the audited statements by NI 52-112 / Reg G and
+therefore living in the MD&A with a regulator-mandated reconciliation:
+
+- O&G upstream: funds flow / free funds flow (ARX FFF $459M vs FinLens
+  statements-FCF ≈$543M in ONE quarter — the working-capital exclusion)
+- O&G midstream: Distributable Cash Flow + DCF payout
+- Mining: AISC (by-product vs co-product basis alone moves AEM's cash cost
+  $979 → $1,035/oz)
+- Banking: adjusted / "cash" EPS, ROTE
+- REIT: FFO/AFFO (NAREIT and REALPAC FFO are DIFFERENT calculations;
+  NAREIT declines to define AFFO at all)
+
+RULES (all five, together — receipt without caption oversells, caption
+without receipt wastes the mandated reconciliation):
+1. NEVER lift a non-GAAP figure as if it were a statement line, and NEVER
+   let it enter canonical statement fields — it lives in its own namespace
+   (`mda_metrics` pattern).
+2. CAPTURE THE ISSUER'S VERBATIM DEFINITION STRING with the value.
+   Same-named metrics differ materially by issuer: TOU's operating netback
+   INCLUDES realized hedging; ARX's four-component form EXCLUDES it.
+3. RECEIPT: tie the printed reconciliation back to the mapped canonical
+   statement anchor, machine-checked where possible. Precedent:
+   `mda_ffo_anchor_tie` — byte-exact on both live filers (TOU
+   3,387,019,000; ARX 3,093,500,000).
+4. PERMANENT CAPTION: even a reconciled figure renders as "issuer-defined
+   non-GAAP" with its definition. Reconciliation earns a receipt, never
+   cross-filer comparability.
+5. CROSS-FILER COMPARISON of same-named non-GAAP metrics requires
+   comparing definition strings first — name-matching produces false peer
+   rankings (netback variants, FFO bases, cash-cost bases, adjusted-vs-
+   reported payout).
+
+Enforcement lives in: docs/MDA_FETCHER_SPEC.md (ratified trust policy),
+the extract_mda_metrics prompt (definition string + reconciliation rows
+REQUIRED per metric), the Economics-tab panel captions, and the Stage 3
+integrity tie rules. When adding any new non-GAAP metric surface (mining
+AISC pack, REIT FFO pack, banking ROTE pack), all five rules apply from
+the first commit — they are the design, not polish.
+
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
 External data sources (Claude analyses, FMP, yfinance, EDGAR) return data

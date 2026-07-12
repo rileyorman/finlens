@@ -1261,7 +1261,17 @@ def test_tou_fixture_first_agent_fetched_rollup_printing_gas_producer():
             == "Realized gain on financial instruments")
     assert "Unrealized (loss) on financial instruments" in unmapped_labels
 
-    assert result["meta"]["mapped_count"] == 14
+    # CB-035 (2026-07-12, dashboard review): "Finance expenses" — the fourth
+    # label variant of the accepted finance-rollup family (finance costs /
+    # financial expenses / interest costs, net) — maps interest_expense,
+    # arming Interest Cover + the Dalio stress scenarios on TOU. The CF
+    # component "Lease interest expense" stays unmapped (different label;
+    # the alias is income_statement-scoped).
+    assert mapped["interest_expense"]["source_label"] == "Finance expenses"
+    assert mapped["interest_expense"]["value"] == 111385
+    assert "Lease interest expense" in unmapped_labels
+
+    assert result["meta"]["mapped_count"] == 15
     assert result["meta"]["collisions"] == []
     assert mapped == data["mapping"]["mapped"]  # stored snapshot == live mapper
     _assert_conservation(result)

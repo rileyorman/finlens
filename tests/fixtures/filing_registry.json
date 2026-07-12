@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-11T18:13:26Z",
+  "generated_at": "2026-07-12T17:06:27Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -300,8 +300,8 @@
         "issuer_url": "https://tourmaline.cdn.prismic.io/tourmaline/aaidt1xvIZEnjVXx_FinalQ42025MDAFinancialStatements.pdf",
         "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches \u2014 sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)"
       },
-      "stored_field_count": 14,
-      "resolved_field_count": 14,
+      "stored_field_count": 15,
+      "resolved_field_count": 15,
       "filing_date": "2026-03-04",
       "commit": null,
       "notes": "First agent-fetched corpus fixture (with ARX #17): Sterling located the issuer URL over the gateway channel, the ingest worker re-fetched independently, sha256 byte-identical across 5 fetches by promotion. CB-025 evidence base (rollup-printing gas producer: canonical revenue = 'Commodity sales from production' 4,940,024; the printed net-of-royalties 'Total revenue' 6,019,970 is suppressed via suppressed_default_aliases and preserved in unmapped[]) and CB-026 carrier (combined DD&A+impairment maps with includes_impairment semantics). Cross-extractor FLAGGED (soft) with 11/11 value agreement \u2014 the single net_income label-scope flag dispositioned deliberate_mapping_decision (moat record 222). HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-10, transcription protocol \u2014 full three-statement row inventory transcribed, 92/92 rows tie to source incl. all 11 mapped fields; net_income's clean-row provenance confirmed as the cash-flow opening line; the filer prints NO standalone total-liabilities subtotal, honest absence confirmed). Benign observation: the 6,019,970 revenue subtotal is printed UNLABELED; the stored 'Total revenue' label is extraction-assigned (value ties both years)."

@@ -146,6 +146,12 @@
           "label": "financial expenses",
           "standards": ["IFRS"],
           "source": "ATD_FY2025"
+        },
+        {
+          "label": "finance expenses",
+          "standards": ["IFRS"],
+          "source": "CB-035 TOU_FY2025 — fourth label variant of the accepted finance-rollup family (finance costs / financial expenses / interest costs, net); found via the 2026-07-12 dashboard review (Interest Cover + all four Dalio stress N/A from this one unmapped line); income_statement-scoped so TOU's cash-flow 'Lease interest expense' component stays untouched",
+          "statements": ["income_statement"]
         }
       ],
       "patterns": []
