@@ -94,6 +94,51 @@ def test_legacy_scaled_stored_data_is_stale_before_reload_normalization():
     assert reload_value != 1_176_428_000_000
 
 
+def test_heal_eligible_sedar_analysis_is_exempt_from_schema_staleness():
+    """Found live 2026-07-12 after the CB-037 schema 7->8 bump: a SEDAR
+    analysis carrying its raw extraction with a mapper-stale mapping is
+    REBUILT by the free heal at load (re-mapped + re-normalized with the
+    current whitelist) — the stored values' ambiguity is discarded, so the
+    schema gate must not demand a paid Re-Analyse. The exemption holds
+    exactly when the heal will fire; without the extraction (or with a
+    current mapper version) the block stands."""
+    heal_eligible = {
+        "company_name": "SEDAR filer",
+        "source": "sedar_pdf",
+        "currency": "CAD",
+        "scale": "thousands",
+        "_mapper_version": "stale-version-stamp",
+        "sedar_extraction": {"statements": {"balance_sheet": [
+            {"label": "Total assets", "values": {"2025": 100}}
+        ]}},
+        "income_statement": [],
+    }
+    assert not is_legacy_scaled_financial_data_stale(
+        heal_eligible,
+        schema_version=CURRENT_SCHEMA_VERSION - 1,
+        current_schema_version=CURRENT_SCHEMA_VERSION,
+    )
+
+    # No raw extraction on board -> nothing to rebuild from -> block stands.
+    no_extraction = dict(heal_eligible)
+    no_extraction.pop("sedar_extraction")
+    assert is_legacy_scaled_financial_data_stale(
+        no_extraction,
+        schema_version=CURRENT_SCHEMA_VERSION - 1,
+        current_schema_version=CURRENT_SCHEMA_VERSION,
+    )
+
+    # Mapper already current -> the heal will NOT fire -> block stands.
+    from modules.integrity.sedar_mapper import mapper_version
+    current_mapper = dict(heal_eligible)
+    current_mapper["_mapper_version"] = mapper_version()
+    assert is_legacy_scaled_financial_data_stale(
+        current_mapper,
+        schema_version=CURRENT_SCHEMA_VERSION - 1,
+        current_schema_version=CURRENT_SCHEMA_VERSION,
+    )
+
+
 def test_normalize_does_not_scale_per_share_line_items():
     """Per-share figures (EPS, DPS) must NOT be multiplied by the unit scale."""
     financial_data = {

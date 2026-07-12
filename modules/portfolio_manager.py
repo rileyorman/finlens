@@ -86,12 +86,29 @@ def get_portfolio_display_data(tickers: list, filing_library_path: str = None) -
     for ticker in tickers:
         ticker_upper = ticker.upper().strip()
 
+        # Wrong-issuer guard (bare-ticker collision class, 2026-07-12): when
+        # the portfolio ticker matches a library entry, arm the name-agreement
+        # guard with the FILING's company name (and prefer .TO/.V listings for
+        # SEDAR filers) — bare "ARX" must never serve Accelerant's market cap
+        # against ARC's fundamentals. User-added tickers with no library
+        # context keep the bare fetch (the user chose the listing symbol).
+        entry = ticker_map.get(ticker_upper)
+        guard_name = None
+        prefer_canadian = False
+        if entry:
+            fd_for_guard = entry.get("financial_data") or {}
+            guard_name = (
+                fd_for_guard.get("company_name")
+                or fd_for_guard.get("company")
+                or (entry.get("summary_data") or {}).get("company_name")
+            )
+            prefer_canadian = fd_for_guard.get("source") == "sedar_pdf"
+
         try:
-            md = get_market_data(ticker_upper)
+            md = get_market_data(ticker_upper, company_name=guard_name,
+                                 prefer_canadian=prefer_canadian)
         except Exception:
             md = {}
-
-        entry = ticker_map.get(ticker_upper)
         if entry:
             fd = entry.get("financial_data") or {}
             sd = entry.get("summary_data") or {}

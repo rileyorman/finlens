@@ -2044,6 +2044,14 @@ document.addEventListener('focusin', function(e) {
                                 is_valid = False
                         if is_valid:
                             if reg_add_ticker(sel_pf, t_up):
+                                # Wrong-issuer receipt (2026-07-12): name the
+                                # resolved listing so a bare-ticker collision
+                                # (ARX = Accelerant, not ARC) is VISIBLE at
+                                # add time instead of silently poisoning the
+                                # portfolio's market data.
+                                st.session_state.pm_ticker_added_receipt = (
+                                    f"{t_up} — {vmd.get('resolved_name') or 'listing name unavailable'}"
+                                )
                                 st.rerun()
                             else:
                                 st.warning(f"{t_up} already in portfolio.")
@@ -2051,6 +2059,14 @@ document.addEventListener('focusin', function(e) {
                             st.session_state.pm_ticker_not_found = t_up
                     else:
                         st.warning("Enter a ticker symbol.")
+
+                if st.session_state.get("pm_ticker_added_receipt"):
+                    st.info(
+                        f"Added {st.session_state.pm_ticker_added_receipt}. "
+                        "Not the company you meant? Remove it and use the "
+                        "exchange suffix (e.g. ARX.TO for the TSX listing)."
+                    )
+                    st.session_state.pm_ticker_added_receipt = None
 
                 if st.session_state.get("pm_ticker_not_found"):
                     _nf = st.session_state.pm_ticker_not_found
@@ -5462,7 +5478,9 @@ with st.expander("Fetch from SEC EDGAR / SEDAR+", expanded=False):
                     _edgar_md = {}
                     if _tk and re.fullmatch(r"[A-Z]{1,5}", _tk):
                         with st.spinner(f"Fetching market data for {_tk}..."):
-                            _edgar_md = get_market_data(_tk)
+                            # Wrong-issuer guard (2026-07-12): EDGAR knows the
+                            # filer's name authoritatively — arm the check.
+                            _edgar_md = get_market_data(_tk, company_name=_company_name)
                     _market_cap = _edgar_md.get("market_cap") or 0.0
                     try:
                         _excel_bytes = create_excel_file(_edgar_fd, _edgar_sd, _market_cap, _edgar_bb)
@@ -5821,7 +5839,14 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             _quick_market_data = {}
             with st.spinner(f"Fetching market data for {_quick_ticker}..."):
                 try:
-                    _quick_market_data = get_market_data(_quick_ticker)
+                    # Wrong-issuer guard (2026-07-12): the FMP profile's
+                    # company name arms the name-agreement check so the
+                    # market data can never belong to a different issuer
+                    # than the statements on screen.
+                    _quick_market_data = get_market_data(
+                        _quick_ticker,
+                        company_name=_quick_fd.get("company_name") or _quick_fd.get("company"),
+                    )
                 except Exception:
                     _quick_market_data = {}
 
@@ -6941,6 +6966,15 @@ if st.session_state.financial_data:
     else:
         st.subheader(company)
     _period_str = period or "Unknown period"
+    # Header year fallback (2026-07-12 dashboard-review minor (d)): some
+    # filers print their fiscal year end without the year ("December 31" —
+    # TOU), and the extraction honestly stores it that way. The authoritative
+    # fiscal_year (registry pin / extraction) carries the year — append it
+    # for display only; stored period and cache keys are untouched.
+    if _period_str != "Unknown period" and not re.search(r"\d{4}", _period_str):
+        _fy_year_match = re.search(r"(\d{4})", str(financial_data.get("fiscal_year") or ""))
+        if _fy_year_match:
+            _period_str = f"{_period_str}, {_fy_year_match.group(1)}"
     # Fiscal period and reporting currency, promoted from a buried caption
     # to the header proper (Allied dry-run credibility finding #3): a
     # skeptical reader's first two questions are "as of when?" and "in
@@ -8090,7 +8124,16 @@ if st.session_state.financial_data:
                             "No sector hint available for this filing — pick the "
                             "right bucket, or edit the ticker list below."
                         )
-            _default_peers = ", ".join(peer_map.get(_peer_sector, []))
+            # Self-peer exclusion (2026-07-12 dashboard-review minor (c)): the
+            # subject's own listing is dropped from the DEFAULT list (TOU.TO
+            # while analyzing TOU invited confusion) — same ticker-root
+            # semantics as the compute-time dedup, which remains the backstop
+            # if the user types it back.
+            _subject_root = str(_peer_ticker or "").split(".")[0].upper()
+            _default_peers = ", ".join(
+                t for t in peer_map.get(_peer_sector, [])
+                if not _subject_root or str(t).split(".")[0].upper() != _subject_root
+            )
             _peer_tickers_text = st.text_input(
                 "Peer tickers (comma-separated — edit to compare against your own set)",
                 value=_default_peers,
