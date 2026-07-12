@@ -1738,6 +1738,60 @@ is gone.
   + the prefer_profile whitelist pin. Corpus remap + registry regen; full
   suite 649 green.
 
+## CB-038: Quick Financials from EDGAR company-facts — recency-competition concept selection; FMP retired from load-bearing annual numbers
+
+DECIDED 2026-07-12 (Riley — four decisions ratified in the night design
+session; canonical spec docs/EDGAR_COMPANY_FACTS_SPEC.md; direction
+pre-ratified 2026-07-10 from the FMP audit).
+
+RATIFIED: annual options first (Quarter/TTM stay FMP-badged pending a
+Phase-2 quarterly design); raw dollars (scale=1 — FMP's pre-scaled
+millions convention stops here); per-figure receipts (tag + accession +
+form + period end on every emitted value); honest N/A (a missing/
+unmatched tag leaves the field absent; FMP is never again consulted for
+a load-bearing number).
+
+THE CENTRAL RULING — RECENCY COMPETITION: without accession pinning,
+first-concept-with-facts resurrects the NVDA phantom (the stale PP&E tag
+HAS annual facts — ending 2012, $138.7M — and would beat today's
+$6.04B ProductiveAssets figure; reproduced from the primary source by the
+2026-07-12 live probe). On the quick path, concept candidates compete on
+their latest fact's (end, filed); a tag the filer stopped feeding loses
+automatically, for every filer, forever. Within a concept, same-`end`
+duplicates resolve to the latest `filed` (restatement-aware by
+construction — the probe showed 2–5 comparative re-reports per period).
+
+COROLLARY RULING (found on the first live run, fixed same commit): a
+RECEIPT cites ONLY the exact fact emitted — NVDA stopped filing
+InterestExpense after FY2024; the value was honestly None but a stale
+2024 receipt had been recorded. No current-period fact → no value AND no
+receipt.
+
+SHARED CHAINS: the concept lists are module-level constants both paths
+consume (the NVDA-hardened capex chain must never fork); the
+accession-pinned filing path's semantics are byte-identical (its pins
+prove the refactor). The quick path's `equity` list deliberately puts the
+NCI-INCLUDING tag first (CB-013 semantics — live-verified: PLD resolves
+through it); `total_debt` uses the CB-022 pair semantics with the
+composition disclosed in the receipt.
+
+LIVE VERIFICATION (real SEC API, 2026-07-12): NVDA FY2026 — capex
+$6.042B via ProductiveAssets (phantom retired in production), FCF
+$96.676B (matches the incident record's "true ≈96.6B"), revenue
+$215.938B, full receipt set; PLD FY2025 — honest gaps exactly where a
+REIT's facts are absent (no GrossProfit concept, no current
+classification), equity via the NCI-including tag, long-term-only debt
+composition disclosed.
+
+- Enforced by: modules/edgar_fetcher.py (shared concept constants,
+  _concept_annual_facts, _competing_annual_facts,
+  build_financial_data_from_edgar_facts, _COMPANYFACTS_CACHE); 6 pins
+  (tests/test_edgar_company_facts_builder.py — the phantom trap, the
+  restatement duplicate, the contract + receipts, the stale-concept
+  no-receipt corollary, honest-N/A negatives) + the 5 existing
+  accession-path pins prove zero drift. Stage 2 (app wiring + receipts
+  display) queued per the spec.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

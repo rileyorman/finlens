@@ -5733,18 +5733,34 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
     _quick_current_ticker = quick_ticker.strip().upper()
     _quick_is_canadian = _quick_current_ticker.endswith(".TO")
     if _quick_is_canadian:
-        st.warning("⚠️ Canadian companies require a Premium FMP subscription. Use SEDAR+ or PDF upload instead.")
+        st.warning("⚠️ Canadian companies are not on SEC EDGAR (and FMP premium-blocks TSX tickers). Use the SEDAR+ agent fetch or PDF upload instead — that path is the verified corpus.")
 
     if st.button("Fetch Financials", width='stretch', key="quick_fetch_btn", disabled=_quick_is_canadian):
         _quick_ticker = quick_ticker.strip().upper()
         if not _quick_ticker:
             st.warning("Enter a ticker symbol first.")
         else:
-            with st.spinner(f"Fetching financial statements for {_quick_ticker}..."):
-                _quick_fd = build_financial_data_from_fmp(_quick_ticker, period=_quick_period, limit=_quick_limit)
-            if not _quick_fd:
-                st.error(f"Could not fetch data for {_quick_ticker} — check the ticker symbol and try again")
-                st.stop()
+            # CB-038: the ANNUAL options fetch as-filed XBRL from SEC
+            # company-facts (per-figure receipts; FMP retired from these
+            # load-bearing numbers). Quarter/TTM stay on FMP (badged) until
+            # the Phase-2 quarterly design.
+            if _quick_period == "annual":
+                with st.spinner(f"Fetching as-filed SEC data for {_quick_ticker}..."):
+                    from modules.edgar_fetcher import build_financial_data_from_edgar_facts
+                    _quick_fd = build_financial_data_from_edgar_facts(_quick_ticker, limit=_quick_limit)
+                if not _quick_fd:
+                    st.error(
+                        f"Could not fetch as-filed SEC data for {_quick_ticker} — "
+                        "check the ticker symbol (US filers only). Quick Financials "
+                        "no longer falls back to aggregator data for annual figures."
+                    )
+                    st.stop()
+            else:
+                with st.spinner(f"Fetching financial statements for {_quick_ticker}..."):
+                    _quick_fd = build_financial_data_from_fmp(_quick_ticker, period=_quick_period, limit=_quick_limit)
+                if not _quick_fd:
+                    st.error(f"Could not fetch data for {_quick_ticker} — check the ticker symbol and try again")
+                    st.stop()
             st.session_state["quick_financial_data"] = _quick_fd
             st.session_state["quick_financial_ticker"] = _quick_ticker
             st.session_state["quick_financial_period"] = selected_period
@@ -5792,11 +5808,23 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"), _quick_preview_scale)},
             ]
         st.dataframe(preview_df, hide_index=True, width='stretch')
-        st.caption(
-            "Source: Financial Modeling Prep — unvalidated aggregator data. "
-            "Analyses built from it are badged on the dashboard and library, "
-            "and are not part of the verified corpus."
-        )
+        if _quick_fd_preview.get("source") == "edgar":
+            st.caption(
+                "Source: **as filed with the SEC** — us-gaap XBRL company "
+                "facts, selected restatement-aware from the filer's own "
+                "10-Ks. Every figure carries a receipt below."
+            )
+            _quick_receipts = _quick_fd_preview.get("receipts") or {}
+            if _quick_receipts:
+                with st.expander(f"Per-figure receipts ({len(_quick_receipts)})", expanded=False):
+                    for _r_name, _r_text in _quick_receipts.items():
+                        st.caption(f"**{_r_name}**: {_r_text}")
+        else:
+            st.caption(
+                "Source: Financial Modeling Prep — unvalidated aggregator data. "
+                "Analyses built from it are badged on the dashboard and library, "
+                "and are not part of the verified corpus."
+            )
         if selected_period == "Last 4 Quarters (TTM)":
             st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
@@ -5877,11 +5905,15 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.session_state["manual_ticker"]    = _quick_ticker
             st.session_state.pop("peer_data", None)
             _quick_period_label = _quick_fd.get("fiscal_year") or _quick_fd.get("period", "")
-            _quick_entry_id = f"fmp_{_quick_ticker}_{_quick_period_label}"
+            # CB-038: the source rides the data — annual quick analyses are
+            # as-filed EDGAR (the "· EDGAR" library tag, no unvalidated
+            # warning); Quarter/TTM remain FMP-badged.
+            _quick_source = _quick_fd.get("source") or "fmp"
+            _quick_entry_id = f"{_quick_source}_{_quick_ticker}_{_quick_period_label}"
             _save_analysis_cache(
                 _quick_ticker,
                 _quick_period_label,
-                "fmp",
+                _quick_source,
                 mda_sentiment=None,
                 sector_value=(_quick_sd or {}).get("sector_inferred"),
             )
@@ -5896,7 +5928,7 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                     _quick_dd,
                     raw_text=_quick_text[:MAX_FILING_CHARS] if _quick_text else None,
                     mda_sentiment=None,
-                    source="fmp",
+                    source=_quick_source,
                 )
                 st.session_state["filing_library"] = lib_get()
                 st.success("✓ Analysis saved to library")
