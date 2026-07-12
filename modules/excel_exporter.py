@@ -817,12 +817,28 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
 
     fcf_c = (ocf_c - capex_c) if (ocf_c is not None and capex_c is not None) else None
 
-    ca_c  = _lookup2(bs_rows, ["total current assets"],      "value")
-    cl_c  = _lookup2(bs_rows, ["total current liabilities"], "value")
-    cash_c = _lookup(bs_rows,
-                     ["cash and cash equivalents", "cash and equivalents",
-                      "cash, cash equivalents and short-term investments"],
-                     "value")
+    # CB-037 (2026-07-12): canonical-first Liquidity/Leverage inputs — the
+    # promoted cash / total_current_assets / total_current_liabilities fields
+    # (mapped, structure-gated where labels are bare) outrank the label
+    # scrape; the scrape stays as the fallback for non-mapped (EDGAR/manual)
+    # paths. This is what arms the Liquidity and Leverage dashes on filers
+    # whose labels the scrape never matched (Peyto's bare "Cash" and its
+    # unlabeled current subtotals).
+    def _num_cb037(v):
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+    ca_c = _num_cb037(financial_data.get("total_current_assets"))
+    if ca_c is None:
+        ca_c = _lookup2(bs_rows, ["total current assets"], "value")
+    cl_c = _num_cb037(financial_data.get("total_current_liabilities"))
+    if cl_c is None:
+        cl_c = _lookup2(bs_rows, ["total current liabilities"], "value")
+    cash_c = _num_cb037(financial_data.get("cash"))
+    if cash_c is None:
+        cash_c = _lookup(bs_rows,
+                         ["cash and cash equivalents", "cash and equivalents",
+                          "cash, cash equivalents and short-term investments"],
+                         "value")
     # CB-022: canonical-first total debt = long-term debt + current portion of
     # long-term debt (interest-bearing borrowings). Balance-sheet debt is
     # presented positive; prefer the mapped fields, fall back to the label

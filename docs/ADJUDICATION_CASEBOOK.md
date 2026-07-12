@@ -1708,15 +1708,35 @@ income-statement "net of royalties" line proves structurally derived
 2026-07-12T19:08Z): PEY.TO WARNS on the invented "Total liabilities"
 (the CB-033 defect, now caught at the boundary); TOU + ARX PASS clean.
 
-REMAINING (spec stages 2–3, queued): mapper gate (contradicted rows refuse
-total-scope canonical fields), requires_structure alias mechanism, the
-cash/total-current promotion (ratified decision 3), canonical-first
-Liquidity/Leverage consumers.
+STAGES 2–3 SHIPPED SAME SESSION (5877c1d gate + mechanism; 6005998
+promotion; Stage 3 consumers): the mapper gate + requires_structure
+aliases live; `cash` + `total_current_assets` + `total_current_liabilities`
+promoted to default (+34 mapped fields corpus-wide, zero drops; honest
+negatives held — RY/SLF liquidity-ordered balance sheets map nothing new,
+TOU gains the current pair but no cash so its Leverage N/A stands);
+schema 7→8; the explorer cash pair gained prefer_profile to preserve
+CB-010 (whitelist pin extended); a LATENT MERGE GAP found and fixed
+(_iter_target_fields dropped a profile's collision_resolution when a
+same-named default existed). Liquidity/Leverage inputs canonical-first in
+_calc_summary_metrics (scrape fallback retained).
+
+PAYOFF VERIFIED ON THE REAL PEYTO EXTRACTION (2026-07-12 evening): heal
+fires on load; mapped 16→18 — gains cash (bare "Cash"), and BOTH current
+subtotals via the structure-gated bare aliases (they matched ONLY because
+the classifier proved the rows); LOSES total_liabilities — the gate
+unmapped the CB-033 invented wrong-scope value (honest absence, row
+visible in unmapped[]). Liquidity ≈0.98 and Leverage arm on next load;
+the balance-sheet identity rule stops failing because the wrong number
+is gone.
 
 - Enforced by: modules/integrity/structure.py + sedar_extractor
-  attach_mapping annotation + rules.py/engine.py rule + 12 pins
-  (tests/test_structure_classifier.py incl. the real-Peyto-shape
-  contradiction positive and the clean grand-total counterpart).
+  attach_mapping annotation + rules.py/engine.py rule + sedar_mapper gate,
+  requires_structure scoping, merge fix + sedar_aliases.json promotion +
+  claude_analyzer scaling whitelist + analysis_cache schema 8 +
+  excel_exporter canonical-first inputs. Pins: test_structure_classifier
+  (17) + test_summary_metrics CB-037 pair + 17 extended fixture count pins
+  + the prefer_profile whitelist pin. Corpus remap + registry regen; full
+  suite 649 green.
 
 ---
 
