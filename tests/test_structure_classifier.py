@@ -165,3 +165,99 @@ def test_rows_without_numeric_values_stay_data():
     ann = classify_statement_structure(rows)
     assert ann[0]["structure"] == STRUCTURE_DATA
     assert ann[3]["structure"] == STRUCTURE_SUBTOTAL
+
+
+# ---------------------------------------------------------------------------
+# Stage 1 wiring — attach_mapping annotation + the integrity rule
+# ---------------------------------------------------------------------------
+
+def test_attach_mapping_annotates_rows_and_line_items():
+    from sedar_extractor import attach_mapping
+
+    extraction = {
+        "accounting_standard": "IFRS",
+        "sector_inferred": "Upstream Oil & Gas",
+        "statements": {
+            "balance_sheet": [
+                {"label": "Cash", "values": {"2025": 100}, "confidence": 0.9},
+                {"label": "Receivables", "values": {"2025": 200}, "confidence": 0.9},
+                {"label": "Current assets", "values": {"2025": 300}, "confidence": 0.9},
+            ],
+            "income_statement": [],
+            "cash_flow": [],
+        },
+    }
+    enriched = attach_mapping(extraction)
+    rows = enriched["statements"]["balance_sheet"]
+    assert rows[2]["structure"] == STRUCTURE_SUBTOTAL
+    assert rows[0]["structure"] == STRUCTURE_DATA
+    # The input extraction is never mutated (new row dicts).
+    assert "structure" not in extraction["statements"]["balance_sheet"][0]
+
+
+def _normalized_row(label, value, prior=None):
+    return {"line_item": label, "value": value, "value_prior": prior,
+            "row_type": "data"}
+
+
+PEYTO_NORMALIZED_LIABILITIES = [
+    _normalized_row("Accounts payable and accrued liabilities", 192_810_000),
+    _normalized_row("Dividends payable", 22_368_000),
+    _normalized_row("Income tax payable", 32_010_000),
+    _normalized_row("Current portion of lease obligation", 991_000),
+    _normalized_row("Current portion of decommissioning provision", 13_000_000),
+    _normalized_row("Current portion of long-term debt", 100_000_000),
+    _normalized_row("Deferred other income", 4_731_000),
+    _normalized_row("Current liabilities", 365_910_000),
+    _normalized_row("Long-term debt", 1_074_273_000),
+    _normalized_row("Decommissioning provision", 299_483_000),
+    _normalized_row("Lease obligation", 6_572_000),
+    _normalized_row("Deferred income taxes", 861_420_000),
+    _normalized_row("Total liabilities", 2_241_748_000),  # CB-033 invented label
+]
+
+
+def test_integrity_rule_warns_on_peyto_shape():
+    from modules.integrity.engine import validate_filing
+
+    data = {
+        "income_statement": [], "cash_flow_statement": [],
+        "balance_sheet": PEYTO_NORMALIZED_LIABILITIES,
+        "mapping": {"mapped": {}, "meta": {}},
+    }
+    result = validate_filing(data, "PEY.TO", "Energy")
+    check = {c.rule_id: c for c in result.checks}["structure_label_contradiction"]
+    assert not check.skipped
+    assert check.passed is False
+    assert "Total liabilities" in check.message
+
+
+def test_integrity_rule_passes_on_clean_statements():
+    from modules.integrity.engine import validate_filing
+
+    data = {
+        "income_statement": [], "cash_flow_statement": [],
+        "balance_sheet": [
+            _normalized_row("Accounts payable", 100),
+            _normalized_row("Short-term debt", 200),
+            _normalized_row("Total current liabilities", 300),
+            _normalized_row("Long-term debt", 400),
+            _normalized_row("Deferred taxes", 500),
+            _normalized_row("Total non-current liabilities", 900),
+            _normalized_row("Total liabilities", 1_200),
+        ],
+        "mapping": {"mapped": {}, "meta": {}},
+    }
+    result = validate_filing(data, "CLEAN", "Energy")
+    check = {c.rule_id: c for c in result.checks}["structure_label_contradiction"]
+    assert not check.skipped
+    assert check.passed is True
+
+
+def test_integrity_rule_skips_without_statements():
+    from modules.integrity.engine import validate_filing
+
+    result = validate_filing({"mapping": {"mapped": {}, "meta": {}}}, "X", None)
+    check = {c.rule_id: c for c in result.checks}["structure_label_contradiction"]
+    assert check.skipped
+    assert check.skip_reason == "field_unavailable"

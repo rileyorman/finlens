@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from config import LIBRARY_DIR
 from modules.claude_analyzer import _make_client, log_cache_usage
 from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
+from modules.integrity.structure import classify_statement_structure
 
 
 SEDAR_MODEL = "claude-sonnet-5"
@@ -511,6 +512,27 @@ def _first_statement_value(item: dict) -> int | float | None:
     return next(iter(values.values()), None)
 
 
+def _annotate_structure(rows: list) -> list:
+    """STRUCTURAL_SUBTOTAL_SPEC Stage 1: annotate statement rows with the
+    arithmetic structure classification (additive keys; non-dict rows pass
+    through untouched). Returns NEW row dicts — never mutates the input."""
+    dict_rows = [row for row in rows if isinstance(row, dict)]
+    annotations = iter(classify_statement_structure(dict_rows))
+    annotated = []
+    for row in rows:
+        if not isinstance(row, dict):
+            annotated.append(row)
+            continue
+        annotation = next(annotations)
+        new_row = dict(row)
+        new_row["structure"] = annotation["structure"]
+        if annotation["structure_conflict"]:
+            new_row["structure_conflict"] = True
+            new_row["structure_conflict_note"] = annotation["conflict_note"]
+        annotated.append(new_row)
+    return annotated
+
+
 def attach_mapping(extraction_result: dict) -> dict:
     statements = extraction_result.get("statements") or {}
     # Single source of truth (shared with the fixture/registry path) for which
@@ -518,23 +540,36 @@ def attach_mapping(extraction_result: dict) -> dict:
     # so operating_cash_flow / capex map (CB-021).
     statement_keys = list(mapper_statement_keys(extraction_result.get("sector_inferred")))
 
-    line_items = []
+    # Structural annotation at the boundary (STRUCTURAL_SUBTOTAL_SPEC Stage 1)
+    # — every statement gets annotated so the mapper (Stage 2 gate) and every
+    # downstream consumer see the same structure facts.
+    annotated_statements = {}
     if isinstance(statements, dict):
-        for statement_key in statement_keys:
-            rows = statements.get(statement_key)
-            if not isinstance(rows, list):
+        for key, rows in statements.items():
+            annotated_statements[key] = (
+                _annotate_structure(rows) if isinstance(rows, list) else rows
+            )
+
+    line_items = []
+    for statement_key in statement_keys:
+        rows = annotated_statements.get(statement_key)
+        if not isinstance(rows, list):
+            continue
+        for item in rows:
+            if not isinstance(item, dict):
                 continue
-            for item in rows:
-                if not isinstance(item, dict):
-                    continue
-                line_items.append({
-                    "label": item.get("label"),
-                    "value": _first_statement_value(item),
-                    "confidence": item.get("confidence"),
-                    "statement": statement_key,
-                })
+            line_items.append({
+                "label": item.get("label"),
+                "value": _first_statement_value(item),
+                "confidence": item.get("confidence"),
+                "statement": statement_key,
+                "structure": item.get("structure"),
+                "structure_conflict": bool(item.get("structure_conflict")),
+            })
 
     enriched = dict(extraction_result)
+    if isinstance(statements, dict):
+        enriched["statements"] = annotated_statements
     enriched["mapping"] = map_line_items(
         line_items,
         str(extraction_result.get("accounting_standard") or ""),

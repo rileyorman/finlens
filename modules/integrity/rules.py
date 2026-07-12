@@ -242,6 +242,30 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # Structure/label contradiction (STRUCTURAL_SUBTOTAL_SPEC Stage 1,
+    # CB-037; supersedes CB-033's deferred extraction-prompt fix): the
+    # arithmetic subtotal classifier proves each statement row's structure
+    # from block-sum ties; a row whose UNQUALIFIED grand-category label
+    # ("total liabilities") ties only as a BLOCK subtotal while a prior
+    # same-category subtotal sits outside its sum is a wrong-scope
+    # extraction (Peyto: invented "Total liabilities" on the non-current
+    # block, 2,241,748 vs true 2,607,658 — previously caught only by the
+    # downstream identity rule). Corpus-swept 2026-07-12: ZERO conflicts
+    # across all 17 fixtures (106 subtotals + 19 totals classified) — the
+    # pattern is precision-clean on clean data. None-statements analyses
+    # skip honestly; empty-conflicts is a real PASS.
+    # ------------------------------------------------------------------
+    {
+        "id": "structure_label_contradiction",
+        "description": "Statement row labels should agree with their arithmetically proven structure",
+        "severity": "warn",
+        "check_type": "structure_label_contradiction",
+        "params": {},
+        "sector_skip": (),
+        "requires_fields": ["structure_conflicts"],
+    },
+
+    # ------------------------------------------------------------------
     # MD&A netback internal tie (MDA_FETCHER_SPEC Stage 3): every extracted
     # netback table's components must sum to its printed total, per
     # (unit, period) group. The tables print the identity (verified in
