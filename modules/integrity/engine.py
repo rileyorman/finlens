@@ -280,6 +280,87 @@ def _hedging_bs_derivative_net_raw(balance_rows) -> float | None:
     return sum(matched) if matched else None
 
 
+def _mda_amount_to_raw(amount, unit_text) -> float | None:
+    """Convert an MD&A-disclosed amount to raw dollars via its stated scale.
+
+    Extends the hedging unit parser with the tabular '000s' form TOU prints
+    ("($000s)"). Honest None (→ rule skip) when the scale is missing or
+    unparseable — never guess a scale.
+    """
+    raw = _hedging_amount_to_raw(amount, unit_text)
+    if raw is not None:
+        return raw
+    value = _coerce_number(amount)
+    if value is None:
+        return None
+    if "000" in str(unit_text or ""):
+        return value * 1e3
+    return None
+
+
+def _mda_netback_groups(mda_metrics) -> list[dict] | None:
+    """Group extracted netback rows by (unit, period) into
+    {components_sum, total, n_components} for the internal-tie check.
+
+    A group participates only when it has EXACTLY ONE is_total row and at
+    least two component rows with numeric values (ambiguous or fragmentary
+    groups are excluded — never a vacuous tie). None when no group
+    qualifies (→ honest field_unavailable skip).
+    """
+    if not isinstance(mda_metrics, dict) or mda_metrics.get("status") != "extracted":
+        return None
+    grouped: dict[tuple, dict] = {}
+    for row in mda_metrics.get("netback_rows") or []:
+        if not isinstance(row, dict):
+            continue
+        value = _coerce_number(row.get("value"))
+        if value is None:
+            continue
+        key = (str(row.get("unit") or "—"), str(row.get("period_label") or "—"))
+        group = grouped.setdefault(key, {"components": [], "totals": []})
+        (group["totals"] if row.get("is_total") else group["components"]).append(value)
+
+    qualifying = []
+    for (unit, period), group in grouped.items():
+        if len(group["totals"]) == 1 and len(group["components"]) >= 2:
+            qualifying.append({
+                "unit": unit,
+                "period_label": period,
+                "component_sum": sum(group["components"]),
+                "total": group["totals"][0],
+                "n_components": len(group["components"]),
+            })
+    return qualifying or None
+
+
+def _mda_ffo_anchor_raw(mda_metrics) -> float | None:
+    """The funds-flow reconciliation's cash-flow anchor row ('...operating
+    activities'), latest ANNUAL period, converted to raw dollars.
+
+    Annual-only by design: comparing a quarterly CFO anchor to the annual
+    canonical operating_cash_flow would false-fire; no annual anchor row →
+    honest None. Unparseable scale → honest None.
+    """
+    if not isinstance(mda_metrics, dict) or mda_metrics.get("status") != "extracted":
+        return None
+    candidates = []
+    for row in mda_metrics.get("funds_flow_rows") or []:
+        if not isinstance(row, dict) or row.get("per_share"):
+            continue
+        label = str(row.get("label") or "").lower()
+        period = str(row.get("period_label") or "").lower()
+        if "operating activities" not in label or "year" not in period:
+            continue
+        year_match = re.search(r"(\d{4})", period)
+        year = int(year_match.group(1)) if year_match else 0
+        raw = _mda_amount_to_raw(row.get("value"), row.get("unit_scale"))
+        if raw is not None:
+            candidates.append((year, raw))
+    if not candidates:
+        return None
+    return max(candidates)[1]
+
+
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
     balance = normalized_data.get("balance_sheet", [])
@@ -360,6 +441,17 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
             normalized_data.get("hedging_book")
         ),
         "hedging_bs_derivative_net_raw": _hedging_bs_derivative_net_raw(balance),
+        # MDA_FETCHER_SPEC Stage 3 tie inputs: netback internal groups and the
+        # FFO reconciliation's annual CFO anchor (scale-parsed to raw dollars)
+        # vs the promoted canonical operating_cash_flow (raw after
+        # normalization). None → honest field_unavailable skip.
+        "mda_netback_groups": _mda_netback_groups(normalized_data.get("mda_metrics")),
+        "mda_ffo_anchor_raw": _mda_ffo_anchor_raw(normalized_data.get("mda_metrics")),
+        # Top-level (promoted, raw-scaled) copy ONLY — the mapping.mapped
+        # fallback used by the CB-013 fields would be in FILING UNITS here
+        # and false-fire the FFO tie by the unit scale (the anchor side is
+        # raw dollars). Absent top-level → honest skip.
+        "operating_cash_flow": _coerce_number(normalized_data.get("operating_cash_flow")),
         "accounting_standard":        normalized_data.get("accounting_standard"),
         "document_class":             normalized_data.get("document_class"),
         "fiscal_year":                normalized_data.get("fiscal_year", ""),
@@ -557,6 +649,61 @@ def _check_document_class_info(rule: dict, ctx: dict) -> tuple:
     return None, {}, True, f"Document class recorded: {document_class}"
 
 
+def _check_mda_netback_internal_tie(rule: dict, ctx: dict) -> tuple:
+    """MDA_FETCHER_SPEC Stage 3: every extracted netback table's components
+    must sum to its printed total, per (unit, period) group. Catches
+    row/column misalignment in the MD&A extraction (the tables print the
+    identity, so a mismatch is an extraction defect, not filer noise)."""
+    groups = ctx.get("mda_netback_groups")
+    absolute_tolerance = rule["params"].get("absolute_tolerance", 0.06)
+    relative_tolerance = rule["params"].get("relative_tolerance", 0.002)
+
+    worst_diff = 0.0
+    failures = []
+    for group in groups:
+        diff = abs(group["component_sum"] - group["total"])
+        tolerance = max(absolute_tolerance, relative_tolerance * abs(group["total"]))
+        worst_diff = max(worst_diff, diff)
+        if diff > tolerance:
+            failures.append(
+                f"{group['unit']} [{group['period_label']}]: components sum "
+                f"{group['component_sum']:g} vs printed total {group['total']:g} "
+                f"(diff {diff:g} > tol {tolerance:g})"
+            )
+    passed = not failures
+    detail = (
+        f"{len(groups)} netback group(s) checked; all component sums tie to "
+        f"printed totals (worst diff {worst_diff:g})"
+        if passed
+        else f"{len(failures)} of {len(groups)} netback group(s) fail: " + "; ".join(failures)
+    )
+    return round(worst_diff, 6), {
+        "absolute_tolerance": absolute_tolerance,
+        "relative_tolerance": relative_tolerance,
+        "groups_checked": len(groups),
+    }, passed, detail
+
+
+def _check_mda_ffo_anchor_tie(rule: dict, ctx: dict) -> tuple:
+    """MDA_FETCHER_SPEC Stage 3: the MD&A funds-flow reconciliation's annual
+    CFO anchor must tie to the mapped canonical operating_cash_flow — the
+    receipt chain from an issuer-defined non-GAAP measure back to the
+    verified statement anchor (NI 52-112 guarantees the reconciliation)."""
+    anchor = ctx.get("mda_ffo_anchor_raw")
+    canonical = ctx.get("operating_cash_flow")
+    relative_tolerance = rule["params"].get("relative_tolerance", 0.02)
+
+    diff = abs(anchor - canonical)
+    tolerance = relative_tolerance * abs(canonical)
+    passed = diff <= tolerance
+    direction = "<=" if passed else ">"
+    return round(diff, 6), {"relative_tolerance": relative_tolerance}, passed, (
+        f"MD&A funds-flow CFO anchor {anchor:,.0f} vs canonical "
+        f"operating_cash_flow {canonical:,.0f}; difference {diff:,.0f} "
+        f"({direction} {tolerance:,.0f})"
+    )
+
+
 def _check_total_assets_identity(rule: dict, ctx: dict) -> tuple:
     total_assets = ctx.get("total_assets")
     combined = ctx.get("total_liabilities_and_equity")
@@ -686,6 +833,8 @@ _CHECKS = {
     "balance_sheet_identity":    _check_balance_sheet_identity,
     "layer_period_agreement":    _check_layer_period_agreement,
     "hedging_fair_value_tie":    _check_hedging_fair_value_tie,
+    "mda_netback_internal_tie":  _check_mda_netback_internal_tie,
+    "mda_ffo_anchor_tie":        _check_mda_ffo_anchor_tie,
 }
 
 

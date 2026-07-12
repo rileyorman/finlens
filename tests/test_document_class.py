@@ -13,10 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from modules.integrity.document_class import (
     DOC_CLASS_EXTRACTION_EMPTY,
+    DOC_CLASS_MDA,
     DOC_CLASS_NO_STATEMENTS,
     DOC_CLASS_STATEMENTS_AUDITED,
     DOC_CLASS_STATEMENTS_UNAUDITED,
     classify_document_text,
+    mda_refusal_message,
     refusal_message,
     unaudited_warning_message,
 )
@@ -76,13 +78,43 @@ def test_press_release_refused():
     assert result["document_class"] == DOC_CLASS_NO_STATEMENTS
 
 
-def test_mda_only_refused_despite_mentioning_financial_statements():
+def test_mda_only_classifies_mda_not_statements():
     """MD&A prose cites 'financial statements' constantly — the classifier
     must require the structural signature (statement headings + notes),
-    not the phrase."""
+    not the phrase. Since MDA_FETCHER_SPEC Stage 0 the class is `mda`
+    (previously no_statements_detected); the intent is unchanged — a
+    standalone MD&A must NEVER classify as statements, and the app gate
+    still refuses it for statement analysis."""
     result = classify_document_text(MDA_TEXT)
-    assert result["document_class"] == DOC_CLASS_NO_STATEMENTS
+    assert result["document_class"] == DOC_CLASS_MDA
     assert result["signals"]["mda_marker"] is True
+
+
+def test_statements_pack_referencing_mda_stays_statements():
+    """Combined statements+MD&A packs (TOU shape) and statement packs that
+    merely cross-reference the MD&A must keep their statements class — the
+    statement signature is checked before the MD&A branch."""
+    text = AUDITED_TEXT + " see Management's Discussion and Analysis for details "
+    result = classify_document_text(text)
+    assert result["document_class"] == DOC_CLASS_STATEMENTS_AUDITED
+    assert result["signals"]["mda_marker"] is True
+
+
+def test_press_release_citing_mda_abbreviation_stays_no_statements():
+    """Press releases cite the MD&A by abbreviation; the `mda` class requires
+    the spelled-out phrase, so abbreviation-only documents keep the
+    no_statements refusal."""
+    text = PRESS_RELEASE_TEXT + " This release should be read with the MD&A. "
+    result = classify_document_text(text)
+    assert result["document_class"] == DOC_CLASS_NO_STATEMENTS
+    assert result["signals"]["mda_marker"] is False
+
+
+def test_mda_refusal_message_names_class_and_lane():
+    result = classify_document_text(MDA_TEXT)
+    message = mda_refusal_message(result["signals"])
+    assert "MD&A" in message
+    assert "will not run a statements analysis" in message
 
 
 def test_empty_and_tiny_text_classify_extraction_empty():

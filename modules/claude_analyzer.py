@@ -683,7 +683,7 @@ def analyze_financials(
 
     raw = _strip_json_fences(raw)
 
-    financial_data = json.loads(raw)
+    financial_data = json.loads(raw, strict=False)
 
     # Figure-presence guard: values are still in filing units here (before
     # normalization), which is exactly how they appear in the source text.
@@ -835,7 +835,7 @@ def analyze_summary(
     raw = _strip_json_fences(raw)
 
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, strict=False)
         data["thesis"] = _sanitize(data.get("thesis") or "")
         data["sector_inferred"] = _sanitize(data.get("sector_inferred") or "")
         for item in data.get("catalysts", []):
@@ -950,7 +950,7 @@ def analyze_bear_bull(
     raw = _strip_json_fences(raw)
 
     try:
-        data = json.loads(raw)
+        data = json.loads(raw, strict=False)
         for item in data.get("bull_case", []):
             item["title"]  = _sanitize(_strip_latex(item.get("title") or ""))
             item["detail"] = _sanitize(_strip_latex(item.get("detail") or ""))
@@ -1093,7 +1093,7 @@ def analyze_dashboard_insights(
 
         raw = _strip_json_fences(raw)
 
-        data = json.loads(raw)
+        data = json.loads(raw, strict=False)
         for key in ("dalio_view", "lynch_category", "lynch_story", "marks_view",
                     "crowd_thinks", "marks_question"):
             if key in data:
@@ -1174,12 +1174,12 @@ def _safe_json(raw: str) -> dict:
     text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     try:
-        return json.loads(text)
+        return json.loads(text, strict=False)
     except Exception:
         m = re.search(r"\{.*\}", text, re.DOTALL)
         if m:
             try:
-                return json.loads(m.group())
+                return json.loads(m.group(), strict=False)
             except Exception:
                 pass
     return {"error": f"Could not parse response: {raw[:200]}"}

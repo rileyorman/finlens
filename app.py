@@ -33,6 +33,7 @@ from sedar_extractor import (
     SedarExtractionError,
     attach_mapping,
     extract_hedging_note,
+    extract_mda_metrics,
     extract_sedar_filing,
 )
 from modules.claude_analyzer import (
@@ -58,9 +59,11 @@ from modules.integrity.receipts import (
 )
 from modules.integrity.document_class import (
     DOC_CLASS_EXTRACTION_EMPTY,
+    DOC_CLASS_MDA,
     DOC_CLASS_NO_STATEMENTS,
     DOC_CLASS_STATEMENTS_UNAUDITED,
     classify_document_text,
+    mda_refusal_message,
     refusal_message,
     unaudited_warning_message,
 )
@@ -222,6 +225,15 @@ def _gate_document_class(raw_text: str | None, *, warn_only: bool = False) -> di
             st.warning(refusal_message(signals))
         else:
             st.error(refusal_message(signals))
+            st.stop()
+    elif doc_class == DOC_CLASS_MDA:
+        # A standalone MD&A is still refused for STATEMENT analysis — the
+        # class exists so the MD&A-metrics lane can accept it separately
+        # (docs/MDA_FETCHER_SPEC.md Stage 0).
+        if warn_only:
+            st.warning(mda_refusal_message(signals))
+        else:
+            st.error(mda_refusal_message(signals))
             st.stop()
     elif doc_class == DOC_CLASS_STATEMENTS_UNAUDITED:
         st.warning(unaudited_warning_message(signals))
@@ -1042,10 +1054,13 @@ def _heal_sedar_mapping(financial_data: dict) -> dict:
             company_name=financial_data.get("company_name"),
             ticker=financial_data.get("ticker"),
         )
-        # The hedging book is a separate PAID extraction stored top-level —
-        # a free re-map must never drop it (CB-034; sibling-path check).
+        # The hedging book and MD&A metrics are separate PAID extractions
+        # stored top-level — a free re-map must never drop them (CB-034
+        # precedent; MDA_FETCHER_SPEC Stage 2; sibling-path check).
         if isinstance(financial_data.get("hedging_book"), dict):
             healed["hedging_book"] = financial_data["hedging_book"]
+        if isinstance(financial_data.get("mda_metrics"), dict):
+            healed["mda_metrics"] = financial_data["mda_metrics"]
         return healed
     except Exception:
         return financial_data
@@ -8782,6 +8797,18 @@ if st.session_state.financial_data:
                         f'</div>',
                         unsafe_allow_html=True,
                     )
+                # Trust-Is-Page-Level receipt: this card mixes bases. P/E is
+                # yfinance's trailing market ratio, NOT market cap ÷ filing
+                # net income (TOU 2026-07-12: 33.0x TTM vs ~84x on the
+                # impairment-year filing earnings — a silent 2.5x gap). The
+                # EV multiples use market cap WITHOUT net debt (proxy).
+                st.caption(
+                    "P/E: yfinance trailing (market TTM basis — can differ "
+                    "materially from filing-year earnings, e.g. impairment "
+                    "years). EV/EBITDA & EV/Revenue: market cap used as the "
+                    "EV proxy (net debt not added); EBITDA and revenue from "
+                    "the filing. MoS: from the DCF inputs above."
+                )
 
         st.divider()
 
@@ -9443,14 +9470,17 @@ if st.session_state.financial_data:
                     f'<div style="{_econ_tier2_style}">'
                     f'<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;'
                     f'text-transform:uppercase;color:#F4B942;margin-bottom:4px">'
-                    f'TIER 2 · COMING SOON</div>'
+                    f'TIER 2 · PARTIALLY LIVE</div>'
                     f'<div style="font-size:15px;font-weight:600;color:#F1F5F9;margin-bottom:6px">'
                     f'AISC vs Spot · Netback vs Price</div>'
                     f'<div style="font-size:12px;color:#94A3B8;line-height:1.5">'
                     f'The flagship margin-of-safety metric — All-In Sustaining Cost vs commodity '
                     f'spot (mining) or netback vs commodity price (oil &amp; gas). These figures '
-                    f'live in the MD&amp;A, not the consolidated income statement, so this tier is '
-                    f'gated on the MD&amp;A fetcher. See '
+                    f'live in the MD&amp;A, not the consolidated income statement. The O&amp;G '
+                    f'inputs ($/boe netback, production volumes) are now extractable via the '
+                    f'MD&amp;A Operational Metrics panel below; the vs-price overlay chart and '
+                    f'the mining AISC pack land next. See '
+                    f'<code>docs/MDA_FETCHER_SPEC.md</code> and '
                     f'<code>docs/RESOURCE_ECONOMICS_SNAPSHOT_SPEC.md</code> §3 Tier 2.</div>'
                     f'</div>',
                     unsafe_allow_html=True,
@@ -9655,6 +9685,235 @@ if st.session_state.financial_data:
                     f"{_hb.get('extraction_confidence', 0):.2f}). Hedge coverage % and "
                     "hedge-price-vs-strip need production volumes / futures data — "
                     "MD&A-fetcher era, planned."
+                )
+
+            # =============================================================
+            # MD&A Operational Metrics — O&G upstream pack (Stage 2,
+            # design: docs/MDA_FETCHER_SPEC.md). On-demand extraction
+            # (Riley's ratified trigger): analysis stays your click.
+            # Every figure is issuer-defined non-GAAP — receipts + the
+            # definition string render with the data (ratified trust
+            # policy: receipt + permanent caption).
+            # =============================================================
+            st.divider()
+            _mm = financial_data.get("mda_metrics") if isinstance(financial_data, dict) else None
+
+            if not isinstance(_mm, dict):
+                st.markdown("#### 📄 MD&A Operational Metrics")
+                _mm_pdf = _hedging_pdf_path_for_current(ticker, financial_data)
+                if not _mm_pdf:
+                    st.caption(
+                        "Extracts production volumes, the per-boe operating netback, "
+                        "funds flow, and realized prices from the filing's MD&A pages. "
+                        "The source PDF is not cached for this filing — re-load or "
+                        "re-upload it to enable."
+                    )
+                else:
+                    st.caption(
+                        "Extract production volumes, per-boe netback, funds flow, and "
+                        "realized prices from the MD&A pages — issuer-defined non-GAAP "
+                        "measures with their definitions, as printed. One targeted "
+                        "Claude pass (~$0.05–0.15)."
+                    )
+                    if st.button("📄 Extract MD&A Metrics $", key="mda_extract_go"):
+                        with st.spinner("Extracting MD&A operational metrics (30–90 seconds)..."):
+                            try:
+                                _mm_result = extract_mda_metrics(_mm_pdf)
+                            except SedarExtractionError as _mm_exc:
+                                st.error(f"MD&A-metrics extraction failed: {_mm_exc}")
+                                _mm_result = None
+                            except Exception as _mm_exc:
+                                st.error(f"MD&A-metrics extraction failed: {_mm_exc} — try again.")
+                                _mm_result = None
+                        if _mm_result is not None:
+                            financial_data["mda_metrics"] = _mm_result
+                            # Re-run integrity so the Stage 3 tie rules arm
+                            # with the new data (netback internal tie + FFO
+                            # anchor tie; fresh moat-log record).
+                            _mm_fd = _run_integrity_checks(
+                                financial_data,
+                                st.session_state.get("summary_data"),
+                                ticker,
+                                financial_data.get("source", "sedar"),
+                                filing_date=financial_data.get("sedar_filing_date"),
+                            )
+                            if isinstance(_mm_fd, dict):
+                                st.session_state.financial_data = _mm_fd
+                            else:
+                                st.session_state.financial_data = financial_data
+                            _save_analysis_cache(
+                                ticker,
+                                financial_data.get("fiscal_year") or financial_data.get("period"),
+                                financial_data.get("source", "sedar"),
+                            )
+                            st.rerun()
+            elif _mm.get("status") == "no_mda_detected":
+                st.markdown("#### 📄 MD&A Operational Metrics")
+                st.info(
+                    "No MD&A operational section was detected in this PDF — this "
+                    "looks like a statements-only pack (the MD&A is filed as a "
+                    "separate document). Fetching the standalone MD&A is planned "
+                    "(MDA_FETCHER_SPEC Stage 4)."
+                )
+            else:
+                st.markdown("#### 📄 MD&A Operational Metrics — as disclosed")
+                _mm_fp = _mm.get("figure_presence") or {}
+                _mm_nb_rows = _mm.get("netback_rows") or []
+                _mm_vols = _mm.get("production_volumes") or []
+
+                def _mm_latest_year(rows, period_key="period_label"):
+                    """Pick the row for the most recent period among candidates."""
+                    def _year_of(row):
+                        m = re.search(r"(\d{4})", str(row.get(period_key) or ""))
+                        return int(m.group(1)) if m else 0
+                    return max(rows, key=_year_of) if rows else None
+
+                # Summary strip: annual per-boe netback, total production, guard.
+                _mm_c1, _mm_c2, _mm_c3 = st.columns(3)
+                with _mm_c1:
+                    _mm_boe_totals = [
+                        r for r in _mm_nb_rows
+                        if r.get("is_total") and isinstance(r.get("value"), (int, float))
+                        and "boe" in str(r.get("unit") or "").lower()
+                        and "year" in str(r.get("period_label") or "").lower()
+                    ]
+                    _mm_headline = _mm_latest_year(_mm_boe_totals)
+                    if _mm_headline is not None:
+                        st.metric(
+                            "Operating netback (annual)",
+                            f"${_mm_headline['value']:,.2f}/boe",
+                        )
+                        st.caption(_mm_headline.get("period_label") or "")
+                    else:
+                        st.metric("Operating netback (annual)", "—")
+                with _mm_c2:
+                    _mm_boe_vols = [
+                        v for v in _mm_vols
+                        if v.get("product") == "total_boe"
+                        and isinstance(v.get("volume"), (int, float))
+                    ]
+                    # Prefer the annual row (same rule as the netback
+                    # headline) — TOU's Q4 and FY rows share the year, and
+                    # max() alone picked the quarterly 659,204 over the
+                    # annual 638,196 (found live 2026-07-12).
+                    _mm_annual_vols = [
+                        v for v in _mm_boe_vols
+                        if "year" in str(v.get("period_label") or "").lower()
+                    ]
+                    _mm_vol_headline = _mm_latest_year(_mm_annual_vols or _mm_boe_vols)
+                    if _mm_vol_headline is not None:
+                        st.metric(
+                            "Total production",
+                            f"{_mm_vol_headline['volume']:,.0f} {_mm_vol_headline.get('volume_unit') or ''}",
+                        )
+                        st.caption(_mm_vol_headline.get("period_label") or "")
+                    else:
+                        st.metric("Total production", "—")
+                with _mm_c3:
+                    if _mm_fp.get("missing_count", 0) == 0 and _mm_fp.get("checked"):
+                        st.metric("Figure presence", f"{_mm_fp['checked']}/{_mm_fp['checked']} ✓")
+                    else:
+                        st.metric("Figure presence",
+                                  f"{_mm_fp.get('missing_count', '?')} UNVERIFIED")
+                if _mm_fp.get("missing_count"):
+                    st.warning(
+                        f"⚠️ {_mm_fp['missing_count']} extracted value(s) were NOT found "
+                        "verbatim in the MD&A page text — treat those figures as "
+                        "unverified and check the source pages."
+                    )
+
+                # The ratified trust policy: the issuer's own definition renders
+                # with the data, permanently. Variant differences are the trap.
+                _mm_nb_def = _mm.get("netback_definition_verbatim")
+                _mm_hedge_flag = _mm.get("netback_includes_hedging")
+                if _mm_nb_def or _mm_hedge_flag is not None:
+                    _mm_variant = (
+                        "includes realized hedging" if _mm_hedge_flag
+                        else ("excludes realized hedging" if _mm_hedge_flag is False
+                              else "hedging treatment unclear")
+                    )
+                    st.caption(
+                        f"**Issuer-defined non-GAAP** ({_mm_variant} — netback variants "
+                        f"differ by issuer and may not be comparable). Definition as "
+                        f"printed: _{_mm_nb_def or 'not stated in the extracted pages'}_"
+                    )
+
+                def _mm_pivot(rows, value_key, label_key="label"):
+                    """Pivot flat (label, period, value) records into one table row
+                    per label with a column per period, first-seen order."""
+                    periods, labels, cells = [], [], {}
+                    for r in rows:
+                        lbl, per = r.get(label_key), r.get("period_label") or "—"
+                        if lbl is None:
+                            continue
+                        if per not in periods:
+                            periods.append(per)
+                        if lbl not in labels:
+                            labels.append(lbl)
+                        cells[(lbl, per)] = r.get(value_key)
+                    return [
+                        {"": lbl, **{
+                            per: (f"{cells[(lbl, per)]:,g}" if isinstance(cells.get((lbl, per)), (int, float)) else "—")
+                            for per in periods
+                        }}
+                        for lbl in labels
+                    ]
+
+                # Netback tables, one per unit (filers print $ and $/boe forms).
+                _mm_nb_units = []
+                for r in _mm_nb_rows:
+                    u = r.get("unit") or "—"
+                    if u not in _mm_nb_units:
+                        _mm_nb_units.append(u)
+                for _u in _mm_nb_units:
+                    _u_rows = [r for r in _mm_nb_rows if (r.get("unit") or "—") == _u]
+                    st.markdown(f"**Netback ({_u})**")
+                    st.dataframe(_mm_pivot(_u_rows, "value"), hide_index=True, width='stretch')
+
+                if _mm_vols:
+                    st.markdown("**Production volumes**")
+                    st.dataframe(_mm_pivot(_mm_vols, "volume"), hide_index=True, width='stretch')
+
+                with st.expander("Funds flow, realized prices, guidance — the receipt", expanded=False):
+                    _mm_ff = _mm.get("funds_flow_rows") or []
+                    if _mm_ff:
+                        st.markdown("**Funds flow reconciliation** (as printed)")
+                        _mm_ff_def = _mm.get("funds_flow_definition_verbatim")
+                        if _mm_ff_def:
+                            st.caption(f"Issuer definition: _{_mm_ff_def}_")
+                        st.dataframe([
+                            {"Row": r.get("label"), "Period": r.get("period_label"),
+                             "Value": r.get("value"), "Scale": r.get("unit_scale"),
+                             "Per share": bool(r.get("per_share")), "Page": r.get("source_page")}
+                            for r in _mm_ff
+                        ], hide_index=True, width='stretch')
+                    _mm_rp = _mm.get("realized_prices") or []
+                    if _mm_rp:
+                        st.markdown("**Average realized prices**")
+                        st.dataframe([
+                            {"Product": r.get("label"), "Period": r.get("period_label"),
+                             "Value": r.get("value"), "Unit": r.get("unit"),
+                             "Page": r.get("source_page")}
+                            for r in _mm_rp
+                        ], hide_index=True, width='stretch')
+                    for _g in _mm.get("guidance_disclosures") or []:
+                        st.caption(f"Guidance ({_g.get('topic')}): {_g.get('verbatim')} (p{_g.get('source_page')})")
+                    _mm_mix = _mm.get("commodity_mix") or {}
+                    if _mm_mix.get("verbatim"):
+                        st.caption(f"Commodity mix: {_mm_mix['verbatim']} (p{_mm_mix.get('source_page')})")
+
+                _mm_pages = ", ".join(str(p) for p in _mm.get("source_pages") or [])
+                _mm_dropped = _mm.get("dropped_pages") or []
+                _mm_dropped_note = (
+                    f" {len(_mm_dropped)} lower-signal page(s) were not sent to "
+                    f"extraction (disclosed, not silent)." if _mm_dropped else ""
+                )
+                st.caption(
+                    f"Extracted from MD&A pages {_mm_pages}; values, labels and periods "
+                    f"as disclosed (extraction confidence "
+                    f"{_mm.get('extraction_confidence', 0):.2f}).{_mm_dropped_note} "
+                    "Netback-vs-commodity-price overlay and $/boe cross-filer "
+                    "comparison land with the Stage 3 integrity rules."
                 )
 
 else:

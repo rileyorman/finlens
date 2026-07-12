@@ -255,7 +255,7 @@ def _build_prompt(
 
 
 def _parse_response(raw: str) -> dict:
-    return json.loads(_strip_json_fences(raw))
+    return json.loads(_strip_json_fences(raw), strict=False)
 
 
 def generate_inversion(financial_data, ticker, sector, mapping, dcf_snapshot=None) -> dict:

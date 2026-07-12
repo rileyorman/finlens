@@ -381,7 +381,7 @@ def _normalize_extraction_payload(data: dict) -> dict:
 
 
 def _parse_extraction_json(raw: str) -> dict:
-    return _normalize_extraction_payload(json.loads(_strip_json_fences(raw)))
+    return _normalize_extraction_payload(json.loads(_strip_json_fences(raw), strict=False))
 
 
 def _api_key() -> str:
@@ -795,7 +795,7 @@ def extract_hedging_note(pdf_path) -> dict:
     raw = _response_text(response)
 
     try:
-        payload = json.loads(_strip_json_fences(raw))
+        payload = json.loads(_strip_json_fences(raw), strict=False)
     except json.JSONDecodeError:
         fix_prompt = (
             f"{user_prompt}\n\nYour previous response was not valid JSON. "
@@ -808,7 +808,7 @@ def extract_hedging_note(pdf_path) -> dict:
         )
         _raise_if_truncated(retry, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
         try:
-            payload = json.loads(_strip_json_fences(_response_text(retry)))
+            payload = json.loads(_strip_json_fences(_response_text(retry)), strict=False)
         except json.JSONDecodeError as exc:
             raise SedarExtractionError(
                 f"Hedging-note response could not be parsed as JSON: {exc}", _response_text(retry)
@@ -820,3 +820,332 @@ def extract_hedging_note(pdf_path) -> dict:
     hedging_book["dropped_pages"] = dropped
     hedging_book["figure_presence"] = _hedging_figure_presence(hedging_book, note_text)
     return hedging_book
+
+
+# ===========================================================================
+# MD&A OPERATIONAL-METRICS PAGE LOCATOR (design: docs/MDA_FETCHER_SPEC.md,
+# Stage 1; v1 = the ratified O&G upstream pack)
+#
+# A SEPARATE targeted pass over the MD&A prose of an already-ingested PDF
+# (in-PDF-first sourcing: combined statements+MD&A packs like TOU, full
+# annual reports like ARX). Same architecture as the hedging locator above:
+# content-density scan, never a heading scan — ARX's MD&A pages don't even
+# repeat the "Management's Discussion and Analysis" heading in extracted
+# page text, while TOU's repeat it on every page (header artifact), so the
+# heading is deliberately NOT a signal. Output will feed extract_mda_metrics
+# (Stage 1b) — its own prompt pair and schema; never the statement mapper.
+# ===========================================================================
+
+# The O&G MD&A pack spans more disclosure tables than the hedging note
+# (volumes + netback + FFO + realized prices), so the cap is wider than
+# MAX_HEDGING_NOTE_PAGES. Over-cap pages are dropped by ASCENDING score
+# (not document order) and disclosed, never silent.
+MAX_MDA_PAGES = 12
+
+# Signal set + weights, tuned empirically 2026-07-12 against the five O&G
+# PDFs on disk: TOU FY2025 combined pack (netback tables PDF pp. 31-35,
+# volumes pp. 7-8, realized prices p. 11), ARX FY2025 full annual report
+# (netback pp. 29-32 + 60-61, FFO pp. 40-43/62, production pp. 21-23), and
+# the three statements-only packs (CNQ FY2024, Peyto FY2025, WCP FY2025)
+# which must yield ZERO pages so the fetch-fallback lane can fire.
+_MDA_NETBACK_RE = re.compile(r"\bnetbacks?\b", re.IGNORECASE)
+_MDA_VOLUME_UNITS_RE = re.compile(
+    r"\b(?:m?boe/d|mmcf/d|m?bbls?/d|gj/d|boe\s+per\s+day)\b", re.IGNORECASE
+)
+_MDA_PER_BOE_RE = re.compile(r"(?:\$|per\s)\s*/?\s*boe\b|\bper\s+boe\b", re.IGNORECASE)
+_MDA_FUNDS_FLOW_RE = re.compile(
+    r"\bfunds\s+(?:flow|from\s+operations)\b|\bfree\s+funds\s+flow\b", re.IGNORECASE
+)
+_MDA_REALIZED_PRICE_RE = re.compile(
+    r"\b(?:average\s+)?realized\s+prices?\b", re.IGNORECASE
+)
+
+# A page must carry real tabular density AND a mix of pack signals.
+_MDA_MIN_NUMERIC_TOKENS = 15
+_MDA_MIN_PAGE_SCORE = 6
+
+# DOCUMENT-LEVEL ANCHOR GATE (the load-bearing negative): the per-boe
+# netback table is the O&G MD&A signature — no page with dense netback
+# vocabulary means the document has no O&G MD&A operational section, and
+# the locator returns nothing so the caller reports no_mda_detected
+# honestly (routing statements-only filers to the fetch fallback). Without
+# this gate, statements-only packs fire on their notes: WCP's capital-
+# management note says "funds flow" 8 times on one page, and hedge notes
+# carry volume units (TOU pp. 64-65) — empirically confirmed 2026-07-12.
+_MDA_ANCHOR_MIN_NETBACK_HITS = 2
+_MDA_ANCHOR_MIN_NUMERIC_TOKENS = 20
+
+
+def _score_mda_page(page_text: str) -> tuple[int, int, int]:
+    """Return (pack_score, numeric_token_count, netback_hits) for one page."""
+    text = page_text or ""
+    netback = len(_MDA_NETBACK_RE.findall(text))
+    score = (
+        3 * netback
+        + 2 * len(_MDA_VOLUME_UNITS_RE.findall(text))
+        + 2 * len(_MDA_PER_BOE_RE.findall(text))
+        + 2 * len(_MDA_FUNDS_FLOW_RE.findall(text))
+        + 2 * len(_MDA_REALIZED_PRICE_RE.findall(text))
+    )
+    return score, _numeric_token_count(text), netback
+
+
+def _locate_mda_pages_from_texts(page_texts: list[str]) -> dict:
+    """Pages that look like O&G MD&A operational-disclosure tables.
+
+    Returns {"pages": [...], "dropped_pages": [...]} — both ascending;
+    `pages` capped at MAX_MDA_PAGES by keeping the highest-scoring pages,
+    `dropped_pages` disclosing the over-cap remainder. Both empty when the
+    document has no netback anchor page (no O&G MD&A section present).
+
+    Recall bias accepted (CB-034 mirror): statement-side hedge tables in a
+    combined pack can qualify on volume units once the document is anchored;
+    the extraction prompt filters non-MD&A content.
+    """
+    scored = []
+    anchored = False
+    for page_num, page_text in enumerate(page_texts):
+        score, numerics, netback = _score_mda_page(page_text)
+        if numerics >= _MDA_ANCHOR_MIN_NUMERIC_TOKENS and netback >= _MDA_ANCHOR_MIN_NETBACK_HITS:
+            anchored = True
+        if numerics >= _MDA_MIN_NUMERIC_TOKENS and score >= _MDA_MIN_PAGE_SCORE:
+            scored.append((score, page_num))
+
+    if not anchored or not scored:
+        return {"pages": [], "dropped_pages": []}
+
+    # Keep the strongest MAX_MDA_PAGES pages; emit both lists in page order.
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    kept = sorted(page_num for _, page_num in scored[:MAX_MDA_PAGES])
+    dropped = sorted(page_num for _, page_num in scored[MAX_MDA_PAGES:])
+    return {"pages": kept, "dropped_pages": dropped}
+
+
+def locate_mda_pages(pdf_path) -> dict:
+    page_texts: list[str] = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_texts.append(page.extract_text() or "")
+    return _locate_mda_pages_from_texts(page_texts)
+
+
+MAX_MDA_OUTPUT_TOKENS = 16_000
+
+MDA_SYSTEM_PROMPT = """You are extracting operational metrics from the MD&A pages of a Canadian oil & gas issuer's filing for FinLens.
+
+Respond ONLY with valid JSON. Do not include markdown fences, a preamble, comments, or trailing prose.
+
+Extract ONLY these disclosure families from the supplied pages: production volumes and commodity mix, the per-boe operating netback table, the funds flow / funds from operations reconciliation, average realized prices, and guidance figures (capital program, breakeven, dividend). Ignore forward hedge-position schedules (volumes/strikes by contract — those are extracted separately), credit/liquidity risk notes, and reserves data.
+
+These are company-defined non-GAAP measures. For EVERY family you extract, also capture the issuer's own DEFINITION sentence verbatim where one is printed (e.g. what the issuer includes in "operating netback" or how it defines "funds flow"). Definitions matter because same-named metrics differ by issuer — an operating netback may or may not include realized hedging gains.
+
+Rules for every record:
+- Keep row labels, column/period labels, and units VERBATIM as printed (e.g. "Natural gas and natural gas liquid sales", "Year ended December 31, 2025", "$/boe", "boe/d", "mmcf/d").
+- Tables print multiple period columns (current and prior year). Emit one record per (row label, period column) that has a value.
+- Parse parentheses as negatives; strip thousands separators and currency symbols from numbers; use plain JSON numbers.
+- source_page: the page number from the "--- PAGE N ---" marker the record came from.
+- Do NOT guess, derive, or interpolate values. A missing value is null. Do NOT invent labels for unlabeled rows; use null and describe the row in verbatim_notes.
+- Netback tables: emit every component row (revenue, royalties, operating/production costs, transportation, realized hedging if printed) AND the netback total row, flagging the total with is_total true. Set netback_includes_hedging from what the table actually shows: true if a hedging/risk-management row or hedging-inclusive total is part of the netback presentation, false if the presentation clearly excludes it, null if unclear.
+- Funds flow: emit the reconciliation rows exactly as printed, starting from the cash-flow anchor line (e.g. "Cash flow from operating activities") through to the issuer's funds-flow measure, including working-capital adjustment lines. Mark per-share rows with per_share true and keep their basis label verbatim.
+
+Top-level JSON shape required:
+{
+  "as_of": "period the disclosures are stated for, as printed, or null",
+  "production_volumes": [
+    {"product": "natural_gas|crude_oil|condensate|ngls|total_boe|other", "label": "verbatim row label",
+     "period_label": "verbatim column/period", "volume": 374336, "volume_unit": "boe/d",
+     "source_page": 21, "verbatim_notes": null}
+  ],
+  "commodity_mix": {"verbatim": "the mix sentence/figures as printed", "gas_pct": 59, "liquids_pct": 41, "source_page": 3},
+  "netback_definition_verbatim": "issuer's netback definition sentence, or null",
+  "netback_includes_hedging": true,
+  "netback_rows": [
+    {"label": "verbatim component label", "period_label": "verbatim", "value": 44.05, "unit": "$/boe",
+     "is_total": false, "source_page": 29, "verbatim_notes": null}
+  ],
+  "funds_flow_definition_verbatim": "issuer's funds flow definition sentence, or null",
+  "funds_flow_rows": [
+    {"label": "verbatim row label", "period_label": "verbatim", "value": 967, "unit_scale": "CAD millions",
+     "per_share": false, "source_page": 40, "verbatim_notes": null}
+  ],
+  "realized_prices": [
+    {"product": "natural_gas|crude_oil|condensate|ngls|total_boe|other", "label": "verbatim row label",
+     "period_label": "verbatim", "value": 3.51, "unit": "verbatim unit", "benchmark_label": null,
+     "benchmark_value": null, "source_page": 11, "verbatim_notes": null}
+  ],
+  "guidance_disclosures": [
+    {"topic": "capex_program|breakeven|dividend|production_guidance|other",
+     "verbatim": "the guidance sentence as printed", "value": 473, "unit": "CAD millions", "source_page": 5}
+  ],
+  "extraction_confidence": 0.0-1.0
+}
+"""
+
+
+MDA_USER_PROMPT_TEMPLATE = """Extract the operational metrics from these located MD&A pages.
+
+Pages used:
+__PAGES_JSON__
+
+Page text:
+__PAGE_TEXT__
+"""
+
+
+_MDA_VOLUME_NUMERIC = ("volume", "source_page")
+_MDA_NETBACK_NUMERIC = ("value", "source_page")
+_MDA_FUNDS_FLOW_NUMERIC = ("value", "source_page")
+_MDA_REALIZED_NUMERIC = ("value", "benchmark_value", "source_page")
+_MDA_GUIDANCE_NUMERIC = ("value", "source_page")
+
+
+def _normalize_mda_payload(data: dict) -> dict:
+    """Normalize the raw MD&A extraction payload into the mda_metrics shape
+    (docs/MDA_FETCHER_SPEC.md). Reuses the hedging record normalizer — flat
+    records with parsed numerics, verbatim everything else."""
+    mix = data.get("commodity_mix")
+    commodity_mix = None
+    if isinstance(mix, dict):
+        commodity_mix = {
+            "verbatim": (str(mix.get("verbatim")).strip() or None) if mix.get("verbatim") else None,
+            "gas_pct": _parse_number(mix.get("gas_pct")),
+            "liquids_pct": _parse_number(mix.get("liquids_pct")),
+            "source_page": _parse_number(mix.get("source_page")),
+        }
+
+    def _text_or_none(value):
+        return (str(value).strip() or None) if value else None
+
+    return {
+        "as_of": _text_or_none(data.get("as_of")),
+        "production_volumes": _normalize_hedging_records(
+            data.get("production_volumes"), _MDA_VOLUME_NUMERIC
+        ),
+        "commodity_mix": commodity_mix,
+        "netback_definition_verbatim": _text_or_none(data.get("netback_definition_verbatim")),
+        "netback_includes_hedging": (
+            data.get("netback_includes_hedging")
+            if isinstance(data.get("netback_includes_hedging"), bool)
+            else None
+        ),
+        "netback_rows": _normalize_hedging_records(
+            data.get("netback_rows"), _MDA_NETBACK_NUMERIC
+        ),
+        "funds_flow_definition_verbatim": _text_or_none(data.get("funds_flow_definition_verbatim")),
+        "funds_flow_rows": _normalize_hedging_records(
+            data.get("funds_flow_rows"), _MDA_FUNDS_FLOW_NUMERIC
+        ),
+        "realized_prices": _normalize_hedging_records(
+            data.get("realized_prices"), _MDA_REALIZED_NUMERIC
+        ),
+        "guidance_disclosures": _normalize_hedging_records(
+            data.get("guidance_disclosures"), _MDA_GUIDANCE_NUMERIC
+        ),
+        "extraction_confidence": _confidence(data.get("extraction_confidence", 0.0)),
+    }
+
+
+def _mda_figure_presence(mda_metrics: dict, page_text: str) -> dict:
+    """Deterministic guard: every extracted number must appear in the located
+    page text (comma-normalized both sides) — an absent value is a
+    fabrication signal, surfaced as an honest unverified count, never a
+    silent pass. Same concept as the Call 1 and hedging guards."""
+    haystack = (page_text or "").replace(",", "")
+    checked = 0
+    missing: list[str] = []
+
+    def _probe(value) -> None:
+        nonlocal checked
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return
+        checked += 1
+        magnitude = abs(value)
+        candidates = {f"{magnitude:g}"}
+        if float(magnitude).is_integer():
+            candidates.add(str(int(magnitude)))
+        else:
+            candidates.add(f"{magnitude:.2f}")
+        if not any(c in haystack for c in candidates):
+            missing.append(f"{value}")
+
+    for block, keys in (
+        ("production_volumes", ("volume",)),
+        ("netback_rows", ("value",)),
+        ("funds_flow_rows", ("value",)),
+        ("realized_prices", ("value", "benchmark_value")),
+        ("guidance_disclosures", ("value",)),
+    ):
+        for record in mda_metrics.get(block) or []:
+            for key in keys:
+                _probe(record.get(key))
+    mix = mda_metrics.get("commodity_mix") or {}
+    _probe(mix.get("gas_pct"))
+    _probe(mix.get("liquids_pct"))
+
+    return {"checked": checked, "missing_count": len(missing), "missing": missing[:20]}
+
+
+def extract_mda_metrics(pdf_path) -> dict:
+    """Extract the O&G MD&A operational metrics into the normalized
+    mda_metrics shape (docs/MDA_FETCHER_SPEC.md Stage 1).
+
+    Returns {"status": "no_mda_detected", ...} without any API spend when
+    the locator finds no anchored MD&A section — itself a finding (a
+    statements-only PDF; the fetch-fallback lane is the remedy).
+    """
+    located = locate_mda_pages(pdf_path)
+    pages = located["pages"]
+    dropped = located["dropped_pages"]
+    if not pages:
+        return {"status": "no_mda_detected", "source_pages": [], "dropped_pages": []}
+
+    sections = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num in pages:
+            if page_num >= len(pdf.pages):
+                continue
+            text = pdf.pages[page_num].extract_text() or ""
+            sections.append(f"\n\n--- PAGE {page_num} ---\n{text}")
+    mda_text = "".join(sections).strip()
+
+    client = _make_client(_api_key())
+    user_prompt = (
+        MDA_USER_PROMPT_TEMPLATE
+        .replace("__PAGES_JSON__", json.dumps(pages))
+        .replace("__PAGE_TEXT__", mda_text)
+    )
+
+    response = _call_claude(
+        client, user_prompt,
+        system_prompt=MDA_SYSTEM_PROMPT,
+        max_tokens=MAX_MDA_OUTPUT_TOKENS,
+    )
+    _raise_if_truncated(response, budget=MAX_MDA_OUTPUT_TOKENS, what="MD&A operational metrics")
+    raw = _response_text(response)
+
+    try:
+        payload = json.loads(_strip_json_fences(raw), strict=False)
+    except json.JSONDecodeError:
+        fix_prompt = (
+            f"{user_prompt}\n\nYour previous response was not valid JSON. "
+            "Return the same extraction again as valid JSON only, with no markdown fences or prose."
+        )
+        retry = _call_claude(
+            client, fix_prompt,
+            system_prompt=MDA_SYSTEM_PROMPT,
+            max_tokens=MAX_MDA_OUTPUT_TOKENS,
+        )
+        _raise_if_truncated(retry, budget=MAX_MDA_OUTPUT_TOKENS, what="MD&A operational metrics")
+        try:
+            payload = json.loads(_strip_json_fences(_response_text(retry)), strict=False)
+        except json.JSONDecodeError as exc:
+            raise SedarExtractionError(
+                f"MD&A-metrics response could not be parsed as JSON: {exc}", _response_text(retry)
+            ) from exc
+
+    mda_metrics = _normalize_mda_payload(payload if isinstance(payload, dict) else {})
+    mda_metrics["status"] = "extracted"
+    mda_metrics["source_pages"] = pages
+    mda_metrics["dropped_pages"] = dropped
+    mda_metrics["figure_presence"] = _mda_figure_presence(mda_metrics, mda_text)
+    return mda_metrics

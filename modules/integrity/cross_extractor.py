@@ -295,7 +295,7 @@ def _strip_json_response(raw: str) -> str:
 
 def _parse_gemini_json(raw: str) -> dict[str, Any]:
     cleaned = _strip_json_response(raw)
-    parsed = json.loads(cleaned)
+    parsed = json.loads(cleaned, strict=False)
     if not isinstance(parsed, dict) or not isinstance(parsed.get("fields"), list):
         raise ValueError("Gemini JSON must be an object with a fields list")
     return parsed

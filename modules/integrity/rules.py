@@ -242,6 +242,52 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # MD&A netback internal tie (MDA_FETCHER_SPEC Stage 3): every extracted
+    # netback table's components must sum to its printed total, per
+    # (unit, period) group. The tables print the identity (verified in
+    # print on TOU p32 and ARX Tables 13/13a, 2026-07-12), so a mismatch
+    # is an extraction row/column misalignment. Runs only when an MD&A
+    # extraction exists with qualifying groups (exactly one total row plus
+    # >= 2 numeric components); fragmentary groups skip honestly.
+    # ------------------------------------------------------------------
+    {
+        "id": "mda_netback_internal_tie",
+        "description": "Extracted MD&A netback components should sum to the printed netback total",
+        "severity": "warn",
+        "check_type": "mda_netback_internal_tie",
+        "params": {
+            "absolute_tolerance": 0.06,
+            "relative_tolerance": 0.002,
+        },
+        "sector_skip": (),
+        "requires_fields": ["mda_netback_groups"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
+    # MD&A FFO anchor tie (MDA_FETCHER_SPEC Stage 3): the funds-flow
+    # reconciliation's annual CFO anchor row must tie to the mapped
+    # canonical operating_cash_flow — the receipt chain from an
+    # issuer-defined non-GAAP measure back to the verified statement
+    # anchor (NI 52-112 forces the reconciliation into the MD&A).
+    # Annual-anchor-only and top-level-canonical-only by design (quarterly
+    # anchors and filing-unit mapped values would false-fire); either side
+    # absent skips honestly via field_unavailable.
+    # ------------------------------------------------------------------
+    {
+        "id": "mda_ffo_anchor_tie",
+        "description": "MD&A funds-flow CFO anchor should tie to canonical operating_cash_flow",
+        "severity": "warn",
+        "check_type": "mda_ffo_anchor_tie",
+        "params": {
+            "relative_tolerance": 0.02,
+        },
+        "sector_skip": (),
+        "requires_fields": ["mda_ffo_anchor_raw", "operating_cash_flow"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
     # Layer period agreement (CB-016): statement rows and mapping.mapped
     # pick period columns independently; on mixed-period Q4 packs a
     # divergence renders a flagged-wrong quarterly figure in an annual

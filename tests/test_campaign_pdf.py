@@ -116,3 +116,53 @@ def test_resolve_campaign_pdf_preserves_sanitized_ticker_filename(
     )
 
     assert result == expected
+
+
+# --- MD&A second document slot (MDA_FETCHER_SPEC Stage 0) ---
+
+
+def test_resolve_mda_pdf_returns_canonical_hit(tmp_path, monkeypatch):
+    _point_pdf_root(monkeypatch, tmp_path)
+    expected = tmp_path / "TOU_FY2025_MDA.pdf"
+    expected.write_bytes(b"%PDF-1.7\n")
+
+    result = campaign_pdf.resolve_mda_pdf(
+        {"mda_pdf_path": r"C:\Users\riley\.finlens\pdfs\TOU_FY2025_MDA.pdf"}
+    )
+
+    assert result == expected
+
+
+def test_resolve_mda_pdf_none_when_entry_has_no_mda_slot(tmp_path, monkeypatch):
+    """In-PDF-first sourcing: most entries carry no mda_pdf_path — the
+    combined statements pack IS the MD&A source. Honest None, never a
+    fallback to source_pdf_path (the two documents are distinct classes)."""
+    _point_pdf_root(monkeypatch, tmp_path)
+    (tmp_path / "TOU_FY2025.pdf").write_bytes(b"%PDF-1.7\n")
+
+    entry = {"source_pdf_path": r"C:\Users\riley\.finlens\pdfs\TOU_FY2025.pdf"}
+    assert campaign_pdf.resolve_mda_pdf(entry) is None
+    assert campaign_pdf.mda_pdf_candidate(entry) is None
+
+
+def test_resolve_mda_pdf_ignores_foreign_recorded_directory(tmp_path, monkeypatch):
+    _point_pdf_root(monkeypatch, tmp_path)
+    expected = tmp_path / "PEY_TO_FY2025_MDA.pdf"
+    expected.write_bytes(b"%PDF-1.7\n")
+
+    result = campaign_pdf.resolve_mda_pdf(
+        {"mda_pdf_path": "/home/other/downloads/PEY_TO_FY2025_MDA.pdf"}
+    )
+
+    assert result == expected
+    assert result.parent == tmp_path
+
+
+def test_resolve_mda_pdf_none_when_recorded_file_missing(tmp_path, monkeypatch):
+    _point_pdf_root(monkeypatch, tmp_path)
+
+    result = campaign_pdf.resolve_mda_pdf(
+        {"mda_pdf_path": r"C:\Users\riley\.finlens\pdfs\ABSENT_MDA.pdf"}
+    )
+
+    assert result is None
