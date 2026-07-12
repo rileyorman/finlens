@@ -6,7 +6,7 @@ from config import ANALYSIS_CACHE_DIR, safe_write_bytes, safe_write_text
 
 _CACHE_DIR = ANALYSIS_CACHE_DIR
 _OLD_CACHE_DIR = Path(__file__).parent.parent / "library" / "analysis"
-CURRENT_SCHEMA_VERSION = 7  # 7: CB-021..024 canonical fields (operating_cash_flow, capex, long_term_debt, short_term_debt, pretax_income, interest_expense, transportation_costs) added to the normalize scaling whitelist (2026-07-07); bump forces Re-Analyse on pre-CB caches. 6: all promoted SEDAR canonical fields unit-scaled at the boundary
+CURRENT_SCHEMA_VERSION = 8  # 8: CB-037 promotion — total_current_assets/total_current_liabilities added to the normalize scaling whitelist (2026-07-12; cash was already whitelisted from the explorer era). 7: CB-021..024 canonical fields (operating_cash_flow, capex, long_term_debt, short_term_debt, pretax_income, interest_expense, transportation_costs) added to the whitelist (2026-07-07). 6: all promoted SEDAR canonical fields unit-scaled at the boundary
 
 
 def _migrate_old_cache() -> None:

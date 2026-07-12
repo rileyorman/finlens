@@ -16,7 +16,8 @@
           "2025": 775328,
           "2024": 792072
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Income tax receivable",
@@ -24,7 +25,8 @@
           "2025": 26809,
           "2024": 39919
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Prepaid expenses and deposits",
@@ -32,7 +34,8 @@
           "2025": 130893,
           "2024": 83032
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Fair value of financial instruments",
@@ -40,7 +43,8 @@
           "2025": 181352,
           "2024": 437739
         },
-        "confidence": 0.95
+        "confidence": 0.95,
+        "structure": "data"
       },
       {
         "label": "Assets held for sale",
@@ -48,7 +52,8 @@
           "2025": 862864,
           "2024": 0
         },
-        "confidence": 0.95
+        "confidence": 0.95,
+        "structure": "data"
       },
       {
         "label": "Total current assets",
@@ -56,7 +61,8 @@
           "2025": 1977246,
           "2024": 1352762
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "subtotal"
       },
       {
         "label": "Long-term asset",
@@ -64,7 +70,8 @@
           "2025": 17532,
           "2024": 8527
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Fair value of financial instruments",
@@ -72,7 +79,8 @@
           "2025": 502106,
           "2024": 667359
         },
-        "confidence": 0.9
+        "confidence": 0.9,
+        "structure": "data"
       },
       {
         "label": "Exploration and evaluation assets",
@@ -80,7 +88,8 @@
           "2025": 135446,
           "2024": 191081
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Property, plant and equipment",
@@ -88,7 +97,8 @@
           "2025": 19620271,
           "2024": 19633286
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Right-of-use asset",
@@ -96,7 +106,8 @@
           "2025": 36540,
           "2024": 30056
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Investment in Topaz",
@@ -104,7 +115,8 @@
           "2025": 332466,
           "2024": 428472
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total Assets",
@@ -112,7 +124,8 @@
           "2025": 22621607,
           "2024": 22311543
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilities",
@@ -120,7 +133,8 @@
           "2025": 1362328,
           "2024": 1329626
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Fair value of financial instruments",
@@ -128,7 +142,8 @@
           "2025": 45676,
           "2024": 122374
         },
-        "confidence": 0.9
+        "confidence": 0.9,
+        "structure": "data"
       },
       {
         "label": "Liabilities held for sale",
@@ -136,7 +151,8 @@
           "2025": 105514,
           "2024": 0
         },
-        "confidence": 0.95
+        "confidence": 0.95,
+        "structure": "data"
       },
       {
         "label": "Lease liabilities",
@@ -144,7 +160,8 @@
           "2025": 8034,
           "2024": 8385
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Decommissioning obligations",
@@ -152,7 +169,8 @@
           "2025": 75000,
           "2024": 60000
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Current debt",
@@ -160,7 +178,8 @@
           "2025": 800000,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total current liabilities",
@@ -168,7 +187,8 @@
           "2025": 2396552,
           "2024": 1520385
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Fair value of financial instruments",
@@ -176,7 +196,8 @@
           "2025": 17088,
           "2024": 141538
         },
-        "confidence": 0.9
+        "confidence": 0.9,
+        "structure": "data"
       },
       {
         "label": "Lease liabilities",
@@ -184,7 +205,8 @@
           "2025": 30343,
           "2024": 23004
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Decommissioning obligations",
@@ -192,7 +214,8 @@
           "2025": 763538,
           "2024": 950459
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Long-term debt",
@@ -200,7 +223,8 @@
           "2025": 1052914,
           "2024": 1272775
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Deferred taxes",
@@ -208,7 +232,8 @@
           "2025": 2924894,
           "2024": 2859818
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Share capital",
@@ -216,7 +241,8 @@
           "2025": 10673117,
           "2024": 9856122
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Contributed surplus",
@@ -224,7 +250,8 @@
           "2025": 501768,
           "2024": 426902
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Retained earnings",
@@ -232,7 +259,8 @@
           "2025": 4261393,
           "2024": 5260540
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total shareholders' equity",
@@ -240,7 +268,8 @@
           "2025": 15436278,
           "2024": 15543564
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total Liabilities and Shareholders' Equity",
@@ -248,7 +277,8 @@
           "2025": 22621607,
           "2024": 22311543
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -258,7 +288,8 @@
           "2025": 4940024,
           "2024": 4729771
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Premium on risk management activities",
@@ -266,7 +297,8 @@
           "2025": 1230294,
           "2024": 828468
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Marketing revenue",
@@ -274,7 +306,8 @@
           "2025": 132679,
           "2024": 91804
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Royalties",
@@ -282,7 +315,8 @@
           "2025": -513879,
           "2024": -509252
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Other income",
@@ -290,7 +324,8 @@
           "2025": 31399,
           "2024": 42105
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Realized gain on financial instruments",
@@ -298,7 +333,8 @@
           "2025": 420981,
           "2024": 486534
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Unrealized (loss) on financial instruments",
@@ -306,7 +342,8 @@
           "2025": -221528,
           "2024": -298559
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total revenue",
@@ -314,7 +351,8 @@
           "2025": 6019970,
           "2024": 5370871
         },
-        "confidence": 0.9
+        "confidence": 0.9,
+        "structure": "subtotal"
       },
       {
         "label": "Operating",
@@ -322,7 +360,8 @@
           "2025": 1148182,
           "2024": 1006541
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Transportation",
@@ -330,7 +369,8 @@
           "2025": 1198061,
           "2024": 1082592
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Marketing purchases",
@@ -338,7 +378,8 @@
           "2025": 117826,
           "2024": 69129
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "General and administration",
@@ -346,7 +387,8 @@
           "2025": 182006,
           "2024": 164100
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Share-based payments",
@@ -354,7 +396,8 @@
           "2025": 69527,
           "2024": 63857
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Depletion, depreciation, amortization and impairment",
@@ -362,7 +405,8 @@
           "2025": 3000251,
           "2024": 1551963
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Realized foreign exchange (gain) loss",
@@ -370,7 +414,8 @@
           "2025": 34468,
           "2024": -37491
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Unrealized foreign exchange (gain) loss",
@@ -378,7 +423,8 @@
           "2025": 991,
           "2024": -15354
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Income from investment in Topaz",
@@ -386,7 +432,8 @@
           "2025": -75990,
           "2024": -14315
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "(Gain) on acquisitions and divestitures",
@@ -394,7 +441,8 @@
           "2025": -110643,
           "2024": -278865
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Total expenses",
@@ -402,7 +450,8 @@
           "2025": 5564679,
           "2024": 3592157
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "subtotal"
       },
       {
         "label": "Income from operations",
@@ -410,7 +459,8 @@
           "2025": 455291,
           "2024": 1778714
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Finance expenses",
@@ -418,7 +468,8 @@
           "2025": 111385,
           "2024": 120781
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Income before taxes",
@@ -426,7 +477,8 @@
           "2025": 343906,
           "2024": 1657933
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Current tax expense",
@@ -434,7 +486,8 @@
           "2025": 44492,
           "2024": 84165
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Deferred tax expense",
@@ -442,7 +495,8 @@
           "2025": 36742,
           "2024": 309659
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Net income and comprehensive income",
@@ -450,7 +504,8 @@
           "2025": 262672,
           "2024": 1264109
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income per share - Basic",
@@ -458,7 +513,8 @@
           "2025": 0.69,
           "2024": 3.54
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Net income per share - Diluted",
@@ -466,7 +522,8 @@
           "2025": 0.68,
           "2024": 3.51
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -476,7 +533,8 @@
           "2025": 262672,
           "2024": 1264109
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Depletion, depreciation, amortization and impairment",
@@ -484,7 +542,8 @@
           "2025": 3000251,
           "2024": 1551963
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Accretion",
@@ -492,7 +551,8 @@
           "2025": 35162,
           "2024": 29971
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Lease interest expense",
@@ -500,7 +560,8 @@
           "2025": 1941,
           "2024": 1766
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Share-based payments",
@@ -508,7 +569,8 @@
           "2025": 69527,
           "2024": 63857
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Current tax expense",
@@ -516,7 +578,8 @@
           "2025": 44492,
           "2024": 84165
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Deferred tax expense",
@@ -524,7 +587,8 @@
           "2025": 36742,
           "2024": 309659
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Unrealized loss on financial instruments",
@@ -532,7 +596,8 @@
           "2025": 221528,
           "2024": 298559
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Unrealized foreign exchange (gain) loss",
@@ -540,7 +605,8 @@
           "2025": 991,
           "2024": -15354
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Amortization on long-term asset",
@@ -548,7 +614,8 @@
           "2025": 2795,
           "2024": 2062
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "(Gain) on acquisitions and divestitures",
@@ -556,7 +623,8 @@
           "2025": -110643,
           "2024": -278865
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Income from investment in Topaz",
@@ -564,7 +632,8 @@
           "2025": -75990,
           "2024": -14315
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Decommissioning expenditures",
@@ -572,7 +641,8 @@
           "2025": -79445,
           "2024": -55476
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Cash taxes paid",
@@ -580,7 +650,8 @@
           "2025": -31382,
           "2024": -526768
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Cash paid on restricted share units settled",
@@ -588,7 +659,8 @@
           "2025": -22282,
           "2024": -13031
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Dividends received from Topaz",
@@ -596,7 +668,8 @@
           "2025": 41057,
           "2024": 54594
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Changes in non-cash operating working capital",
@@ -604,7 +677,8 @@
           "2025": -10397,
           "2024": -27116
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total cash flow from operating activities",
@@ -612,7 +686,8 @@
           "2025": 3387019,
           "2024": 2729780
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Issue of common shares",
@@ -620,7 +695,8 @@
           "2025": 38484,
           "2024": 41185
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Lease payments",
@@ -628,7 +704,8 @@
           "2025": -11778,
           "2024": -9192
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Dividends paid",
@@ -636,7 +713,8 @@
           "2025": -1261819,
           "2024": -1185912
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Increase in current debt",
@@ -644,7 +722,8 @@
           "2025": 800000,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Increase (decrease) in long-term debt",
@@ -652,7 +731,8 @@
           "2025": -218377,
           "2024": 62766
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total cash flow used in financing activities",
@@ -660,7 +740,8 @@
           "2025": -653490,
           "2024": -1091153
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Property, plant and equipment",
@@ -668,7 +749,8 @@
           "2025": -2988595,
           "2024": -2226070
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Property acquisitions",
@@ -676,7 +758,8 @@
           "2025": -19307,
           "2024": -33083
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Proceeds from divestitures",
@@ -684,7 +767,8 @@
           "2025": 75622,
           "2024": 357692
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Corporate acquisitions",
@@ -692,7 +776,8 @@
           "2025": 0,
           "2024": -169040
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sale of investments",
@@ -700,7 +785,8 @@
           "2025": 221226,
           "2024": 331465
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Investment in long-term asset",
@@ -708,7 +794,8 @@
           "2025": -11800,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Changes in non-cash investing working capital",
@@ -716,7 +803,8 @@
           "2025": -10675,
           "2024": 100409
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Total cash flow used in investing activities",
@@ -724,7 +812,8 @@
           "2025": -2733529,
           "2024": -1638627
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Changes in cash",
@@ -732,7 +821,8 @@
           "2025": 0,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "total"
       },
       {
         "label": "Cash, beginning of period",
@@ -740,7 +830,8 @@
           "2025": 0,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       },
       {
         "label": "Cash, end of period",
@@ -748,7 +839,8 @@
           "2025": 0,
           "2024": 0
         },
-        "confidence": 0.98
+        "confidence": 0.98,
+        "structure": "data"
       }
     ]
   },
@@ -838,6 +930,12 @@
         "match_type": "exact",
         "confidence": 0.98
       },
+      "total_current_assets": {
+        "value": 1977246,
+        "source_label": "Total current assets",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
       "total_assets": {
         "value": 22621607,
         "source_label": "Total Assets",
@@ -847,6 +945,12 @@
       "short_term_debt": {
         "value": 800000,
         "source_label": "Current debt",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_current_liabilities": {
+        "value": 2396552,
+        "source_label": "Total current liabilities",
         "match_type": "exact",
         "confidence": 0.98
       },
@@ -969,10 +1073,6 @@
         "value": 862864
       },
       {
-        "label": "Total current assets",
-        "value": 1977246
-      },
-      {
         "label": "Long-term asset",
         "value": 17532
       },
@@ -1015,10 +1115,6 @@
       {
         "label": "Decommissioning obligations",
         "value": 75000
-      },
-      {
-        "label": "Total current liabilities",
-        "value": 2396552
       },
       {
         "label": "Fair value of financial instruments",
@@ -1189,8 +1285,8 @@
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "resource_sector",
       "total": 92,
-      "mapped_count": 15,
-      "unmapped_count": 77,
+      "mapped_count": 17,
+      "unmapped_count": 75,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

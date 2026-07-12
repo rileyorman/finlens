@@ -15,7 +15,8 @@
           "December 31, 2024": 15208214,
           "December 31, 2023": 7949478
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Prepaids (Note 5)",
@@ -23,7 +24,8 @@
           "December 31, 2024": 320475,
           "December 31, 2023": 185160
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "GST receivable",
@@ -31,7 +33,8 @@
           "December 31, 2024": 258618,
           "December 31, 2023": 34195
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total current assets",
@@ -39,7 +42,8 @@
           "December 31, 2024": 15787307,
           "December 31, 2023": 8168833
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Exploration and evaluation assets (Note 6 and 9)",
@@ -47,7 +51,8 @@
           "December 31, 2024": 34086419,
           "December 31, 2023": 22497922
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reclamation bond (Note 6)",
@@ -55,7 +60,8 @@
           "December 31, 2024": 256845,
           "December 31, 2023": 62264
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "TOTAL ASSETS",
@@ -63,7 +69,8 @@
           "December 31, 2024": 50130571,
           "December 31, 2023": 30729019
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilites",
@@ -71,7 +78,8 @@
           "December 31, 2024": 177766,
           "December 31, 2023": 348346
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Due to related parties (Note 9)",
@@ -79,7 +87,8 @@
           "December 31, 2024": 1090527,
           "December 31, 2023": 883537
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Flow-through share premium liabilities (Note 8)",
@@ -87,7 +96,8 @@
           "December 31, 2024": 1274103,
           "December 31, 2023": 721175
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total current liabilities",
@@ -95,7 +105,8 @@
           "December 31, 2024": 2542396,
           "December 31, 2023": 1953058
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Deferred tax liabilites (Note 12)",
@@ -103,7 +114,8 @@
           "December 31, 2024": 3708000,
           "December 31, 2023": 2655000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total liabilities",
@@ -111,7 +123,8 @@
           "December 31, 2024": 6250396,
           "December 31, 2023": 4608058
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Share Capital (Note 7 and 9)",
@@ -119,7 +132,8 @@
           "December 31, 2024": 50553611,
           "December 31, 2023": 31495284
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reserve (Note 7)",
@@ -127,7 +141,8 @@
           "December 31, 2024": 4591566,
           "December 31, 2023": 2473244
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deficit",
@@ -135,7 +150,8 @@
           "December 31, 2024": -11265002,
           "December 31, 2023": -7847567
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total shareholders' equity",
@@ -143,7 +159,8 @@
           "December 31, 2024": 43880175,
           "December 31, 2023": 26120961
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "TOTAL SHAREHOLDERS' EQUITY AND LIABILITIES",
@@ -151,7 +168,8 @@
           "December 31, 2024": 50130571,
           "December 31, 2023": 30729019
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -161,7 +179,8 @@
           "Year ended December 31, 2024": 412966,
           "Year ended December 31, 2023": 372310
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Listing and filing fees",
@@ -169,7 +188,8 @@
           "Year ended December 31, 2024": 131069,
           "Year ended December 31, 2023": 15710
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investor relations (Note 9)",
@@ -177,7 +197,8 @@
           "Year ended December 31, 2024": 833301,
           "Year ended December 31, 2023": 531994
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Professional fees",
@@ -185,7 +206,8 @@
           "Year ended December 31, 2024": 180407,
           "Year ended December 31, 2023": 98947
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Share-based payments (Note 7 and 9)",
@@ -193,7 +215,8 @@
           "Year ended December 31, 2024": 2075083,
           "Year ended December 31, 2023": 128619
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Travel and accomodation",
@@ -201,7 +224,8 @@
           "Year ended December 31, 2024": 223352,
           "Year ended December 31, 2023": 158457
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "LOSS BEFORE OTHER ITEMS",
@@ -209,7 +233,8 @@
           "Year ended December 31, 2024": -3856178,
           "Year ended December 31, 2023": -1306037
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Foreign exchange gain (loss)",
@@ -217,7 +242,8 @@
           "Year ended December 31, 2024": 25863,
           "Year ended December 31, 2023": -11389
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest and other income",
@@ -225,7 +251,8 @@
           "Year ended December 31, 2024": 235475,
           "Year ended December 31, 2023": 126285
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reversal of flow-through premium liability (Note 8)",
@@ -233,7 +260,8 @@
           "Year ended December 31, 2024": 1314405,
           "Year ended December 31, 2023": 607987
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other items",
@@ -241,7 +269,8 @@
           "Year ended December 31, 2024": 1575743,
           "Year ended December 31, 2023": 722883
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "NET LOSS BEFORE INCOME TAX",
@@ -249,7 +278,8 @@
           "Year ended December 31, 2024": -2280435,
           "Year ended December 31, 2023": -583154
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax expense",
@@ -257,7 +287,8 @@
           "Year ended December 31, 2024": -1137000,
           "Year ended December 31, 2023": -948176
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "NET LOSS AND COMPREHENSIVE LOSS",
@@ -265,7 +296,8 @@
           "Year ended December 31, 2024": -3417435,
           "Year ended December 31, 2023": -1531330
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Basic and diluted loss per share",
@@ -273,7 +305,8 @@
           "Year ended December 31, 2024": -0.01,
           "Year ended December 31, 2023": -0.01
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Weighted average number of shares (basic and diluted)",
@@ -281,7 +314,8 @@
           "Year ended December 31, 2024": 280724343,
           "Year ended December 31, 2023": 200644576
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -291,7 +325,8 @@
           "Year ended December 31, 2024": -3417435,
           "Year ended December 31, 2023": -1531330
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax expense",
@@ -299,7 +334,8 @@
           "Year ended December 31, 2024": 1137000,
           "Year ended December 31, 2023": 948176
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Share-based payments",
@@ -307,7 +343,8 @@
           "Year ended December 31, 2024": 2075083,
           "Year ended December 31, 2023": 128619
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reversal of flow-through premium liability",
@@ -315,7 +352,8 @@
           "Year ended December 31, 2024": -1314405,
           "Year ended December 31, 2023": -607987
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Advisory shares",
@@ -323,7 +361,8 @@
           "Year ended December 31, 2024": 0,
           "Year ended December 31, 2023": 14994
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Prepaids",
@@ -331,7 +370,8 @@
           "Year ended December 31, 2024": -135315,
           "Year ended December 31, 2023": -46440
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "GST receivable",
@@ -339,7 +379,8 @@
           "Year ended December 31, 2024": -224423,
           "Year ended December 31, 2023": 17736
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilites",
@@ -347,7 +388,8 @@
           "Year ended December 31, 2024": -474058,
           "Year ended December 31, 2023": -110105
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Due to related parties",
@@ -355,7 +397,8 @@
           "Year ended December 31, 2024": 206990,
           "Year ended December 31, 2023": 92327
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash flows from operating activities",
@@ -363,7 +406,8 @@
           "Year ended December 31, 2024": -2146563,
           "Year ended December 31, 2023": -1094010
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Exploration and evaluation assets",
@@ -371,7 +415,8 @@
           "Year ended December 31, 2024": -6927597,
           "Year ended December 31, 2023": -5067749
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Reclamation bond",
@@ -379,7 +424,8 @@
           "Year ended December 31, 2024": -194581,
           "Year ended December 31, 2023": -1698
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash flows from investing activities",
@@ -387,7 +433,8 @@
           "Year ended December 31, 2024": -7122178,
           "Year ended December 31, 2023": -5069447
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Cash received from issuance of shares, net",
@@ -395,7 +442,8 @@
           "Year ended December 31, 2024": 16527477,
           "Year ended December 31, 2023": 9591876
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash flows from financing activities",
@@ -403,7 +451,8 @@
           "Year ended December 31, 2024": 16527477,
           "Year ended December 31, 2023": 9591876
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Increase in cash and cash equivalents",
@@ -411,7 +460,8 @@
           "Year ended December 31, 2024": 7258736,
           "Year ended December 31, 2023": 3428419
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, beginning",
@@ -419,7 +469,8 @@
           "Year ended December 31, 2024": 7949478,
           "Year ended December 31, 2023": 4521059
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, ending",
@@ -427,7 +478,8 @@
           "Year ended December 31, 2024": 15208214,
           "Year ended December 31, 2023": 7949478
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash",
@@ -435,7 +487,8 @@
           "Year ended December 31, 2024": 1883531,
           "Year ended December 31, 2023": 1393359
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Guaranteed investment certificates",
@@ -443,7 +496,8 @@
           "Year ended December 31, 2024": 13324683,
           "Year ended December 31, 2023": 6556119
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Shares issued for exploration and evalution assets",
@@ -451,7 +505,8 @@
           "Year ended December 31, 2024": 4357422,
           "Year ended December 31, 2023": 533450
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Exploration and evaluation expenditures In accounts payable and accrued liabilities",
@@ -459,7 +514,8 @@
           "Year ended December 31, 2024": 1144930,
           "Year ended December 31, 2023": 841452
         },
-        "confidence": 0.95
+        "confidence": 0.95,
+        "structure": "data"
       },
       {
         "label": "Fair Value of brokers' warrants issued",
@@ -467,7 +523,8 @@
           "Year ended December 31, 2024": 43239,
           "Year ended December 31, 2023": 61097
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ]
   },
@@ -512,11 +569,23 @@
         "match_type": "exact",
         "confidence": 0.99
       },
+      "total_current_assets": {
+        "value": 15787307,
+        "source_label": "Total current assets",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
       "total_assets": {
         "value": 50130571,
         "source_label": "TOTAL ASSETS",
         "match_type": "exact",
         "confidence": 0.99
+      },
+      "total_current_liabilities": {
+        "value": 2542396,
+        "source_label": "Total current liabilities",
+        "match_type": "exact",
+        "confidence": 0.97
       },
       "total_liabilities": {
         "value": 6250396,
@@ -609,10 +678,6 @@
         "value": 258618
       },
       {
-        "label": "Total current assets",
-        "value": 15787307
-      },
-      {
         "label": "Exploration and evaluation assets (Note 6 and 9)",
         "value": 34086419
       },
@@ -631,10 +696,6 @@
       {
         "label": "Flow-through share premium liabilities (Note 8)",
         "value": 1274103
-      },
-      {
-        "label": "Total current liabilities",
-        "value": 2542396
       },
       {
         "label": "Deferred tax liabilites (Note 12)",
@@ -745,8 +806,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": "mining_exploration_sector",
       "total": 57,
-      "mapped_count": 8,
-      "unmapped_count": 49,
+      "mapped_count": 10,
+      "unmapped_count": 47,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-12T17:06:27Z",
+  "generated_at": "2026-07-12T19:23:51Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -15,8 +15,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 6,
-      "resolved_field_count": 6,
+      "stored_field_count": 7,
+      "resolved_field_count": 7,
       "filing_date": null,
       "commit": "f93868b",
       "notes": "filing_date null reflects known cover-date gap. PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed)."
@@ -34,8 +34,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 10,
-      "resolved_field_count": 10,
+      "stored_field_count": 13,
+      "resolved_field_count": 13,
       "filing_date": "2026-02-04",
       "commit": "49f14d0",
       "notes": "PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed)."
@@ -72,8 +72,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 9,
-      "resolved_field_count": 9,
+      "stored_field_count": 10,
+      "resolved_field_count": 10,
       "filing_date": "2026-02-17",
       "commit": "d8dd41c",
       "notes": "filing_date resolved by cover-page extraction input; PDF consolidated to canonical pdfs root 2026-06-17 (legacy .pdf.pdf double extension removed); byte-identical duplicate removed during the same consolidation; only library-registered filer."
@@ -91,8 +91,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 7,
-      "resolved_field_count": 7,
+      "stored_field_count": 10,
+      "resolved_field_count": 10,
       "filing_date": "2026-02-11",
       "commit": "b6e79c5",
       "notes": ""
@@ -110,8 +110,8 @@
         "issuer_url": null,
         "retrieval_method": "legacy SEDAR campaign fixture; source_provenance was not captured"
       },
-      "stored_field_count": 8,
-      "resolved_field_count": 8,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2025-06-25",
       "commit": "e941cb7",
       "notes": "Stored fixture mapping is aligned after the IFRS-standard normalizer refresh: stored_field_count equals resolved_field_count, including 5 mapped fields plus derived gross_profit, and the registry row is campaign_validated."
@@ -129,8 +129,8 @@
         "issuer_url": "https://www.cnrl.com/content/uploads/2025/03/12.31.2024-Q4-FS.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 16,
-      "resolved_field_count": 16,
+      "stored_field_count": 19,
+      "resolved_field_count": 19,
       "filing_date": "2025-03-05",
       "commit": "be3c4c0",
       "notes": "Fixture filename is lowercase (predates casing convention). The CID-unreadable annual-report wrapper was moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical CNQ_FY2024.pdf is now the Q4 financial statements used for extraction."
@@ -148,8 +148,8 @@
         "issuer_url": "https://www.capreit.ca/wp-content/uploads/2025/02/CAPREIT-Q4-2024-Annual-Report-web-optimized.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 8,
-      "resolved_field_count": 8,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2025-02-13",
       "commit": "e012859",
       "notes": ""
@@ -167,8 +167,8 @@
         "issuer_url": "https://investors.dream.ca/wp-content/uploads/2025/02/2024-DIR-Annual-Report-FINAL.pdf",
         "retrieval_method": "issuer-hosted direct download; retrieval_method was not captured in fixture"
       },
-      "stored_field_count": 11,
-      "resolved_field_count": 11,
+      "stored_field_count": 14,
+      "resolved_field_count": 14,
       "filing_date": "2025-02-18",
       "commit": "24cf477",
       "notes": ""
@@ -186,8 +186,8 @@
         "issuer_url": "https://www.agnicoeagle.com/English/investor-relations/financial-reports/default.aspx",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
       },
-      "stored_field_count": 11,
-      "resolved_field_count": 11,
+      "stored_field_count": 14,
+      "resolved_field_count": 14,
       "filing_date": "2026-02-12",
       "commit": "60cfff3",
       "notes": "Tier-3 manual issuer download; superseded FY2024 mirror moved to pdfs/_superseded/ during 2026-06-17 consolidation; canonical is AEM_FY2025.pdf."
@@ -205,8 +205,8 @@
         "issuer_url": "https://www.teck.com/investors/financial-reports/",
         "retrieval_method": "manual browser download from issuer IR page by Riley, 2026-06-13"
       },
-      "stored_field_count": 7,
-      "resolved_field_count": 7,
+      "stored_field_count": 8,
+      "resolved_field_count": 8,
       "filing_date": "2026-02-18",
       "commit": null,
       "notes": "Tier-1 manual issuer download; polymetallic mining evidence. Existing mining_sector resolves, but Teck currently maps only gross_profit pending profile-extension review."
@@ -224,8 +224,8 @@
         "issuer_url": "https://www.intactfc.com/presentations/Q4_2025_Financial-Statements.pdf",
         "retrieval_method": "manual browser download from issuer IR"
       },
-      "stored_field_count": 10,
-      "resolved_field_count": 10,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2026-02-10",
       "commit": null,
       "notes": "Manual issuer download; first P&C insurance filer (IFRS 17 evidence base). Resolves through insurance_sector after the second-insurer confirmation pass, preserving default net_income while adding the IFRS 17 core insurance fields."
@@ -262,8 +262,8 @@
         "issuer_url": "https://newfoundgold.ca/investors/ (manual download, FY2024 standalone financial statements)",
         "retrieval_method": "manual issuer-IR download supplied by Riley; local-only fixture build, 2026-06-17"
       },
-      "stored_field_count": 9,
-      "resolved_field_count": 9,
+      "stored_field_count": 11,
+      "resolved_field_count": 11,
       "filing_date": "2025-03-20",
       "commit": null,
       "notes": "Manual issuer-IR download; first pre-revenue mining exploration filer. Resolves through mining_exploration_sector, preserving the expensed-vs-capitalized E&E split: expensed exploration maps, capitalized E&E assets remain unmapped context."
@@ -281,8 +281,8 @@
         "issuer_url": "https://wp-sitkagold-2024.s3.ca-central-1.amazonaws.com/media/2025/04/2024-12-31-sig-fs.pdf",
         "retrieval_method": "Sterling ingest worker v1 (httpx.get, 2026-07-06T03:19Z, pilot slot 5); CC independent re-fetch 2026-07-06 \u2014 sha256 byte-identical"
       },
-      "stored_field_count": 8,
-      "resolved_field_count": 8,
+      "stored_field_count": 10,
+      "resolved_field_count": 10,
       "filing_date": "2025-04-22",
       "commit": null,
       "notes": "Explorer-shape n=2 (the boring TSXV junior); promoted 2026-07-06 from the Sterling pilot bundle (two-read agreement 51/51 rows; provenance sha256 independently re-verified by CC on promotion). Capitalizes E&E where NFG expenses it \u2014 first live carrier of CB-009 capitalized_exploration_additions and CB-010 cash collision resolution (prefer_specific_alias). HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-06, transcription protocol) \u2014 all 6 mapped fields + 8 unmapped majors tie to source, both identities close, CB-009/CB-010 verified against the filing."
@@ -300,8 +300,8 @@
         "issuer_url": "https://tourmaline.cdn.prismic.io/tourmaline/aaidt1xvIZEnjVXx_FinalQ42025MDAFinancialStatements.pdf",
         "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T22:57Z); review-gate re-fetches \u2014 sha256 byte-identical across 5 independent fetches by promotion (2026-07-09)"
       },
-      "stored_field_count": 15,
-      "resolved_field_count": 15,
+      "stored_field_count": 17,
+      "resolved_field_count": 17,
       "filing_date": "2026-03-04",
       "commit": null,
       "notes": "First agent-fetched corpus fixture (with ARX #17): Sterling located the issuer URL over the gateway channel, the ingest worker re-fetched independently, sha256 byte-identical across 5 fetches by promotion. CB-025 evidence base (rollup-printing gas producer: canonical revenue = 'Commodity sales from production' 4,940,024; the printed net-of-royalties 'Total revenue' 6,019,970 is suppressed via suppressed_default_aliases and preserved in unmapped[]) and CB-026 carrier (combined DD&A+impairment maps with includes_impairment semantics). Cross-extractor FLAGGED (soft) with 11/11 value agreement \u2014 the single net_income label-scope flag dispositioned deliberate_mapping_decision (moat record 222). HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-10, transcription protocol \u2014 full three-statement row inventory transcribed, 92/92 rows tie to source incl. all 11 mapped fields; net_income's clean-row provenance confirmed as the cash-flow opening line; the filer prints NO standalone total-liabilities subtotal, honest absence confirmed). Benign observation: the 6,019,970 revenue subtotal is printed UNLABELED; the stored 'Total revenue' label is extraction-assigned (value ties both years)."
@@ -319,8 +319,8 @@
         "issuer_url": "https://www.arcresources.com/wp-content/uploads/2026/03/2025-ARC-Annual-Report_web.pdf",
         "retrieval_method": "Agent-fetched: Sterling located the issuer-hosted URL over the gateway channel (2026-07-09); X1 ingest worker v1 re-fetched independently (httpx.get, 2026-07-09T23:05Z); review-gate re-fetches \u2014 sha256 byte-identical across 3 independent fetches by promotion (2026-07-09)"
       },
-      "stored_field_count": 16,
-      "resolved_field_count": 16,
+      "stored_field_count": 19,
+      "resolved_field_count": 19,
       "filing_date": "2026-02-05",
       "commit": null,
       "notes": "First agent-fetched, zero-human-upload filer to reach VERIFIED (Gemini 12/12 AGREE first run, 2026-07-09). Second CB-025 carrier (canonical revenue = 'Commodity sales from production' 5,421.7; printed net 'Total revenue' 6,075.7 suppressed, preserved in unmapped[]). Typographic-apostrophe fold evidence base: 'Total shareholders' equity' 8,264.0 maps only after the U+2019 fold (CB-025 mechanism 5), which arms the balance-sheet identity \u2014 ties exactly (7,046.3 + 8,264.0 = 15,310.3). HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision; the PDF blocks text copy): CC VISUAL READ instead \u2014 statement pages rendered to pixels (pypdfium2, independent of the extraction's text layer) and all 12 mapped fields + full statement pages verified, incl. the printed net-of-royalties 'Total revenue' 6,075.7 (ties: 5,421.7 \u2212 536.8 + 1,190.8) staying unmapped and the curly-apostrophe equity label in print. Benign observations: unlabeled current-asset/liability subtotals stored under standard names; tax rows stored contextualized ('Current' \u2192 'Current income taxes'). CB-029 (2026-07-10) promoted the deferred alias candidates surfaced at promotion: 'Exploration and evaluation asset expenditures' \u221253.6 \u2192 capitalized_exploration_additions (cash_flow-scoped; FCF capex is now PP&E + E&E per CB-021) and 'Interest and financing' 151.3 \u2192 interest_expense (income_statement-scoped; arms EBIT/EBITDA/interest-cover per CB-023). Stored mapping regenerated 12 \u2192 14 fields."

@@ -14,7 +14,8 @@
           "December 31, 2025": 3089,
           "December 31, 2024": 1980
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts receivable (note 21)",
@@ -22,7 +23,8 @@
           "December 31, 2025": 1470,
           "December 31, 2024": 1291
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Unbilled revenue (note 22)",
@@ -30,7 +32,8 @@
           "December 31, 2025": 450,
           "December 31, 2024": 369
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Inventories (note 5)",
@@ -38,7 +41,8 @@
           "December 31, 2025": 68,
           "December 31, 2024": 56
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other assets (note 7)",
@@ -46,7 +50,8 @@
           "December 31, 2025": 727,
           "December 31, 2024": 596
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Current assets total",
@@ -54,7 +59,8 @@
           "December 31, 2025": 5803,
           "December 31, 2024": 4291
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Property and equipment (note 8)",
@@ -62,7 +68,8 @@
           "December 31, 2025": 241,
           "December 31, 2024": 222
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Right of use assets (note 9)",
@@ -70,7 +77,8 @@
           "December 31, 2025": 384,
           "December 31, 2024": 329
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income taxes (note 16)",
@@ -78,7 +86,8 @@
           "December 31, 2025": 355,
           "December 31, 2024": 222
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Investments accounted for using the equity method (note 6)",
@@ -86,7 +95,8 @@
           "December 31, 2025": 655,
           "December 31, 2024": 13
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other assets (note 7)",
@@ -94,7 +104,8 @@
           "December 31, 2025": 345,
           "December 31, 2024": 316
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Intangible assets (note 10)",
@@ -102,7 +113,8 @@
           "December 31, 2025": 8388,
           "December 31, 2024": 7455
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Non-current assets total",
@@ -110,7 +122,8 @@
           "December 31, 2025": 10368,
           "December 31, 2024": 8557
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Total assets",
@@ -118,7 +131,8 @@
           "December 31, 2025": 16171,
           "December 31, 2024": 12848
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Debt with recourse to Constellation Software Inc. (note 11)",
@@ -126,7 +140,8 @@
           "December 31, 2025": 0,
           "December 31, 2024": 0
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "data"
       },
       {
         "label": "Liability of CSI under the IRGA (note 11)",
@@ -134,7 +149,8 @@
           "December 31, 2025": 775,
           "December 31, 2024": 303
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt without recourse to Constellation Software Inc. (note 12)",
@@ -142,7 +158,8 @@
           "December 31, 2025": 591,
           "December 31, 2024": 319
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accounts payable and accrued liabilities",
@@ -150,7 +167,8 @@
           "December 31, 2025": 1941,
           "December 31, 2024": 1591
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Dividends payable (note 17)",
@@ -158,7 +176,8 @@
           "December 31, 2025": 21,
           "December 31, 2024": 21
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred revenue (note 22)",
@@ -166,7 +185,8 @@
           "December 31, 2025": 2214,
           "December 31, 2024": 1966
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Provisions (note 13)",
@@ -174,7 +194,8 @@
           "December 31, 2025": 17,
           "December 31, 2024": 22
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Acquisition holdback payables",
@@ -182,7 +203,8 @@
           "December 31, 2025": 224,
           "December 31, 2024": 215
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lease obligations (note 14)",
@@ -190,7 +212,8 @@
           "December 31, 2025": 141,
           "December 31, 2024": 115
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes payable",
@@ -198,7 +221,8 @@
           "December 31, 2025": 150,
           "December 31, 2024": 110
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Current liabilities total",
@@ -206,7 +230,8 @@
           "December 31, 2025": 6074,
           "December 31, 2024": 4661
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Debt with recourse to Constellation Software Inc. (note 11)",
@@ -214,7 +239,8 @@
           "December 31, 2025": 1489,
           "December 31, 2024": 1466
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Liability of CSI under the IRGA (note 11)",
@@ -222,7 +248,8 @@
           "December 31, 2025": 458,
           "December 31, 2024": 389
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt without recourse to Constellation Software Inc. (note 12)",
@@ -230,7 +257,8 @@
           "December 31, 2025": 2051,
           "December 31, 2024": 1689
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income taxes (note 16)",
@@ -238,7 +266,8 @@
           "December 31, 2025": 890,
           "December 31, 2024": 671
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Acquisition holdback payables",
@@ -246,7 +275,8 @@
           "December 31, 2025": 208,
           "December 31, 2024": 133
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Lease obligations (note 14)",
@@ -254,7 +284,8 @@
           "December 31, 2025": 282,
           "December 31, 2024": 252
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other liabilities (note 7)",
@@ -262,7 +293,8 @@
           "December 31, 2025": 451,
           "December 31, 2024": 298
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Non-current liabilities total",
@@ -270,7 +302,8 @@
           "December 31, 2025": 5830,
           "December 31, 2024": 4899
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Total liabilities",
@@ -278,7 +311,8 @@
           "December 31, 2025": 11904,
           "December 31, 2024": 9560
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "total"
       },
       {
         "label": "Capital stock",
@@ -286,7 +320,8 @@
           "December 31, 2025": 99,
           "December 31, 2024": 99
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Accumulated other comprehensive income (loss)",
@@ -294,7 +329,8 @@
           "December 31, 2025": 130,
           "December 31, 2024": -224
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Retained earnings",
@@ -302,7 +338,8 @@
           "December 31, 2025": 3347,
           "December 31, 2024": 2919
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Non-controlling interests (note 28)",
@@ -310,7 +347,8 @@
           "December 31, 2025": 692,
           "December 31, 2024": 493
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Shareholders' equity total",
@@ -318,7 +356,8 @@
           "December 31, 2025": 4267,
           "December 31, 2024": 3288
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Total liabilities and shareholders' equity",
@@ -326,7 +365,8 @@
           "December 31, 2025": 16171,
           "December 31, 2024": 12848
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "income_statement": [
@@ -336,7 +376,8 @@
           "Year ended December 31, 2025": 415,
           "Year ended December 31, 2024": 393
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Professional services",
@@ -344,7 +385,8 @@
           "Year ended December 31, 2025": 2126,
           "Year ended December 31, 2024": 1975
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Hardware and other",
@@ -352,7 +394,8 @@
           "Year ended December 31, 2025": 382,
           "Year ended December 31, 2024": 302
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Maintenance and other recurring",
@@ -360,7 +403,8 @@
           "Year ended December 31, 2025": 8700,
           "Year ended December 31, 2024": 7396
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Revenue total",
@@ -368,7 +412,8 @@
           "Year ended December 31, 2025": 11623,
           "Year ended December 31, 2024": 10066
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Staff",
@@ -376,7 +421,8 @@
           "Year ended December 31, 2025": 5924,
           "Year ended December 31, 2024": 5322
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Hardware",
@@ -384,7 +430,8 @@
           "Year ended December 31, 2025": 217,
           "Year ended December 31, 2024": 169
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Third party license, maintenance and professional services",
@@ -392,7 +439,8 @@
           "Year ended December 31, 2025": 1114,
           "Year ended December 31, 2024": 960
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Occupancy",
@@ -400,7 +448,8 @@
           "Year ended December 31, 2025": 71,
           "Year ended December 31, 2024": 64
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Travel, telecommunications, supplies, software and equipment",
@@ -408,7 +457,8 @@
           "Year ended December 31, 2025": 587,
           "Year ended December 31, 2024": 502
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Professional fees",
@@ -416,7 +466,8 @@
           "Year ended December 31, 2025": 219,
           "Year ended December 31, 2024": 178
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other, net",
@@ -424,7 +475,8 @@
           "Year ended December 31, 2025": 215,
           "Year ended December 31, 2024": 182
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Depreciation",
@@ -432,7 +484,8 @@
           "Year ended December 31, 2025": 201,
           "Year ended December 31, 2024": 182
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of intangible assets (note 10)",
@@ -440,7 +493,8 @@
           "Year ended December 31, 2025": 1182,
           "Year ended December 31, 2024": 1044
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Expenses total",
@@ -448,7 +502,8 @@
           "Year ended December 31, 2025": 9728,
           "Year ended December 31, 2024": 8602
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Foreign exchange loss (gain)",
@@ -456,7 +511,8 @@
           "Year ended December 31, 2025": 154,
           "Year ended December 31, 2024": -26
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "IRGA/TSS Membership liability revaluation charge",
@@ -464,7 +520,8 @@
           "Year ended December 31, 2025": 440,
           "Year ended December 31, 2024": 183
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Finance and other expense (income) (note 18)",
@@ -472,7 +529,8 @@
           "Year ended December 31, 2025": -228,
           "Year ended December 31, 2024": -60
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Bargain purchase gain (note 4)",
@@ -480,7 +538,8 @@
           "Year ended December 31, 2025": -10,
           "Year ended December 31, 2024": -10
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Impairment of intangible and other non-financial assets (note 10)",
@@ -488,7 +547,8 @@
           "Year ended December 31, 2025": 43,
           "Year ended December 31, 2024": 28
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Redeemable preferred securities expense (income)",
@@ -496,7 +556,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": 58
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Revaluation of investment accounted for using the equity method to cost (note 6)",
@@ -504,7 +565,8 @@
           "Year ended December 31, 2025": 260,
           "Year ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Finance costs (note 18)",
@@ -512,7 +574,8 @@
           "Year ended December 31, 2025": 297,
           "Year ended December 31, 2024": 280
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other items total",
@@ -520,7 +583,8 @@
           "Year ended December 31, 2025": 955,
           "Year ended December 31, 2024": 452
         },
-        "confidence": 0.97
+        "confidence": 0.97,
+        "structure": "subtotal"
       },
       {
         "label": "Income (loss) before income taxes",
@@ -528,7 +592,8 @@
           "Year ended December 31, 2025": 939,
           "Year ended December 31, 2024": 1011
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Current income tax expense (recovery) (note 15)",
@@ -536,7 +601,8 @@
           "Year ended December 31, 2025": 606,
           "Year ended December 31, 2024": 525
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Deferred income tax expense (recovery) (note 15 and 16)",
@@ -544,7 +610,8 @@
           "Year ended December 31, 2025": -252,
           "Year ended December 31, 2024": -281
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax expense (recovery)",
@@ -552,7 +619,8 @@
           "Year ended December 31, 2025": 353,
           "Year ended December 31, 2024": 244
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income (loss)",
@@ -560,7 +628,8 @@
           "Year ended December 31, 2025": 586,
           "Year ended December 31, 2024": 767
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income (loss) attributable to: Common shareholders of Constellation Software Inc.",
@@ -568,7 +637,8 @@
           "Year ended December 31, 2025": 512,
           "Year ended December 31, 2024": 731
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income (loss) attributable to: Non-controlling interests (note 28)",
@@ -576,7 +646,8 @@
           "Year ended December 31, 2025": 74,
           "Year ended December 31, 2024": 37
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Basic and diluted (note 19)",
@@ -584,7 +655,8 @@
           "Year ended December 31, 2025": 24.15,
           "Year ended December 31, 2024": 34.48
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net income (loss)",
@@ -592,7 +664,8 @@
           "Year ended December 31, 2025": 586,
           "Year ended December 31, 2024": 767
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Foreign currency translation differences from foreign operations and other, net of tax",
@@ -600,7 +673,8 @@
           "Year ended December 31, 2025": 271,
           "Year ended December 31, 2024": -135
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Changes in the fair value of equity investments at FVOCI (note 6)",
@@ -608,7 +682,8 @@
           "Year ended December 31, 2025": 209,
           "Year ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other comprehensive income (loss), net of income tax",
@@ -616,7 +691,8 @@
           "Year ended December 31, 2025": 481,
           "Year ended December 31, 2024": -135
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss)",
@@ -624,7 +700,8 @@
           "Year ended December 31, 2025": 1067,
           "Year ended December 31, 2024": 633
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other comprehensive income (loss) attributable to: Common shareholders of Constellation Software Inc.",
@@ -632,7 +709,8 @@
           "Year ended December 31, 2025": 353,
           "Year ended December 31, 2024": -119
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other comprehensive income (loss) attributable to: Non-controlling interests",
@@ -640,7 +718,8 @@
           "Year ended December 31, 2025": 127,
           "Year ended December 31, 2024": -16
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total other comprehensive income (loss)",
@@ -648,7 +727,8 @@
           "Year ended December 31, 2025": 481,
           "Year ended December 31, 2024": -135
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss) attributable to: Common shareholders of Constellation Software Inc.",
@@ -656,7 +736,8 @@
           "Year ended December 31, 2025": 865,
           "Year ended December 31, 2024": 612
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss) attributable to: Non-controlling interests (note 28)",
@@ -664,7 +745,8 @@
           "Year ended December 31, 2025": 202,
           "Year ended December 31, 2024": 21
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Total comprehensive income (loss)",
@@ -672,7 +754,8 @@
           "Year ended December 31, 2025": 1067,
           "Year ended December 31, 2024": 633
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ],
     "cash_flow": [
@@ -682,7 +765,8 @@
           "Year ended December 31, 2025": 586,
           "Year ended December 31, 2024": 767
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Depreciation",
@@ -690,7 +774,8 @@
           "Year ended December 31, 2025": 201,
           "Year ended December 31, 2024": 182
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Amortization of intangible assets (note 10)",
@@ -698,7 +783,8 @@
           "Year ended December 31, 2025": 1182,
           "Year ended December 31, 2024": 1044
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "IRGA/TSS Membership liability revaluation charge (note 11)",
@@ -706,7 +792,8 @@
           "Year ended December 31, 2025": 440,
           "Year ended December 31, 2024": 183
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Finance and other expense (income) (note 18)",
@@ -714,7 +801,8 @@
           "Year ended December 31, 2025": -228,
           "Year ended December 31, 2024": -60
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Bargain purchase (gain) (note 4)",
@@ -722,7 +810,8 @@
           "Year ended December 31, 2025": -10,
           "Year ended December 31, 2024": -10
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Impairment of intangible and other non-financial assets (note 10)",
@@ -730,7 +819,8 @@
           "Year ended December 31, 2025": 43,
           "Year ended December 31, 2024": 28
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Redeemable preferred securities expense (income)",
@@ -738,7 +828,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": 58
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Revaluation of investment accounted for using the equity method to cost (note 6)",
@@ -746,7 +837,8 @@
           "Year ended December 31, 2025": 260,
           "Year ended December 31, 2024": 0
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Finance costs (note 18)",
@@ -754,7 +846,8 @@
           "Year ended December 31, 2025": 297,
           "Year ended December 31, 2024": 280
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income tax expense (recovery)",
@@ -762,7 +855,8 @@
           "Year ended December 31, 2025": 353,
           "Year ended December 31, 2024": 244
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Foreign exchange loss (gain)",
@@ -770,7 +864,8 @@
           "Year ended December 31, 2025": 154,
           "Year ended December 31, 2024": -26
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Depreciation of third party costs",
@@ -778,7 +873,8 @@
           "Year ended December 31, 2025": 17,
           "Year ended December 31, 2024": 12
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Change in non-cash operating assets and liabilities exclusive of effects of business combinations (note 26)",
@@ -786,7 +882,8 @@
           "Year ended December 31, 2025": -6,
           "Year ended December 31, 2024": -45
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Income taxes paid",
@@ -794,7 +891,8 @@
           "Year ended December 31, 2025": -556,
           "Year ended December 31, 2024": -460
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows from (used in) operating activities",
@@ -802,7 +900,8 @@
           "Year ended December 31, 2025": 2732,
           "Year ended December 31, 2024": 2196
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "subtotal"
       },
       {
         "label": "Interest paid on lease obligations",
@@ -810,7 +909,8 @@
           "Year ended December 31, 2025": -16,
           "Year ended December 31, 2024": -14
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest paid on debt",
@@ -818,7 +918,8 @@
           "Year ended December 31, 2025": -196,
           "Year ended December 31, 2024": -178
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Increase (decrease) in CSI facility",
@@ -826,7 +927,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": -578
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Increase (decrease) in Topicus revolving credit debt facility without recourse to CSI",
@@ -834,7 +936,8 @@
           "Year ended December 31, 2025": 130,
           "Year ended December 31, 2024": 73
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of Senior Notes",
@@ -842,7 +945,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": 1000
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from issuance of debt facilities without recourse to CSI",
@@ -850,7 +954,8 @@
           "Year ended December 31, 2025": 686,
           "Year ended December 31, 2024": 381
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Repayments of debt facilities without recourse to CSI",
@@ -858,7 +963,8 @@
           "Year ended December 31, 2025": -246,
           "Year ended December 31, 2024": -149
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Other financing activities",
@@ -866,7 +972,8 @@
           "Year ended December 31, 2025": 28,
           "Year ended December 31, 2024": -25
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Dividends paid to non-controlling interests",
@@ -874,7 +981,8 @@
           "Year ended December 31, 2025": -3,
           "Year ended December 31, 2024": -89
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Debt transaction costs",
@@ -882,7 +990,8 @@
           "Year ended December 31, 2025": -13,
           "Year ended December 31, 2024": -16
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Payments of lease obligations, net of sublease receipts",
@@ -890,7 +999,8 @@
           "Year ended December 31, 2025": -131,
           "Year ended December 31, 2024": -118
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Distribution to the Joday Group",
@@ -898,7 +1008,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": -64
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Principal repayments to the Joday Group pursuant to the Call Notice",
@@ -906,7 +1017,8 @@
           "Year ended December 31, 2025": 0,
           "Year ended December 31, 2024": -22
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Dividends paid to common shareholders of the Company (note 17)",
@@ -914,7 +1026,8 @@
           "Year ended December 31, 2025": -85,
           "Year ended December 31, 2024": -85
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows from (used in) in financing activities",
@@ -922,7 +1035,8 @@
           "Year ended December 31, 2025": 156,
           "Year ended December 31, 2024": 114
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Acquisition of businesses (note 4)",
@@ -930,7 +1044,8 @@
           "Year ended December 31, 2025": -1227,
           "Year ended December 31, 2024": -1347
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash obtained with acquired businesses (note 4)",
@@ -938,7 +1053,8 @@
           "Year ended December 31, 2025": 173,
           "Year ended December 31, 2024": 164
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Post-acquisition settlement payments, net of receipts",
@@ -946,7 +1062,8 @@
           "Year ended December 31, 2025": -286,
           "Year ended December 31, 2024": -336
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Purchases of investments and other assets (note 6)",
@@ -954,7 +1071,8 @@
           "Year ended December 31, 2025": -580,
           "Year ended December 31, 2024": -8
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Proceeds from sales of other investments and other assets",
@@ -962,7 +1080,8 @@
           "Year ended December 31, 2025": 50,
           "Year ended December 31, 2024": 7
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Decrease (increase) in restricted cash",
@@ -970,7 +1089,8 @@
           "Year ended December 31, 2025": 1,
           "Year ended December 31, 2024": -14
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Interest, dividends and other proceeds received",
@@ -978,7 +1098,8 @@
           "Year ended December 31, 2025": 56,
           "Year ended December 31, 2024": 33
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Property and equipment purchased",
@@ -986,7 +1107,8 @@
           "Year ended December 31, 2025": -68,
           "Year ended December 31, 2024": -67
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Net cash flows from (used in) investing activities",
@@ -994,7 +1116,8 @@
           "Year ended December 31, 2025": -1881,
           "Year ended December 31, 2024": -1567
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Effect of foreign currency on cash and cash equivalents",
@@ -1002,7 +1125,8 @@
           "Year ended December 31, 2025": 102,
           "Year ended December 31, 2024": -48
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Increase (decrease) in cash and cash equivalents",
@@ -1010,7 +1134,8 @@
           "Year ended December 31, 2025": 1109,
           "Year ended December 31, 2024": 696
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, beginning of period",
@@ -1018,7 +1143,8 @@
           "Year ended December 31, 2025": 1980,
           "Year ended December 31, 2024": 1284
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       },
       {
         "label": "Cash and cash equivalents, end of period",
@@ -1026,7 +1152,8 @@
           "Year ended December 31, 2025": 3089,
           "Year ended December 31, 2024": 1980
         },
-        "confidence": 0.99
+        "confidence": 0.99,
+        "structure": "data"
       }
     ]
   },
@@ -1074,6 +1201,12 @@
       "net_income": {
         "value": 586,
         "source_label": "Net income (loss)",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "cash": {
+        "value": 3089,
+        "source_label": "Cash and cash equivalents",
         "match_type": "exact",
         "confidence": 0.99
       },
@@ -1250,10 +1383,6 @@
         "value": 202
       },
       {
-        "label": "Cash and cash equivalents",
-        "value": 3089
-      },
-      {
         "label": "Accounts receivable (note 21)",
         "value": 1470
       },
@@ -1402,8 +1531,8 @@
       "accounting_standard": "IFRS",
       "sector_profile": null,
       "total": 83,
-      "mapped_count": 6,
-      "unmapped_count": 75,
+      "mapped_count": 7,
+      "unmapped_count": 74,
       "benign_skipped_count": 2,
       "benign_duplicates": [
         {

@@ -345,6 +345,13 @@ def _iter_target_fields(alias_table: dict[str, Any], sector_profile: str | None)
             base_config["patterns"] = list(base_config.get("patterns") or []) + list(
                 profile_config.get("patterns") or []
             )
+            # A profile's per-field collision rule survives the merge when the
+            # default declares none (CB-037 found this latent gap: promoting
+            # `cash` to a default silently dropped the explorer profile's
+            # CB-010 prefer_specific_alias). A default-declared rule wins.
+            if (not base_config.get("collision_resolution")
+                    and profile_config.get("collision_resolution")):
+                base_config["collision_resolution"] = profile_config["collision_resolution"]
             merged[field_name] = base_config
     for field_name, config in merged.items():
         yield field_name, config
