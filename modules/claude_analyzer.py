@@ -70,6 +70,17 @@ def is_legacy_scaled_financial_data_stale(
         return False
     if financial_data.get("_normalized") is True:
         return False
+    # Heal-eligible exemption (2026-07-12, found live after the CB-037
+    # schema 7→8 bump): a SEDAR analysis whose raw extraction is on board
+    # AND whose mapping is mapper-stale is REBUILT by the free heal at load
+    # (re-mapped from the extraction, re-normalized with the CURRENT
+    # whitelist) — the stored values' scaling ambiguity is discarded, not
+    # trusted. Blocking would demand a paid Re-Analyse for what the heal
+    # fixes free. The exemption holds EXACTLY when the heal will fire
+    # (same predicate); a matching mapper version keeps the block.
+    from modules.integrity.sedar_mapper import mapper_version, sedar_mapping_is_stale
+    if sedar_mapping_is_stale(financial_data, mapper_version()):
+        return False
     if not (
         _has_unit_scale_word(financial_data.get("scale"))
         or _has_unit_scale_word(financial_data.get("currency"))
