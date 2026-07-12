@@ -452,6 +452,49 @@ def _is_annual_duration(item: dict) -> bool:
     return days >= 300
 
 
+# ---------------------------------------------------------------------------
+# Shared XBRL concept chains (CB-038): BOTH the accession-pinned filing path
+# (get_financial_data) and the quick company-facts path
+# (build_financial_data_from_edgar_facts) consume these — the NVDA-hardened
+# capex chain must never fork. Order matters only as a tiebreak on the quick
+# path (recency competition decides first) and as the fallback order on the
+# accession-pinned path (unchanged semantics, pinned by
+# tests/test_edgar_annual_facts.py).
+# ---------------------------------------------------------------------------
+REVENUE_CONCEPTS = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"]
+COST_OF_REVENUE_CONCEPTS = ["CostOfRevenue", "CostOfGoodsAndServicesSold"]
+GROSS_PROFIT_CONCEPTS = ["GrossProfit"]
+OPERATING_INCOME_CONCEPTS = ["OperatingIncomeLoss"]
+NET_INCOME_CONCEPTS = ["NetIncomeLoss"]
+RD_EXPENSE_CONCEPTS = ["ResearchAndDevelopmentExpense"]
+INTEREST_EXPENSE_CONCEPTS = ["InterestExpense"]
+CASH_CONCEPTS = ["CashAndCashEquivalentsAtCarryingValue"]
+TOTAL_ASSETS_CONCEPTS = ["Assets"]
+CURRENT_ASSETS_CONCEPTS = ["AssetsCurrent"]
+CURRENT_LIABILITIES_CONCEPTS = ["LiabilitiesCurrent"]
+LONG_TERM_DEBT_CONCEPTS = ["LongTermDebtNoncurrent", "LongTermDebt"]
+CURRENT_DEBT_CONCEPTS = ["LongTermDebtCurrent", "DebtCurrent"]
+# CB-013 semantics for the quick path's `equity`: the grand total INCLUDING
+# NCI outranks the attributable-only subtotal (declared order is the
+# recency-competition tiebreak). The accession-pinned filing path keeps its
+# original StockholdersEquity row (its own pinned contract).
+EQUITY_CONCEPTS = [
+    "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+    "StockholdersEquity",
+]
+OPERATING_CASH_FLOW_CONCEPTS = ["NetCashProvidedByUsedInOperatingActivities"]
+# PaymentsToAcquireProductiveAssets: combined PP&E + intangibles purchases —
+# NVDA's capex line. Ordered last: PP&E-tagging filers (e.g. PLD) match
+# earlier on the accession-pinned path; on the quick path recency
+# competition retires NVDA's stale PP&E tag (facts end 2012) automatically.
+CAPEX_CONCEPTS = [
+    "PaymentsToAcquirePropertyPlantAndEquipment",
+    "CapitalExpenditureDiscontinuedOperations",
+    "PaymentsToAcquireProductiveAssets",
+]
+DIVIDENDS_PAID_CONCEPTS = ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"]
+
+
 def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) -> tuple:
     try:
         us_gaap = facts.get("facts", {}).get("us-gaap", {})
@@ -504,6 +547,59 @@ def _row(facts: dict, label: str, concepts: list[str], accession_number: str, ro
 
 def _section(label: str) -> dict:
     return {"line_item": label, "value": None, "value_prior": None, "row_type": "section_header"}
+
+
+def _concept_annual_facts(us_gaap: dict, concept: str) -> list[dict]:
+    """One concept's annual facts, restatement-resolved: same filters as
+    _annual_facts (10-K, non-null, >=300-day duration via _is_annual_duration),
+    then facts sharing an `end` collapse to the latest `filed` (comparative
+    re-reports produce 2-5 duplicates per period — probe 2026-07-12), sorted
+    newest-first by (end, filed)."""
+    concept_data = us_gaap.get(concept)
+    if not concept_data:
+        return []
+    units = concept_data.get("units", {})
+    values = units.get("USD") or next(iter(units.values()), [])
+    annual = [
+        item for item in values
+        if item.get("form") == "10-K"
+        and item.get("val") is not None
+        and _is_annual_duration(item)
+    ]
+    by_end: dict[str, dict] = {}
+    for item in annual:
+        end = item.get("end", "")
+        if end not in by_end or (item.get("filed", "") > by_end[end].get("filed", "")):
+            by_end[end] = item
+    return sorted(by_end.values(), key=lambda item: (item.get("end", ""), item.get("filed", "")), reverse=True)
+
+
+def _competing_annual_facts(facts: dict, concept_names: list[str]) -> tuple[str | None, list[dict]]:
+    """CB-038 quick-path selection: concept candidates COMPETE ON RECENCY.
+
+    The accession-pinned path is safe with first-concept-with-facts because a
+    concept lacking the chosen filing's facts is skipped. With NO accession,
+    that rule resurrects the NVDA phantom: the stale
+    PaymentsToAcquirePropertyPlantAndEquipment tag HAS annual facts — ending
+    in 2012 ($138.7M) — and would beat today's
+    PaymentsToAcquireProductiveAssets ($6.04B FY2026). So here the concept
+    whose LATEST fact has the most recent (end, filed) wins the field; ties
+    resolve to the earlier-declared concept. A tag the filer stopped feeding
+    loses automatically, for every filer, forever.
+    """
+    us_gaap = facts.get("facts", {}).get("us-gaap", {})
+    best_key = None
+    best: tuple[str | None, list[dict]] = (None, [])
+    for concept in concept_names:
+        annual = _concept_annual_facts(us_gaap, concept)
+        if not annual:
+            continue
+        latest = annual[0]
+        key = (latest.get("end", ""), latest.get("filed", ""))
+        if best_key is None or key > best_key:
+            best_key = key
+            best = (concept, annual)
+    return best
 
 
 def get_earnings_press_release(cik: str, limit: int = 5) -> dict | None:
@@ -802,7 +898,7 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
 
         revenues_current, revenues_prior = _annual_facts(
             facts,
-            ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"],
+            REVENUE_CONCEPTS,
             accession_number,
         )
         report_end = (revenues_current or {}).get("end", "")
@@ -817,22 +913,25 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
             "fiscal_year_prior": fiscal_year_prior,
             "currency": "USD",
             "income_statement": [
-                _row(facts, "Revenues", ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"], accession_number, "total"),
-                _row(facts, "Cost of Revenue", ["CostOfRevenue", "CostOfGoodsAndServicesSold"], accession_number),
-                _row(facts, "Gross Profit", ["GrossProfit"], accession_number, "subtotal"),
+                _row(facts, "Revenues", REVENUE_CONCEPTS, accession_number, "total"),
+                _row(facts, "Cost of Revenue", COST_OF_REVENUE_CONCEPTS, accession_number),
+                _row(facts, "Gross Profit", GROSS_PROFIT_CONCEPTS, accession_number, "subtotal"),
                 _row(facts, "Operating Expenses", ["OperatingExpenses"], accession_number, "subtotal"),
-                _row(facts, "Research and Development Expense", ["ResearchAndDevelopmentExpense"], accession_number),
+                _row(facts, "Research and Development Expense", RD_EXPENSE_CONCEPTS, accession_number),
                 _row(facts, "Selling, General and Administrative Expense", ["SellingGeneralAndAdministrativeExpense"], accession_number),
-                _row(facts, "Operating Income", ["OperatingIncomeLoss"], accession_number, "total"),
-                _row(facts, "Net Income", ["NetIncomeLoss"], accession_number, "total"),
+                _row(facts, "Operating Income", OPERATING_INCOME_CONCEPTS, accession_number, "total"),
+                _row(facts, "Net Income", NET_INCOME_CONCEPTS, accession_number, "total"),
             ],
             "balance_sheet": [
                 _section("ASSETS"),
-                _row(facts, "Cash and Cash Equivalents", ["CashAndCashEquivalentsAtCarryingValue"], accession_number),
+                _row(facts, "Cash and Cash Equivalents", CASH_CONCEPTS, accession_number),
                 _row(facts, "Accounts Receivable, Net", ["AccountsReceivableNetCurrent"], accession_number),
-                _row(facts, "Assets", ["Assets"], accession_number, "total"),
+                _row(facts, "Assets", TOTAL_ASSETS_CONCEPTS, accession_number, "total"),
                 _section("LIABILITIES"),
                 _row(facts, "Liabilities", ["Liabilities"], accession_number, "total"),
+                # This path's Long-Term Debt row deliberately keeps the single
+                # combined tag (its own pinned contract); the quick path's
+                # total_debt uses the CB-022 pair semantics instead.
                 _row(facts, "Long-Term Debt", ["LongTermDebt"], accession_number),
                 _section("SHAREHOLDERS' EQUITY"),
                 _row(facts, "Stockholders' Equity", ["StockholdersEquity"], accession_number, "total"),
@@ -840,13 +939,11 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
             ],
             "cash_flow_statement": [
                 _section("OPERATING ACTIVITIES"),
-                _row(facts, "Net Cash Provided by Operating Activities", ["NetCashProvidedByUsedInOperatingActivities"], accession_number, "total"),
+                _row(facts, "Net Cash Provided by Operating Activities", OPERATING_CASH_FLOW_CONCEPTS, accession_number, "total"),
                 _section("INVESTING ACTIVITIES"),
-                # PaymentsToAcquireProductiveAssets: combined PP&E + intangibles
-                # purchases — NVDA's capex line (FY2026 6,042M; the PP&E-only tag
-                # has NO facts in NVDA's 10-K accessions, so it falls through).
-                # Ordered last: PP&E-tagging filers (e.g. PLD) match earlier.
-                _row(facts, "Capital Expenditures", ["PaymentsToAcquirePropertyPlantAndEquipment", "CapitalExpenditureDiscontinuedOperations", "PaymentsToAcquireProductiveAssets"], accession_number),
+                # CAPEX_CONCEPTS carries the NVDA phantom-capex fix — see the
+                # shared-chain block near _annual_facts.
+                _row(facts, "Capital Expenditures", CAPEX_CONCEPTS, accession_number),
                 _row(facts, "Net Cash Provided by Investing Activities", ["NetCashProvidedByUsedInInvestingActivities"], accession_number, "total"),
                 _section("FINANCING ACTIVITIES"),
                 _row(facts, "Net Cash Provided by Financing Activities", ["NetCashProvidedByUsedInFinancingActivities"], accession_number, "total"),
@@ -854,5 +951,272 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
         }
     except Exception:
         return {}
+
+
+# ---------------------------------------------------------------------------
+# Quick Financials from company-facts (CB-038, docs/EDGAR_COMPANY_FACTS_SPEC.md)
+# As-filed XBRL replaces FMP for the ANNUAL quick options. Raw dollars,
+# per-figure receipts, honest N/A on unmatched tags, recency-competition
+# concept selection (see _competing_annual_facts).
+# ---------------------------------------------------------------------------
+
+_COMPANYFACTS_CACHE: dict[str, dict] = {}
+
+
+def _get_companyfacts(cik: str) -> dict | None:
+    """Fetch (and memoize per process) a filer's full company-facts payload."""
+    cik = _zero_pad_cik(cik)
+    if not cik:
+        return None
+    if cik in _COMPANYFACTS_CACHE:
+        return _COMPANYFACTS_CACHE[cik]
+    try:
+        url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+        response = _SESSION.get(url, headers=HEADERS, timeout=20)
+        if not response.ok:
+            return None
+        facts = response.json()
+    except Exception:
+        return None
+    _COMPANYFACTS_CACHE[cik] = facts
+    return facts
+
+
+def _fact_receipt(concept: str, fact: dict) -> str:
+    return (
+        f"us-gaap:{concept} · {fact.get('form', '?')} {fact.get('accn', '?')} · "
+        f"ended {fact.get('end', '?')}"
+    )
+
+
+def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict | None:
+    """As-filed annual quick financials for a US ticker (CB-038).
+
+    Drop-in for build_financial_data_from_fmp's ANNUAL shapes, with the
+    ratified differences: raw dollars (scale=1), source="edgar" (flips all
+    badging to the trusted branch), a `receipts` dict carrying each figure's
+    XBRL tag + accession + form + period end, and honest N/A for any field
+    with no matching fact (CB-021 discipline: derived fields require ALL
+    components). Returns None when the ticker/CIK/revenue anchor is
+    unavailable — never a partial dict without its anchor.
+    """
+    try:
+        limit = max(int(limit or 1), 1)
+        cik = get_cik(ticker)
+        if not cik:
+            return None
+        facts = _get_companyfacts(cik)
+        if not facts:
+            return None
+
+        receipts: dict[str, str] = {}
+        field_concepts: dict[str, str] = {}
+
+        def _field(name: str, concepts: list[str]) -> list[dict]:
+            concept, annual = _competing_annual_facts(facts, concepts)
+            if concept:
+                field_concepts[name] = concept
+            return annual
+
+        def _val_at(annual: list[dict], end: str):
+            for fact in annual:
+                if fact.get("end") == end:
+                    return fact.get("val")
+            return None
+
+        revenue_facts = _field("revenue", REVENUE_CONCEPTS)
+        if not revenue_facts:
+            return None  # no revenue anchor — honest refusal, never a shell
+        period_ends = [f.get("end", "") for f in revenue_facts[:limit]]
+
+        cost_facts = _field("cost_of_revenue", COST_OF_REVENUE_CONCEPTS)
+        gross_facts = _field("gross_profit", GROSS_PROFIT_CONCEPTS)
+        oi_facts = _field("operating_income", OPERATING_INCOME_CONCEPTS)
+        ni_facts = _field("net_income", NET_INCOME_CONCEPTS)
+        rd_facts = _field("rd_expense", RD_EXPENSE_CONCEPTS)
+        int_facts = _field("interest_expense", INTEREST_EXPENSE_CONCEPTS)
+        cash_facts = _field("cash", CASH_CONCEPTS)
+        ta_facts = _field("total_assets", TOTAL_ASSETS_CONCEPTS)
+        ca_facts = _field("total_current_assets", CURRENT_ASSETS_CONCEPTS)
+        cl_facts = _field("total_current_liabilities", CURRENT_LIABILITIES_CONCEPTS)
+        ltd_facts = _field("long_term_debt", LONG_TERM_DEBT_CONCEPTS)
+        cd_facts = _field("current_debt", CURRENT_DEBT_CONCEPTS)
+        eq_facts = _field("equity", EQUITY_CONCEPTS)
+        ocf_facts = _field("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS)
+        capex_facts = _field("capex", CAPEX_CONCEPTS)
+        div_facts = _field("dividends_paid", DIVIDENDS_PAID_CONCEPTS)
+
+        current_end = period_ends[0]
+        prior_end = period_ends[1] if len(period_ends) > 1 else None
+
+        # A receipt cites ONLY the exact fact emitted as the current value —
+        # a concept whose facts stopped before the current period end emits
+        # None (honest absence) and gets NO receipt. Found on the first live
+        # run: NVDA stopped filing InterestExpense after FY2024; the value
+        # was honestly None but a stale 2024 receipt had been recorded.
+        for name, annual in (
+            ("revenue", revenue_facts), ("cost_of_revenue", cost_facts),
+            ("gross_profit", gross_facts), ("operating_income", oi_facts),
+            ("net_income", ni_facts), ("rd_expense", rd_facts),
+            ("interest_expense", int_facts), ("cash", cash_facts),
+            ("total_assets", ta_facts), ("total_current_assets", ca_facts),
+            ("total_current_liabilities", cl_facts),
+            ("long_term_debt", ltd_facts), ("current_debt", cd_facts),
+            ("equity", eq_facts), ("operating_cash_flow", ocf_facts),
+            ("capex", capex_facts), ("dividends_paid", div_facts),
+        ):
+            for fact in annual:
+                if fact.get("end") == current_end and name in field_concepts:
+                    receipts[name] = _fact_receipt(field_concepts[name], fact)
+                    break
+
+        def _cur(annual):
+            return _val_at(annual, current_end)
+
+        def _pri(annual):
+            return _val_at(annual, prior_end) if prior_end else None
+
+        revenue = _cur(revenue_facts)
+        cost_of_revenue = _cur(cost_facts)
+        gross_profit = _cur(gross_facts)
+        if gross_profit is None and revenue is not None and cost_of_revenue is not None:
+            gross_profit = revenue - cost_of_revenue
+            receipts["gross_profit"] = (
+                "derived: revenue − cost of revenue "
+                f"({receipts.get('revenue', '?')} − {receipts.get('cost_of_revenue', '?')})"
+            )
+        net_income = _cur(ni_facts)
+        operating_cash_flow = _cur(ocf_facts)
+        capex = _cur(capex_facts)  # XBRL Payments* facts are positive outflows
+        free_cash_flow = (
+            operating_cash_flow - capex
+            if operating_cash_flow is not None and capex is not None
+            else None
+        )
+        if free_cash_flow is not None:
+            receipts["free_cash_flow"] = (
+                "derived: operating cash flow − capital expenditure "
+                f"({receipts.get('operating_cash_flow', '?')} − {receipts.get('capex', '?')})"
+            )
+
+        # CB-022 pair semantics: total debt = long-term + current portion;
+        # missing LTD → honest None (a current-portion-only total would
+        # understate); missing current portion → LTD alone, disclosed.
+        ltd = _cur(ltd_facts)
+        current_debt = _cur(cd_facts)
+        if ltd is None:
+            total_debt = None
+        else:
+            total_debt = ltd + (current_debt or 0)
+            receipts["total_debt"] = (
+                f"{receipts.get('long_term_debt', '?')}"
+                + (f" + {receipts.get('current_debt')}" if current_debt is not None
+                   else " (long-term only; no current-portion fact)")
+            )
+
+        current_assets = _cur(ca_facts)
+        current_liabilities = _cur(cl_facts)
+        current_ratio = (
+            current_assets / current_liabilities
+            if current_assets is not None and current_liabilities not in (None, 0)
+            else None
+        )
+        gross_margin = (
+            gross_profit / revenue
+            if gross_profit is not None and revenue not in (None, 0)
+            else None
+        )
+
+        fiscal_year = f"FY{current_end[:4]}" if current_end else "Current Year"
+        fiscal_year_prior = f"FY{prior_end[:4]}" if prior_end else "Prior"
+
+        period_history = []
+        for end in period_ends:
+            period_history.append({
+                "label": f"FY{end[:4]}" if end else "?",
+                "revenue": _val_at(revenue_facts, end),
+                "gross_profit": _val_at(gross_facts, end),
+                "net_income": _val_at(ni_facts, end),
+                "free_cash_flow": (
+                    _val_at(ocf_facts, end) - _val_at(capex_facts, end)
+                    if _val_at(ocf_facts, end) is not None and _val_at(capex_facts, end) is not None
+                    else None
+                ),
+                "total_debt": (
+                    _val_at(ltd_facts, end) + (_val_at(cd_facts, end) or 0)
+                    if _val_at(ltd_facts, end) is not None else None
+                ),
+                "cash": _val_at(cash_facts, end),
+            })
+
+        def _fd_row(label, value, prior, row_type="data"):
+            return {"line_item": label, "value": value, "value_prior": prior,
+                    "row_type": row_type}
+
+        return {
+            "ticker": (ticker or "").upper(),
+            "company": facts.get("entityName") or (ticker or "").upper(),
+            "company_name": facts.get("entityName") or (ticker or "").upper(),
+            "period": fiscal_year,
+            "currency": "USD",
+            "scale": 1,                # raw dollars — the ratified basis
+            "_normalized": True,
+            "source": "edgar",         # flips all badging to the trusted branch
+            "revenue": revenue,
+            "revenue_prior": _pri(revenue_facts),
+            "gross_profit": gross_profit,
+            "operating_income": _cur(oi_facts),
+            "net_income": net_income,
+            # ebitda: not an XBRL concept — honestly absent, never derived here
+            "total_assets": _cur(ta_facts),
+            "total_debt": total_debt,
+            "cash": _cur(cash_facts),
+            "equity": _cur(eq_facts),
+            "operating_cash_flow": operating_cash_flow,
+            "capex": capex,
+            "free_cash_flow": free_cash_flow,
+            "current_ratio": current_ratio,
+            "interest_expense": _cur(int_facts),
+            "rd_expense": _cur(rd_facts),
+            "gross_margin": gross_margin,
+            "fiscal_year": fiscal_year,
+            "fiscal_year_prior": fiscal_year_prior,
+            "fmp_period": "annual",
+            "fmp_limit": limit,
+            "period_history": period_history,
+            "receipts": receipts,
+            "income_statement": [
+                _fd_row("Revenue", revenue, _pri(revenue_facts), "total"),
+                _fd_row("Cost of Revenue", cost_of_revenue, _pri(cost_facts)),
+                _fd_row("Gross Profit", gross_profit, _pri(gross_facts), "subtotal"),
+                _fd_row("R&D Expenses", _cur(rd_facts), _pri(rd_facts)),
+                _fd_row("Operating Income", _cur(oi_facts), _pri(oi_facts), "subtotal"),
+                _fd_row("Interest Expense", _cur(int_facts), _pri(int_facts)),
+                _fd_row("Net Income", net_income, _pri(ni_facts), "total"),
+            ],
+            "balance_sheet": [
+                _section("ASSETS"),
+                _fd_row("Cash and Cash Equivalents", _cur(cash_facts), _pri(cash_facts)),
+                _fd_row("Total Current Assets", current_assets, _pri(ca_facts), "subtotal"),
+                _fd_row("Total Assets", _cur(ta_facts), _pri(ta_facts), "total"),
+                _section("LIABILITIES"),
+                _fd_row("Total Current Liabilities", current_liabilities, _pri(cl_facts), "subtotal"),
+                _fd_row("Total Debt", total_debt, None),
+                _section("SHAREHOLDERS' EQUITY"),
+                _fd_row("Total Stockholders' Equity", _cur(eq_facts), _pri(eq_facts), "total"),
+            ],
+            "cash_flow_statement": [
+                _section("OPERATING ACTIVITIES"),
+                _fd_row("Net Cash from Operating Activities", operating_cash_flow,
+                        _pri(ocf_facts), "subtotal"),
+                _section("INVESTING ACTIVITIES"),
+                _fd_row("Capital Expenditure", capex, _pri(capex_facts)),
+                _fd_row("Free Cash Flow", free_cash_flow, None, "total"),
+                _section("FINANCING ACTIVITIES"),
+                _fd_row("Dividends Paid", _cur(div_facts), _pri(div_facts)),
+            ],
+        }
+    except Exception:
+        return None
 
 
