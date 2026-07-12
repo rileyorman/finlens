@@ -6966,6 +6966,15 @@ if st.session_state.financial_data:
     else:
         st.subheader(company)
     _period_str = period or "Unknown period"
+    # Header year fallback (2026-07-12 dashboard-review minor (d)): some
+    # filers print their fiscal year end without the year ("December 31" —
+    # TOU), and the extraction honestly stores it that way. The authoritative
+    # fiscal_year (registry pin / extraction) carries the year — append it
+    # for display only; stored period and cache keys are untouched.
+    if _period_str != "Unknown period" and not re.search(r"\d{4}", _period_str):
+        _fy_year_match = re.search(r"(\d{4})", str(financial_data.get("fiscal_year") or ""))
+        if _fy_year_match:
+            _period_str = f"{_period_str}, {_fy_year_match.group(1)}"
     # Fiscal period and reporting currency, promoted from a buried caption
     # to the header proper (Allied dry-run credibility finding #3): a
     # skeptical reader's first two questions are "as of when?" and "in
@@ -8115,7 +8124,16 @@ if st.session_state.financial_data:
                             "No sector hint available for this filing — pick the "
                             "right bucket, or edit the ticker list below."
                         )
-            _default_peers = ", ".join(peer_map.get(_peer_sector, []))
+            # Self-peer exclusion (2026-07-12 dashboard-review minor (c)): the
+            # subject's own listing is dropped from the DEFAULT list (TOU.TO
+            # while analyzing TOU invited confusion) — same ticker-root
+            # semantics as the compute-time dedup, which remains the backstop
+            # if the user types it back.
+            _subject_root = str(_peer_ticker or "").split(".")[0].upper()
+            _default_peers = ", ".join(
+                t for t in peer_map.get(_peer_sector, [])
+                if not _subject_root or str(t).split(".")[0].upper() != _subject_root
+            )
             _peer_tickers_text = st.text_input(
                 "Peer tickers (comma-separated — edit to compare against your own set)",
                 value=_default_peers,
