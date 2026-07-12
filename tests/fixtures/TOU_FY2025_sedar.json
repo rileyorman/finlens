@@ -820,6 +820,12 @@
           "includes_impairment": true
         }
       },
+      "interest_expense": {
+        "value": 111385,
+        "source_label": "Finance expenses",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
       "pretax_income": {
         "value": 343906,
         "source_label": "Income before taxes",
@@ -925,10 +931,6 @@
       {
         "label": "Income from operations",
         "value": 455291
-      },
-      {
-        "label": "Finance expenses",
-        "value": 111385
       },
       {
         "label": "Current tax expense",
@@ -1187,8 +1189,8 @@
       "accounting_standard": "IFRS Accounting Standards as issued by the International Accounting Standards Board",
       "sector_profile": "resource_sector",
       "total": 92,
-      "mapped_count": 14,
-      "unmapped_count": 78,
+      "mapped_count": 15,
+      "unmapped_count": 77,
       "benign_skipped_count": 0,
       "benign_duplicates": [],
       "gross_profit_derived": false,

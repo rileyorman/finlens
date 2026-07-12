@@ -1596,6 +1596,46 @@ RULINGS:
   + flag + tie all confirmed in the UI; TOU verified offline (223,703
   exact, stage-1 gate).
 
+## CB-035: "Finance expenses" joins the interest_expense finance-rollup family (n=1 label variant, concept already accepted)
+
+DECIDED 2026-07-12 (Riley — ratified during the TOU dashboard review
+session, same day the gap was found: TOU's one unmapped "Finance expenses"
+line produced FIVE dashes — Interest Cover N/A plus all four Dalio stress
+scenarios N/A).
+
+CONTEXT / why this is NOT a new boundary question: the "bundled finance
+rollup → interest_expense" trade was accepted when the alias family was
+built — default aliases already carry "finance costs" (CSU; how AEM maps
+today), "interest costs, net" (REI.UN), and "financial expenses" (ATD).
+The AEM ground-truth note (2026-06-17) recorded the caveat — bundled
+rollups may include accretion / lease interest / other non-interest
+financing charges — and the mapping was accepted with it. TOU's "Finance
+expenses" is simply the FOURTH label variant of that accepted concept
+(the CC review session initially framed it as an open n=2 boundary
+question; corrected in-session once the existing family was inspected —
+the honest-correction is part of this record).
+
+RULING: `interest_expense` (DEFAULT field, where the family lives) +=
+"finance expenses", IFRS, INCOME_STATEMENT-scoped, source TOU_FY2025
+(111,385; prior year 120,781). The known family caveat carries unchanged.
+Scoping keeps TOU's cash-flow "Lease interest expense" component (a
+different label regardless) and any future cash-flow finance-expense
+add-back rows out of reach.
+
+CONSEQUENCES: TOU 14 → 15 mapped; Interest Cover computes (income from
+operations ÷ 111,385) and the four Dalio stress scenarios arm; the next
+cross-extractor run picks the field up in TOU's comparison denominator
+(CB-014 family — the standing FLAGGED-soft verdict predates it).
+
+- Enforced by: CC-implemented directly (commit cites CB-035).
+  sedar_aliases.json (alias source cites CB-035); TOU fixture stored
+  mapping regenerated via attach_mapping (14 → 15, interest_expense the
+  only delta); filing_registry.json regenerated — TOU 15/15
+  campaign_validated, all 16 other filers' counts unchanged (no
+  unintended matches corpus-wide, verified by the registry-sync +
+  value-snapshot suites); TOU pin test extended (positive + the
+  Lease-interest-expense negative + count 14 → 15).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
