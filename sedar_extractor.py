@@ -247,7 +247,10 @@ def _response_text(response) -> str:
 
 def _strip_json_fences(raw: str) -> str:
     text = (raw or "").strip()
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    # Closing fence optional: a max_tokens truncation eats it, and requiring
+    # it left the leading ``` in place — json.loads then failed at char 0
+    # (Call 4 bug class, fixed codebase-wide 2026-07-11).
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*(?:```|$)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     return text
@@ -385,7 +388,7 @@ def _api_key() -> str:
     load_dotenv()
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
-        raise SedarExtractionError("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+        raise SedarExtractionError("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
     return api_key
 
 
@@ -395,14 +398,22 @@ def _api_key() -> str:
 MAX_EXTRACTION_OUTPUT_TOKENS = 32_000
 
 
-def _call_claude(client, user_prompt: str):
+def _call_claude(
+    client,
+    user_prompt: str,
+    *,
+    system_prompt: str = SYSTEM_PROMPT,
+    max_tokens: int = MAX_EXTRACTION_OUTPUT_TOKENS,
+):
     # The 32k output budget exceeds the SDK's non-streaming 10-minute request
     # ceiling, so the call streams and returns the accumulated final message —
     # the same Message shape (content, stop_reason, usage) a create() returns.
+    # The keyword params (2026-07-11, hedging-note pass) default to the
+    # statement-extraction values, so that path's behavior is unchanged.
     with client.messages.stream(
         model=SEDAR_MODEL,
-        max_tokens=MAX_EXTRACTION_OUTPUT_TOKENS,
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
+        max_tokens=max_tokens,
+        system=[{"type": "text", "text": system_prompt, "cache_control": _cache_control()}],
         messages=[{"role": "user", "content": user_prompt}],
         # sonnet-5 emits thinking blocks by default, which would consume the
         # output budget and shift content[0]; extraction needs deterministic
@@ -412,7 +423,7 @@ def _call_claude(client, user_prompt: str):
         return stream.get_final_message()
 
 
-def _raise_if_truncated(response) -> None:
+def _raise_if_truncated(response, *, budget: int = MAX_EXTRACTION_OUTPUT_TOKENS, what: str = "statements") -> None:
     """Fail honestly when the model ran out of output budget.
 
     A truncated response is not malformed JSON — retrying with the same
@@ -422,8 +433,8 @@ def _raise_if_truncated(response) -> None:
     if getattr(response, "stop_reason", None) == "max_tokens":
         raise SedarExtractionError(
             "SEDAR+ extraction response exceeded the model output budget "
-            f"({MAX_EXTRACTION_OUTPUT_TOKENS} tokens, stop_reason=max_tokens). "
-            "The filing's statements are larger than one extraction response can hold.",
+            f"({budget} tokens, stop_reason=max_tokens). "
+            f"The filing's {what} are larger than one extraction response can hold.",
             _response_text(response),
         )
 
@@ -542,3 +553,270 @@ def extract_sedar_filing(pdf_path) -> SedarExtraction:
         "pages_used": pages,
     }
     return attach_mapping(result)
+
+
+# ===========================================================================
+# HEDGING-BOOK NOTE EXTRACTION (design: docs/HEDGING_BOOK_SPEC.md)
+#
+# A SEPARATE targeted pass over the derivative/financial-instruments NOTE of
+# an already-ingested statement PDF. Deliberately independent of the primary
+# statement extraction: the statement SYSTEM_PROMPT forbids notes and MUST
+# NOT be touched (Option A cross-filer drift-risk class). Output never
+# reaches the statement mapper — it has its own normalized schema.
+# ===========================================================================
+
+MAX_HEDGING_OUTPUT_TOKENS = 16_000
+# Bound the note-page selection so an over-eager locator (full annual reports
+# repeat hedge tables in the MD&A) can't blow up the prompt. Disclosed, not
+# silent: extract_hedging_note records dropped pages in the result.
+MAX_HEDGING_NOTE_PAGES = 8
+
+# Locator predicate, tuned empirically 2026-07-11 against real filings:
+# Peyto FY2025 (note pp. 24-26, exact hit), TOU FY2025 (pp. 64-65, exact),
+# CNQ FY2024 ("16. FINANCIAL INSTRUMENTS" p. 17, found unprompted). The
+# predicate is recall-biased — full-annual-report shapes (ARX) also pick up
+# MD&A risk-management tables, which disclose the same book; the extraction
+# prompt filters irrelevant content.
+_HEDGING_VOCAB = re.compile(
+    r"\b(?:swaps?|collars?|fixed\s+price|notional|call\s+options?|derivative)\b",
+    re.IGNORECASE,
+)
+_HEDGING_TABLE_SIGNALS = re.compile(
+    r"(?:daily\s+volume"
+    r"|mmbtu/d|bbls?/d"
+    r"|volume\s*\((?:gj|mmbtu|bbls?)\)"
+    r"|(?:usd|cad)\$?/(?:mmbtu|bbls?|gj|usd)"
+    r"|\((?:cad|usd)/(?:gj|mmbtu|bbl|usd)\)"
+    r"|rate\s*\(cad/usd\))",
+    re.IGNORECASE,
+)
+
+
+def _locate_derivative_note_pages_from_texts(page_texts: list[str]) -> list[int]:
+    """Pages that look like derivative/hedging disclosure tables.
+
+    Content-density scan, NOT the top-quarter heading scan the statement
+    locator uses — note headings vary too much across filers ("Financial
+    instruments", "Risk management", "Derivative financial instruments").
+    """
+    hits = []
+    for page_num, page_text in enumerate(page_texts):
+        text = page_text or ""
+        if _numeric_token_count(text) < 10:
+            continue
+        if len(_HEDGING_VOCAB.findall(text)) >= 3 and _HEDGING_TABLE_SIGNALS.search(text):
+            hits.append(page_num)
+    return hits
+
+
+def locate_derivative_note_pages(pdf_path) -> list[int]:
+    page_texts: list[str] = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_texts.append(page.extract_text() or "")
+    return _locate_derivative_note_pages_from_texts(page_texts)
+
+
+HEDGING_SYSTEM_PROMPT = """You are extracting the derivative/hedging disclosures from the NOTES of a Canadian SEDAR+ financial-statement PDF for FinLens.
+
+Respond ONLY with valid JSON. Do not include markdown fences, a preamble, comments, or trailing prose.
+
+Extract ONLY derivative/hedging positions and related disclosures from the supplied note pages: commodity contracts, foreign-exchange contracts, interest-rate contracts, their fair values, mark-to-market disclosures, price sensitivities, and contracts entered into subsequent to the period end. Ignore any unrelated content on the supplied pages (credit risk, liquidity risk, receivable aging, MD&A prose).
+
+Filers present these tables in two geometries; normalize BOTH into flat position records, one record per (instrument, period):
+1. Period-rows: one table per index, rows are quarters/periods with volume and price columns.
+2. Instrument-rows x year-columns: rows are instrument types, columns are years, with weighted-average volumes and prices per year and often a fair value per instrument. Emit one record per instrument-year cell that has a volume.
+
+Rules for every position record:
+- Keep labels, indices, and period text VERBATIM as printed (e.g. "AECO 7A Monthly", "Q1 2026", "2027", "April 2026 - October 2026").
+- instrument must be one of: "fixed_price_swap", "swap", "collar", "call_option", "basis_swap", "forward", "costless_collar", "interest_rate_swap", "other". Use "collar" whenever a price RANGE is printed; put the low bound in price_floor and the high bound in price_ceiling and leave price null. Otherwise put the single price in price and leave floor/ceiling null.
+- Parse parentheses as negatives; strip thousands separators and currency symbols from numbers; use plain JSON numbers.
+- volume_unit / price_unit / amount_unit verbatim as printed (e.g. "GJ/d", "mmbtu/d", "bbls/d", "CAD/GJ", "USD/MMBtu", "USD (millions)/month").
+- fair_value: only when the filing prints a fair value FOR THAT ROW; otherwise null. Report fair values in the filing's stated scale, and state that scale in fair_value_scale.
+- source_page: the page number from the "--- PAGE N ---" marker the record came from.
+- period_start_year: the first calendar year in the period text as an integer, null if unclear.
+- Do NOT guess or interpolate values. A missing value is null. Do NOT invent labels for unlabeled rows; use null and set verbatim_notes to describe the row.
+
+Top-level JSON shape required:
+{
+  "as_of": "period-end date the positions are stated at, as printed, or null",
+  "fair_value_total": number or null,
+  "fair_value_scale": "thousands / millions / as-printed scale for fair values, or null",
+  "commodity_positions": [
+    {"commodity": "natural_gas|oil|propane|other", "index": "verbatim index/benchmark", "instrument": "...",
+     "period_label": "verbatim", "period_start_year": 2026, "volume": 240000, "volume_unit": "GJ/d",
+     "price": 4.17, "price_floor": null, "price_ceiling": null, "price_unit": "CAD/GJ",
+     "fair_value": null, "source_page": 24, "verbatim_notes": null}
+  ],
+  "fx_positions": [
+    {"instrument": "forward|costless_collar|other", "direction": "verbatim, e.g. 'Sold USD Contracts', or null",
+     "period_label": "verbatim", "period_start_year": 2026, "amount": 51.7, "amount_unit": "USD millions",
+     "rate": 1.3688, "rate_floor": null, "rate_ceiling": null, "rate_unit": "CAD/USD",
+     "fair_value": null, "source_page": 25, "verbatim_notes": null}
+  ],
+  "interest_rate_positions": [
+    {"instrument": "interest_rate_swap", "term_label": "verbatim term", "notional": 50, "notional_unit": "CAD millions",
+     "fixed_rate_pct": 3.28, "floating_benchmark": "CORRA", "fair_value": null, "source_page": 26, "verbatim_notes": null}
+  ],
+  "mtm_disclosures": [
+    {"scope": "commodity|fx|interest_rate|total", "amount": 123.3, "amount_unit": "CAD millions",
+     "verbatim": "the sentence as printed", "source_page": 25}
+  ],
+  "sensitivities": [
+    {"verbatim": "the sensitivity sentence as printed", "source_page": 25}
+  ],
+  "subsequent_event_positions": [ same record shapes as above, from contracts entered AFTER the period end ],
+  "extraction_confidence": 0.0-1.0
+}
+"""
+
+
+HEDGING_USER_PROMPT_TEMPLATE = """Extract the derivative/hedging disclosures from these located note pages.
+
+Pages used:
+__PAGES_JSON__
+
+Page text:
+__PAGE_TEXT__
+"""
+
+
+def _normalize_hedging_records(items, numeric_keys: tuple[str, ...]) -> list[dict]:
+    normalized = []
+    if not isinstance(items, list):
+        return normalized
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        record = {}
+        for key, value in item.items():
+            record[str(key)] = _parse_number(value) if str(key) in numeric_keys else value
+        normalized.append(record)
+    return normalized
+
+
+_COMMODITY_NUMERIC = ("volume", "price", "price_floor", "price_ceiling", "fair_value", "period_start_year", "source_page")
+_FX_NUMERIC = ("amount", "rate", "rate_floor", "rate_ceiling", "fair_value", "period_start_year", "source_page")
+_IR_NUMERIC = ("notional", "fixed_rate_pct", "fair_value", "source_page")
+_MTM_NUMERIC = ("amount", "source_page")
+
+
+def _normalize_hedging_payload(data: dict) -> dict:
+    subsequent = data.get("subsequent_event_positions")
+    return {
+        "as_of": (str(data.get("as_of")).strip() or None) if data.get("as_of") else None,
+        "fair_value_total": _parse_number(data.get("fair_value_total")),
+        "fair_value_scale": (str(data.get("fair_value_scale")).strip() or None) if data.get("fair_value_scale") else None,
+        "commodity_positions": _normalize_hedging_records(data.get("commodity_positions"), _COMMODITY_NUMERIC),
+        "fx_positions": _normalize_hedging_records(data.get("fx_positions"), _FX_NUMERIC),
+        "interest_rate_positions": _normalize_hedging_records(data.get("interest_rate_positions"), _IR_NUMERIC),
+        "mtm_disclosures": _normalize_hedging_records(data.get("mtm_disclosures"), _MTM_NUMERIC),
+        "sensitivities": _normalize_hedging_records(data.get("sensitivities"), ("source_page",)),
+        "subsequent_event_positions": _normalize_hedging_records(
+            subsequent, _COMMODITY_NUMERIC + _FX_NUMERIC + _IR_NUMERIC
+        ),
+        "extraction_confidence": _confidence(data.get("extraction_confidence", 0.0)),
+    }
+
+
+def _hedging_figure_presence(hedging_book: dict, note_text: str) -> dict:
+    """Deterministic guard: every extracted number must appear in the note text.
+
+    Same concept as Call 1's figure-presence guard — an extracted value that
+    is nowhere in the source pages is a fabrication signal. String-normalized
+    comparison (commas stripped both sides); fails OPEN into an honest
+    'unverified' count the display must surface, never a silent pass.
+    """
+    haystack = (note_text or "").replace(",", "")
+    checked = 0
+    missing: list[str] = []
+
+    def _probe(value) -> None:
+        nonlocal checked
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return
+        checked += 1
+        magnitude = abs(value)
+        candidates = {f"{magnitude:g}"}
+        if float(magnitude).is_integer():
+            candidates.add(str(int(magnitude)))
+        else:
+            candidates.add(f"{magnitude:.2f}")
+        if not any(c in haystack for c in candidates):
+            missing.append(f"{value}")
+
+    for block in ("commodity_positions", "fx_positions", "interest_rate_positions",
+                  "mtm_disclosures", "subsequent_event_positions"):
+        for record in hedging_book.get(block) or []:
+            for key in ("volume", "price", "price_floor", "price_ceiling", "amount",
+                        "rate", "rate_floor", "rate_ceiling", "notional",
+                        "fixed_rate_pct", "fair_value"):
+                _probe(record.get(key))
+    _probe(hedging_book.get("fair_value_total"))
+
+    return {"checked": checked, "missing_count": len(missing), "missing": missing[:20]}
+
+
+def extract_hedging_note(pdf_path) -> dict:
+    """Extract the derivative/hedging note into the normalized hedging_book shape.
+
+    Returns {"status": "no_note_detected", ...} without any API spend when
+    the locator finds nothing — itself a finding (an unhedged filer).
+    """
+    located = locate_derivative_note_pages(pdf_path)
+    if not located:
+        return {"status": "no_note_detected", "source_pages": [], "dropped_pages": []}
+
+    pages = located[:MAX_HEDGING_NOTE_PAGES]
+    dropped = located[MAX_HEDGING_NOTE_PAGES:]
+
+    sections = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num in pages:
+            if page_num >= len(pdf.pages):
+                continue
+            text = pdf.pages[page_num].extract_text() or ""
+            sections.append(f"\n\n--- PAGE {page_num} ---\n{text}")
+    note_text = "".join(sections).strip()
+
+    client = _make_client(_api_key())
+    user_prompt = (
+        HEDGING_USER_PROMPT_TEMPLATE
+        .replace("__PAGES_JSON__", json.dumps(pages))
+        .replace("__PAGE_TEXT__", note_text)
+    )
+
+    response = _call_claude(
+        client, user_prompt,
+        system_prompt=HEDGING_SYSTEM_PROMPT,
+        max_tokens=MAX_HEDGING_OUTPUT_TOKENS,
+    )
+    _raise_if_truncated(response, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
+    raw = _response_text(response)
+
+    try:
+        payload = json.loads(_strip_json_fences(raw))
+    except json.JSONDecodeError:
+        fix_prompt = (
+            f"{user_prompt}\n\nYour previous response was not valid JSON. "
+            "Return the same extraction again as valid JSON only, with no markdown fences or prose."
+        )
+        retry = _call_claude(
+            client, fix_prompt,
+            system_prompt=HEDGING_SYSTEM_PROMPT,
+            max_tokens=MAX_HEDGING_OUTPUT_TOKENS,
+        )
+        _raise_if_truncated(retry, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
+        try:
+            payload = json.loads(_strip_json_fences(_response_text(retry)))
+        except json.JSONDecodeError as exc:
+            raise SedarExtractionError(
+                f"Hedging-note response could not be parsed as JSON: {exc}", _response_text(retry)
+            ) from exc
+
+    hedging_book = _normalize_hedging_payload(payload if isinstance(payload, dict) else {})
+    hedging_book["status"] = "extracted"
+    hedging_book["source_pages"] = pages
+    hedging_book["dropped_pages"] = dropped
+    hedging_book["figure_presence"] = _hedging_figure_presence(hedging_book, note_text)
+    return hedging_book

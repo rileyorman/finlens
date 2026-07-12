@@ -209,6 +209,77 @@ def _parse_iso_year(date_str: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
+# --- Hedging-book tie helpers (CB-034 / HEDGING_BOOK_SPEC.md) ---------------
+
+_HEDGING_UNIT_FACTORS = (
+    ("billion", 1e9),
+    ("million", 1e6),
+    ("thousand", 1e3),
+)
+
+
+def _hedging_amount_to_raw(amount, unit_text) -> float | None:
+    """Convert a note-disclosed amount to raw dollars via its stated unit.
+
+    Honest None (→ rule skip) when the unit text is missing or unparseable —
+    a unit guess here would be exactly the silent 1000x class the scaling
+    whitelist exists to prevent.
+    """
+    value = _coerce_number(amount)
+    if value is None:
+        return None
+    text = str(unit_text or "").lower()
+    for word, factor in _HEDGING_UNIT_FACTORS:
+        if word in text:
+            return value * factor
+    return None
+
+
+def _hedging_note_fair_value_raw(hedging_book) -> float | None:
+    """Note-side net fair value in raw dollars.
+
+    Prefers the printed total (TOU shape); falls back to the sum of MTM
+    disclosures (Peyto shape: commodity + FX + interest-rate sentences).
+    """
+    if not isinstance(hedging_book, dict) or hedging_book.get("status") != "extracted":
+        return None
+    total = _hedging_amount_to_raw(
+        hedging_book.get("fair_value_total"), hedging_book.get("fair_value_scale")
+    )
+    if total is not None:
+        return total
+    parts = []
+    for mtm in hedging_book.get("mtm_disclosures") or []:
+        if not isinstance(mtm, dict) or mtm.get("scope") == "total":
+            continue
+        raw = _hedging_amount_to_raw(mtm.get("amount"), mtm.get("amount_unit"))
+        if raw is None:
+            return None  # one unparseable component poisons the sum — skip honestly
+        parts.append(raw)
+    return sum(parts) if parts else None
+
+
+def _hedging_bs_derivative_net_raw(balance_rows) -> float | None:
+    """Net balance-sheet derivative position (assets − liabilities), raw dollars.
+
+    Matches only rows whose label explicitly says 'derivative' or 'risk
+    management' — sign-classified by 'liabilit' in the label. Shapes that
+    print ambiguous duplicate labels (TOU's four identical 'Fair value of
+    financial instruments' rows, which also blend non-commodity derivatives)
+    deliberately do NOT match → honest skip, never a vacuous tie.
+    """
+    matched = []
+    for row in balance_rows or []:
+        label = str(row.get("line_item") or "").lower()
+        if "derivative" not in label and "risk management" not in label:
+            continue
+        value = _coerce_number(row.get("value"))
+        if value is None:
+            continue
+        matched.append(-abs(value) if "liabilit" in label else abs(value))
+    return sum(matched) if matched else None
+
+
 def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, Any]:
     income = normalized_data.get("income_statement", [])
     balance = normalized_data.get("balance_sheet", [])
@@ -282,6 +353,13 @@ def _build_context(normalized_data: dict, filing_metadata: dict) -> dict[str, An
             for field in ((mapping or {}).get("mapped") or {})
             if isinstance(mapping, dict)
         },
+        # CB-034 hedging-book tie inputs: note-side net fair value (unit-parsed
+        # to raw dollars) vs the balance sheet's derivative rows (already raw —
+        # rows are scaled at the boundary). None → honest field_unavailable skip.
+        "hedging_note_fair_value_raw": _hedging_note_fair_value_raw(
+            normalized_data.get("hedging_book")
+        ),
+        "hedging_bs_derivative_net_raw": _hedging_bs_derivative_net_raw(balance),
         "accounting_standard":        normalized_data.get("accounting_standard"),
         "document_class":             normalized_data.get("document_class"),
         "fiscal_year":                normalized_data.get("fiscal_year", ""),
@@ -551,6 +629,28 @@ def _check_layer_period_agreement(rule: dict, ctx: dict) -> tuple:
     )
 
 
+def _check_hedging_fair_value_tie(rule: dict, ctx: dict) -> tuple:
+    """CB-034: the hedging note's net fair value should tie to the balance
+    sheet's derivative asset/liability positions. A large gap means the
+    extraction missed positions, double-counted, or the filer's BS derivative
+    lines include instruments outside the extracted note — flagged for
+    triage, never silently trusted. Relative tolerance (generous v1 start;
+    tighten with evidence)."""
+    note_raw = ctx.get("hedging_note_fair_value_raw")
+    bs_raw = ctx.get("hedging_bs_derivative_net_raw")
+    relative_tolerance = rule["params"].get("relative_tolerance", 0.05)
+
+    denominator = max(abs(note_raw), abs(bs_raw), 1.0)
+    rel_diff = abs(note_raw - bs_raw) / denominator
+    passed = rel_diff <= relative_tolerance
+    direction = "<=" if passed else ">"
+    return round(rel_diff, 6), {"relative_tolerance": relative_tolerance}, passed, (
+        "Hedging note net fair value vs balance-sheet derivative positions: "
+        f"{note_raw:,.0f} vs {bs_raw:,.0f} raw; relative difference "
+        f"{rel_diff:.2%} ({direction} {relative_tolerance:.0%})"
+    )
+
+
 def _check_balance_sheet_identity(rule: dict, ctx: dict) -> tuple:
     """CB-013: total_assets == total_liabilities + total_equity from the
     canonical mapped components. A wrong-concept equity pick (NCI-excluding
@@ -585,6 +685,7 @@ _CHECKS = {
     "total_assets_identity":     _check_total_assets_identity,
     "balance_sheet_identity":    _check_balance_sheet_identity,
     "layer_period_agreement":    _check_layer_period_agreement,
+    "hedging_fair_value_tie":    _check_hedging_fair_value_tie,
 }
 
 

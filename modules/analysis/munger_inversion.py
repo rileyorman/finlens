@@ -64,7 +64,10 @@ def _api_key() -> str:
 
 def _strip_json_fences(raw: str) -> str:
     text = (raw or "").strip()
-    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    # Closing fence optional: a max_tokens truncation eats it, and requiring
+    # it left the leading ``` in place — json.loads then failed at char 0
+    # (Call 4 bug class, fixed codebase-wide 2026-07-11).
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*(?:```|$)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     return text
@@ -262,7 +265,10 @@ def generate_inversion(financial_data, ticker, sector, mapping, dcf_snapshot=Non
         client = _make_client(_api_key())
         response = client.messages.create(
             model=ANALYSIS_MODEL,
-            max_tokens=1600,
+            # 4000 (was 1600): sonnet-5's data-rich JSON outgrew comparable
+            # caps elsewhere (Call 4 bug class, fixed 2026-07-11); headroom,
+            # not a behavior change.
+            max_tokens=4000,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _cache_control()}],
             messages=[{"role": "user", "content": prompt}],
             thinking={"type": "disabled"},  # sonnet-5: keep output deterministic, no thinking budget
@@ -273,6 +279,8 @@ def generate_inversion(financial_data, ticker, sector, mapping, dcf_snapshot=Non
         parsed["dcf_snapshot"] = cleaned_dcf
         return parsed
     except json.JSONDecodeError as exc:
-        return {"error": f"Munger inversion response could not be parsed as JSON: {exc}"}
+        truncated = getattr(response, "stop_reason", None) == "max_tokens"
+        note = " (response truncated at max_tokens)" if truncated else ""
+        return {"error": f"Munger inversion response could not be parsed as JSON: {exc}{note}"}
     except Exception as exc:
         return {"error": f"Munger inversion failed: {exc}"}

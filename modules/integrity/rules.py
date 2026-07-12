@@ -221,6 +221,27 @@ RULES = [
     },
 
     # ------------------------------------------------------------------
+    # Hedging-book fair-value tie (CB-034): the extracted derivative note's
+    # net fair value should reconcile to the balance sheet's derivative
+    # asset/liability rows. Runs only when a hedging book has been extracted
+    # AND the filer's BS derivative rows are unambiguous (Peyto shape);
+    # ambiguous shapes (TOU's duplicate 'Fair value of financial
+    # instruments' rows) skip honestly via field_unavailable.
+    # ------------------------------------------------------------------
+    {
+        "id": "hedging_fair_value_bs_tie",
+        "description": "Extracted hedging-note fair value should tie to balance-sheet derivative positions",
+        "severity": "warn",
+        "check_type": "hedging_fair_value_tie",
+        "params": {
+            "relative_tolerance": 0.05,
+        },
+        "sector_skip": (),
+        "requires_fields": ["hedging_note_fair_value_raw", "hedging_bs_derivative_net_raw"],
+        "sedar_only": True,
+    },
+
+    # ------------------------------------------------------------------
     # Layer period agreement (CB-016): statement rows and mapping.mapped
     # pick period columns independently; on mixed-period Q4 packs a
     # divergence renders a flagged-wrong quarterly figure in an annual

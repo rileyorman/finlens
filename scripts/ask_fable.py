@@ -90,7 +90,7 @@ def main() -> int:
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
-        print("ANTHROPIC_API_KEY not found. Add it to .env and retry.")
+        print("ANTHROPIC_API_KEY not found — run under sops exec-env or Import-Secrets first (no .env since the 2026-07-08 SOPS migration).")
         return 1
 
     client = _build_client(api_key)

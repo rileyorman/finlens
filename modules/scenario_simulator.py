@@ -228,8 +228,12 @@ def run_scenario(
                     scenario_output = scen_summary,
                 ),
             }],
+            # Haiku today, but explicit: a thinking-capable model swapped in
+            # here would eat the small prose budget with thinking blocks.
+            thinking   = {"type": "disabled"},
         )
-        result["narrative"] = response.content[0].text.strip()
+        _narrative = next((b.text for b in response.content if b.type == "text"), "")
+        result["narrative"] = _narrative.strip()
 
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"

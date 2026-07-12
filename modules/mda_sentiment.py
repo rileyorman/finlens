@@ -124,9 +124,12 @@ def analyze_mda_sentiment(raw_text: str, api_key: str, model: str = DEFAULT_MODE
         else:
             response = client.messages.create(
                 model      = model,
-                max_tokens = 512,
+                # 1024 (was 512): Filing Comparison passes sonnet-5 in here, and
+                # its data-rich JSON can outgrow a tight cap (Call 4 bug class).
+                max_tokens = 1024,
                 system     = [{"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
                 messages   = [{"role": "user", "content": _USER_TEMPLATE.format(filing_text=text)}],
+                thinking   = {"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
             )
 
         raw = _text_content(response)

@@ -529,6 +529,36 @@ derived_by_construction, are excluded from the aggregate-state computation
 longer re-open them). A mapping with ONLY derived fields returns honest
 UNCHECKED (no_line_item_backed_fields), never a vacuous VERIFIED.
 
+## Engineering Principle: Trust Is Page-Level — Every Displayed Number Has a Receipt or a Badge
+
+Ratified by Riley 2026-07-10. A screen's trust level is set by its WEAKEST
+unreceipted number, not by its best-validated one. Validated filing data and
+unvalidated context data (market data, sector labels, peer figures,
+aggregator feeds) render side by side; a wrong context number silently
+poisons conclusions drawn from perfect filing data.
+
+REFERENCE INCIDENT (2026-07-10): the ARX FY2025 analysis — 12/12
+Gemini-verified, browser ground-truthed against the issuer PDF — displayed
+"Margin of Safety +86.2% undervalued" computed from ACCELERANT HOLDINGS'
+market cap and share price (bare "ARX" on yfinance is a US insurance
+broker; ARC Resources is ARX.TO). The filing layer was pristine; the page
+was wrong. Fixed by the wrong-issuer name guard + listing receipt captions
+(12c99c4, dcf7c57) and FMP trust badging (ce69649).
+
+RULES:
+- Every number rendered to the user either TRACES to a validated source
+  (receipt: source label / listing / document) or is VISIBLY BADGED as
+  unvalidated (FMP badge pattern). No third state.
+- When adding any new data source or display surface, ask: "which numbers
+  on this screen have no receipt?" — that audit is part of the review, not
+  optional.
+- Replace where a primary source exists; badge where one doesn't (earnings
+  estimates, market prices have no filed source — badge is permanent there).
+- Verification move that catches this class: BACK-SOLVE the displayed
+  number (0.8x × 3.33B EBITDA = 2.7B — whose market cap is that?). A
+  displayed figure that cannot be reproduced from its stated inputs is a
+  finding, always.
+
 ## Engineering Principle: Normalize at the Boundary, Not in Consumers
 
 External data sources (Claude analyses, FMP, yfinance, EDGAR) return data

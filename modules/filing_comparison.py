@@ -130,9 +130,12 @@ def compare_filings(
         else:
             response = client.messages.create(
                 model      = model,
-                max_tokens = 2048,
+                # 3000 (was 2048): sonnet-5's themes/language_shifts lists are
+                # verbose; headroom, not a behavior change (Call 4 bug class).
+                max_tokens = 3000,
                 system     = [{"type": "text", "text": _SYNTHESIS_SYSTEM, "cache_control": {"type": "ephemeral"}}],
                 messages   = [{"role": "user", "content": user_msg}],
+                thinking   = {"type": "disabled"},  # sonnet-5: no thinking (would truncate the JSON)
             )
 
         raw = _text_content(response)

@@ -29,7 +29,12 @@ from streamlit_cookies_manager import CookieManager
 
 from modules.pdf_extractor import extract_text_from_pdf
 from modules.document_converter import convert_to_markdown
-from sedar_extractor import SedarExtractionError, attach_mapping, extract_sedar_filing
+from sedar_extractor import (
+    SedarExtractionError,
+    attach_mapping,
+    extract_hedging_note,
+    extract_sedar_filing,
+)
 from modules.claude_analyzer import (
     FabricatedExtractionError,
     analyze_financials,
@@ -88,6 +93,7 @@ from modules.agent_fetch import (
     request_filing_url,
     safe_fetch_filename,
 )
+from modules.campaign_pdf import resolve_campaign_pdf
 from modules.cache import get_cache_key, load_cache, save_cache, clear_cache, cache_count
 from modules.analysis_cache import CURRENT_SCHEMA_VERSION, load_analysis, save_analysis
 from modules.analysis.munger_inversion import generate_inversion
@@ -477,6 +483,61 @@ def _library_pdf_cache_path(entry: dict) -> str | None:
     return _pdf_cache_path(ticker, period)
 
 
+def _reanalyse_pdf_path_for_entry(entry: dict) -> str | None:
+    """On-disk PDF path for a paid Re-Analyse of a SEDAR entry, or None.
+
+    Chain: the per-entry PDF cache (pdfs/_cache/), then — for registry-loaded
+    entries, which store no bytes by design — the canonical campaign PDF
+    resolved by its recorded filename in ~/.finlens/pdfs
+    (modules/campaign_pdf.py, per docs/CAMPAIGN_PDF_RESOLVER_SPEC.md).
+
+    Closes the registry-entry Re-Analyse dead-end (queued 2026-07-02, hit
+    live on ARX 2026-07-10): the honest "SEDAR+ PDF is no longer cached"
+    error fired even though the canonical PDF sat on disk one directory up.
+    """
+    cached = _library_pdf_cache_path(entry)
+    if cached and Path(cached).exists():
+        return cached
+    entry_id = str(entry.get("id", ""))
+    if entry_id.startswith("registry::"):
+        for filing in _load_filing_registry().get("filings") or []:
+            if _registry_entry_id(filing) == entry_id:
+                resolved = resolve_campaign_pdf(filing)
+                if resolved is not None:
+                    return str(resolved)
+                break
+    return None
+
+
+def _hedging_pdf_path_for_current(ticker: str | None, financial_data: dict | None) -> str | None:
+    """On-disk PDF for the currently loaded SEDAR filing (hedging-note pass).
+
+    Chain: the per-filing PDF cache (upload flow caches there), then the
+    canonical campaign PDF via the registry (registry loads store no bytes;
+    matched by ticker root + fiscal year digits since the entry id isn't in
+    scope at render time). Same resolution family as
+    _reanalyse_pdf_path_for_entry.
+    """
+    fd = financial_data or {}
+    period = fd.get("fiscal_year") or fd.get("period") or ""
+    cached = _pdf_cache_path(ticker, period)
+    if cached and Path(cached).exists():
+        return cached
+    root = (ticker or "").split(".")[0].upper()
+    year_match = re.search(r"(\d{4})", str(period))
+    year = year_match.group(1) if year_match else None
+    if not root or not year:
+        return None
+    for filing in _load_filing_registry().get("filings") or []:
+        f_ticker = str(filing.get("ticker") or "").split(".")[0].upper()
+        f_year = re.search(r"(\d{4})", str(filing.get("fiscal_year") or ""))
+        if f_ticker == root and f_year and f_year.group(1) == year:
+            resolved = resolve_campaign_pdf(filing)
+            if resolved is not None:
+                return str(resolved)
+    return None
+
+
 def _text_cache_path(ticker: str | None, period: str | None) -> str | None:
     """Return disk cache path for extracted filing text, or None if identifiers are unavailable."""
     if not ticker or not period:
@@ -536,6 +597,21 @@ def _reanalyse_text_for_entry(entry: dict) -> str | None:
     if is_truncated_excerpt(text):
         return None
     return text
+
+
+def _dashboard_or_none(dashboard_data):
+    """Treat a persisted Call 4 failure as missing dashboard insights.
+
+    Six corpus library entries stored {"error": "Call 4 failed..."} dicts from
+    the pre-2026-07-11 max_tokens=1200 truncation bug. A stored error-dict is
+    not None, so the load-time regeneration (the `if dashboard_data is None`
+    branch on the dashboard) never fired and the error banner persisted
+    forever. Returning None here lets that regeneration heal the entry on its
+    next load — one cheap Call 4, no full Re-Analyse needed.
+    """
+    if isinstance(dashboard_data, dict) and dashboard_data.get("error"):
+        return None
+    return dashboard_data
 
 
 def _supabase_row_to_library_entry(row: dict) -> dict:
@@ -784,7 +860,9 @@ def _restore_analysis_cache(cached: dict, entry: dict | None = None) -> bool:
 
     summary_data = cached.get("summary_data") or cached.get("summary")
     bear_bull_data = cached.get("bear_bull_data") or cached.get("bear_bull")
-    dashboard_data = cached.get("dashboard_data") or cached.get("dashboard_insights")
+    dashboard_data = _dashboard_or_none(
+        cached.get("dashboard_data") or cached.get("dashboard_insights")
+    )
     market_data = cached.get("market_data") or {}
     if not market_data and cached.get("market_cap") is not None:
         market_data = {"market_cap": cached.get("market_cap")}
@@ -958,12 +1036,17 @@ def _heal_sedar_mapping(financial_data: dict) -> dict:
         return financial_data
     try:
         healed_extraction = attach_mapping(financial_data["sedar_extraction"])
-        return _sedar_extraction_to_financial_data(
+        healed = _sedar_extraction_to_financial_data(
             healed_extraction,
             file_name=financial_data.get("company_name") or "",
             company_name=financial_data.get("company_name"),
             ticker=financial_data.get("ticker"),
         )
+        # The hedging book is a separate PAID extraction stored top-level —
+        # a free re-map must never drop it (CB-034; sibling-path check).
+        if isinstance(financial_data.get("hedging_book"), dict):
+            healed["hedging_book"] = financial_data["hedging_book"]
+        return healed
     except Exception:
         return financial_data
 
@@ -2092,7 +2175,7 @@ document.addEventListener('focusin', function(e) {
                                          width='stretch', type="primary"):
                                 st.session_state.al_confirm_reanalyse = None
                                 _entry_text = _reanalyse_text_for_entry(entry)
-                                _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
+                                _entry_pdf_path = _reanalyse_pdf_path_for_entry(entry) if entry.get("source") == "sedar" else None
                                 if _entry_text:
                                     st.session_state.pending_reanalyse = {
                                         "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
@@ -2110,16 +2193,25 @@ document.addEventListener('focusin', function(e) {
                                 else:
                                     _period = entry.get("fiscal_year") or entry.get("period", "")
                                     _pdf_bytes = None
+                                    # Resolved Re-Analyse pdf_path first (covers
+                                    # registry entries via the canonical campaign
+                                    # PDF) — sibling of the library-flow probe.
                                     try:
-                                        _pdf_path = _pdf_cache_path(
-                                            ticker if ticker != "—" else None,
-                                            _period,
-                                        )
-                                        if _pdf_path and Path(_pdf_path).exists():
-                                            with Path(_pdf_path).open("rb") as _f:
-                                                _pdf_bytes = _f.read()
+                                        if _entry_pdf_path and Path(_entry_pdf_path).exists():
+                                            _pdf_bytes = Path(_entry_pdf_path).read_bytes()
                                     except Exception:
                                         _pdf_bytes = None
+                                    if _pdf_bytes is None:
+                                        try:
+                                            _pdf_path = _pdf_cache_path(
+                                                ticker if ticker != "—" else None,
+                                                _period,
+                                            )
+                                            if _pdf_path and Path(_pdf_path).exists():
+                                                with Path(_pdf_path).open("rb") as _f:
+                                                    _pdf_bytes = _f.read()
+                                        except Exception:
+                                            _pdf_bytes = None
                                     if _pdf_bytes is None:
                                         _pdf_bytes = supabase_storage.load_pdf(
                                             ticker if ticker != "—" else None,
@@ -2298,6 +2390,11 @@ document.addEventListener('focusin', function(e) {
                         row_period  = fy or "Unknown period"
                         if entry.get("source") == "edgar":
                             row_period = f"{row_period} · EDGAR"
+                        elif entry.get("source") == "fmp":
+                            # Aggregator-sourced quick analysis — never claim a
+                            # document class it doesn't have (was falling
+                            # through to "· PDF").
+                            row_period = f"{row_period} · FMP (unvalidated)"
                         elif entry.get("file_type") == "docx":
                             row_period = f"{row_period} · DOCX"
                         else:
@@ -2360,7 +2457,7 @@ document.addEventListener('focusin', function(e) {
                                     st.session_state.financial_data      = fd
                                     st.session_state.summary_data        = sd
                                     st.session_state.bear_bull_data      = bb
-                                    st.session_state.dashboard_data      = entry.get("dashboard_data")
+                                    st.session_state.dashboard_data      = _dashboard_or_none(entry.get("dashboard_data"))
                                     st.session_state.mda_sentiment       = entry.get("mda_sentiment")
                                     # Direct-entry loads never stored market data — fetch
                                     # fresh through the wrong-issuer guard at load time.
@@ -2459,7 +2556,7 @@ document.addEventListener('focusin', function(e) {
                                              width='stretch', type="primary"):
                                     st.session_state.confirm_reanalyse = None
                                     _entry_text = _reanalyse_text_for_entry(entry)
-                                    _entry_pdf_path = _library_pdf_cache_path(entry) if entry.get("source") == "sedar" else None
+                                    _entry_pdf_path = _reanalyse_pdf_path_for_entry(entry) if entry.get("source") == "sedar" else None
                                     if _entry_text:
                                         st.session_state.pending_reanalyse = {
                                             "raw_text":     _entry_text,  # full document — extraction needs the statements; analyzer calls apply their own caps
@@ -3437,7 +3534,7 @@ if page == "Portfolio Manager":
 if page == "Filing Comparison":
 
     if not API_KEY:
-        st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+        st.error("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
         st.stop()
 
     st.markdown("### Filing Comparison")
@@ -4998,7 +5095,7 @@ if page == "Stock Tracker":
                 '</table></div>'
             )
             st.markdown(table_html, unsafe_allow_html=True)
-            st.caption("Source: Financial Modeling Prep")
+            st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
 
     with tab2:
         fmp_financials_key = f"fmp_financials_{cur_ticker}"
@@ -5071,7 +5168,7 @@ if page == "Stock Tracker":
                 )
                 st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
                 st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
-            st.caption("Source: Financial Modeling Prep")
+            st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
 
     with tab6:
         company_filings = _fiscal_session_cached(
@@ -5123,7 +5220,7 @@ if page != "Single Analysis":
     st.stop()
 
 if not API_KEY:
-    st.error("ANTHROPIC_API_KEY not found. Add it to your .env file and restart the app.")
+    st.error("ANTHROPIC_API_KEY not found — the app was started without secrets injected. There is no .env anymore (SOPS migration 2026-07-08): relaunch with .\run.bat, or run Import-Secrets in PowerShell before streamlit run app.py.")
     st.stop()
 
 st.markdown("""
@@ -5662,6 +5759,11 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 {"Metric": "Cash", "Value": _fmt_quick_preview_value(_quick_fd_preview.get("cash"), _quick_preview_scale)},
             ]
         st.dataframe(preview_df, hide_index=True, width='stretch')
+        st.caption(
+            "Source: Financial Modeling Prep — unvalidated aggregator data. "
+            "Analyses built from it are badged on the dashboard and library, "
+            "and are not part of the verified corpus."
+        )
         if selected_period == "Last 4 Quarters (TTM)":
             st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
@@ -5939,6 +6041,17 @@ if st.session_state.get("reanalyse_no_text"):
             st.stop()
     # Try session-state preload (set by Load button), then fall back to disk
     _cached_bytes = st.session_state.get("cached_pdf_bytes")
+    if _cached_bytes is None:
+        # The resolved Re-Analyse pdf_path (per-entry cache, or the canonical
+        # campaign PDF for registry-loaded entries) is the authoritative
+        # source — without this probe, registry entries dead-ended at
+        # "Re-upload the PDF" while the canonical PDF sat on disk.
+        try:
+            _rp = _pdf_info.get("pdf_path")
+            if _rp and Path(_rp).exists():
+                _cached_bytes = Path(_rp).read_bytes()
+        except Exception:
+            _cached_bytes = None
     if _cached_bytes is None:
         try:
             _cp = _pdf_cache_path(_pdf_info.get("ticker"), _pdf_info.get("period"))
@@ -6378,7 +6491,7 @@ if uploaded_file:
             financial_data = normalize_financial_data(_heal_sedar_mapping(cached["financial_data"]))
             summary_data   = cached.get("summary_data")
             bear_bull_data = cached.get("bear_bull_data")
-            dashboard_data = cached.get("dashboard_data")
+            dashboard_data = _dashboard_or_none(cached.get("dashboard_data"))
             mda_sentiment  = cached.get("mda_sentiment")
             if _healed_stale:
                 # Persist the free re-map so future loads are instant and the
@@ -6936,6 +7049,20 @@ if st.session_state.financial_data:
 
         if st.session_state.get("loaded_from_quick"):
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
+
+        # Trust badge: FMP-sourced analyses render through the same dashboard
+        # as validated filings but carry NO receipts to an as-filed document.
+        # Keyed on financial_data.source (not the session flag) so library
+        # re-loads of FMP entries stay badged too. FMP is an unreliable
+        # witness (CLAUDE.md; JPM phantom-OCF proof case) — say so on-screen.
+        if isinstance(financial_data, dict) and financial_data.get("source") == "fmp":
+            st.warning(
+                "⚠️ **Unvalidated aggregator data (FMP).** These figures come from "
+                "a third-party feed, not an as-filed document, and are not part of "
+                "FinLens's verified corpus — no per-figure receipts exist for them. "
+                "Treat this as a quick look; for verified numbers, analyse the "
+                "company's actual filing (SEDAR+/EDGAR or PDF upload)."
+            )
 
         _mapping = financial_data.get("mapping") if isinstance(financial_data, dict) else None
         if isinstance(_mapping, dict):
@@ -9351,6 +9478,184 @@ if st.session_state.financial_data:
                         st.warning(f"Company fetch error: {_econ_fetch_errs['company']}")
                     if _econ_fetch_errs.get("commodity"):
                         st.warning(f"Commodity fetch error: {_econ_fetch_errs['commodity']}")
+
+            # =============================================================
+            # Hedging Book — as disclosed in the statement notes (CB-034,
+            # design: docs/HEDGING_BOOK_SPEC.md). On-demand extraction
+            # (Riley's ratified trigger): analysis stays your click.
+            # =============================================================
+            st.divider()
+            _hb = financial_data.get("hedging_book") if isinstance(financial_data, dict) else None
+
+            if not isinstance(_hb, dict):
+                st.markdown("#### 🔒 Hedging Book")
+                _hb_pdf = _hedging_pdf_path_for_current(ticker, financial_data)
+                if not _hb_pdf:
+                    st.caption(
+                        "Extracts the derivative/hedging note (volumes, prices, tenor, "
+                        "fair values) from the filed statements. The source PDF is not "
+                        "cached for this filing — re-load or re-upload it to enable."
+                    )
+                else:
+                    st.caption(
+                        "Extract the derivative/hedging note — positions, prices, tenor, "
+                        "fair values, as disclosed. One targeted Claude pass (~$0.05–0.15)."
+                    )
+                    if st.button("🔒 Extract Hedging Book $", key="hedging_extract_go"):
+                        with st.spinner("Extracting the derivative note (30–90 seconds)..."):
+                            try:
+                                _hb_book = extract_hedging_note(_hb_pdf)
+                            except SedarExtractionError as _hb_exc:
+                                st.error(f"Hedging-note extraction failed: {_hb_exc}")
+                                _hb_book = None
+                            except Exception as _hb_exc:
+                                st.error(f"Hedging-note extraction failed: {_hb_exc} — try again.")
+                                _hb_book = None
+                        if _hb_book is not None:
+                            financial_data["hedging_book"] = _hb_book
+                            # Re-run integrity so the CB-034 fair-value tie rule
+                            # arms with the new data (fresh moat-log record).
+                            _hb_fd = _run_integrity_checks(
+                                financial_data,
+                                st.session_state.get("summary_data"),
+                                ticker,
+                                financial_data.get("source", "sedar"),
+                                filing_date=financial_data.get("sedar_filing_date"),
+                            )
+                            if isinstance(_hb_fd, dict):
+                                st.session_state.financial_data = _hb_fd
+                            _save_analysis_cache(
+                                ticker,
+                                financial_data.get("fiscal_year") or financial_data.get("period"),
+                                financial_data.get("source", "sedar"),
+                            )
+                            st.rerun()
+            elif _hb.get("status") == "no_note_detected":
+                st.markdown("#### 🔒 Hedging Book")
+                st.info(
+                    "No derivative/hedging note was detected in this filing — "
+                    "itself a finding: the filer discloses no hedge positions in "
+                    "the pages scanned."
+                )
+            else:
+                st.markdown("#### 🔒 Hedging Book — as disclosed")
+                _hb_fp = _hb.get("figure_presence") or {}
+                _hb_positions = _hb.get("commodity_positions") or []
+                _hb_fx = _hb.get("fx_positions") or []
+                _hb_ir = _hb.get("interest_rate_positions") or []
+                _hb_subs = _hb.get("subsequent_event_positions") or []
+
+                # Summary strip
+                _hb_c1, _hb_c2, _hb_c3 = st.columns(3)
+                with _hb_c1:
+                    _hb_fv = _hb.get("fair_value_total")
+                    if _hb_fv is not None:
+                        st.metric("Net fair value (as printed)",
+                                  f"{_hb_fv:,.0f} {_hb.get('fair_value_scale') or ''}")
+                    else:
+                        _hb_mtms = _hb.get("mtm_disclosures") or []
+                        _hb_mtm_sum = sum(m.get("amount") or 0 for m in _hb_mtms
+                                          if isinstance(m.get("amount"), (int, float)))
+                        st.metric("MTM disclosures (sum)",
+                                  f"{_hb_mtm_sum:,.1f}" if _hb_mtms else "—")
+                with _hb_c2:
+                    st.metric("Positions", f"{len(_hb_positions)} commodity · "
+                                           f"{len(_hb_fx)} FX · {len(_hb_ir)} IR")
+                with _hb_c3:
+                    if _hb_fp.get("missing_count", 0) == 0 and _hb_fp.get("checked"):
+                        st.metric("Figure presence", f"{_hb_fp['checked']}/{_hb_fp['checked']} ✓")
+                    else:
+                        st.metric("Figure presence",
+                                  f"{_hb_fp.get('missing_count', '?')} UNVERIFIED")
+                if _hb_fp.get("missing_count"):
+                    st.warning(
+                        f"⚠️ {_hb_fp['missing_count']} extracted value(s) were NOT found "
+                        "verbatim in the note text — treat those figures as unverified "
+                        "and check the source pages."
+                    )
+
+                # Roll-off view: hedged volume by start year per commodity+unit.
+                _hb_rolloff: dict = {}
+                for _pos in _hb_positions:
+                    _yr = _pos.get("period_start_year")
+                    _vol = _pos.get("volume")
+                    if not isinstance(_yr, (int, float)) or not isinstance(_vol, (int, float)):
+                        continue
+                    _rk = (_pos.get("commodity") or "?", _pos.get("volume_unit") or "")
+                    _hb_rolloff.setdefault(_rk, {})
+                    _hb_rolloff[_rk][int(_yr)] = _hb_rolloff[_rk].get(int(_yr), 0) + _vol
+                if _hb_rolloff:
+                    st.caption(
+                        "Hedged volume by start year (sum of disclosed position rows — "
+                        "quarterly rows sum within a year; the roll-off cliff is the story):"
+                    )
+                    _hb_years = sorted({y for row in _hb_rolloff.values() for y in row})
+                    _hb_table = [
+                        {"Commodity / unit": f"{ck} ({cu})",
+                         **{str(y): f"{row.get(y, 0):,.0f}" for y in _hb_years}}
+                        for (ck, cu), row in sorted(_hb_rolloff.items())
+                    ]
+                    st.dataframe(_hb_table, hide_index=True, width='stretch')
+
+                with st.expander(
+                    f"All positions — the receipt ({len(_hb_positions) + len(_hb_fx) + len(_hb_ir)} "
+                    f"current + {len(_hb_subs)} subsequent)", expanded=False,
+                ):
+                    if _hb_positions:
+                        st.markdown("**Commodity contracts** (as disclosed)")
+                        st.dataframe([
+                            {"Index": p.get("index"), "Period": p.get("period_label"),
+                             "Type": p.get("instrument"), "Volume": p.get("volume"),
+                             "Unit": p.get("volume_unit"), "Price": p.get("price"),
+                             "Floor": p.get("price_floor"), "Ceiling": p.get("price_ceiling"),
+                             "Price unit": p.get("price_unit"), "Fair value": p.get("fair_value"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_positions
+                        ], hide_index=True, width='stretch')
+                    if _hb_fx:
+                        st.markdown("**FX contracts**")
+                        st.dataframe([
+                            {"Type": p.get("instrument"), "Direction": p.get("direction"),
+                             "Period": p.get("period_label"), "Amount": p.get("amount"),
+                             "Unit": p.get("amount_unit"), "Rate": p.get("rate"),
+                             "Floor": p.get("rate_floor"), "Ceiling": p.get("rate_ceiling"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_fx
+                        ], hide_index=True, width='stretch')
+                    if _hb_ir:
+                        st.markdown("**Interest-rate contracts**")
+                        st.dataframe([
+                            {"Term": p.get("term_label"), "Notional": p.get("notional"),
+                             "Unit": p.get("notional_unit"), "Fixed %": p.get("fixed_rate_pct"),
+                             "Floating": p.get("floating_benchmark"), "Page": p.get("source_page")}
+                            for p in _hb_ir
+                        ], hide_index=True, width='stretch')
+                    if _hb_subs:
+                        st.markdown("**Entered AFTER period end** (subsequent events)")
+                        st.dataframe([
+                            {"Index": p.get("index") or p.get("direction") or p.get("term_label"),
+                             "Period": p.get("period_label"), "Type": p.get("instrument"),
+                             "Volume/Amount": p.get("volume") if p.get("volume") is not None else p.get("amount"),
+                             "Unit": p.get("volume_unit") or p.get("amount_unit"),
+                             "Price/Rate": p.get("price") if p.get("price") is not None else p.get("rate"),
+                             "Floor": p.get("price_floor") or p.get("rate_floor"),
+                             "Ceiling": p.get("price_ceiling") or p.get("rate_ceiling"),
+                             "Page": p.get("source_page")}
+                            for p in _hb_subs
+                        ], hide_index=True, width='stretch')
+                    for _mtm in _hb.get("mtm_disclosures") or []:
+                        st.caption(f"MTM ({_mtm.get('scope')}): {_mtm.get('verbatim') or _mtm.get('amount')}")
+                    for _sens in _hb.get("sensitivities") or []:
+                        st.caption(f"Sensitivity: {_sens.get('verbatim')}")
+
+                _hb_pages = ", ".join(str(p) for p in _hb.get("source_pages") or [])
+                st.caption(
+                    f"Extracted from note pages {_hb_pages} of the filed statements; "
+                    f"volumes, prices and periods as disclosed (extraction confidence "
+                    f"{_hb.get('extraction_confidence', 0):.2f}). Hedge coverage % and "
+                    "hedge-price-vs-strip need production volumes / futures data — "
+                    "MD&A-fetcher era, planned."
+                )
 
 else:
     if not uploaded_file:
