@@ -9,7 +9,7 @@ import pdfplumber
 from dotenv import load_dotenv
 
 from config import LIBRARY_DIR
-from modules.claude_analyzer import _make_client
+from modules.claude_analyzer import _make_client, log_cache_usage
 from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
 
 
@@ -404,6 +404,7 @@ def _call_claude(
     *,
     system_prompt: str = SYSTEM_PROMPT,
     max_tokens: int = MAX_EXTRACTION_OUTPUT_TOKENS,
+    call_name: str = "sedar_extract_statements",
 ):
     # The 32k output budget exceeds the SDK's non-streaming 10-minute request
     # ceiling, so the call streams and returns the accumulated final message —
@@ -420,7 +421,16 @@ def _call_claude(
         # text only, so thinking is disabled here (2026-07-08).
         thinking={"type": "disabled"},
     ) as stream:
-        return stream.get_final_message()
+        message = stream.get_final_message()
+    # Persist spend telemetry (2026-07-12 Sunday-audit rec #4: the targeted
+    # extractors were invisible to the cost audit). log_cache_usage never
+    # raises on write failure, and telemetry must never break extraction —
+    # skip when the message carries no usage (test stubs; real SDK messages
+    # always do).
+    usage = getattr(message, "usage", None)
+    if usage is not None:
+        print(log_cache_usage(call_name, usage, getattr(message, "model", SEDAR_MODEL)))
+    return message
 
 
 def _raise_if_truncated(response, *, budget: int = MAX_EXTRACTION_OUTPUT_TOKENS, what: str = "statements") -> None:
@@ -790,6 +800,7 @@ def extract_hedging_note(pdf_path) -> dict:
         client, user_prompt,
         system_prompt=HEDGING_SYSTEM_PROMPT,
         max_tokens=MAX_HEDGING_OUTPUT_TOKENS,
+        call_name="extract_hedging_note",
     )
     _raise_if_truncated(response, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
     raw = _response_text(response)
@@ -805,6 +816,7 @@ def extract_hedging_note(pdf_path) -> dict:
             client, fix_prompt,
             system_prompt=HEDGING_SYSTEM_PROMPT,
             max_tokens=MAX_HEDGING_OUTPUT_TOKENS,
+            call_name="extract_hedging_note",
         )
         _raise_if_truncated(retry, budget=MAX_HEDGING_OUTPUT_TOKENS, what="hedging disclosures")
         try:
@@ -1119,6 +1131,7 @@ def extract_mda_metrics(pdf_path) -> dict:
         client, user_prompt,
         system_prompt=MDA_SYSTEM_PROMPT,
         max_tokens=MAX_MDA_OUTPUT_TOKENS,
+        call_name="extract_mda_metrics",
     )
     _raise_if_truncated(response, budget=MAX_MDA_OUTPUT_TOKENS, what="MD&A operational metrics")
     raw = _response_text(response)
@@ -1134,6 +1147,7 @@ def extract_mda_metrics(pdf_path) -> dict:
             client, fix_prompt,
             system_prompt=MDA_SYSTEM_PROMPT,
             max_tokens=MAX_MDA_OUTPUT_TOKENS,
+            call_name="extract_mda_metrics",
         )
         _raise_if_truncated(retry, budget=MAX_MDA_OUTPUT_TOKENS, what="MD&A operational metrics")
         try:
