@@ -105,10 +105,87 @@ re-reports) — as-filed-and-as-restated by construction.
   existing pins green) + the recency-competition selector + the builder +
   pins (NVDA phantom-capex shape from the live probe; restatement
   latest-filed; PLD duration filter reuse; honest-N/A negatives).
+  **DONE 2026-07-12 (f404f8a), live-verified.**
 - **Stage 2** — app wiring (period routing, receipts display, library
-  save) + live verification (NVDA + PLD quick loads vs known EDGAR-path
-  values).
-- **Phase 2 (separate design)** — quarterly facts + TTM derivation.
+  save) + live verification. **DONE 2026-07-12 (fb3fbee),
+  flow-confirmed.**
 - **Phase 3 (candidate)** — Stock Tracker snapshot cards.
 
-Casebook entry (CB-038) ships with the first enforcement commit.
+Casebook entry (CB-038) shipped with the Stage 1 commit.
+
+---
+
+# PHASE 2 — Quarterly + TTM (DESIGN RATIFIED 2026-07-12, same session)
+
+## Empirical grounding (NVDA 10-Q probe, 2026-07-12)
+
+- Revenue is dual-tagged in Q2/Q3 10-Qs: discrete ~90-day facts AND
+  year-to-date facts (181d for H1, 272d for 9M).
+- **Operating cash flow is YTD-ONLY** — no discrete quarterly OCF facts
+  exist (10-Q cash-flow statements are presented year-to-date). This
+  EVIDENCE-FORCES the TTM construction: sum-of-4-discrete-quarters is
+  impossible for cash-flow items from raw facts.
+- **The `fp` field LIES**: the 181-day H1 fact carries fp="Q2". Period
+  identity comes from date arithmetic ONLY.
+- Prior-quarter facts are re-reported in later filings (Q1-2026's 10-Q
+  re-reports Q1-2025) — the latest-`filed` dedupe handles restatements
+  here exactly as on the annual path.
+
+## Ratified decisions (Riley, 2026-07-12 night)
+
+1. **YTD DIFFERENCING** for discrete flow quarters: Q1 = YTD₁;
+   Qₙ = YTDₙ − YTDₙ₋₁; Q4 = FY − YTD_Q3. Every derived value carries a
+   COMPOSITE receipt naming its component facts (accessions + windows).
+   Balance items use the latest instant directly.
+2. **STRICT DATE-CHAIN GATE** on every derived value; any violation →
+   the field is honest-N/A. The fp label is never trusted.
+3. **AMENDMENTS INCLUDED**: the quarterly path selects from
+   {10-Q, 10-Q/A} (+ {10-K, 10-K/A} for FY components) — an amendment is
+   the MOST corrected statement of a period; latest-`filed` prefers it
+   naturally. The annual path's v1 filter (10-K only) is untouched until
+   its own review.
+
+## TTM construction (the only viable method — see grounding)
+
+TTM_flow = FY + YTD_current − YTD_prior, where:
+- FY = the latest annual fact (the existing recency-competition selection).
+- YTD_current = the latest post-FY year-to-date fact
+  (start == FY.end + 1 day — the chain rule).
+- YTD_prior = the same-ordinal YTD window one year earlier
+  (start == FY.start; duration within ±7 days of YTD_current's).
+- No post-FY 10-Q yet → TTM degenerates to FY exactly (correct, and
+  receipted as such).
+- Balance/instant items: the latest quarterly instant (no summing).
+- Ratios recomputed from TTM components; receipts composite
+  ("TTM = FY2026 [accn] + YTD 2026-01-26→2026-04-26 [accn] − YTD
+  2025-01-27→2025-04-27 [accn]").
+
+## Duration classification (date-window taxonomy, day counts only)
+
+discrete quarter 60–120d · H1 150–210d · 9M 240–300d · FY ≥300d (the
+existing _is_annual_duration threshold). Facts outside every window are
+unusable for derivation (honest exclusion).
+
+## Strict chain rules (operational form)
+
+- YTD_current.start must equal FY.end + 1 day.
+- YTD_prior.start must equal FY.start, and its day-count must be within
+  ±7 days of YTD_current's (same ordinal without trusting fp).
+- Quarter differencing: YTDₙ and YTDₙ₋₁ must share a start date and
+  differ by 60–120 days; Q4 = FY − YTD_Q3 requires YTD_Q3.start ==
+  FY.start and FY.end − YTD_Q3.end between 60–120 days.
+- Every rule failure → that field honest-N/A with no receipt (the CB-038
+  corollary: receipts cite only what was actually emitted).
+
+## Stages (Phase 2)
+
+- **Stage 1** — quarterly selectors (recency competition over
+  {10-Q,10-Q/A} facts; duration taxonomy; chain validators) + the TTM
+  and discrete-quarter assemblers + pins (probe-shaped synthetic
+  fixtures: the fp-lie case, YTD-only OCF, chain-violation negatives,
+  degenerate-TTM-equals-FY, restatement dedupe).
+- **Stage 2** — wire the Latest Quarter + TTM Quick options to the
+  builders; FMP retires from the Quick tab entirely (its remaining
+  surface: Stock Tracker cards + earnings calendar, per CB-038);
+  captions + composite receipts; live verification (NVDA mid-year shape).
+- Casebook entry (CB-039) ships with the first enforcement commit.
