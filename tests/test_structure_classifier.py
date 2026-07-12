@@ -261,3 +261,116 @@ def test_integrity_rule_skips_without_statements():
     check = {c.rule_id: c for c in result.checks}["structure_label_contradiction"]
     assert check.skipped
     assert check.skip_reason == "field_unavailable"
+
+
+# ---------------------------------------------------------------------------
+# Stage 2a — the mapper gate (CB-037): a structure-contradicted row refuses
+# to map total-scope canonical fields; honest absence beats wrong scope.
+# ---------------------------------------------------------------------------
+
+def test_mapper_gate_refuses_contradicted_total_scope_row():
+    from modules.integrity.sedar_mapper import map_line_items
+
+    items = [
+        {"label": "Total liabilities", "value": 2_241_748,
+         "statement": "balance_sheet", "structure": "subtotal",
+         "structure_conflict": True},
+    ]
+    mapping = map_line_items(items, "IFRS", sector=None)
+    assert "total_liabilities" not in mapping["mapped"]
+    assert "Total liabilities" in [row["label"] for row in mapping["unmapped"]]
+
+
+def test_mapper_gate_noop_without_conflict():
+    from modules.integrity.sedar_mapper import map_line_items
+
+    items = [
+        {"label": "Total liabilities", "value": 2_607_658,
+         "statement": "balance_sheet", "structure": "total",
+         "structure_conflict": False},
+    ]
+    mapping = map_line_items(items, "IFRS", sector=None)
+    assert mapping["mapped"]["total_liabilities"]["value"] == 2_607_658
+
+
+def test_attach_mapping_gates_peyto_invented_total_liabilities_end_to_end():
+    """The full CB-037 chain on the real Peyto balance-sheet shape:
+    attach_mapping annotates → the classifier proves the contradiction →
+    the gate refuses total_liabilities → honest absence (the CB-013
+    SHOP-class outcome), with the row still visible in unmapped[]."""
+    from sedar_extractor import attach_mapping
+
+    extraction = {
+        "accounting_standard": "IFRS",
+        "sector_inferred": "Upstream Oil & Gas",
+        "statements": {
+            "balance_sheet": [
+                {"label": r["label"], "values": r["values"], "confidence": 0.95}
+                for r in PEYTO_BALANCE_SHEET
+            ],
+            "income_statement": [],
+            "cash_flow": [],
+        },
+    }
+    enriched = attach_mapping(extraction)
+    mapped = enriched["mapping"]["mapped"]
+    unmapped_labels = [row["label"] for row in enriched["mapping"]["unmapped"]]
+
+    assert "total_liabilities" not in mapped              # the gate
+    assert "Total liabilities" in unmapped_labels         # still visible
+    assert mapped["total_assets"]["value"] == 5_459_392   # clean totals map
+    assert mapped["total_equity"]["value"] == 2_851_734
+
+
+def test_structure_scope_index_built_from_alias_key():
+    """requires_structure aliases enter the structure_scope index (the
+    Stage 2b promotion consumes this; the mechanism is pinned here)."""
+    from modules.integrity.sedar_mapper import _build_match_indexes
+
+    table = {
+        "canonical_fields": {
+            "total_current_assets": {
+                "aliases": [
+                    {"label": "current assets", "standards": ["IFRS"],
+                     "requires_structure": "subtotal",
+                     "statements": ["balance_sheet"]},
+                ],
+                "patterns": [],
+            },
+        },
+        "sector_profiles": {},
+    }
+    *_, structure_scope = _build_match_indexes(table, "IFRS", None)
+    assert structure_scope == {"current assets": "subtotal"}
+
+
+def test_structure_scoped_alias_fails_closed_without_annotation(monkeypatch):
+    """An item without a structure annotation must never match a
+    requires_structure alias — same fail-closed discipline as CB-009
+    statement scoping."""
+    from modules.integrity import sedar_mapper
+
+    table = {
+        "canonical_fields": {
+            "total_current_assets": {
+                "aliases": [
+                    {"label": "current assets", "standards": ["IFRS"],
+                     "requires_structure": "subtotal",
+                     "statements": ["balance_sheet"]},
+                ],
+                "patterns": [],
+            },
+        },
+        "sector_profiles": {},
+    }
+    monkeypatch.setattr(sedar_mapper, "_load_alias_table", lambda: table)
+
+    unannotated = [{"label": "Current assets", "value": 300,
+                    "statement": "balance_sheet"}]
+    proven = [{"label": "Current assets", "value": 300,
+               "statement": "balance_sheet", "structure": "subtotal"}]
+
+    assert "total_current_assets" not in sedar_mapper.map_line_items(
+        unannotated, "IFRS")["mapped"]
+    assert sedar_mapper.map_line_items(
+        proven, "IFRS")["mapped"]["total_current_assets"]["value"] == 300

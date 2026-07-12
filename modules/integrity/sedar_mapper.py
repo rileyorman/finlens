@@ -73,7 +73,19 @@ def _load_alias_table() -> dict[str, Any]:
 # Bump ONLY on mapper LOGIC changes that leave sedar_aliases.json unchanged
 # (a new derivation, routing rule, or collision mechanism). Alias/sector-profile
 # edits are versioned automatically by the file hash below, so they need no bump.
-_MAPPER_LOGIC_REV = "2"  # rev 2: CB-025 apostrophe fold + default-alias suppression
+_MAPPER_LOGIC_REV = "3"  # rev 3: CB-037 structure gate + requires_structure alias scoping (rev 2: CB-025 apostrophe fold + default-alias suppression)
+
+# CB-037: total-scope canonical fields refuse rows whose label CONTRADICTS
+# their arithmetically proven structure (a block subtotal wearing a grand
+# total's name — Peyto's invented "Total liabilities"). Honest absence
+# beats a wrong-scope number; the row stays visible in unmapped[].
+_STRUCTURE_GATED_FIELDS = {
+    "total_assets",
+    "total_liabilities",
+    "total_equity",
+    "total_current_assets",
+    "total_current_liabilities",
+}
 
 
 @lru_cache(maxsize=1)
@@ -342,8 +354,8 @@ def _build_match_indexes(
     alias_table: dict[str, Any],
     accounting_standard: str,
     sector_profile: str | None,
-) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set], dict[str, int]]:
-    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope, alias_order).
+) -> tuple[dict[str, str], list[tuple[str, str]], dict[str, dict], dict[str, str], dict[str, set], dict[str, int], dict[str, str]]:
+    """Return (exact_map, patterns, semantics_map, collision_rules, statement_scope, alias_order, structure_scope).
 
     exact_map       normalized_label -> canonical_field_name
     patterns        list of (starts_with_prefix, canonical_field_name)
@@ -370,6 +382,13 @@ def _build_match_indexes(
                     alias list (CB-013). Positions use the field's FULL
                     declared list, so they are stable under standards
                     filtering. Consulted only by "prefer_primary_alias".
+    structure_scope normalized_label -> required structure classification
+                    (CB-037): an alias may declare
+                    "requires_structure": "subtotal" when its bare label is
+                    only safe on a row the arithmetic classifier PROVED
+                    (Peyto's unlabeled "Current assets" subtotal). Gated
+                    aliases FAIL CLOSED: an item without a matching
+                    structure annotation never matches them.
     """
     exact: dict[str, str] = {}
     patterns: list[tuple[str, str]] = []
@@ -377,6 +396,7 @@ def _build_match_indexes(
     collision_rules: dict[str, str] = {}
     statement_scope: dict[str, set] = {}
     alias_order: dict[str, int] = {}
+    structure_scope: dict[str, str] = {}
 
     # CB-025: a sector profile may SUPPRESS named default aliases for a named
     # canonical field ("suppressed_default_aliases": {field: [labels]}). This
@@ -425,11 +445,16 @@ def _build_match_indexes(
                         statement_scope[label] = set(statements)
                     else:
                         statement_scope.pop(label, None)
+                    required_structure = alias.get("requires_structure")
+                    if required_structure:
+                        structure_scope[label] = str(required_structure)
+                    else:
+                        structure_scope.pop(label, None)
         for pattern in config.get("patterns") or []:
             if _standard_allowed(pattern, accounting_standard):
                 patterns.append((pattern["starts_with"], field_name))
 
-    return exact, patterns, semantics_map, collision_rules, statement_scope, alias_order
+    return exact, patterns, semantics_map, collision_rules, statement_scope, alias_order, structure_scope
 
 
 def _unmapped_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -645,7 +670,7 @@ def map_line_items(
 ) -> dict[str, Any]:
     alias_table = _load_alias_table()
     sector_profile = _profile_for_sector(alias_table, sector, line_items=line_items)
-    exact, patterns, semantics_map, collision_rules, statement_scope, alias_order = _build_match_indexes(
+    exact, patterns, semantics_map, collision_rules, statement_scope, alias_order, structure_scope = _build_match_indexes(
         alias_table, accounting_standard, sector_profile
     )
 
@@ -727,6 +752,17 @@ def map_line_items(
                 canonical_field = None
                 item_semantics = None
 
+        # CB-037: structure-scoped alias enforcement. A requires_structure
+        # alias matches only rows the arithmetic classifier PROVED to carry
+        # that structure; unannotated items fail closed — a bare label like
+        # "current assets" is only safe when the block-sum tie proves the
+        # row is the subtotal it looks like.
+        if canonical_field is not None:
+            required_structure = structure_scope.get(normalized_label)
+            if required_structure is not None and item.get("structure") != required_structure:
+                canonical_field = None
+                item_semantics = None
+
         if canonical_field is None:
             for prefix, field_name in patterns:
                 if normalized_label.startswith(prefix):
@@ -735,6 +771,15 @@ def map_line_items(
                     break
 
         if canonical_field is None:
+            unmapped.append(_unmapped_item(item))
+            continue
+
+        # CB-037 gate: a row whose label CONTRADICTS its arithmetically
+        # proven structure (Peyto's invented "Total liabilities" on the
+        # non-current block) must never map a total-scope canonical field —
+        # honest absence (the CB-013 SHOP-class negative rule) beats a
+        # wrong-scope number. The row stays visible in unmapped[].
+        if canonical_field in _STRUCTURE_GATED_FIELDS and item.get("structure_conflict"):
             unmapped.append(_unmapped_item(item))
             continue
 
