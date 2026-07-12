@@ -820,3 +820,110 @@ def extract_hedging_note(pdf_path) -> dict:
     hedging_book["dropped_pages"] = dropped
     hedging_book["figure_presence"] = _hedging_figure_presence(hedging_book, note_text)
     return hedging_book
+
+
+# ===========================================================================
+# MD&A OPERATIONAL-METRICS PAGE LOCATOR (design: docs/MDA_FETCHER_SPEC.md,
+# Stage 1; v1 = the ratified O&G upstream pack)
+#
+# A SEPARATE targeted pass over the MD&A prose of an already-ingested PDF
+# (in-PDF-first sourcing: combined statements+MD&A packs like TOU, full
+# annual reports like ARX). Same architecture as the hedging locator above:
+# content-density scan, never a heading scan — ARX's MD&A pages don't even
+# repeat the "Management's Discussion and Analysis" heading in extracted
+# page text, while TOU's repeat it on every page (header artifact), so the
+# heading is deliberately NOT a signal. Output will feed extract_mda_metrics
+# (Stage 1b) — its own prompt pair and schema; never the statement mapper.
+# ===========================================================================
+
+# The O&G MD&A pack spans more disclosure tables than the hedging note
+# (volumes + netback + FFO + realized prices), so the cap is wider than
+# MAX_HEDGING_NOTE_PAGES. Over-cap pages are dropped by ASCENDING score
+# (not document order) and disclosed, never silent.
+MAX_MDA_PAGES = 12
+
+# Signal set + weights, tuned empirically 2026-07-12 against the five O&G
+# PDFs on disk: TOU FY2025 combined pack (netback tables PDF pp. 31-35,
+# volumes pp. 7-8, realized prices p. 11), ARX FY2025 full annual report
+# (netback pp. 29-32 + 60-61, FFO pp. 40-43/62, production pp. 21-23), and
+# the three statements-only packs (CNQ FY2024, Peyto FY2025, WCP FY2025)
+# which must yield ZERO pages so the fetch-fallback lane can fire.
+_MDA_NETBACK_RE = re.compile(r"\bnetbacks?\b", re.IGNORECASE)
+_MDA_VOLUME_UNITS_RE = re.compile(
+    r"\b(?:m?boe/d|mmcf/d|m?bbls?/d|gj/d|boe\s+per\s+day)\b", re.IGNORECASE
+)
+_MDA_PER_BOE_RE = re.compile(r"(?:\$|per\s)\s*/?\s*boe\b|\bper\s+boe\b", re.IGNORECASE)
+_MDA_FUNDS_FLOW_RE = re.compile(
+    r"\bfunds\s+(?:flow|from\s+operations)\b|\bfree\s+funds\s+flow\b", re.IGNORECASE
+)
+_MDA_REALIZED_PRICE_RE = re.compile(
+    r"\b(?:average\s+)?realized\s+prices?\b", re.IGNORECASE
+)
+
+# A page must carry real tabular density AND a mix of pack signals.
+_MDA_MIN_NUMERIC_TOKENS = 15
+_MDA_MIN_PAGE_SCORE = 6
+
+# DOCUMENT-LEVEL ANCHOR GATE (the load-bearing negative): the per-boe
+# netback table is the O&G MD&A signature — no page with dense netback
+# vocabulary means the document has no O&G MD&A operational section, and
+# the locator returns nothing so the caller reports no_mda_detected
+# honestly (routing statements-only filers to the fetch fallback). Without
+# this gate, statements-only packs fire on their notes: WCP's capital-
+# management note says "funds flow" 8 times on one page, and hedge notes
+# carry volume units (TOU pp. 64-65) — empirically confirmed 2026-07-12.
+_MDA_ANCHOR_MIN_NETBACK_HITS = 2
+_MDA_ANCHOR_MIN_NUMERIC_TOKENS = 20
+
+
+def _score_mda_page(page_text: str) -> tuple[int, int, int]:
+    """Return (pack_score, numeric_token_count, netback_hits) for one page."""
+    text = page_text or ""
+    netback = len(_MDA_NETBACK_RE.findall(text))
+    score = (
+        3 * netback
+        + 2 * len(_MDA_VOLUME_UNITS_RE.findall(text))
+        + 2 * len(_MDA_PER_BOE_RE.findall(text))
+        + 2 * len(_MDA_FUNDS_FLOW_RE.findall(text))
+        + 2 * len(_MDA_REALIZED_PRICE_RE.findall(text))
+    )
+    return score, _numeric_token_count(text), netback
+
+
+def _locate_mda_pages_from_texts(page_texts: list[str]) -> dict:
+    """Pages that look like O&G MD&A operational-disclosure tables.
+
+    Returns {"pages": [...], "dropped_pages": [...]} — both ascending;
+    `pages` capped at MAX_MDA_PAGES by keeping the highest-scoring pages,
+    `dropped_pages` disclosing the over-cap remainder. Both empty when the
+    document has no netback anchor page (no O&G MD&A section present).
+
+    Recall bias accepted (CB-034 mirror): statement-side hedge tables in a
+    combined pack can qualify on volume units once the document is anchored;
+    the extraction prompt filters non-MD&A content.
+    """
+    scored = []
+    anchored = False
+    for page_num, page_text in enumerate(page_texts):
+        score, numerics, netback = _score_mda_page(page_text)
+        if numerics >= _MDA_ANCHOR_MIN_NUMERIC_TOKENS and netback >= _MDA_ANCHOR_MIN_NETBACK_HITS:
+            anchored = True
+        if numerics >= _MDA_MIN_NUMERIC_TOKENS and score >= _MDA_MIN_PAGE_SCORE:
+            scored.append((score, page_num))
+
+    if not anchored or not scored:
+        return {"pages": [], "dropped_pages": []}
+
+    # Keep the strongest MAX_MDA_PAGES pages; emit both lists in page order.
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    kept = sorted(page_num for _, page_num in scored[:MAX_MDA_PAGES])
+    dropped = sorted(page_num for _, page_num in scored[MAX_MDA_PAGES:])
+    return {"pages": kept, "dropped_pages": dropped}
+
+
+def locate_mda_pages(pdf_path) -> dict:
+    page_texts: list[str] = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_texts.append(page.extract_text() or "")
+    return _locate_mda_pages_from_texts(page_texts)
