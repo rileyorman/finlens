@@ -62,6 +62,59 @@ def test_log_cache_usage_missing_model_is_none(tmp_path, monkeypatch):
     assert json.loads(log_path.read_text(encoding="utf-8").strip())["model"] is None
 
 
+class _FakeMessage:
+    usage = _FakeUsage()
+    model = "claude-sonnet-5"
+    stop_reason = "end_turn"
+
+
+class _FakeStream:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def get_final_message(self):
+        return _FakeMessage()
+
+
+class _FakeClient:
+    class messages:  # noqa: N801 - mirrors the SDK attribute shape
+        @staticmethod
+        def stream(**_kwargs):
+            return _FakeStream()
+
+
+def test_sedar_call_claude_persists_usage(tmp_path, monkeypatch):
+    """Sunday-audit 2026-07-12 rec #4: the targeted extractors (statement /
+    hedging / MD&A passes through sedar_extractor._call_claude) must write
+    usage records — they were invisible to the cost audit before this."""
+    import sedar_extractor as se
+
+    log_path = tmp_path / "usage_log.jsonl"
+    monkeypatch.setattr(ca, "USAGE_LOG_PATH", log_path)
+
+    msg = se._call_claude(_FakeClient(), "prompt", call_name="extract_mda_metrics")
+    assert msg.stop_reason == "end_turn"  # message passthrough unchanged
+
+    rec = json.loads(log_path.read_text(encoding="utf-8").strip())
+    assert rec["call"] == "extract_mda_metrics"
+    assert rec["model"] == "claude-sonnet-5"
+    assert rec["output_tokens"] == 800
+
+
+def test_sedar_call_claude_default_call_name(tmp_path, monkeypatch):
+    import sedar_extractor as se
+
+    log_path = tmp_path / "usage_log.jsonl"
+    monkeypatch.setattr(ca, "USAGE_LOG_PATH", log_path)
+
+    se._call_claude(_FakeClient(), "prompt")
+    rec = json.loads(log_path.read_text(encoding="utf-8").strip())
+    assert rec["call"] == "sedar_extract_statements"
+
+
 def test_usage_write_failure_never_raises(tmp_path, monkeypatch):
     # Point the log at a path whose parent cannot be created (a file, not a dir)
     # to force an I/O error; telemetry must swallow it and still return the dict.
