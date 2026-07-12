@@ -1636,6 +1636,38 @@ cross-extractor run picks the field up in TOU's comparison denominator
   value-snapshot suites); TOU pin test extended (positive + the
   Lease-interest-expense negative + count 14 → 15).
 
+## CB-036: Company-defined non-GAAP measures — receipt AND permanent caption (the cross-sector principle, encoded)
+
+DECIDED 2026-07-12 (Riley — the ratified MDA_FETCHER_SPEC trust-policy
+decision, generalized to the standing principle the five coverage-gap
+research reports each independently demanded; the twenty-fifth session
+queued this encoding explicitly).
+
+THE PATTERN (confirmed 5× before ratification): every sector's
+market-quoted "earnings" is a company-defined non-GAAP measure forced
+into the MD&A by NI 52-112 / Reg G — O&G funds flow/FFF, midstream DCF,
+mining AISC, banking adjusted-EPS/ROTE, REIT FFO/AFFO. The mandated
+reconciliation is the trust asset: it lets an issuer-defined number be
+receipted back to a mapped canonical statement anchor.
+
+RULING: the five rules (own namespace / verbatim definition string /
+machine-checked reconciliation receipt / permanent issuer-defined caption /
+definition-first cross-filer comparison) are encoded as the CLAUDE.md
+"Company-Defined Non-GAAP Measures Need a Receipt AND a Permanent Caption"
+principle — CLAUDE.md is the enforcement copy; this entry cites it and
+records the decision, per the anti-drift rule.
+
+LIVE EVIDENCE at ratification: mda_ffo_anchor_tie byte-exact on both
+armed filers (TOU 3,387,019,000; ARX 3,093,500,000 — moat records on
+disk 2026-07-12); the variant-capture distinction proven on the first
+live extraction (TOU netback includes realized hedging, ARX's excludes
+it — same metric name, materially different composition).
+
+- Enforced by: CLAUDE.md principle (enforcement copy);
+  docs/MDA_FETCHER_SPEC.md ratified decision #2; extract_mda_metrics
+  prompt contract; Economics-tab panel captions; rules.py/engine.py tie
+  rules (mda_netback_internal_tie, mda_ffo_anchor_tie) + their pins.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
