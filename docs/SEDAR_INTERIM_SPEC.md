@@ -96,9 +96,21 @@ packs and the quarter/TTM derivations.
 - **Stage 0** — pure window-class column parser (label → {class, end
   year/date}) + pins on the real CNQ fixture keys and synthetic Q2/Q3
   shapes, including the located CB-016 trap as a regression case.
+  **DONE 2026-07-12 (parse_period_window in modules/sedar_periods.py;
+  ambiguous combined headers — "Three and six months ended ..." — are
+  honest exclusions).**
 - **Stage 1** — quarter-only selection mode in sedar_periods (the trap
   becomes impossible) + document-driven interim labeling + the permanent
   unaudited caption + rule scoping (decision 5).
+  **DONE 2026-07-12 (same commit as Stage 0; CB-040 casebook entry ships
+  with it): window-class pairing branch in sedar_period_keys (CB-016
+  annual preference untouched, pins hold; class preference FY > Q > H1 >
+  9M); labeling is the honest column-key text by construction ("Three
+  Months Ended Jun 30 2026"); amber "unaudited interim" header caption,
+  document-driven off the fiscal_year window parse; prior-column
+  continuity checker skips interim payloads (UNCHECKED /
+  interim_period_not_annual); fiscal_year_recency verified needing no
+  scoping. 8 new pins.**
 - **Stage 2** — discrete-quarter lift-over-derive with composite receipts
   for the derived branch.
 - **Stage 3** — cross-document TTM with the scale/currency gates.

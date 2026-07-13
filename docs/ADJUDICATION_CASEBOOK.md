@@ -1845,6 +1845,66 @@ is Q2) stays honestly absent rather than rendering as current. No post-FY
   Stage 2 (Quick-tab wiring; FMP retires from the Quick tab entirely)
   queued per the spec.
 
+## CB-040: SEDAR interim/quarterly analysis — window-class column pairing; columns of different window classes are never current/prior
+
+DECIDED 2026-07-12 (Riley — six decisions ratified in the twenty-seventh
+session; canonical spec docs/SEDAR_INTERIM_SPEC.md).
+
+RATIFIED: (1) window-class-aware column pairing — prior = the SAME window
+class one year earlier (the IAS 34 comparative), NEVER a different window
+of any year; (2) document-driven trigger first (an interim uploaded cold
+degrades honestly; a period selector is a later enhancement); (3) LIFT
+over derive for discrete quarters — where the filer prints a discrete
+three-month column, lift it as-filed; YTD differencing with composite
+receipts is the fallback only (grounded: CNQ's interim pack prints
+discrete 3-month cash-flow columns, unlike XBRL 10-Qs); (4) TTM as its
+own stage — FY from the library's stored annual + the interim's own YTD
+columns, gated on scale AND currency agreement between the two documents;
+(5) honest interim labeling + a PERMANENT "unaudited interim" caption +
+interim-aware rule scoping; (6) ground truth per protocol on the first
+live interim filer.
+
+THE LOCATED DEFECT (why decision 1 is machine-enforced): on a Q2/Q3
+quarter-only pack (no annual columns), CB-016's year-sort fallback paired
+current = "Three Months Ended Jun 30 2026" with prior = "Six Months Ended
+Jun 30 2026" — the SAME YEAR'S YTD column as the prior period. Every YoY
+delta silently wrong: the gate-forbidden class, located exactly before
+any interim ever loaded (real CNQ fixture keys prove the extraction
+emits window-typed column text — the semantics live in the KEY TEXT,
+never in column position).
+
+PARSER DISCIPLINE (the label-parse analogue of CB-039's duration
+taxonomy): "Three Months" = Q · "Six Months" = H1 · "Nine Months" = 9M ·
+"Twelve Months"/"Year(s) Ended" = FY; a key with no window declaration,
+no year, or an AMBIGUOUS combined header ("Three and six months ended
+...") is unusable for pairing — honest exclusion. Class preference
+FY > Q > H1 > 9M (a "twelve months" header the annual predicate misses
+wins per CB-016's annual-first spirit). Instant balance-sheet keys keep
+the pinned year-sort behavior (an interim's as-of vs prior-year-end pair
+is the filer's own comparative).
+
+RULE SCOPING (decision 5, first enforcement): the prior-column
+continuity checker skips interim payloads with an honest UNCHECKED /
+interim_period_not_annual record — an interim's comparative column is
+the prior-year QUARTER, so an annual comparison would manufacture false
+CONFLICTs (or vacuous MATCHes). fiscal_year_recency needs no scoping
+(it extracts the year by regex; an interim's year is its year). The
+header renders a permanent amber "unaudited interim" caption whenever
+the fiscal_year label parses to a non-FY window — document-driven, so
+an annual pack can never trip it.
+
+- Enforced by: modules/sedar_periods.py (parse_period_window, the
+  quarter-only pairing branch in sedar_period_keys; CB-016's annual
+  preference untouched — its pins hold), modules/integrity/
+  prior_column.py (interim guard), app.py header caption. 8 new pins
+  (tests/test_sedar_periods.py — parser classes, honest exclusions
+  incl. the ambiguous combined header, THE TRAP as a regression case,
+  no-comparative → prior None, YTD-only H1 pair, twelve-months beats
+  quarters, interim balance-sheet pair; tests/test_prior_column.py —
+  interim skip + annual-unaffected). Stages 2–3 (lift-over-derive,
+  cross-document TTM) queued per the spec; ground truth (decision 6)
+  runs with the first live interim.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

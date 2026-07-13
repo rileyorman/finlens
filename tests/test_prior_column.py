@@ -477,6 +477,46 @@ def test_write_log_true_writes_log(tmp_path):
 # 10. Degenerate prior year guard (fiscal_year_prior == fiscal_year)
 # ---------------------------------------------------------------------------
 
+def test_unchecked_interim_payload_skips_annual_continuity(tmp_path):
+    """CB-040: an interim payload ("Three Months Ended ...") is outside the
+    annual-continuity domain — its comparative column is the prior-year
+    QUARTER, so an annual comparison would manufacture false CONFLICTs.
+    Honest UNCHECKED skip, before any prior-filing lookup."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    payload = _make_payload(
+        ticker="TOU",
+        fiscal_year="Three Months Ended Mar 31 2026",
+        fiscal_year_prior="Three Months Ended Mar 31 2025",
+        income=[_row("Revenues", 1_200_000, 1_100_000)],
+    )
+
+    record = check_prior_column(payload, analysis_dir=analysis_dir, log_path=log_path)
+
+    assert record["state"] == "UNCHECKED"
+    assert record["reason"] == "interim_period_not_annual"
+
+
+def test_annual_payload_unaffected_by_interim_guard(tmp_path):
+    """An FY-labeled payload passes the interim guard untouched (reason
+    falls through to the ordinary no_prior_filing path)."""
+    analysis_dir = tmp_path / "analysis"
+    log_path = tmp_path / "integrity_log.jsonl"
+
+    payload = _make_payload(
+        ticker="TOU",
+        fiscal_year="Year Ended Dec 31 2025",
+        fiscal_year_prior="Year Ended Dec 31 2024",
+        income=[_row("Revenues", 1_200_000, 1_100_000)],
+    )
+
+    record = check_prior_column(payload, analysis_dir=analysis_dir, log_path=log_path)
+
+    assert record["reason"] != "interim_period_not_annual"
+    assert record["reason"] == "no_prior_filing"
+
+
 def test_unchecked_degenerate_prior_year(tmp_path):
     """When fiscal_year_prior == fiscal_year, return UNCHECKED/degenerate_prior_year."""
     analysis_dir = tmp_path / "analysis"

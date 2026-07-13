@@ -12,7 +12,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from modules.sedar_periods import sedar_period_keys, sedar_statement_rows
+from modules.sedar_periods import (
+    parse_period_window,
+    sedar_period_keys,
+    sedar_statement_rows,
+)
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
@@ -81,3 +85,93 @@ def test_no_year_labels_fall_back_to_column_order():
 
 def test_empty_statements_fall_back_to_default():
     assert sedar_period_keys([]) == ("Current", None)
+
+
+# ---------------------------------------------------------------------------
+# CB-040 pins — window-class parser + quarter-only selection mode
+# (spec: docs/SEDAR_INTERIM_SPEC.md)
+# ---------------------------------------------------------------------------
+
+def test_parse_period_window_classes():
+    assert parse_period_window("Three Months Ended Jun 30 2026") == {"window": "Q", "year": 2026}
+    assert parse_period_window("Six Months Ended Jun 30 2026") == {"window": "H1", "year": 2026}
+    assert parse_period_window("Nine months ended September 30, 2025") == {"window": "9M", "year": 2025}
+    assert parse_period_window("Twelve months ended Dec 31 2024") == {"window": "FY", "year": 2024}
+    assert parse_period_window("Year Ended Dec 31 2024") == {"window": "FY", "year": 2024}
+
+
+def test_parse_period_window_honest_exclusions():
+    # No window declaration, no year, or an AMBIGUOUS combined header —
+    # all unusable for pairing (the label-parse analogue of CB-039's
+    # duration-taxonomy exclusion).
+    assert parse_period_window("Dec 31 2024") is None                       # instant date
+    assert parse_period_window("Three Months Ended") is None                # no year
+    assert parse_period_window("Three and six months ended Jun 30 2026") is None  # ambiguous
+    assert parse_period_window("") is None
+    assert parse_period_window(None) is None
+
+
+def test_quarter_only_pack_pairs_within_the_window_class():
+    """THE LOCATED CB-016 TRAP, pinned as a regression case: pre-CB-040 the
+    year-sort fallback paired current = 3-month 2026 with prior = the SAME
+    YEAR'S six-month column. Window-class pairing makes that impossible."""
+    items = [{"label": "Revenue", "values": {
+        "Three Months Ended Jun 30 2026": 25,
+        "Three Months Ended Jun 30 2025": 22,
+        "Six Months Ended Jun 30 2026": 48,
+        "Six Months Ended Jun 30 2025": 41,
+    }}]
+    current, prior = sedar_period_keys(items)
+    assert current == "Three Months Ended Jun 30 2026"
+    assert prior == "Three Months Ended Jun 30 2025"      # NOT the 6-month column
+
+
+def test_quarter_only_pack_without_comparative_gives_no_prior():
+    """Same class one year earlier or nothing — a different window class is
+    never a substitute prior."""
+    items = [{"label": "Revenue", "values": {
+        "Three Months Ended Jun 30 2026": 25,
+        "Six Months Ended Jun 30 2026": 48,
+        "Six Months Ended Jun 30 2025": 41,
+    }}]
+    current, prior = sedar_period_keys(items)
+    assert current == "Three Months Ended Jun 30 2026"
+    assert prior is None
+
+
+def test_ytd_only_pack_pairs_the_h1_columns():
+    """A filer printing only YTD cash-flow columns gets the honest H1 pair
+    (labeled as such) — never a cross-class mix."""
+    items = [{"label": "Operating activities", "values": {
+        "Six Months Ended Jun 30 2026": 48,
+        "Six Months Ended Jun 30 2025": 41,
+    }}]
+    assert sedar_period_keys(items) == (
+        "Six Months Ended Jun 30 2026",
+        "Six Months Ended Jun 30 2025",
+    )
+
+
+def test_twelve_months_header_beats_quarter_windows():
+    """A 'twelve months' annual header (which the annual predicate misses)
+    wins over quarter windows — CB-016's annual-first spirit."""
+    items = [{"label": "Revenue", "values": {
+        "Three Months Ended Dec 31 2024": 25,
+        "Three Months Ended Dec 31 2023": 22,
+        "Twelve Months Ended Dec 31 2024": 100,
+        "Twelve Months Ended Dec 31 2023": 90,
+    }}]
+    assert sedar_period_keys(items) == (
+        "Twelve Months Ended Dec 31 2024",
+        "Twelve Months Ended Dec 31 2023",
+    )
+
+
+def test_interim_balance_sheet_instant_pair_unchanged():
+    """An interim balance sheet prints as-of vs prior YEAR-END instants —
+    the pinned year-sort fallback already picks the filer's own comparative."""
+    items = [{"label": "Total assets", "values": {
+        "Jun 30 2026": 500,
+        "Dec 31 2025": 450,
+    }}]
+    assert sedar_period_keys(items) == ("Jun 30 2026", "Dec 31 2025")

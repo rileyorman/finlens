@@ -33,6 +33,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from modules.sedar_periods import parse_period_window
+
 _log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -357,6 +359,23 @@ def check_prior_column(
     fiscal_year_prior = _parse_fiscal_year_prior(financial_data)
     currency_n = _parse_currency(financial_data)
     schema_n = payload.get("schema_version")
+
+    # --- Guard: interim payloads are outside the annual-continuity domain ---
+    # (CB-040): a "Three Months Ended ..." filing's comparative column is the
+    # prior-year QUARTER, not the prior fiscal year — comparing it against a
+    # stored annual filing would manufacture false CONFLICTs (and a matching
+    # value would be a vacuous MATCH). Honest skip; the window is parsed from
+    # the fiscal_year label's own text (docs/SEDAR_INTERIM_SPEC.md).
+    window = parse_period_window(fiscal_year)
+    if window and window.get("window") != "FY":
+        record = _unchecked_record(
+            timestamp=timestamp,
+            ticker=ticker,
+            fiscal_year=fiscal_year,
+            reason="interim_period_not_annual",
+        )
+        _safe_append(record, log_path, append_prior_column_to_log, write_log=write_log)
+        return record
 
     # --- Guard: must have a prior year to look for ---
     if not fiscal_year_prior:

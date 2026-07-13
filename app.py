@@ -947,6 +947,7 @@ def _financial_data_to_text(financial_data: dict) -> str:
 # it is testable and carries the same annual preference as the canonical
 # mapper (the mixed-period drift fix).
 from modules.sedar_periods import (  # noqa: E402
+    parse_period_window as _parse_period_window,
     sedar_period_keys as _sedar_period_keys,
     sedar_statement_rows as _sedar_statement_rows,
 )
@@ -7038,6 +7039,12 @@ if st.session_state.financial_data:
     # skeptical reader's first two questions are "as of when?" and "in
     # what currency?" — they should never have to hunt for the answers.
     _currency_display = _prettify_currency_label(currency)
+    # CB-040: an interim analysis never renders without its audit-status
+    # caption. The window is parsed from the fiscal_year label's own text
+    # ("Three/Six/Nine Months Ended ..."), so the caption is document-driven
+    # — an annual pack can never trip it.
+    _header_window = _parse_period_window(financial_data.get("fiscal_year"))
+    _header_is_interim = bool(_header_window and _header_window.get("window") != "FY")
     st.markdown(
         f'<div style="color:#CBD5E1;font-size:15px;font-weight:600;'
         f'margin:-6px 0 12px">{escape(_period_str)}'
@@ -7045,6 +7052,11 @@ if st.session_state.financial_data:
             f' <span style="color:#64748B;font-weight:400">·</span> '
             f'<span style="color:#94A3B8">{escape(_currency_display)}</span>'
             if _currency_display else ""
+        )
+        + (
+            ' <span style="color:#64748B;font-weight:400">·</span> '
+            '<span style="color:#FCD34D">unaudited interim</span>'
+            if _header_is_interim else ""
         )
         + '</div>',
         unsafe_allow_html=True,
