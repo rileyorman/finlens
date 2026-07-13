@@ -5821,10 +5821,17 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             ]
         st.dataframe(preview_df, hide_index=True, width='stretch')
         if _quick_fd_preview.get("source") == "edgar":
+            # Source-accurate form note: annual options read 10-Ks only;
+            # Quarter/TTM read 10-Q/10-Q/A + 10-K/10-K/A (CB-039).
+            _quick_form_note = (
+                "10-K and 10-Q filings (amendments included)"
+                if _quick_fd_preview.get("fmp_period") == "quarter"
+                else "10-Ks"
+            )
             st.caption(
                 "Source: **as filed with the SEC** — us-gaap XBRL company "
                 "facts, selected restatement-aware from the filer's own "
-                "10-Ks. Every figure carries a receipt below."
+                f"{_quick_form_note}. Every figure carries a receipt below."
             )
             _quick_receipts = _quick_fd_preview.get("receipts") or {}
             if _quick_receipts:
