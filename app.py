@@ -4936,6 +4936,13 @@ if page == "Stock Tracker":
             "figures (the as-filed Financial Snapshot below carries the "
             "receipts). EV/EBITDA is the provider's own construction."
         )
+        # Sector quote-basis note (docs/research/ coverage-gap reports): the
+        # number the market quotes per sector is usually NOT a generalist
+        # ratio — disclose the basis; the values themselves are Arc 3's job.
+        from modules.stock_tracker import sector_quote_note as _sector_quote_note
+        _sqn = _sector_quote_note(comp.get("sector"), comp.get("industry"))
+        if _sqn and _sqn.get("valuation"):
+            st.caption(f"**Sector note:** {_sqn['valuation']}")
 
         fiscal_ratio_values = _fiscal_session_cached(
             "get_ratios_with_values",
@@ -5310,11 +5317,24 @@ if page == "Stock Tracker":
                 )
                 st.metric("Free Cash Flow", _fmt_financial_snapshot_value(_snap.get("free_cash_flow")))
                 st.metric("Dividends Paid", _fmt_financial_snapshot_value(_snap.get("dividends_paid")))
+            # Stage-4-aware basis: the snapshot builder resolves tiers
+            # (us-gaap/10-K → us-gaap/40-F+20-F → ifrs-full/40-F+20-F), so
+            # the caption discloses the resolved taxonomy/forms/currency —
+            # never a hardcoded "us-gaap 10-Ks".
+            _snap_taxonomy = _snap.get("xbrl_taxonomy") or "us-gaap"
+            _snap_form_note = _snap.get("form_note") or "10-Ks"
             st.caption(
-                "Source: **as filed with the SEC** — us-gaap XBRL company "
-                "facts, selected restatement-aware from the filer's own "
-                "10-Ks. Every figure carries a receipt below."
+                f"Source: **as filed with the SEC** — {_snap_taxonomy} XBRL "
+                "company facts, selected restatement-aware from the filer's own "
+                f"{_snap_form_note}. Figures are in **{_snap_currency}** "
+                "(the facts' own reporting unit). Every figure carries a receipt below."
             )
+            # Sector quote-basis note (docs/research/): e.g. O&G issuers
+            # quote funds flow, not statements-basis FCF.
+            from modules.stock_tracker import sector_quote_note as _sqn_fn
+            _snap_sqn = _sqn_fn(comp.get("sector"), comp.get("industry"))
+            if _snap_sqn and _snap_sqn.get("cashflow"):
+                st.caption(f"**Sector note:** {_snap_sqn['cashflow']}")
             _snap_receipts = _snap.get("receipts") or {}
             if _snap_receipts:
                 with st.expander(f"Per-figure receipts ({len(_snap_receipts)})", expanded=False):
