@@ -1955,6 +1955,62 @@ annual gets TRUE trailing-twelve-month ratios instead of suppression.
   leverage while int_cover/margins stay live; annual paths and FY
   windows keep leverage — both directions).
 
+## CB-042: cross_validate v3 — the witness is EDGAR company-facts; FMP is out of the integrity engine; on EDGAR-path analyses the check's semantics shift to as-filed-vs-as-restated
+
+DECIDED 2026-07-13 (design banked by Riley in the twenty-seventh
+session's night extension as FMP-zero Arc 1 Stage 3; deliberately built
+fresh in the twenty-eighth session, not at marathon-end).
+
+THE SWAP: cross_validate.py's four-headline witness is now SEC EDGAR
+company-facts — get_cik → companyfacts → the shared CB-038/039
+recency-competed concept chains (never forked), restatement-resolved
+annual facts, then the fact whose end YEAR equals the target fiscal
+year; witness currency USD via the USD-first unit rule, so the v2
+currency gate is unchanged (abstain on mismatch/unknown, never convert).
+FMP is OUT of the integrity engine entirely; its remaining FinLens role
+is the badged earnings calendar (CLAUDE.md "Cross-Check Source" is the
+enforcement copy of the underlying unreliable-witness principle — the
+JPM phantom-OCF proof case lives there).
+
+FETCH REASONS: success / no_us_filed_source / transient_failure.
+no_us_filed_source is the honest abstention for filers with no SEC CIK
+or no us-gaap 10-K annual facts (the 40-F/6-K cross-listed class and
+all pure-SEDAR filers) — FMP is never consulted as a fallback, and the
+reason is CACHEABLE (a stable filer property, the role the old
+fmp_premium_blocked reason played). Transient failures never cache, so
+the check retries. fmp_premium_blocked survives only as a legacy
+v1/v2-record display class in analyze.py.
+
+LEGACY KEY NAMING (deliberate): record/cache keys and result attributes
+named fmp_* (fmp_fetch_success, fmp_fetch_reason, fmp_value,
+fmp_reported_currency) now carry the EDGAR witness. Renaming them would
+break integrity-log idempotency signatures and old-record reads;
+checker_version "3" + the new witness_source="edgar_company_facts"
+field disambiguate. The cv_cache is version-stamped; pre-v3 FMP-era
+entries are ignored and dropped on load (19 dropped at the first live
+v3 run, backups on disk).
+
+KNOWN SEMANTICS SHIFT (the judgment call this entry exists to record):
+for EDGAR-path analyses the check is now AS-FILED-VS-AS-RESTATED —
+FinLens's extraction and the witness read near-identical sources, so
+agreement no longer means "two independent sources concur"; it means
+"FinLens matches the regulator-hosted XBRL record", which catches
+restatements, tag drift, and extraction regressions. The INDEPENDENT
+check remains the Gemini cross-extractor (an independent extraction of
+the same source PDF) per the standing principle. Advisory-only severity
+and flag-and-show framing are UNCHANGED — the witness still never
+adjudicates a discrepancy alone.
+
+- Enforced by: modules/integrity/cross_validate.py (v3,
+  _fetch_witness_raw, version-stamped cache) + modules/integrity/
+  analyze.py (reason display, legacy classes retained). Pins:
+  tests/test_cross_validate_witness.py (17 tests: fetch semantics,
+  cacheability, v2-entry drop, currency gate, advisory framing,
+  legacy-record coexistence). LIVE EVIDENCE (2026-07-13): NVDA FY2026
+  v3 record on the production integrity log — all_agree 4/4 at 0.0%
+  diff, byte-identical to the human-verified analysis; TOU's legacy
+  fmp_premium_blocked UNMATCHED record is the exact class this retires.
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

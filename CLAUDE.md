@@ -513,10 +513,22 @@ STANDING CONSEQUENCES: internal-consistency checks (accounting identities)
 are the preferred validation; the #7 second-extractor cross-check uses Gemini
 (an independent extraction of the same source PDF), NOT FMP — Gemini is the
 scalable correctness path; an FMP result must NEVER adjudicate a discrepancy
-alone. CROSS_VALIDATE GUARD (v2, 2026-07-03): cross_validate.py requires filing
-currency == FMP reportedCurrency before comparing, writes currency_mismatch /
-currency_unknown abstentions without FX conversion, and records FMP value
-mismatches as advisory-only triage signals.
+alone. CROSS_VALIDATE GUARD (v3, 2026-07-13, CB-042 — supersedes v2's FMP
+witness): cross_validate.py's witness is now SEC EDGAR company-facts
+(get_cik → companyfacts → the shared CB-038/039 recency-competed concept
+chains; fact end-year == target fiscal year; witness currency USD via the
+USD-first unit rule) — FMP is OUT of the integrity engine entirely; its
+remaining FinLens role is the badged earnings calendar. Fetch reasons:
+success / no_us_filed_source (honest CACHEABLE abstention for non-US filers —
+FMP is never consulted as a fallback) / transient_failure (never cached).
+The v2 currency gate (abstain on currency mismatch/unknown, no FX
+conversion) and advisory-only mismatch framing are UNCHANGED. Legacy fmp_*
+record/cache KEY NAMES are deliberately retained (log idempotency
+signatures + old-record reads survive); checker_version "3" +
+witness_source="edgar_company_facts" disambiguate. KNOWN SEMANTICS SHIFT
+(CB-042): for EDGAR-path analyses this check is as-filed-vs-as-restated
+(catches restatements/tag drift), not an independent witness — Gemini
+remains the independent-extraction check.
 CROSS_EXTRACTOR GUARD (v3, 2026-07-03): cross_extractor.py requires both
 value-within-tolerance and matching normalized source labels for AGREE;
 value-in-tolerance with differing labels becomes a soft FLAGGED field with a

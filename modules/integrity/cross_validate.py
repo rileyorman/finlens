@@ -1,15 +1,30 @@
 """
 FinLens Cross-Validation Layer
 ==============================
-Compares FinLens normalized financial figures against FMP (Financial
-Modeling Prep) for the same ticker and fiscal period.
+Compares FinLens normalized financial figures against SEC EDGAR
+company-facts (the as-filed XBRL record) for the same ticker and fiscal
+period.
 
-This is a SECOND, independent check.  The integrity engine checks internal
-arithmetic consistency; this checks whether FinLens numbers are plausible
-against an independent external source.
+The integrity engine checks internal arithmetic consistency; this checks
+whether FinLens numbers match the regulator-hosted record of the same
+filing family.
 
-FLAG-AND-SHOW ONLY.  Never auto-correct FinLens data to match FMP.
-FMP is a second opinion and is sometimes itself wrong.
+FLAG-AND-SHOW ONLY.  Never auto-correct FinLens data to match the witness.
+
+WITNESS HISTORY (CB-042):
+    v1/v2 used FMP as the witness.  FMP was retired from the integrity
+    engine after repeated phantom values (JPM FY2025 operating_cash_flow:
+    FMP +100.9B vs the as-filed (147,782)MM -- CLAUDE.md "Cross-Check
+    Source").  The v3 witness is EDGAR company-facts, so for EDGAR-path
+    analyses the check is as-filed-vs-as-restated (near-source-identical;
+    it catches restatements and tag drift), NOT an independent witness --
+    the Gemini cross-extractor remains the independent-extraction check.
+
+LEGACY KEY NAMING (deliberate, v3): record/cache keys and result attributes
+named fmp_* (fmp_fetch_success, fmp_fetch_reason, fmp_value,
+fmp_reported_currency) now carry the EDGAR witness.  Renaming them would
+break integrity-log idempotency signatures and old-record reads;
+checker_version "3" + witness_source "edgar_company_facts" disambiguate.
 
 Usage
 -----
@@ -18,11 +33,11 @@ Usage
 
 Cost note
 ---------
-    cross_validate_filing() triggers up to 3 FMP HTTP calls (income,
-    balance-sheet, cash-flow).  Results are cached in
-    ~/.finlens/cv_cache.json keyed by ticker + fiscal year.
-    Re-display of the same filing does NOT re-call FMP.
-    Mark any UI action that calls this function with a $ indicator.
+    cross_validate_filing() triggers up to 2 SEC EDGAR HTTP calls (CIK
+    lookup + companyfacts) -- free, no API key.  Results are cached in
+    ~/.finlens/cv_cache.json keyed by ticker + fiscal year (version-stamped;
+    pre-v3 FMP-era entries are ignored).  Re-display of the same filing
+    does NOT re-call EDGAR.
 """
 from __future__ import annotations
 
@@ -38,72 +53,28 @@ from config import LIBRARY_DIR
 # Configuration
 # ---------------------------------------------------------------------------
 
-CROSS_VALIDATE_VERSION = "2"
+CROSS_VALIDATE_VERSION = "3"
+WITNESS_SOURCE_EDGAR = "edgar_company_facts"
 _CV_CACHE_FILE = LIBRARY_DIR / "cv_cache.json"
 FMP_FETCH_SUCCESS = "success"
-FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
+NO_US_FILED_SOURCE = "no_us_filed_source"
 FMP_TRANSIENT_FAILURE = "transient_failure"
+# Legacy reason written by v1/v2 FMP-era records only; kept so old log
+# records still classify in analyze.py. Never written by v3.
+FMP_PREMIUM_BLOCKED = "fmp_premium_blocked"
 FMP_REPORTED_CURRENCY_KEY = "_reported_currency"
 CV_SEVERITY_ADVISORY = "advisory"
 CV_ABSTAIN_CURRENCY_MISMATCH = "currency_mismatch"
 CV_ABSTAIN_CURRENCY_UNKNOWN = "currency_unknown"
+# us-gaap 10-K facts carry the USD unit (edgar_fetcher's USD-first unit
+# rule), so the witness declares USD and the v2 currency gate keeps working
+# unchanged: a non-USD filing vs the USD witness abstains, never converts.
+_WITNESS_CURRENCY = "USD"
 
-# Divergence thresholds (absolute percentage of FMP value)
+# Divergence thresholds (absolute percentage of the witness value)
 _AGREE_THRESHOLD  = 0.02   # < 2%  -> AGREE
 _MINOR_THRESHOLD  = 0.10   # 2-10% -> MINOR_DIVERGENCE
                             # >10%  -> DISAGREE
-
-# 4 headline fields: (field_name, FinLens line-item labels, FMP raw JSON key)
-# FinLens uses different labels depending on source (EDGAR vs FMP-sourced data).
-_FIELDS: list[tuple[str, list[str], str]] = [
-    (
-        "revenue",
-        ["Revenues", "Revenue"],
-        "revenue",
-    ),
-    (
-        "net_income",
-        ["Net Income"],
-        "netIncome",
-    ),
-    (
-        "total_assets",
-        ["Assets", "Total Assets"],
-        "totalAssets",
-    ),
-    (
-        "operating_cash_flow",
-        [
-            "Net Cash Provided by Operating Activities",  # EDGAR label
-            "Net Cash from Operating Activities",         # FMP-sourced label
-        ],
-        "operatingCashFlow",
-    ),
-]
-
-# FMP endpoint per FinLens statement key
-_FMP_ENDPOINTS: dict[str, str] = {
-    "revenue":             "income-statement",
-    "net_income":          "income-statement",
-    "total_assets":        "balance-sheet-statement",
-    "operating_cash_flow": "cash-flow-statement",
-}
-
-# Raw JSON key per field in the FMP response
-_FMP_RAW_KEYS: dict[str, str] = {
-    "revenue":             "revenue",
-    "net_income":          "netIncome",
-    "total_assets":        "totalAssets",
-    "operating_cash_flow": "operatingCashFlow",
-}
-
-# FinLens statement dict key per field
-_FINLENS_STATEMENT: dict[str, str] = {
-    "revenue":             "income_statement",
-    "net_income":          "income_statement",
-    "total_assets":        "balance_sheet",
-    "operating_cash_flow": "cash_flow_statement",
-}
 
 # Line-item labels per field (EDGAR label first, FMP-sourced label second)
 _FINLENS_LABELS: dict[str, list[str]] = {
@@ -123,13 +94,13 @@ _FINLENS_LABELS: dict[str, list[str]] = {
 
 @dataclass
 class FieldResult:
-    """Outcome of comparing one field between FinLens and FMP."""
+    """Outcome of comparing one field between FinLens and the witness."""
     field: str
     finlens_value: float | None    # raw filing currency
-    fmp_value: float | None        # raw FMP reported currency
+    fmp_value: float | None        # witness value (legacy key name -- see module docstring)
     pct_diff: float | None         # percentage, e.g. 1.5 = 1.5%; None if either value missing
     status: str                    # AGREE | MINOR_DIVERGENCE | DISAGREE | UNMATCHED
-    severity: str | None = None    # advisory for FMP value mismatches; omitted otherwise
+    severity: str | None = None    # advisory for witness value mismatches; omitted otherwise
     abstention_reason: str | None = None
 
     def to_dict(self) -> dict:
@@ -156,12 +127,14 @@ class CrossValidationResult:
     fmp_reported_currency: str | None = None
     abstention_reason: str | None = None
     checker_version: str = CROSS_VALIDATE_VERSION
+    witness_source: str = WITNESS_SOURCE_EDGAR
 
     def to_dict(self) -> dict:
         """Serialize to a log-ready dict (Supabase-friendly schema)."""
         return {
             "record_type":       "cross_validation",
             "checker_version":   self.checker_version,
+            "witness_source":    self.witness_source,
             "timestamp":         self.timestamp,
             "ticker":            self.ticker,
             "fiscal_year":       self.fiscal_year,
@@ -236,90 +209,76 @@ def _extract_finlens_values(normalized_data: dict) -> dict[str, float | None]:
     }
 
 
-def _find_year_entry(data: list[dict], target_year: int) -> dict | None:
-    """Return the first entry from an FMP statement list whose fiscalYear matches target_year."""
-    for entry in data:
-        if isinstance(entry, dict) and _parse_year(entry.get("fiscalYear")) == target_year:
-            return entry
-    return None
-
-
-def _common_reported_currency(*entries: dict | None) -> str | None:
-    """Return a single FMP reportedCurrency code, or None when unknown/conflicting."""
-    codes: list[str] = []
-    for entry in entries:
-        if not isinstance(entry, dict) or not entry:
-            continue
-        code = _currency_code(entry.get("reportedCurrency"))
-        if code is None:
-            return None
-        codes.append(code)
-    if not codes:
-        return None
-    unique_codes = set(codes)
-    return codes[0] if len(unique_codes) == 1 else None
-
-
-def _fetch_fmp_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | None, bool, str]:
+def _fetch_witness_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | None, bool, str]:
     """
-    Call FMP for the 4 headline values for ticker + target_year.
+    Fetch the 4 headline values for ticker + target_year from SEC EDGAR
+    company-facts (the v3 witness -- CB-042).
+
+    Concept selection reuses the CB-038/039 machinery in edgar_fetcher:
+    recency-competed concept chains (the NVDA-hardened chains must never
+    fork), restatement-resolved annual facts (same end -> latest filed),
+    then the fact whose end YEAR equals target_year.
 
     Returns
     -------
     (values_dict, success_bool, reason)
-        values_dict   keys: revenue, net_income, total_assets, operating_cash_flow,
-                      plus _reported_currency when FMP reports one consistently.
-                      Values are raw FMP reported-currency values.
-                      None for a field if FMP has no matching entry.
-        success_bool  False only if FMP is unreachable or returns a non-200 response.
-                      True even if the period is not found -- that is "not in FMP",
-                      not an API failure.
-        reason        success | fmp_premium_blocked | transient_failure
+        values_dict   keys: revenue, net_income, total_assets,
+                      operating_cash_flow, plus _reported_currency (always
+                      USD -- us-gaap 10-K facts are USD-unit facts).
+                      None for a field when no fact ends in target_year.
+        success_bool  True when the witness was consulted and carries
+                      us-gaap 10-K annual facts for this filer -- even if
+                      the target year is absent (that is "period not in the
+                      witness", not a failure).
+        reason        success | no_us_filed_source | transient_failure
+                      no_us_filed_source: the ticker resolves to no SEC CIK,
+                      or its company-facts hold no us-gaap 10-K annual facts
+                      for any headline concept (non-US / 40-F / 6-K filers).
+                      Honest abstention -- FMP is never consulted (retired
+                      from the integrity engine, CLAUDE.md Cross-Check
+                      Source).
     """
     try:
-        from modules.fmp import (
-            FMP_FETCH_SUCCESS as FMP_FETCH_SUCCESS_REASON,
-            FMP_PREMIUM_BLOCKED as FMP_PREMIUM_BLOCKED_REASON,
-            _get_statement_list_with_reason,
-        )  # reuse session + SSL setup
-
-        income_list, income_reason = _get_statement_list_with_reason(
-            "income-statement", ticker, "annual", 3
-        )
-        balance_list, balance_reason = _get_statement_list_with_reason(
-            "balance-sheet-statement", ticker, "annual", 3
-        )
-        cashflow_list, cashflow_reason = _get_statement_list_with_reason(
-            "cash-flow-statement", ticker, "annual", 3
+        from modules.edgar_fetcher import (  # lazy: reuse session + shared concept chains
+            NET_INCOME_CONCEPTS,
+            OPERATING_CASH_FLOW_CONCEPTS,
+            REVENUE_CONCEPTS,
+            TOTAL_ASSETS_CONCEPTS,
+            _competing_annual_facts,
+            _get_companyfacts,
+            get_cik,
         )
 
-        reasons = (income_reason, balance_reason, cashflow_reason)
-        if FMP_PREMIUM_BLOCKED_REASON in reasons:
-            return None, False, FMP_PREMIUM_BLOCKED
-        if any(reason != FMP_FETCH_SUCCESS_REASON for reason in reasons):
+        cik = get_cik(ticker)
+        if not cik:
+            return None, False, NO_US_FILED_SOURCE
+
+        facts = _get_companyfacts(cik)
+        if not facts:
             return None, False, FMP_TRANSIENT_FAILURE
 
-        income_entry   = _find_year_entry(income_list,         target_year)
-        balance_entry  = _find_year_entry(balance_list  or [], target_year) or {}
-        cashflow_entry = _find_year_entry(cashflow_list or [], target_year) or {}
+        chains = {
+            "revenue":             REVENUE_CONCEPTS,
+            "net_income":          NET_INCOME_CONCEPTS,
+            "total_assets":        TOTAL_ASSETS_CONCEPTS,
+            "operating_cash_flow": OPERATING_CASH_FLOW_CONCEPTS,
+        }
+        values: dict[str, Any] = {FMP_REPORTED_CURRENCY_KEY: _WITNESS_CURRENCY}
+        any_annual_facts = False
+        for field_name, concepts in chains.items():
+            _concept, annual = _competing_annual_facts(facts, concepts)
+            if annual:
+                any_annual_facts = True
+            match = next(
+                (item for item in annual if str(item.get("end", ""))[:4] == str(target_year)),
+                None,
+            )
+            values[field_name] = match.get("val") if match else None
 
-        # Period not in FMP -- successful fetch but matching year absent
-        if income_entry is None:
-            return None, True, FMP_FETCH_SUCCESS
+        if not any_annual_facts:
+            return None, False, NO_US_FILED_SOURCE
 
-        fmp_reported_currency = _common_reported_currency(
-            income_entry,
-            balance_entry,
-            cashflow_entry,
-        )
-
-        return {
-            FMP_REPORTED_CURRENCY_KEY: fmp_reported_currency,
-            "revenue":             income_entry.get("revenue"),
-            "net_income":          income_entry.get("netIncome"),
-            "total_assets":        balance_entry.get("totalAssets"),
-            "operating_cash_flow": cashflow_entry.get("operatingCashFlow"),
-        }, True, FMP_FETCH_SUCCESS
+        return values, True, FMP_FETCH_SUCCESS
 
     except Exception:
         return None, False, FMP_TRANSIENT_FAILURE
@@ -427,7 +386,12 @@ def _save_cv_cache(cache: dict) -> None:
 
 
 def _repair_cv_cache(cache: dict) -> dict:
-    """Drop legacy or transient failed FMP fetches so cross-validation retries."""
+    """Keep only current-version cacheable entries.
+
+    Pre-v3 entries (no cv_version stamp, or an older one) are FMP-era
+    values and are dropped wholesale -- the v3 witness re-fetches from
+    EDGAR.  Transient failures are never kept, so cross-validation retries.
+    """
     if not isinstance(cache, dict):
         return {}
 
@@ -435,36 +399,17 @@ def _repair_cv_cache(cache: dict) -> dict:
     for key, entry in cache.items():
         if not isinstance(entry, dict):
             continue
-        reason = entry.get("fmp_fetch_reason")
-        success = bool(entry.get("fmp_fetch_success"))
-        if success:
-            entry.setdefault("fmp_fetch_reason", FMP_FETCH_SUCCESS)
-            vals = entry.get("fmp_vals")
-            if vals is None:
-                repaired[key] = entry
-                continue
-            if "fmp_reported_currency" in entry:
-                reported_currency = _fmp_reported_currency(vals, entry)
-                if reported_currency and isinstance(vals, dict):
-                    vals[FMP_REPORTED_CURRENCY_KEY] = reported_currency
-                repaired[key] = entry
-                continue
-            reported_currency = _fmp_reported_currency(vals, entry)
-            if not reported_currency:
-                continue
-            entry["fmp_reported_currency"] = reported_currency
-            if isinstance(vals, dict):
-                vals[FMP_REPORTED_CURRENCY_KEY] = reported_currency
-            repaired[key] = entry
-        elif reason == FMP_PREMIUM_BLOCKED:
-            repaired[key] = entry
-        elif reason == FMP_TRANSIENT_FAILURE or reason is None:
+        if str(entry.get("cv_version") or "") != CROSS_VALIDATE_VERSION:
             continue
+        if _cacheable_fmp_reason(entry.get("fmp_fetch_reason") or ""):
+            repaired[key] = entry
     return repaired
 
 
 def _cacheable_fmp_reason(reason: str) -> bool:
-    return reason in {FMP_FETCH_SUCCESS, FMP_PREMIUM_BLOCKED}
+    # no_us_filed_source is a stable property of the filer (like the old
+    # premium block was of the FMP tier), so it caches; transient never does.
+    return reason in {FMP_FETCH_SUCCESS, NO_US_FILED_SOURCE}
 
 
 # ---------------------------------------------------------------------------
@@ -478,7 +423,8 @@ def cross_validate_filing(
     filing_metadata: dict | None = None,
 ) -> CrossValidationResult:
     """
-    Compare FinLens normalized values for 4 headline fields against FMP.
+    Compare FinLens normalized values for 4 headline fields against the
+    EDGAR company-facts witness (v3, CB-042).
 
     Parameters
     ----------
@@ -490,12 +436,14 @@ def cross_validate_filing(
     Returns
     -------
     CrossValidationResult  Always returned -- never raises.
-        fmp_fetch_success=False  if FMP is unreachable or key missing.
-        All fields UNMATCHED     if FMP returned no usable data.
+        fmp_fetch_reason="no_us_filed_source"  honest abstention: no SEC CIK
+                                               or no us-gaap 10-K facts (non-US filers).
+        fmp_fetch_success=False                if EDGAR is unreachable.
+        All fields UNMATCHED                   if the witness had no usable data.
 
     Side effects
     ------------
-    - Caches FMP result to ~/.finlens/cv_cache.json (idempotent).
+    - Caches the witness result to ~/.finlens/cv_cache.json (idempotent, version-stamped).
     - Appends a cross_validation record to the integrity log (idempotent).
     """
     if filing_metadata is None:
@@ -509,7 +457,7 @@ def cross_validate_filing(
     # --- FinLens values (always available, no network call) ---
     finlens_vals = _extract_finlens_values(normalized_data)
 
-    # --- FMP values (cached or fetched) ---
+    # --- Witness values (cached or fetched; legacy fmp_* naming, see module docstring) ---
     ck    = _cache_key(ticker, fiscal_year)
     cache = _load_cv_cache()
     fmp_reported_currency = None
@@ -526,10 +474,11 @@ def cross_validate_filing(
         if target_year is None:
             fmp_vals, fmp_success, fmp_reason = None, False, FMP_TRANSIENT_FAILURE
         else:
-            fmp_vals, fmp_success, fmp_reason = _fetch_fmp_raw(ticker, target_year)
+            fmp_vals, fmp_success, fmp_reason = _fetch_witness_raw(ticker, target_year)
         fmp_reported_currency = _fmp_reported_currency(fmp_vals)
         if _cacheable_fmp_reason(fmp_reason):
             cache[ck] = {
+                "cv_version": CROSS_VALIDATE_VERSION,
                 "fmp_vals": fmp_vals,
                 "fmp_fetch_success": fmp_success,
                 "fmp_fetch_reason": fmp_reason,
