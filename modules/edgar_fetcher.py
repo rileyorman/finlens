@@ -506,15 +506,20 @@ _SHARES_UNITS = ("shares",)
 
 
 def _unit_values(concept_data: dict | None, units: tuple = _MONETARY_UNITS) -> list:
-    """Facts in the first matching unit. Monetary concepts want USD, share
-    counts want 'shares', per-share concepts want 'USD/shares'; the final
-    fallback (first unit present) preserves the legacy behavior for filers
+    """Facts in the first matching unit, each annotated with its unit key
+    ("_unit") so consumers can DERIVE the filing currency instead of
+    hardcoding it — the ENB trap: a dual registrant filing 10-Ks with
+    CAD-unit facts renders CAD values under a USD label unless the unit
+    travels with the fact. Monetary concepts want USD, share counts want
+    'shares', per-share concepts want 'USD/shares'; the final fallback
+    (first unit present) preserves the legacy behavior for filers
     reporting in a single non-USD unit."""
     all_units = (concept_data or {}).get("units") or {}
     for unit in units:
         if all_units.get(unit):
-            return all_units[unit]
-    return next(iter(all_units.values()), [])
+            return [{**item, "_unit": unit} for item in all_units[unit]]
+    unit, items = next(iter(all_units.items()), (None, []))
+    return [{**item, "_unit": unit} for item in items]
 
 
 def latest_shares_outstanding(facts: dict) -> dict | None:
@@ -543,8 +548,7 @@ def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) 
             concept_data = us_gaap.get(concept)
             if not concept_data:
                 continue
-            units = concept_data.get("units", {})
-            values = units.get("USD") or next(iter(units.values()), [])
+            values = _unit_values(concept_data)
             annual = [
                 item for item in values
                 if item.get("form") == "10-K"
@@ -952,7 +956,9 @@ def get_financial_data(cik: str, accession_number: str) -> dict:
             "period": f"Year ended {report_end}" if report_end else "",
             "fiscal_year": fiscal_year,
             "fiscal_year_prior": fiscal_year_prior,
-            "currency": "USD",
+            # Derived from the revenue anchor's unit — never hardcoded (the
+            # ENB trap: CAD-unit 10-K facts under a USD label).
+            "currency": (revenues_current or {}).get("_unit") or "USD",
             "income_statement": [
                 _row(facts, "Revenues", REVENUE_CONCEPTS, accession_number, "total"),
                 _row(facts, "Cost of Revenue", COST_OF_REVENUE_CONCEPTS, accession_number),
@@ -1024,9 +1030,10 @@ def _get_companyfacts(cik: str) -> dict | None:
 
 
 def _fact_receipt(concept: str, fact: dict) -> str:
+    unit = fact.get("_unit")
     return (
         f"us-gaap:{concept} · {fact.get('form', '?')} {fact.get('accn', '?')} · "
-        f"ended {fact.get('end', '?')}"
+        f"ended {fact.get('end', '?')}" + (f" · {unit}" if unit else "")
     )
 
 
@@ -1053,9 +1060,16 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         receipts: dict[str, str] = {}
         field_concepts: dict[str, str] = {}
 
-        def _field(name: str, concepts: list[str], units: tuple = _MONETARY_UNITS) -> list[dict]:
+        def _field(
+            name: str,
+            concepts: list[str],
+            units: tuple = _MONETARY_UNITS,
+            require_unit: str | None = None,
+        ) -> list[dict]:
             concept, annual = _competing_annual_facts(facts, concepts, units)
-            if concept:
+            if require_unit is not None:
+                annual = [f for f in annual if f.get("_unit") == require_unit]
+            if concept and annual:
                 field_concepts[name] = concept
             return annual
 
@@ -1069,26 +1083,34 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         if not revenue_facts:
             return None  # no revenue anchor — honest refusal, never a shell
         period_ends = [f.get("end", "") for f in revenue_facts[:limit]]
+        # The filing currency is the revenue anchor's unit; every other
+        # field must carry the SAME unit or go honest-N/A — never mix, never
+        # relabel (the ENB trap: CAD-unit 10-K facts under a hardcoded USD
+        # label). Preferring the anchor unit in selection also retires a
+        # stale other-currency series automatically (TECK's dual-unit case).
+        filing_unit = revenue_facts[0].get("_unit") or "USD"
+        _mon = (filing_unit,)
+        _ps_unit = f"{filing_unit}/shares"
 
-        cost_facts = _field("cost_of_revenue", COST_OF_REVENUE_CONCEPTS)
-        gross_facts = _field("gross_profit", GROSS_PROFIT_CONCEPTS)
-        oi_facts = _field("operating_income", OPERATING_INCOME_CONCEPTS)
-        ni_facts = _field("net_income", NET_INCOME_CONCEPTS)
-        rd_facts = _field("rd_expense", RD_EXPENSE_CONCEPTS)
-        int_facts = _field("interest_expense", INTEREST_EXPENSE_CONCEPTS)
-        cash_facts = _field("cash", CASH_CONCEPTS)
-        ta_facts = _field("total_assets", TOTAL_ASSETS_CONCEPTS)
-        ca_facts = _field("total_current_assets", CURRENT_ASSETS_CONCEPTS)
-        cl_facts = _field("total_current_liabilities", CURRENT_LIABILITIES_CONCEPTS)
-        ltd_facts = _field("long_term_debt", LONG_TERM_DEBT_CONCEPTS)
-        cd_facts = _field("current_debt", CURRENT_DEBT_CONCEPTS)
-        eq_facts = _field("equity", EQUITY_CONCEPTS)
-        ocf_facts = _field("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS)
-        capex_facts = _field("capex", CAPEX_CONCEPTS)
-        div_facts = _field("dividends_paid", DIVIDENDS_PAID_CONCEPTS)
-        # FMP-zero batch: as-filed per-share history (USD/shares unit).
-        epsb_facts = _field("eps_basic", EPS_BASIC_CONCEPTS, units=_PER_SHARE_UNITS)
-        epsd_facts = _field("eps_diluted", EPS_DILUTED_CONCEPTS, units=_PER_SHARE_UNITS)
+        cost_facts = _field("cost_of_revenue", COST_OF_REVENUE_CONCEPTS, _mon, filing_unit)
+        gross_facts = _field("gross_profit", GROSS_PROFIT_CONCEPTS, _mon, filing_unit)
+        oi_facts = _field("operating_income", OPERATING_INCOME_CONCEPTS, _mon, filing_unit)
+        ni_facts = _field("net_income", NET_INCOME_CONCEPTS, _mon, filing_unit)
+        rd_facts = _field("rd_expense", RD_EXPENSE_CONCEPTS, _mon, filing_unit)
+        int_facts = _field("interest_expense", INTEREST_EXPENSE_CONCEPTS, _mon, filing_unit)
+        cash_facts = _field("cash", CASH_CONCEPTS, _mon, filing_unit)
+        ta_facts = _field("total_assets", TOTAL_ASSETS_CONCEPTS, _mon, filing_unit)
+        ca_facts = _field("total_current_assets", CURRENT_ASSETS_CONCEPTS, _mon, filing_unit)
+        cl_facts = _field("total_current_liabilities", CURRENT_LIABILITIES_CONCEPTS, _mon, filing_unit)
+        ltd_facts = _field("long_term_debt", LONG_TERM_DEBT_CONCEPTS, _mon, filing_unit)
+        cd_facts = _field("current_debt", CURRENT_DEBT_CONCEPTS, _mon, filing_unit)
+        eq_facts = _field("equity", EQUITY_CONCEPTS, _mon, filing_unit)
+        ocf_facts = _field("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS, _mon, filing_unit)
+        capex_facts = _field("capex", CAPEX_CONCEPTS, _mon, filing_unit)
+        div_facts = _field("dividends_paid", DIVIDENDS_PAID_CONCEPTS, _mon, filing_unit)
+        # FMP-zero batch: as-filed per-share history (<currency>/shares unit).
+        epsb_facts = _field("eps_basic", EPS_BASIC_CONCEPTS, (_ps_unit,), _ps_unit)
+        epsd_facts = _field("eps_diluted", EPS_DILUTED_CONCEPTS, (_ps_unit,), _ps_unit)
 
         current_end = period_ends[0]
         prior_end = period_ends[1] if len(period_ends) > 1 else None
@@ -1216,7 +1238,7 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             "company": facts.get("entityName") or (ticker or "").upper(),
             "company_name": facts.get("entityName") or (ticker or "").upper(),
             "period": fiscal_year,
-            "currency": "USD",
+            "currency": filing_unit,   # the revenue anchor's unit, never hardcoded
             "scale": 1,                # raw dollars — the ratified basis
             "_normalized": True,
             "source": "edgar",         # flips all badging to the trusted branch
@@ -1358,8 +1380,7 @@ def _concept_window_facts(us_gaap: dict, concept: str, forms: tuple) -> list[dic
     concept_data = us_gaap.get(concept)
     if not concept_data:
         return []
-    units = concept_data.get("units", {})
-    values = units.get("USD") or next(iter(units.values()), [])
+    values = _unit_values(concept_data)
     dated = [
         item for item in values
         if item.get("form") in forms
@@ -1380,8 +1401,7 @@ def _concept_instant_facts(us_gaap: dict, concept: str, forms: tuple) -> list[di
     concept_data = us_gaap.get(concept)
     if not concept_data:
         return []
-    units = concept_data.get("units", {})
-    values = units.get("USD") or next(iter(units.values()), [])
+    values = _unit_values(concept_data)
     instants = [
         item for item in values
         if item.get("form") in forms
@@ -1478,6 +1498,7 @@ def _latest_discrete_quarter(concept: str, bundle: dict) -> dict | None:
                     "value": latest_fy["val"] - fact["val"],
                     "end": fy_end,
                     "ordinal": 4,
+                    "unit": latest_fy.get("_unit"),
                     "receipt": (
                         f"derived Q4: FY {_window_ref(latest_fy)} − "
                         f"YTD {_window_ref(fact)} (us-gaap:{concept})"
@@ -1509,6 +1530,7 @@ def _latest_discrete_quarter(concept: str, bundle: dict) -> dict | None:
             "value": latest["val"],
             "end": latest["end"],
             "ordinal": 1,
+            "unit": latest.get("_unit"),
             "receipt": f"YTD Q1 {_window_ref(latest)} (us-gaap:{concept})",
         }
     ordinal = {"H1": 2, "9M": 3}.get(cls)
@@ -1521,6 +1543,7 @@ def _latest_discrete_quarter(concept: str, bundle: dict) -> dict | None:
                 "value": latest["val"] - prev["val"],
                 "end": latest["end"],
                 "ordinal": ordinal,
+                "unit": latest.get("_unit"),
                 "receipt": (
                     f"derived Q{ordinal}: YTD {_window_ref(latest)} − "
                     f"YTD {_window_ref(prev)} (us-gaap:{concept})"
@@ -1548,6 +1571,7 @@ def _ttm_flow(concept: str, bundle: dict) -> dict | None:
             "value": latest_fy["val"],
             "end": fy_end,
             "ordinal": None,
+            "unit": latest_fy.get("_unit"),
             "receipt": (
                 f"TTM = {fy_ref} — no post-FY quarterly filing yet; "
                 f"TTM equals FY exactly (us-gaap:{concept})"
@@ -1569,6 +1593,7 @@ def _ttm_flow(concept: str, bundle: dict) -> dict | None:
         "value": latest_fy["val"] + ytd_c["val"] - ytd_p["val"],
         "end": ytd_c["end"],
         "ordinal": None,
+        "unit": latest_fy.get("_unit"),
         "receipt": (
             f"TTM = {fy_ref} + YTD {_window_ref(ytd_c)} − "
             f"YTD {_window_ref(ytd_p)} (us-gaap:{concept})"
@@ -1636,24 +1661,28 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
         if anchor is None:
             return None  # nothing derivable for this mode — honest refusal
         anchor_end = anchor["end"]
+        # The filing currency is the revenue anchor's unit (never hardcoded
+        # — the ENB trap); same-currency gate mirrors the annual builder.
+        anchor_unit = anchor.get("unit")
 
         receipts: dict[str, str] = {}
         values: dict[str, float | None] = {}
         # Same-window gate: a flow value whose derived window ends anywhere
         # but the anchor's end describes a DIFFERENT period — honest N/A,
-        # no receipt (the CB-038 corollary).
+        # no receipt (the CB-038 corollary). Same-currency gate likewise.
         for name, derived in results.items():
-            if derived["end"] == anchor_end:
+            if derived["end"] == anchor_end and derived.get("unit") == anchor_unit:
                 values[name] = derived["value"]
                 receipts[name] = derived["receipt"]
 
-        # Balance items: the as-of instant must be the anchor period end.
+        # Balance items: the as-of instant must be the anchor period end,
+        # in the anchor currency.
         for name, concepts in instant_fields:
             concept, instants = _competing_quarterly_instant(facts, concepts)
             if not concept:
                 continue
             for fact in instants:
-                if fact.get("end") == anchor_end:
+                if fact.get("end") == anchor_end and fact.get("_unit") == anchor_unit:
                     values[name] = fact.get("val")
                     receipts[name] = _fact_receipt(concept, fact)
                     break
@@ -1735,7 +1764,7 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
             "company": facts.get("entityName") or (ticker or "").upper(),
             "company_name": facts.get("entityName") or (ticker or "").upper(),
             "period": period_label,
-            "currency": "USD",
+            "currency": anchor_unit or "USD",  # the anchor's unit, never hardcoded
             "scale": 1,                # raw dollars — the ratified basis
             "_normalized": True,
             "source": "edgar",         # flips all badging to the trusted branch

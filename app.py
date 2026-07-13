@@ -5167,7 +5167,12 @@ if page == "Stock Tracker":
                     return value / _snap_rev
                 return None
 
-            st.markdown(f"##### Financial Snapshot ({_snap.get('fiscal_year') or 'latest annual'})")
+            # Currency comes from the facts' own units (Stage-4 hotfix — the
+            # ENB trap: CAD-unit 10-K facts under a USD label); always shown.
+            _snap_currency = _snap.get("currency") or "USD"
+            st.markdown(
+                f"##### Financial Snapshot ({_snap.get('fiscal_year') or 'latest annual'} · {_snap_currency})"
+            )
             income_col, balance_col, cash_flow_col = st.columns(3)
             with income_col:
                 st.markdown("**Income**")
@@ -5863,10 +5868,12 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 if _quick_fd_preview.get("fmp_period") == "quarter"
                 else "10-Ks"
             )
+            _quick_currency_note = _quick_fd_preview.get("currency") or "USD"
             st.caption(
                 "Source: **as filed with the SEC** — us-gaap XBRL company "
                 "facts, selected restatement-aware from the filer's own "
-                f"{_quick_form_note}. Every figure carries a receipt below."
+                f"{_quick_form_note}. Figures are in **{_quick_currency_note}** "
+                "(the facts' own reporting unit). Every figure carries a receipt below."
             )
             _quick_receipts = _quick_fd_preview.get("receipts") or {}
             if _quick_receipts:

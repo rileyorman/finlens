@@ -103,10 +103,12 @@ def test_output_contract_and_receipts(monkeypatch):
     assert fd["revenue"] == 215_938_000_000
     assert fd["fiscal_year"] == "FY2026"
     assert fd["company_name"] == "PROBE CORP"
-    # Per-figure receipt: tag + accession + form + end.
+    # Per-figure receipt: tag + accession + form + end + unit (the Stage-4
+    # hotfix — receipts carry the fact's own reporting unit).
     assert fd["receipts"]["revenue"] == (
-        "us-gaap:Revenues · 10-K acc-2026-02-25 · ended 2026-01-25"
+        "us-gaap:Revenues · 10-K acc-2026-02-25 · ended 2026-01-25 · USD"
     )
+    assert fd["currency"] == "USD"
     # Derivations disclose their inputs.
     assert fd["gross_profit"] == 215_938_000_000 - 60_000_000_000
     assert fd["receipts"]["gross_profit"].startswith("derived: revenue − cost")
@@ -219,3 +221,46 @@ def test_dei_share_count_latest_as_of_with_receipt(monkeypatch):
     r = fd["receipts"]["shares_outstanding"]
     assert "dei:EntityCommonStockSharesOutstanding" in r
     assert "as of 2026-02-20" in r and "not period-matched" in r
+# ---------------------------------------------------------------------------
+# Stage-4 hotfix pins — the ENB trap: a dual registrant filing 10-Ks with
+# CAD-unit facts. Currency must come from the facts' own units, and a field
+# in a DIFFERENT unit than the revenue anchor must go honest-N/A (never
+# mixed into composites, never relabeled).
+# ---------------------------------------------------------------------------
+
+ENB_SHAPED = _facts_payload({
+    "Revenues": {"units": {"CAD": [
+        _fact("2025-12-31", 65_194_000_000, "2026-02-13", start="2025-01-01"),
+        _fact("2024-12-31", 53_000_000_000, "2025-02-14", start="2024-01-01"),
+    ]}},
+    "NetIncomeLoss": {"units": {"CAD": [
+        _fact("2025-12-31", 6_000_000_000, "2026-02-13", start="2025-01-01"),
+    ]}},
+    "Assets": {"units": {"CAD": [_fact("2025-12-31", 180_000_000_000, "2026-02-13")]}},
+    # Mixed-unit trap: a USD-only series on one concept must NOT ride into a
+    # CAD filing's output.
+    "CashAndCashEquivalentsAtCarryingValue": {"units": {"USD": [
+        _fact("2025-12-31", 1_000_000_000, "2026-02-13"),
+    ]}},
+    "EarningsPerShareBasic": {"units": {"CAD/shares": [
+        _fact("2025-12-31", 2.79, "2026-02-13", start="2025-01-01"),
+    ]}},
+})
+
+
+def test_cad_unit_filer_labels_cad_never_usd(monkeypatch):
+    _install(monkeypatch, ENB_SHAPED)
+    fd = ef.build_financial_data_from_edgar_facts("ENB", limit=2)
+    assert fd is not None
+    assert fd["currency"] == "CAD"
+    assert fd["revenue"] == 65_194_000_000
+    assert fd["receipts"]["revenue"].endswith("· CAD")
+    # Per-share facts ride the <currency>/shares unit.
+    assert fd["eps_basic"] == 2.79
+
+
+def test_field_in_different_unit_than_anchor_is_honest_na(monkeypatch):
+    _install(monkeypatch, ENB_SHAPED)
+    fd = ef.build_financial_data_from_edgar_facts("ENB", limit=2)
+    assert fd["cash"] is None
+    assert "cash" not in fd["receipts"]
