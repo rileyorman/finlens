@@ -25,8 +25,11 @@ def _fact(end, val, filed, form="10-K", start=None):
     return item
 
 
-def _facts_payload(gaap: dict) -> dict:
-    return {"entityName": "PROBE CORP", "facts": {"us-gaap": gaap}}
+def _facts_payload(gaap: dict, dei: dict | None = None) -> dict:
+    facts = {"us-gaap": gaap}
+    if dei:
+        facts["dei"] = dei
+    return {"entityName": "PROBE CORP", "facts": facts}
 
 
 NVDA_SHAPED = _facts_payload({
@@ -156,3 +159,60 @@ def test_missing_components_stay_honestly_absent(monkeypatch):
     assert fd["free_cash_flow"] is None     # CB-021: needs BOTH components
     assert fd["total_debt"] is None         # no LTD fact -> honest None
     assert fd["current_ratio"] is None
+    # FMP-zero batch: per-share/share-count fields honestly absent too.
+    assert fd["eps_basic"] is None
+    assert fd["shares_outstanding"] is None
+    assert "shares_outstanding" not in fd["receipts"]
+
+
+# ---------------------------------------------------------------------------
+# FMP-zero batch (2026-07-13): unit-aware selection + EPS + dei share count
+# ---------------------------------------------------------------------------
+
+def test_eps_selected_from_per_share_units(monkeypatch):
+    """EPS facts live under 'USD/shares' — the monetary USD-first rule must
+    not blank them, and a stray same-concept USD series must lose."""
+    payload = _facts_payload({
+        "Revenues": {"units": {"USD": [
+            _fact("2026-01-25", 1_000_000, "2026-02-25", start="2025-01-27"),
+        ]}},
+        "EarningsPerShareBasic": {"units": {
+            "USD/shares": [_fact("2026-01-25", 3.93, "2026-02-25", start="2025-01-27")],
+            "USD": [_fact("2026-01-25", 999.0, "2026-02-25", start="2025-01-27")],
+        }},
+        "EarningsPerShareDiluted": {"units": {
+            "USD/shares": [_fact("2026-01-25", 3.90, "2026-02-25", start="2025-01-27")],
+        }},
+    })
+    _install(monkeypatch, payload)
+    fd = ef.build_financial_data_from_edgar_facts("XXXX")
+    assert fd["eps_basic"] == 3.93                     # NOT the stray USD 999.0
+    assert fd["eps_diluted"] == 3.90
+    assert "EarningsPerShareBasic" in fd["receipts"]["eps_basic"]
+
+
+def test_dei_share_count_latest_as_of_with_receipt(monkeypatch):
+    """The cover-page count is served AS-OF its own date (cover dates trail
+    period ends), restatement-resolved, with the as-of framing in the
+    receipt — never period-matched to a statement column."""
+    payload = _facts_payload(
+        {
+            "Revenues": {"units": {"USD": [
+                _fact("2026-01-25", 1_000_000, "2026-02-25", start="2025-01-27"),
+            ]}},
+        },
+        dei={"EntityCommonStockSharesOutstanding": {"units": {"shares": [
+            {"end": "2026-02-20", "val": 24_400_000_000, "filed": "2026-02-25",
+             "form": "10-K", "accn": "acc-k"},
+            {"end": "2026-02-20", "val": 24_000_000_000, "filed": "2026-01-01",
+             "form": "10-Q", "accn": "acc-stale"},   # same end, earlier filed — loses
+            {"end": "2025-11-20", "val": 24_500_000_000, "filed": "2025-11-25",
+             "form": "10-Q", "accn": "acc-q3"},      # older as-of — loses
+        ]}}},
+    )
+    _install(monkeypatch, payload)
+    fd = ef.build_financial_data_from_edgar_facts("XXXX")
+    assert fd["shares_outstanding"] == 24_400_000_000
+    r = fd["receipts"]["shares_outstanding"]
+    assert "dei:EntityCommonStockSharesOutstanding" in r
+    assert "as of 2026-02-20" in r and "not period-matched" in r

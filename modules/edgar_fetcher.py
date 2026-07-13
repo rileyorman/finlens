@@ -493,6 +493,46 @@ CAPEX_CONCEPTS = [
     "PaymentsToAcquireProductiveAssets",
 ]
 DIVIDENDS_PAID_CONCEPTS = ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"]
+# FMP-zero batch (2026-07-13): per-share and share-count concepts. EPS facts
+# carry the "USD/shares" unit; the cover-page share count lives in the dei
+# taxonomy under the "shares" unit — both need unit-aware selection (the
+# monetary selectors' USD-first rule would pick nothing or the wrong series).
+EPS_BASIC_CONCEPTS = ["EarningsPerShareBasic"]
+EPS_DILUTED_CONCEPTS = ["EarningsPerShareDiluted"]
+DEI_SHARES_CONCEPT = "EntityCommonStockSharesOutstanding"
+_MONETARY_UNITS = ("USD",)
+_PER_SHARE_UNITS = ("USD/shares",)
+_SHARES_UNITS = ("shares",)
+
+
+def _unit_values(concept_data: dict | None, units: tuple = _MONETARY_UNITS) -> list:
+    """Facts in the first matching unit. Monetary concepts want USD, share
+    counts want 'shares', per-share concepts want 'USD/shares'; the final
+    fallback (first unit present) preserves the legacy behavior for filers
+    reporting in a single non-USD unit."""
+    all_units = (concept_data or {}).get("units") or {}
+    for unit in units:
+        if all_units.get(unit):
+            return all_units[unit]
+    return next(iter(all_units.values()), [])
+
+
+def latest_shares_outstanding(facts: dict) -> dict | None:
+    """The filer's latest cover-page share count (dei taxonomy),
+    restatement-resolved (same end → latest filed). Cover dates TRAIL
+    period ends, so the count is served AS-OF its own date with its own
+    receipt — never period-matched to a statement column."""
+    dei = ((facts or {}).get("facts") or {}).get("dei") or {}
+    values = _unit_values(dei.get(DEI_SHARES_CONCEPT), _SHARES_UNITS)
+    dated = [item for item in values if item.get("val") is not None and item.get("end")]
+    if not dated:
+        return None
+    by_end: dict[str, dict] = {}
+    for item in dated:
+        end = item.get("end", "")
+        if end not in by_end or (item.get("filed", "") > by_end[end].get("filed", "")):
+            by_end[end] = item
+    return max(by_end.values(), key=lambda i: (i.get("end", ""), i.get("filed", "")))
 
 
 def _annual_facts(facts: dict, concept_names: list[str], accession_number: str) -> tuple:
@@ -549,7 +589,7 @@ def _section(label: str) -> dict:
     return {"line_item": label, "value": None, "value_prior": None, "row_type": "section_header"}
 
 
-def _concept_annual_facts(us_gaap: dict, concept: str) -> list[dict]:
+def _concept_annual_facts(us_gaap: dict, concept: str, units: tuple = _MONETARY_UNITS) -> list[dict]:
     """One concept's annual facts, restatement-resolved: same filters as
     _annual_facts (10-K, non-null, >=300-day duration via _is_annual_duration),
     then facts sharing an `end` collapse to the latest `filed` (comparative
@@ -558,8 +598,7 @@ def _concept_annual_facts(us_gaap: dict, concept: str) -> list[dict]:
     concept_data = us_gaap.get(concept)
     if not concept_data:
         return []
-    units = concept_data.get("units", {})
-    values = units.get("USD") or next(iter(units.values()), [])
+    values = _unit_values(concept_data, units)
     annual = [
         item for item in values
         if item.get("form") == "10-K"
@@ -574,7 +613,9 @@ def _concept_annual_facts(us_gaap: dict, concept: str) -> list[dict]:
     return sorted(by_end.values(), key=lambda item: (item.get("end", ""), item.get("filed", "")), reverse=True)
 
 
-def _competing_annual_facts(facts: dict, concept_names: list[str]) -> tuple[str | None, list[dict]]:
+def _competing_annual_facts(
+    facts: dict, concept_names: list[str], units: tuple = _MONETARY_UNITS,
+) -> tuple[str | None, list[dict]]:
     """CB-038 quick-path selection: concept candidates COMPETE ON RECENCY.
 
     The accession-pinned path is safe with first-concept-with-facts because a
@@ -591,7 +632,7 @@ def _competing_annual_facts(facts: dict, concept_names: list[str]) -> tuple[str 
     best_key = None
     best: tuple[str | None, list[dict]] = (None, [])
     for concept in concept_names:
-        annual = _concept_annual_facts(us_gaap, concept)
+        annual = _concept_annual_facts(us_gaap, concept, units)
         if not annual:
             continue
         latest = annual[0]
@@ -1012,8 +1053,8 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         receipts: dict[str, str] = {}
         field_concepts: dict[str, str] = {}
 
-        def _field(name: str, concepts: list[str]) -> list[dict]:
-            concept, annual = _competing_annual_facts(facts, concepts)
+        def _field(name: str, concepts: list[str], units: tuple = _MONETARY_UNITS) -> list[dict]:
+            concept, annual = _competing_annual_facts(facts, concepts, units)
             if concept:
                 field_concepts[name] = concept
             return annual
@@ -1045,6 +1086,9 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         ocf_facts = _field("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS)
         capex_facts = _field("capex", CAPEX_CONCEPTS)
         div_facts = _field("dividends_paid", DIVIDENDS_PAID_CONCEPTS)
+        # FMP-zero batch: as-filed per-share history (USD/shares unit).
+        epsb_facts = _field("eps_basic", EPS_BASIC_CONCEPTS, units=_PER_SHARE_UNITS)
+        epsd_facts = _field("eps_diluted", EPS_DILUTED_CONCEPTS, units=_PER_SHARE_UNITS)
 
         current_end = period_ends[0]
         prior_end = period_ends[1] if len(period_ends) > 1 else None
@@ -1064,6 +1108,7 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             ("long_term_debt", ltd_facts), ("current_debt", cd_facts),
             ("equity", eq_facts), ("operating_cash_flow", ocf_facts),
             ("capex", capex_facts), ("dividends_paid", div_facts),
+            ("eps_basic", epsb_facts), ("eps_diluted", epsd_facts),
         ):
             for fact in annual:
                 if fact.get("end") == current_end and name in field_concepts:
@@ -1127,6 +1172,19 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             else None
         )
 
+        # FMP-zero batch: the cover-page share count (dei taxonomy) — served
+        # AS-OF its own date (cover dates trail period ends by design), with
+        # a receipt saying so. Retires the aggregator dependency for
+        # per-share math on this path.
+        shares_fact = latest_shares_outstanding(facts)
+        shares_outstanding = shares_fact.get("val") if shares_fact else None
+        if shares_fact is not None:
+            receipts["shares_outstanding"] = (
+                f"dei:{DEI_SHARES_CONCEPT} · {shares_fact.get('form', '?')} "
+                f"{shares_fact.get('accn', '?')} · as of {shares_fact.get('end', '?')} "
+                f"(cover-page count — not period-matched)"
+            )
+
         fiscal_year = f"FY{current_end[:4]}" if current_end else "Current Year"
         fiscal_year_prior = f"FY{prior_end[:4]}" if prior_end else "Prior"
 
@@ -1179,6 +1237,9 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             "interest_expense": _cur(int_facts),
             "rd_expense": _cur(rd_facts),
             "gross_margin": gross_margin,
+            "eps_basic": _cur(epsb_facts),
+            "eps_diluted": _cur(epsd_facts),
+            "shares_outstanding": shares_outstanding,
             "fiscal_year": fiscal_year,
             "fiscal_year_prior": fiscal_year_prior,
             "fmp_period": "annual",
@@ -1193,6 +1254,8 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
                 _fd_row("Operating Income", _cur(oi_facts), _pri(oi_facts), "subtotal"),
                 _fd_row("Interest Expense", _cur(int_facts), _pri(int_facts)),
                 _fd_row("Net Income", net_income, _pri(ni_facts), "total"),
+                _fd_row("EPS (Basic)", _cur(epsb_facts), _pri(epsb_facts)),
+                _fd_row("EPS (Diluted)", _cur(epsd_facts), _pri(epsd_facts)),
             ],
             "balance_sheet": [
                 _section("ASSETS"),
@@ -1594,6 +1657,20 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
                     receipts[name] = _fact_receipt(concept, fact)
                     break
 
+        # FMP-zero batch: cover-page share count, served as-of its own date
+        # (same helper + receipt framing as the annual builder). EPS is
+        # deliberately ABSENT here: per-share figures cannot be derived by
+        # YTD differencing (weighted-average shares make EPS non-additive) —
+        # discrete-quarter EPS lift is a separate, later decision.
+        shares_fact = latest_shares_outstanding(facts)
+        if shares_fact is not None:
+            values["shares_outstanding"] = shares_fact.get("val")
+            receipts["shares_outstanding"] = (
+                f"dei:{DEI_SHARES_CONCEPT} · {shares_fact.get('form', '?')} "
+                f"{shares_fact.get('accn', '?')} · as of {shares_fact.get('end', '?')} "
+                f"(cover-page count — not period-matched)"
+            )
+
         revenue = values.get("revenue")
         cost_of_revenue = values.get("cost_of_revenue")
         gross_profit = values.get("gross_profit")
@@ -1678,6 +1755,7 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
             "interest_expense": values.get("interest_expense"),
             "rd_expense": values.get("rd_expense"),
             "gross_margin": gross_margin,
+            "shares_outstanding": values.get("shares_outstanding"),
             "fiscal_year": period_label,
             "fiscal_year_prior": "Prior",
             "fmp_period": "quarter",
