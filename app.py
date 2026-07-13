@@ -4832,6 +4832,14 @@ if page == "Stock Tracker":
             "get_segments_with_values",
             lambda: get_segments_with_values(cur_ticker, cur_exchange),
         )
+        if not segments:
+            # Honest absence, never a silently blank tab (found live
+            # 2026-07-13: CNQ rendered an empty Segments tab with no
+            # explanation — aggregator coverage is thin for non-US names).
+            st.caption(
+                "No segment data available for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings)."
+            )
         if segments:
             chart_segments = sorted(segments, key=lambda row: row["value"])
             labels = [row["name"] for row in chart_segments]
@@ -4925,6 +4933,14 @@ if page == "Stock Tracker":
             else:
                 rev_str = "—"
             st.metric("Revenue (TTM)", rev_str)
+        # This block is yfinance, NOT the FMP calendar below — two sources
+        # on one tab, each badged (Trust-Is-Page-Level). yfinance reports
+        # TTM revenue in the filer's financial currency, not necessarily USD.
+        st.caption(
+            "Source: yfinance — estimates and TTM revenue, unvalidated; "
+            "TTM revenue is in the provider's reported financial currency "
+            "(not necessarily USD)."
+        )
 
     with tab2:
         # --- SECTION 4: Valuation Metrics ---
@@ -5141,6 +5157,11 @@ if page == "Stock Tracker":
             cur_exchange,
             limit=5,
         )
+        if not company_news:
+            st.caption(
+                "No news items available for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings)."
+            )
         if company_news:
             st.markdown("##### Latest News")
             for item in company_news:
@@ -5391,6 +5412,18 @@ if page == "Stock Tracker":
             "get_company_filings",
             lambda: get_company_filings(cur_ticker, cur_exchange, limit=5),
         )
+        if not company_filings:
+            # Honest absence + the pointer that matters: FinLens's own
+            # validated corpus may hold this filer even when the aggregator
+            # feed is empty (CNQ: three validated filings in the library
+            # while this Fiscal.ai tab rendered blank — found live
+            # 2026-07-13). EDGAR-direct sourcing is the queued improvement.
+            st.caption(
+                "No filings returned for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings). For "
+                "as-filed analysis, use Single Analysis → Quick Analysis or "
+                "Agent Fetch; validated filings may already be in the library."
+            )
         if company_filings:
             st.markdown("##### Recent Filings")
             for filing in company_filings:
