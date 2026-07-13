@@ -3638,7 +3638,13 @@ if page == "Filing Comparison":
                 def _comparison_text_from_library(entry: dict | None, label: str) -> str | None:
                     if not entry:
                         return None
-                    _pdf_path = _pdf_cache_path(
+                    # Change-Propagation fix (found live 2026-07-13): the
+                    # Re-Analyse dead-end fix (b1e8e0b) chained the per-entry
+                    # PDF cache to the registry's campaign PDF, but THIS
+                    # sibling consumer kept the shallow lookup — so a fully
+                    # analysed registry filer (TOU FY2025) got "No data
+                    # found". Same resolver chain now, old path as fallback.
+                    _pdf_path = _reanalyse_pdf_path_for_entry(entry) or _pdf_cache_path(
                         entry.get("ticker") if entry.get("ticker") != "—" else None,
                         _library_period_label(entry),
                     )
