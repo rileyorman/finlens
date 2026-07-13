@@ -1363,6 +1363,7 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         # per-share math on this path.
         shares_fact = latest_shares_outstanding(facts)
         shares_outstanding = shares_fact.get("val") if shares_fact else None
+        shares_outstanding_as_of = shares_fact.get("end") if shares_fact else None
         if shares_fact is not None:
             receipts["shares_outstanding"] = (
                 f"dei:{DEI_SHARES_CONCEPT} · {shares_fact.get('form', '?')} "
@@ -1435,6 +1436,7 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             "eps_basic": _cur(epsb_facts),
             "eps_diluted": _cur(epsd_facts),
             "shares_outstanding": shares_outstanding,
+            "shares_outstanding_as_of": shares_outstanding_as_of,
             "dividends_paid": _cur(div_facts),
             "fiscal_year": fiscal_year,
             "fiscal_year_prior": fiscal_year_prior,
@@ -1868,6 +1870,7 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
         shares_fact = latest_shares_outstanding(facts)
         if shares_fact is not None:
             values["shares_outstanding"] = shares_fact.get("val")
+            values["shares_outstanding_as_of"] = shares_fact.get("end")
             receipts["shares_outstanding"] = (
                 f"dei:{DEI_SHARES_CONCEPT} · {shares_fact.get('form', '?')} "
                 f"{shares_fact.get('accn', '?')} · as of {shares_fact.get('end', '?')} "
@@ -1959,6 +1962,7 @@ def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "qu
             "rd_expense": values.get("rd_expense"),
             "gross_margin": gross_margin,
             "shares_outstanding": values.get("shares_outstanding"),
+            "shares_outstanding_as_of": values.get("shares_outstanding_as_of"),
             "fiscal_year": period_label,
             "fiscal_year_prior": "Prior",
             "fmp_period": "quarter",

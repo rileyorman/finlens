@@ -431,3 +431,22 @@ def test_stale_tier_loses_recency_competition_to_current_tier(monkeypatch):
     assert fd["xbrl_taxonomy"] == "ifrs-full"
     assert fd["fiscal_year"] == "FY2025"
     assert fd["revenue"] == 8_000_000_000
+
+
+def test_shares_as_of_date_rides_beside_the_count(monkeypatch):
+    """Arc-1 coda: the shares card renders 'as of <date>' from a structured
+    field, never parsed out of the receipt string."""
+    payload = _facts_payload(
+        {"Revenues": {"units": {"USD": [
+            _fact("2026-01-25", 1_000_000, "2026-02-25", start="2025-01-27"),
+        ]}}},
+        dei={"EntityCommonStockSharesOutstanding": {"units": {"shares": [
+            {"end": "2026-05-15", "val": 24_200_000_000, "filed": "2026-05-20",
+             "form": "10-Q", "accn": "acc-dei", "fy": 2026, "fp": "Q1"},
+        ]}}},
+    )
+    _install(monkeypatch, payload)
+    fd = ef.build_financial_data_from_edgar_facts("XXXX")
+    assert fd["shares_outstanding"] == 24_200_000_000
+    assert fd["shares_outstanding_as_of"] == "2026-05-15"
+    assert "as of 2026-05-15" in fd["receipts"]["shares_outstanding"]
