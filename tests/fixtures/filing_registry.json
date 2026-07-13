@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-13T02:31:39Z",
+  "generated_at": "2026-07-13T03:00:06Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -343,6 +343,25 @@
       "filing_date": "2026-05-06",
       "commit": null,
       "notes": "FIRST INTERIM fixture in the corpus (quarter-only IAS 34 pack; sibling of annual #16). CB-040 carrier: quarter-only window-class column pairing exercised live ('Three Months Ended March 31, 2026/2025' on income + cash flow; instant pair 'March 31, 2026'/'December 31, 2025' on the balance sheet); document_class statements_unaudited \u2014 this filer is the evidence base for the CB-015 notes-regex qualifier-order fix (605cddf) and the honest_period_label fix (72f58f0), both found on its first live run. Cross-document TTM live-verified against fixture #16 (all gates PASS: revenue 4,929,506 / net_income 707,554 / OCF 3,241,335 / capex -2,834,859, CAD thousands). Agent-fetched twice independently same day (CC direct download + the in-app CB-028 front door), sha256 byte-identical. HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-12, transcription protocol) \u2014 the four TTM input rows transcribed from the source PDF first, both columns, 8/8 byte-identical (incl. as-presented parenthetical-negative capex)."
+    },
+    {
+      "ticker": "PEY",
+      "company_name": "Peyto Exploration & Development Corp.",
+      "fiscal_year": "FY2025",
+      "source": "sedar",
+      "sector": "resource_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/PEY_FY2025_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\PEY_FY2025.pdf",
+      "provenance": {
+        "issuer_url": "https://www.peyto.com/Files/Financials/2025/Q42025FS.pdf",
+        "retrieval_method": "Agent-fetched via the in-app CB-028 front door (2026-07-11, the ratified founder cold-load drill): Sterling located the issuer-hosted URL over the gateway channel in ~40s; the app re-fetched the bytes itself. sha256 re-verified byte-identical at promotion (2026-07-12)."
+      },
+      "stored_field_count": 18,
+      "resolved_field_count": 18,
+      "filing_date": "2026-03-10",
+      "commit": null,
+      "notes": "The founder cold-load drill filer (2026-07-11, CB-028 in-app agent fetch; ZERO silent wrong numbers on the cold run) \u2014 evidence base for CB-031 (revenue label family n=4), CB-032 (alias pack + prefer_primary_alias on net_income), CB-033 (inferred-label finding) and the CB-037 structural-subtotal payoff filer (heal 10\u219215\u219218: the structure-gated bare Cash/current-subtotal aliases fire; the extractor-invented wrong-scope 'Total liabilities' 2,241,748 is honestly UNMAPPED by the structure gate). Stored mapping is the current-mapper heal (18 fields). HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-12, transcription protocol) \u2014 all 18 mapped fields tie to source byte-identically (incl. signed royalties -47,203 and as-presented capex -473,349); the balance-sheet identity closes on the transcription itself (2,241,748 + 365,910 + 2,851,734 = 5,459,392); the CB-025-suppressed derivative-polluted rollup 'Total revenue, other income, and derivative financial instruments' 1,320,055 confirmed unmapped-by-design. Benign observations: the current/total asset-liability subtotals and the 2,851,734 equity total print UNLABELED (the known CB-033/CB-037 Peyto shape) \u2014 stored labels are extraction-assigned, values tie and the structure classifier confirms each as its block sum."
     }
   ],
   "registry_notes": [

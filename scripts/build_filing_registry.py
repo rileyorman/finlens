@@ -284,6 +284,36 @@ FILING_MANIFEST = {
             "byte-identical (incl. as-presented parenthetical-negative capex)."
         ),
     },
+    "PEY_FY2025_sedar.json": {
+        "order": 19,
+        "ticker": "PEY",
+        "company_name": "Peyto Exploration & Development Corp.",
+        "fiscal_year": "FY2025",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\PEY_FY2025.pdf",
+        "commit": None,
+        "notes": (
+            "The founder cold-load drill filer (2026-07-11, CB-028 in-app agent "
+            "fetch; ZERO silent wrong numbers on the cold run) — evidence base for "
+            "CB-031 (revenue label family n=4), CB-032 (alias pack + "
+            "prefer_primary_alias on net_income), CB-033 (inferred-label finding) "
+            "and the CB-037 structural-subtotal payoff filer (heal 10→15→18: the "
+            "structure-gated bare Cash/current-subtotal aliases fire; the "
+            "extractor-invented wrong-scope 'Total liabilities' 2,241,748 is "
+            "honestly UNMAPPED by the structure gate). Stored mapping is the "
+            "current-mapper heal (18 fields). HUMAN GROUND-TRUTH: PASS (Riley, "
+            "2026-07-12, transcription protocol) — all 18 mapped fields tie to "
+            "source byte-identically (incl. signed royalties -47,203 and "
+            "as-presented capex -473,349); the balance-sheet identity closes on "
+            "the transcription itself (2,241,748 + 365,910 + 2,851,734 = "
+            "5,459,392); the CB-025-suppressed derivative-polluted rollup "
+            "'Total revenue, other income, and derivative financial instruments' "
+            "1,320,055 confirmed unmapped-by-design. Benign observations: the "
+            "current/total asset-liability subtotals and the 2,851,734 equity "
+            "total print UNLABELED (the known CB-033/CB-037 Peyto shape) — "
+            "stored labels are extraction-assigned, values tie and the "
+            "structure classifier confirms each as its block sum."
+        ),
+    },
 }
 
 
@@ -333,6 +363,14 @@ def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[d
                 "value": _mapper_source_value(values),
                 "confidence": item.get("confidence"),
                 "statement": statement_key,
+                # CB-037 structure pass-through (gap found at the PEY #19
+                # promotion — the first fixture whose stored mapping NEEDS
+                # the annotations): attach_mapping stores structure-annotated
+                # statements, and the requires_structure bare aliases plus
+                # the wrong-scope gate only fire with them. Older fixtures
+                # without the keys pass None — behavior unchanged.
+                "structure": item.get("structure"),
+                "structure_conflict": bool(item.get("structure_conflict")),
             })
     return rows
 

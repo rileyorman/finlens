@@ -1,0 +1,1165 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 5,
+  "company_name": "Peyto Exploration & Development Corp.",
+  "accounting_standard": "IFRS Accounting Standards as issued by the IASB",
+  "currency": "CAD",
+  "scale": "thousands",
+  "fiscal_year_end": "December 31, 2025",
+  "filing_date": "2026-03-10",
+  "sector_inferred": "Upstream Oil & Gas",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Cash",
+        "values": {
+          "December 31, 2025": 51057,
+          "December 31, 2024": 13635
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Accounts receivable (Note 11)",
+        "values": {
+          "December 31, 2025": 163870,
+          "December 31, 2024": 147561
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Prepaid and other",
+        "values": {
+          "December 31, 2025": 33688,
+          "December 31, 2024": 45185
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Derivative financial instruments (Note 13)",
+        "values": {
+          "December 31, 2025": 111682,
+          "December 31, 2024": 188136
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current assets",
+        "values": {
+          "December 31, 2025": 360297,
+          "December 31, 2024": 394517
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Long-term derivative financial instruments (Note 13)",
+        "values": {
+          "December 31, 2025": 11969,
+          "December 31, 2024": 48645
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Property, plant and equipment, net (Note 3)",
+        "values": {
+          "December 31, 2025": 5087126,
+          "December 31, 2024": 5062728
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total non-current assets",
+        "values": {
+          "December 31, 2025": 5099095,
+          "December 31, 2024": 5111373
+        },
+        "confidence": 0.95,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Total assets",
+        "values": {
+          "December 31, 2025": 5459392,
+          "December 31, 2024": 5505890
+        },
+        "confidence": 0.98,
+        "structure": "total"
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "December 31, 2025": 192810,
+          "December 31, 2024": 160053
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred other income",
+        "values": {
+          "December 31, 2025": 4731,
+          "December 31, 2024": 0
+        },
+        "confidence": 0.9,
+        "structure": "data"
+      },
+      {
+        "label": "Dividends payable (Note 6)",
+        "values": {
+          "December 31, 2025": 22368,
+          "December 31, 2024": 21761
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Income tax payable (Note 12)",
+        "values": {
+          "December 31, 2025": 32010,
+          "December 31, 2024": 20048
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current portion of lease obligation",
+        "values": {
+          "December 31, 2025": 991,
+          "December 31, 2024": 936
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current portion of decommissioning provision (Note 5)",
+        "values": {
+          "December 31, 2025": 13000,
+          "December 31, 2024": 8956
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current portion of long-term debt (Note 4)",
+        "values": {
+          "December 31, 2025": 100000,
+          "December 31, 2024": 57855
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current liabilities",
+        "values": {
+          "December 31, 2025": 365910,
+          "December 31, 2024": 269609
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Long-term debt (Note 4)",
+        "values": {
+          "December 31, 2025": 1074273,
+          "December 31, 2024": 1295238
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decommissioning provision (Note 5)",
+        "values": {
+          "December 31, 2025": 299483,
+          "December 31, 2024": 360296
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Lease obligation",
+        "values": {
+          "December 31, 2025": 6572,
+          "December 31, 2024": 7563
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred income taxes (Note 12)",
+        "values": {
+          "December 31, 2025": 861420,
+          "December 31, 2024": 876855
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total liabilities",
+        "values": {
+          "December 31, 2025": 2241748,
+          "December 31, 2024": 2539952
+        },
+        "confidence": 0.98,
+        "structure": "subtotal",
+        "structure_conflict": true,
+        "structure_conflict_note": "label claims grand 'liabilities' total but arithmetic proves a block subtotal; prior 'liabilities' subtotal(s) are outside its sum"
+      },
+      {
+        "label": "Shareholders' capital (Note 6)",
+        "values": {
+          "December 31, 2025": 2067782,
+          "December 31, 2024": 1977905
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Contributed surplus (Note 10)",
+        "values": {
+          "December 31, 2025": 26170,
+          "December 31, 2024": 27176
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "December 31, 2025": 660918,
+          "December 31, 2024": 507273
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Accumulated other comprehensive income",
+        "values": {
+          "December 31, 2025": 96864,
+          "December 31, 2024": 183975
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total equity",
+        "values": {
+          "December 31, 2025": 2851734,
+          "December 31, 2024": 2696329
+        },
+        "confidence": 0.98,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Total liabilities and equity",
+        "values": {
+          "December 31, 2025": 5459392,
+          "December 31, 2024": 5505890
+        },
+        "confidence": 0.98,
+        "structure": "total"
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Natural gas and natural gas liquid sales (Note 11)",
+        "values": {
+          "2025": 1080438,
+          "2024": 857227
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Royalties",
+        "values": {
+          "2025": -47203,
+          "2024": -61551
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Marketing revenue",
+        "values": {
+          "2025": 23118,
+          "2024": 51023
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Natural gas and natural gas liquid sales, net of royalties",
+        "values": {
+          "2025": 1056353,
+          "2024": 846699
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Realized gain on derivative financial instruments (Note 13)",
+        "values": {
+          "2025": 248737,
+          "2024": 314852
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Other income",
+        "values": {
+          "2025": 14965,
+          "2024": 10389
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total revenue, other income, and derivative financial instruments",
+        "values": {
+          "2025": 1320055,
+          "2024": 1171940
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Marketing purchases",
+        "values": {
+          "2025": 19553,
+          "2024": 47793
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Operating (Note 7)",
+        "values": {
+          "2025": 152788,
+          "2024": 145343
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Transportation",
+        "values": {
+          "2025": 88126,
+          "2024": 81229
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "General and administrative",
+        "values": {
+          "2025": 16658,
+          "2024": 14158
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Performance-based compensation (Note 9)",
+        "values": {
+          "2025": 17983,
+          "2024": 15250
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Stock-based compensation (Note 10)",
+        "values": {
+          "2025": 14686,
+          "2024": 14110
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Finance costs (Note 8)",
+        "values": {
+          "2025": 88169,
+          "2024": 107114
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Realized loss (gain) on foreign exchange",
+        "values": {
+          "2025": 1469,
+          "2024": -475
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized (gain) loss on foreign exchange",
+        "values": {
+          "2025": -2732,
+          "2024": 4652
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Depletion and depreciation (Note 3)",
+        "values": {
+          "2025": 387533,
+          "2024": 377689
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total expenses",
+        "values": {
+          "2025": 784233,
+          "2024": 806863
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Earnings before taxes",
+        "values": {
+          "2025": 535822,
+          "2024": 365077
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current tax (Note 12)",
+        "values": {
+          "2025": 106592,
+          "2024": 73477
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred tax (Note 12)",
+        "values": {
+          "2025": 10644,
+          "2024": 11030
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total income taxes",
+        "values": {
+          "2025": 117236,
+          "2024": 84507
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Earnings for the year",
+        "values": {
+          "2025": 418586,
+          "2024": 280570
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Basic earnings per share",
+        "values": {
+          "2025": 2.09,
+          "2024": 1.43
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Diluted earnings per share",
+        "values": {
+          "2025": 2.06,
+          "2024": 1.42
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Weighted average number of common shares outstanding - Basic",
+        "values": {
+          "2025": 200720890,
+          "2024": 195737374
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Weighted average number of common shares outstanding - Diluted",
+        "values": {
+          "2025": 203130517,
+          "2024": 197084973
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Earnings",
+        "values": {
+          "2025": 418586,
+          "2024": 280570
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred income tax",
+        "values": {
+          "2025": 10644,
+          "2024": 11030
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Depletion and depreciation",
+        "values": {
+          "2025": 387533,
+          "2024": 377689
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized (gain) loss on foreign exchange",
+        "values": {
+          "2025": -2732,
+          "2024": 4652
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Accretion of decommissioning provision",
+        "values": {
+          "2025": 13330,
+          "2024": 9457
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Lease interest",
+        "values": {
+          "2025": 455,
+          "2024": 378
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Stock-based compensation",
+        "values": {
+          "2025": 14686,
+          "2024": 14110
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decommissioning expenditures",
+        "values": {
+          "2025": -10115,
+          "2024": -8446
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Change in non-cash working capital related to operating activities (Note 14)",
+        "values": {
+          "2025": 25175,
+          "2024": -16699
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Operating activities",
+        "values": {
+          "2025": 857562,
+          "2024": 672741
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Common shares issued under stock option plan and private placement (Note 6)",
+        "values": {
+          "2025": 74125,
+          "2024": 45639
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Cash dividends paid",
+        "values": {
+          "2025": -264334,
+          "2024": -257912
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Principal repayment of lease",
+        "values": {
+          "2025": -1391,
+          "2024": -1457
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Interest and financing charges",
+        "values": {
+          "2025": -86,
+          "2024": -2310
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decrease in bank debt",
+        "values": {
+          "2025": -176000,
+          "2024": -58000
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Repayment of senior notes (Note 4)",
+        "values": {
+          "2025": 0,
+          "2024": -65000
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Issuance of senior notes (Note 4)",
+        "values": {
+          "2025": 0,
+          "2024": 75000
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Financing activities",
+        "values": {
+          "2025": -367686,
+          "2024": -264040
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Additions to property, plant, and equipment",
+        "values": {
+          "2025": -473349,
+          "2024": -456872
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Asset dispositions, net of acquisitions",
+        "values": {
+          "2025": 1434,
+          "2024": 474
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Change in non-cash working capital relating to investing activities (Note 14)",
+        "values": {
+          "2025": 19461,
+          "2024": 24155
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Investing activities",
+        "values": {
+          "2025": -452454,
+          "2024": -432243
+        },
+        "confidence": 0.97,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Net change in cash",
+        "values": {
+          "2025": 37422,
+          "2024": -23542
+        },
+        "confidence": 0.98,
+        "structure": "total"
+      },
+      {
+        "label": "Cash, beginning of year",
+        "values": {
+          "2025": 13635,
+          "2024": 37177
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Cash, end of year",
+        "values": {
+          "2025": 51057,
+          "2024": 13635
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Cash interest paid",
+        "values": {
+          "2025": 70030,
+          "2024": 77053
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Cash taxes paid",
+        "values": {
+          "2025": 95220,
+          "2024": 65218
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      }
+    ]
+  },
+  "extraction_confidence": 0.9,
+  "pages_used": {
+    "balance_sheet": [
+      4,
+      5
+    ],
+    "income_statement": [
+      6,
+      7
+    ],
+    "cash_flow": [
+      8,
+      9
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "revenue": {
+        "value": 1080438,
+        "source_label": "Natural gas and natural gas liquid sales (Note 11)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "royalties": {
+        "value": -47203,
+        "source_label": "Royalties",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "realized_derivative_gains": {
+        "value": 248737,
+        "source_label": "Realized gain on derivative financial instruments (Note 13)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "operating_expense": {
+        "value": 152788,
+        "source_label": "Operating (Note 7)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "transportation_costs": {
+        "value": 88126,
+        "source_label": "Transportation",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "interest_expense": {
+        "value": 88169,
+        "source_label": "Finance costs (Note 8)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "depletion_depreciation_amortization": {
+        "value": 387533,
+        "source_label": "Depletion and depreciation (Note 3)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "pretax_income": {
+        "value": 535822,
+        "source_label": "Earnings before taxes",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "net_income": {
+        "value": 418586,
+        "source_label": "Earnings for the year",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "cash": {
+        "value": 51057,
+        "source_label": "Cash",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_current_assets": {
+        "value": 360297,
+        "source_label": "Current assets",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
+      "total_assets": {
+        "value": 5459392,
+        "source_label": "Total assets",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "short_term_debt": {
+        "value": 100000,
+        "source_label": "Current portion of long-term debt (Note 4)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_current_liabilities": {
+        "value": 365910,
+        "source_label": "Current liabilities",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
+      "long_term_debt": {
+        "value": 1074273,
+        "source_label": "Long-term debt (Note 4)",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_equity": {
+        "value": 2851734,
+        "source_label": "Total equity",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "operating_cash_flow": {
+        "value": 857562,
+        "source_label": "Operating activities",
+        "match_type": "exact",
+        "confidence": 0.97
+      },
+      "capex": {
+        "value": -473349,
+        "source_label": "Additions to property, plant, and equipment",
+        "match_type": "exact",
+        "confidence": 0.98
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Marketing revenue",
+        "value": 23118
+      },
+      {
+        "label": "Natural gas and natural gas liquid sales, net of royalties",
+        "value": 1056353
+      },
+      {
+        "label": "Other income",
+        "value": 14965
+      },
+      {
+        "label": "Total revenue, other income, and derivative financial instruments",
+        "value": 1320055
+      },
+      {
+        "label": "Marketing purchases",
+        "value": 19553
+      },
+      {
+        "label": "General and administrative",
+        "value": 16658
+      },
+      {
+        "label": "Performance-based compensation (Note 9)",
+        "value": 17983
+      },
+      {
+        "label": "Stock-based compensation (Note 10)",
+        "value": 14686
+      },
+      {
+        "label": "Realized loss (gain) on foreign exchange",
+        "value": 1469
+      },
+      {
+        "label": "Unrealized (gain) loss on foreign exchange",
+        "value": -2732
+      },
+      {
+        "label": "Total expenses",
+        "value": 784233
+      },
+      {
+        "label": "Current tax (Note 12)",
+        "value": 106592
+      },
+      {
+        "label": "Deferred tax (Note 12)",
+        "value": 10644
+      },
+      {
+        "label": "Total income taxes",
+        "value": 117236
+      },
+      {
+        "label": "Basic earnings per share",
+        "value": 2.09
+      },
+      {
+        "label": "Diluted earnings per share",
+        "value": 2.06
+      },
+      {
+        "label": "Weighted average number of common shares outstanding - Basic",
+        "value": 200720890
+      },
+      {
+        "label": "Weighted average number of common shares outstanding - Diluted",
+        "value": 203130517
+      },
+      {
+        "label": "Accounts receivable (Note 11)",
+        "value": 163870
+      },
+      {
+        "label": "Prepaid and other",
+        "value": 33688
+      },
+      {
+        "label": "Derivative financial instruments (Note 13)",
+        "value": 111682
+      },
+      {
+        "label": "Long-term derivative financial instruments (Note 13)",
+        "value": 11969
+      },
+      {
+        "label": "Property, plant and equipment, net (Note 3)",
+        "value": 5087126
+      },
+      {
+        "label": "Total non-current assets",
+        "value": 5099095
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 192810
+      },
+      {
+        "label": "Deferred other income",
+        "value": 4731
+      },
+      {
+        "label": "Dividends payable (Note 6)",
+        "value": 22368
+      },
+      {
+        "label": "Income tax payable (Note 12)",
+        "value": 32010
+      },
+      {
+        "label": "Current portion of lease obligation",
+        "value": 991
+      },
+      {
+        "label": "Current portion of decommissioning provision (Note 5)",
+        "value": 13000
+      },
+      {
+        "label": "Decommissioning provision (Note 5)",
+        "value": 299483
+      },
+      {
+        "label": "Lease obligation",
+        "value": 6572
+      },
+      {
+        "label": "Deferred income taxes (Note 12)",
+        "value": 861420
+      },
+      {
+        "label": "Total liabilities",
+        "value": 2241748
+      },
+      {
+        "label": "Shareholders' capital (Note 6)",
+        "value": 2067782
+      },
+      {
+        "label": "Contributed surplus (Note 10)",
+        "value": 26170
+      },
+      {
+        "label": "Retained earnings",
+        "value": 660918
+      },
+      {
+        "label": "Accumulated other comprehensive income",
+        "value": 96864
+      },
+      {
+        "label": "Total liabilities and equity",
+        "value": 5459392
+      },
+      {
+        "label": "Earnings",
+        "value": 418586
+      },
+      {
+        "label": "Deferred income tax",
+        "value": 10644
+      },
+      {
+        "label": "Depletion and depreciation",
+        "value": 387533
+      },
+      {
+        "label": "Unrealized (gain) loss on foreign exchange",
+        "value": -2732
+      },
+      {
+        "label": "Accretion of decommissioning provision",
+        "value": 13330
+      },
+      {
+        "label": "Lease interest",
+        "value": 455
+      },
+      {
+        "label": "Stock-based compensation",
+        "value": 14686
+      },
+      {
+        "label": "Decommissioning expenditures",
+        "value": -10115
+      },
+      {
+        "label": "Change in non-cash working capital related to operating activities (Note 14)",
+        "value": 25175
+      },
+      {
+        "label": "Common shares issued under stock option plan and private placement (Note 6)",
+        "value": 74125
+      },
+      {
+        "label": "Cash dividends paid",
+        "value": -264334
+      },
+      {
+        "label": "Principal repayment of lease",
+        "value": -1391
+      },
+      {
+        "label": "Interest and financing charges",
+        "value": -86
+      },
+      {
+        "label": "Decrease in bank debt",
+        "value": -176000
+      },
+      {
+        "label": "Repayment of senior notes (Note 4)",
+        "value": 0
+      },
+      {
+        "label": "Issuance of senior notes (Note 4)",
+        "value": 0
+      },
+      {
+        "label": "Financing activities",
+        "value": -367686
+      },
+      {
+        "label": "Asset dispositions, net of acquisitions",
+        "value": 1434
+      },
+      {
+        "label": "Change in non-cash working capital relating to investing activities (Note 14)",
+        "value": 19461
+      },
+      {
+        "label": "Investing activities",
+        "value": -452454
+      },
+      {
+        "label": "Net change in cash",
+        "value": 37422
+      },
+      {
+        "label": "Cash, beginning of year",
+        "value": 13635
+      },
+      {
+        "label": "Cash, end of year",
+        "value": 51057
+      },
+      {
+        "label": "Cash interest paid",
+        "value": 70030
+      },
+      {
+        "label": "Cash taxes paid",
+        "value": 95220
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS Accounting Standards as issued by the IASB",
+      "sector_profile": "resource_sector",
+      "total": 82,
+      "mapped_count": 18,
+      "unmapped_count": 64,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": [],
+      "resolved_collisions": []
+    }
+  },
+  "source_provenance": {
+    "pdf_origin_url": "https://www.peyto.com/Files/Financials/2025/Q42025FS.pdf",
+    "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
+    "retrieval_method": "Agent-fetched via the in-app CB-028 front door (2026-07-11, the ratified founder cold-load drill): Sterling located the issuer-hosted URL over the gateway channel in ~40s; the app re-fetched the bytes itself. sha256 re-verified byte-identical at promotion (2026-07-12).",
+    "document_note": "Q4 2025 audited annual financial statements pack (Q42025FS.pdf); document_class statements_audited",
+    "future_pattern": "the cold-load drill filer promoted after its ground-truth stamp — the CB-031/032/033 evidence base and the CB-037 structural-subtotal payoff filer",
+    "sha256": "3ac5aa50a04ed0c86e53288591223d0b4da6521cb432248e4b66f14ff0a99eeb",
+    "byte_size": 433197
+  }
+}
