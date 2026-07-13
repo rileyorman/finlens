@@ -4169,12 +4169,11 @@ if page == "Stock Tracker":
         _fiscal_ai_exchange_for_ticker,
         get_stock_data,
     )
-    from modules.fmp import (
-        get_balance_sheet as get_fmp_balance_sheet,
-        get_cash_flow as get_fmp_cash_flow,
-        get_earnings_calendar as get_fmp_earnings_calendar,
-        get_income_statement as get_fmp_income_statement,
-    )
+    # FMP-zero Stage 2 (2026-07-13): the earnings calendar is FMP's
+    # PERMANENT badged role (no filed source exists for estimates/dates).
+    # The statement fetchers are gone from this page — the Financial
+    # Snapshot now reads as-filed SEC company-facts.
+    from modules.fmp import get_earnings_calendar as get_fmp_earnings_calendar
     from modules.polymarket import get_macro_markets
     from modules.watchlist import load_watchlist, add_ticker as wl_add, remove_ticker as wl_remove
     from datetime import date as _date
@@ -5147,77 +5146,94 @@ if page == "Stock Tracker":
             st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
 
     with tab2:
-        fmp_financials_key = f"fmp_financials_{cur_ticker}"
-        if fmp_financials_key not in st.session_state:
-            _fmp_income = get_fmp_income_statement(cur_ticker)
-            _fmp_balance = get_fmp_balance_sheet(cur_ticker)
-            _fmp_cash_flow = get_fmp_cash_flow(cur_ticker)
-            st.session_state[fmp_financials_key] = (
-                {
-                    "income": _fmp_income,
-                    "balance": _fmp_balance,
-                    "cash_flow": _fmp_cash_flow,
-                }
-                if _fmp_income and _fmp_balance and _fmp_cash_flow
-                else None
-            )
-        fmp_financials = st.session_state[fmp_financials_key]
-        if fmp_financials:
-            income = fmp_financials["income"]
-            balance = fmp_financials["balance"]
-            cash_flow = fmp_financials["cash_flow"]
-            fiscal_year = (
-                income.get("fiscalYear")
-                or balance.get("fiscalYear")
-                or cash_flow.get("fiscalYear")
-            )
-            title_suffix = f" (FY{fiscal_year})" if fiscal_year else ""
-            st.markdown(f"##### Financial Snapshot{title_suffix}")
+        # FMP-zero Stage 2 (2026-07-13): the Financial Snapshot was the JPM
+        # phantom-OCF surface class (FMP +100.9B vs the as-filed (147,782)).
+        # It now reads as-filed SEC company-facts via the CB-038 builder
+        # (recency competition, per-figure receipts, honest N/A) — FMP is
+        # never consulted for these numbers again, and there is no fallback.
+        edgar_snapshot_key = f"edgar_snapshot_{cur_ticker}"
+        if edgar_snapshot_key not in st.session_state:
+            from modules.edgar_fetcher import build_financial_data_from_edgar_facts
+            with st.spinner(f"Fetching as-filed SEC data for {cur_ticker}…"):
+                st.session_state[edgar_snapshot_key] = (
+                    build_financial_data_from_edgar_facts(cur_ticker, limit=1)
+                )
+        _snap = st.session_state[edgar_snapshot_key]
+        if _snap:
+            _snap_rev = _snap.get("revenue")
+
+            def _snap_margin(value):
+                if isinstance(value, (int, float)) and isinstance(_snap_rev, (int, float)) and _snap_rev:
+                    return value / _snap_rev
+                return None
+
+            st.markdown(f"##### Financial Snapshot ({_snap.get('fiscal_year') or 'latest annual'})")
             income_col, balance_col, cash_flow_col = st.columns(3)
             with income_col:
                 st.markdown("**Income**")
-                st.metric("Revenue", _fmt_financial_snapshot_value(income.get("revenue")))
+                st.metric("Revenue", _fmt_financial_snapshot_value(_snap_rev))
                 st.metric(
                     "Gross Profit",
-                    _fmt_financial_snapshot_value(income.get("grossProfit")),
-                    delta=f"Gross Margin {_fmt_financial_margin(income.get('grossProfitRatio'))}",
+                    _fmt_financial_snapshot_value(_snap.get("gross_profit")),
+                    delta=f"Gross Margin {_fmt_financial_margin(_snap.get('gross_margin'))}",
                     delta_color="off",
                 )
                 st.metric(
                     "Operating Income",
-                    _fmt_financial_snapshot_value(income.get("operatingIncome")),
-                    delta=f"Operating Margin {_fmt_financial_margin(income.get('operatingIncomeRatio'))}",
+                    _fmt_financial_snapshot_value(_snap.get("operating_income")),
+                    delta=f"Operating Margin {_fmt_financial_margin(_snap_margin(_snap.get('operating_income')))}",
                     delta_color="off",
                 )
                 st.metric(
                     "Net Income",
-                    _fmt_financial_snapshot_value(income.get("netIncome")),
-                    delta=f"Net Margin {_fmt_financial_margin(income.get('netIncomeRatio'))}",
+                    _fmt_financial_snapshot_value(_snap.get("net_income")),
+                    delta=f"Net Margin {_fmt_financial_margin(_snap_margin(_snap.get('net_income')))}",
                     delta_color="off",
                 )
-                st.metric("EBITDA", _fmt_financial_snapshot_value(income.get("ebitda")))
+                # CB-038: EBITDA is not an XBRL concept — honest dash, never
+                # derived here (the annual builder's own rule).
+                st.metric(
+                    "EBITDA", "—",
+                    help="Not an XBRL concept — filers do not file an EBITDA "
+                         "fact, and this card never derives one.",
+                )
             with balance_col:
                 st.markdown("**Balance Sheet**")
-                st.metric("Cash", _fmt_financial_snapshot_value(balance.get("cashAndCashEquivalents")))
-                st.metric("Total Assets", _fmt_financial_snapshot_value(balance.get("totalAssets")))
-                st.metric("Total Debt", _fmt_financial_snapshot_value(balance.get("totalDebt")))
+                st.metric("Cash", _fmt_financial_snapshot_value(_snap.get("cash")))
+                st.metric("Total Assets", _fmt_financial_snapshot_value(_snap.get("total_assets")))
+                st.metric("Total Debt", _fmt_financial_snapshot_value(_snap.get("total_debt")))
                 st.metric(
                     "Shareholders Equity",
-                    _fmt_financial_snapshot_value(balance.get("totalStockholdersEquity")),
+                    _fmt_financial_snapshot_value(_snap.get("equity")),
                 )
             with cash_flow_col:
                 st.markdown("**Cash Flow**")
                 st.metric(
                     "Operating Cash Flow",
-                    _fmt_financial_snapshot_value(cash_flow.get("operatingCashFlow")),
+                    _fmt_financial_snapshot_value(_snap.get("operating_cash_flow")),
                 )
                 st.metric(
                     "Capital Expenditure",
-                    _fmt_financial_snapshot_value(cash_flow.get("capitalExpenditure")),
+                    _fmt_financial_snapshot_value(_snap.get("capex")),
                 )
-                st.metric("Free Cash Flow", _fmt_financial_snapshot_value(cash_flow.get("freeCashFlow")))
-                st.metric("Dividends Paid", _fmt_financial_snapshot_value(cash_flow.get("dividendsPaid")))
-            st.caption("Source: Financial Modeling Prep — unvalidated aggregator data, not part of the verified corpus")
+                st.metric("Free Cash Flow", _fmt_financial_snapshot_value(_snap.get("free_cash_flow")))
+                st.metric("Dividends Paid", _fmt_financial_snapshot_value(_snap.get("dividends_paid")))
+            st.caption(
+                "Source: **as filed with the SEC** — us-gaap XBRL company "
+                "facts, selected restatement-aware from the filer's own "
+                "10-Ks. Every figure carries a receipt below."
+            )
+            _snap_receipts = _snap.get("receipts") or {}
+            if _snap_receipts:
+                with st.expander(f"Per-figure receipts ({len(_snap_receipts)})", expanded=False):
+                    for _r_name, _r_text in _snap_receipts.items():
+                        st.caption(f"**{_r_name}**: {_r_text}")
+        else:
+            st.caption(
+                "As-filed SEC company-facts are unavailable for this ticker "
+                "(US filers only — Canadian filers are served by the SEDAR+ "
+                "corpus path). No aggregator fallback: honest absence."
+            )
 
     with tab6:
         company_filings = _fiscal_session_cached(

@@ -115,6 +115,9 @@ def test_output_contract_and_receipts(monkeypatch):
     assert "long-term only" in fd["receipts"]["total_debt"]
     # ebitda: not an XBRL concept — honestly absent.
     assert "ebitda" not in fd
+    # dividends_paid rides top-level for the Stock Tracker snapshot
+    # (FMP-zero Stage 2); no dividend facts in this payload -> honest None.
+    assert fd["dividends_paid"] is None
     # period_history spans the two annual ends.
     assert [row["label"] for row in fd["period_history"]] == ["FY2026", "FY2025"]
     assert fd["period_history"][1]["revenue"] == 130_497_000_000
