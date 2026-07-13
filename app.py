@@ -4567,6 +4567,11 @@ if page == "Stock Tracker":
                 st.metric("Upside / Downside", "—")
         with ac3:
             st.metric("Analysts Covering", str(num_an) if num_an else "—")
+        # Trust-Is-Page-Level: estimates have no filed source — badge permanent.
+        st.caption(
+            "Source: yfinance analyst consensus — unvalidated aggregate of "
+            "broker estimates; no filed source exists."
+        )
 
         # Current vs target bar
         if cur and target:
@@ -4671,28 +4676,67 @@ if page == "Stock Tracker":
             ma200 = closes.rolling(200).mean()
             dates = hist_df.index
 
+            # Commodity benchmark overlay for resource names (ratified
+            # 2026-07-13): the chart switches to indexed mode (start = 100)
+            # so relative performance reads directly. Indexing is linear, so
+            # the MA lines index identically and the golden-cross geometry
+            # is preserved. Benchmarks come from industry classification
+            # only (CB-027: E&Ps get BOTH oil and gas, no primary claim);
+            # no benchmarks → the chart is exactly what it always was.
+            from modules.stock_tracker import (
+                sector_commodity_benchmarks as _bench_for,
+                get_benchmark_history as _bench_hist,
+            )
+            _benchmarks = _bench_for(comp.get("sector"), comp.get("industry"))
+            _bench_series = {}
+            if _benchmarks and len(closes) and float(closes.iloc[0]) != 0.0:
+                _bench_key = f"bench_hist_{cur_ticker}"
+                if _bench_key not in st.session_state:
+                    st.session_state[_bench_key] = _bench_hist(_benchmarks)
+                _bench_series = st.session_state.get(_bench_key) or {}
+            _indexed = bool(_bench_series)
+            _scale = (100.0 / float(closes.iloc[0])) if _indexed else 1.0
+
             fig = go.Figure()
             fig.add_trace(go.Scatter(
-                x=dates, y=closes,
-                name="Close", line=dict(color="#1f77b4", width=2),
+                x=dates, y=closes * _scale,
+                name=(f"{cur_ticker} (indexed)" if _indexed else "Close"),
+                line=dict(color="#1f77b4", width=2),
             ))
             if len(closes) >= 50:
                 fig.add_trace(go.Scatter(
-                    x=dates, y=ma50,
+                    x=dates, y=ma50 * _scale,
                     name="50-Day MA", line=dict(color="#ff7f0e", width=1.5, dash="dot"),
                 ))
             if len(closes) >= 200:
                 fig.add_trace(go.Scatter(
-                    x=dates, y=ma200,
+                    x=dates, y=ma200 * _scale,
                     name="200-Day MA", line=dict(color="#d62728", width=1.5, dash="dash"),
+                ))
+            _bench_colors = ("#9467bd", "#2ca02c", "#8c564b")
+            for _b_i, (_b_label, _b_closes) in enumerate(_bench_series.items()):
+                if _b_closes is None or len(_b_closes) == 0 or float(_b_closes.iloc[0]) == 0.0:
+                    continue
+                fig.add_trace(go.Scatter(
+                    x=_b_closes.index,
+                    y=_b_closes / float(_b_closes.iloc[0]) * 100.0,
+                    name=_b_label,
+                    line=dict(color=_bench_colors[_b_i % 3], width=1.5, dash="dashdot"),
                 ))
             fig.update_layout(
                 height=320, margin=dict(l=0, r=0, t=10, b=0),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 xaxis_rangeslider_visible=False,
-                yaxis_tickprefix="$",
+                yaxis_tickprefix=("" if _indexed else "$"),
             )
             st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
+            if _indexed:
+                st.caption(
+                    "Indexed to 100 at the window start. Benchmark overlay is "
+                    "sector context from the industry classification, not a "
+                    "filing-evidenced commodity mix — Source: yfinance "
+                    "futures, unvalidated."
+                )
 
             # Volume bar chart
             if "Volume" in hist_df.columns:
@@ -4709,6 +4753,12 @@ if page == "Stock Tracker":
                 st.plotly_chart(vol_fig, width='stretch', config={"displayModeBar": False})
 
     st.divider()
+
+    # Trust-Is-Page-Level: market prices have no filed source — badge permanent.
+    st.caption(
+        "Price, momentum, moving averages, RSI, and the chart above: "
+        "Source yfinance — live market data, unvalidated."
+    )
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📡 Technicals",
@@ -4772,12 +4822,24 @@ if page == "Stock Tracker":
             ''',
             unsafe_allow_html=True,
         )
+        st.caption(
+            "Source: yfinance — exchange-reported short interest via an "
+            "aggregator, unvalidated."
+        )
 
     with tab4:
         segments = _fiscal_session_cached(
             "get_segments_with_values",
             lambda: get_segments_with_values(cur_ticker, cur_exchange),
         )
+        if not segments:
+            # Honest absence, never a silently blank tab (found live
+            # 2026-07-13: CNQ rendered an empty Segments tab with no
+            # explanation — aggregator coverage is thin for non-US names).
+            st.caption(
+                "No segment data available for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings)."
+            )
         if segments:
             chart_segments = sorted(segments, key=lambda row: row["value"])
             labels = [row["name"] for row in chart_segments]
@@ -4871,6 +4933,14 @@ if page == "Stock Tracker":
             else:
                 rev_str = "—"
             st.metric("Revenue (TTM)", rev_str)
+        # This block is yfinance, NOT the FMP calendar below — two sources
+        # on one tab, each badged (Trust-Is-Page-Level). yfinance reports
+        # TTM revenue in the filer's financial currency, not necessarily USD.
+        st.caption(
+            "Source: yfinance — estimates and TTM revenue, unvalidated; "
+            "TTM revenue is in the provider's reported financial currency "
+            "(not necessarily USD)."
+        )
 
     with tab2:
         # --- SECTION 4: Valuation Metrics ---
@@ -4912,6 +4982,22 @@ if page == "Stock Tracker":
                 st.metric(label, v_str)
                 if note:
                     st.caption(note)
+        # Trust-Is-Page-Level basis caption (same class as the analysis
+        # page's Valuation Snapshot, dcbb241): provider-computed ratios can
+        # differ from filing-basis figures on this very tab.
+        st.caption(
+            "Source: yfinance — provider-computed ratios on a trailing-"
+            "twelve-month basis, unvalidated; may differ from filing-basis "
+            "figures (the as-filed Financial Snapshot below carries the "
+            "receipts). EV/EBITDA is the provider's own construction."
+        )
+        # Sector quote-basis note (docs/research/ coverage-gap reports): the
+        # number the market quotes per sector is usually NOT a generalist
+        # ratio — disclose the basis; the values themselves are Arc 3's job.
+        from modules.stock_tracker import sector_quote_note as _sector_quote_note
+        _sqn = _sector_quote_note(comp.get("sector"), comp.get("industry"))
+        if _sqn and _sqn.get("valuation"):
+            st.caption(f"**Sector note:** {_sqn['valuation']}")
 
         fiscal_ratio_values = _fiscal_session_cached(
             "get_ratios_with_values",
@@ -5071,6 +5157,11 @@ if page == "Stock Tracker":
             cur_exchange,
             limit=5,
         )
+        if not company_news:
+            st.caption(
+                "No news items available for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings)."
+            )
         if company_news:
             st.markdown("##### Latest News")
             for item in company_news:
@@ -5286,11 +5377,24 @@ if page == "Stock Tracker":
                 )
                 st.metric("Free Cash Flow", _fmt_financial_snapshot_value(_snap.get("free_cash_flow")))
                 st.metric("Dividends Paid", _fmt_financial_snapshot_value(_snap.get("dividends_paid")))
+            # Stage-4-aware basis: the snapshot builder resolves tiers
+            # (us-gaap/10-K → us-gaap/40-F+20-F → ifrs-full/40-F+20-F), so
+            # the caption discloses the resolved taxonomy/forms/currency —
+            # never a hardcoded "us-gaap 10-Ks".
+            _snap_taxonomy = _snap.get("xbrl_taxonomy") or "us-gaap"
+            _snap_form_note = _snap.get("form_note") or "10-Ks"
             st.caption(
-                "Source: **as filed with the SEC** — us-gaap XBRL company "
-                "facts, selected restatement-aware from the filer's own "
-                "10-Ks. Every figure carries a receipt below."
+                f"Source: **as filed with the SEC** — {_snap_taxonomy} XBRL "
+                "company facts, selected restatement-aware from the filer's own "
+                f"{_snap_form_note}. Figures are in **{_snap_currency}** "
+                "(the facts' own reporting unit). Every figure carries a receipt below."
             )
+            # Sector quote-basis note (docs/research/): e.g. O&G issuers
+            # quote funds flow, not statements-basis FCF.
+            from modules.stock_tracker import sector_quote_note as _sqn_fn
+            _snap_sqn = _sqn_fn(comp.get("sector"), comp.get("industry"))
+            if _snap_sqn and _snap_sqn.get("cashflow"):
+                st.caption(f"**Sector note:** {_snap_sqn['cashflow']}")
             _snap_receipts = _snap.get("receipts") or {}
             if _snap_receipts:
                 with st.expander(f"Per-figure receipts ({len(_snap_receipts)})", expanded=False):
@@ -5308,6 +5412,18 @@ if page == "Stock Tracker":
             "get_company_filings",
             lambda: get_company_filings(cur_ticker, cur_exchange, limit=5),
         )
+        if not company_filings:
+            # Honest absence + the pointer that matters: FinLens's own
+            # validated corpus may hold this filer even when the aggregator
+            # feed is empty (CNQ: three validated filings in the library
+            # while this Fiscal.ai tab rendered blank — found live
+            # 2026-07-13). EDGAR-direct sourcing is the queued improvement.
+            st.caption(
+                "No filings returned for this ticker — Source: Fiscal AI "
+                "(aggregator coverage is thin for non-US listings). For "
+                "as-filed analysis, use Single Analysis → Quick Analysis or "
+                "Agent Fetch; validated filings may already be in the library."
+            )
         if company_filings:
             st.markdown("##### Recent Filings")
             for filing in company_filings:

@@ -324,3 +324,152 @@ def get_stock_data(ticker: str) -> dict:
         result["error"] = f"Failed to fetch data for '{ticker}': {e}"
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Sector quote-basis notes (2026-07-13, from the docs/research/ coverage-gap
+# reports). The five-times-confirmed finding: the headline number the market
+# quotes per sector is a company-defined non-GAAP measure living OUTSIDE the
+# statements (funds flow, DCF payout, FFO/AFFO, AISC, adjusted EPS/ROTE) —
+# so the tracker's generalist ratios (P/E, PEG, statements-FCF) mislead by
+# omission on those sectors. These notes DISCLOSE the quote basis; they never
+# serve non-GAAP values (that is the Arc 3 packs' job, CB-036-gated).
+# Classification is deliberately conservative: unknown sector → None → no note.
+# ---------------------------------------------------------------------------
+
+_SECTOR_QUOTE_NOTES = {
+    "og_upstream": {
+        "valuation": (
+            "E&Ps are quoted on EV/DACF, P/CF, and NAV rather than P/E — "
+            "earnings are commodity-price-driven and P/E misleads here."
+        ),
+        "cashflow": (
+            "O&G issuers quote FUNDS FLOW (issuer-defined non-GAAP, excludes "
+            "working-capital swings), not statements-basis FCF — the two "
+            "differ materially in single quarters."
+        ),
+    },
+    "og_midstream": {
+        "valuation": (
+            "Midstream names are quoted on EV/EBITDA and distributable-cash-"
+            "flow (DCF) payout, not P/E."
+        ),
+        "cashflow": (
+            "Distributable cash flow is the quoted measure — issuer-defined "
+            "non-GAAP, reconciled in the MD&A, not the statements-basis FCF "
+            "shown here."
+        ),
+    },
+    "og_downstream": {
+        "valuation": (
+            "Refiners are quoted on EV/EBITDA against crack-spread cycles; "
+            "single-period P/E is cycle-distorted."
+        ),
+        "cashflow": None,
+    },
+    "reit": {
+        "valuation": (
+            "REITs are quoted on P/FFO and P/AFFO — net-income-based P/E "
+            "misleads (depreciation dominates). NAREIT and REALPAC define "
+            "FFO differently; AFFO varies by issuer."
+        ),
+        "cashflow": (
+            "FFO/AFFO are the quoted cash measures — issuer-defined non-GAAP "
+            "from the MD&A, not statements-basis FCF."
+        ),
+    },
+    "bank": {
+        "valuation": (
+            "Banks are quoted on P/B, P/TBV, ROE/ROTE, and adjusted "
+            "(\"cash\") EPS — EV-based multiples are not meaningful for "
+            "banks (deposits are not debt in the EV sense)."
+        ),
+        "cashflow": None,
+    },
+    "miner": {
+        "valuation": (
+            "Miners are quoted on AISC margins, EV/oz of reserves, and "
+            "P/NAV; cash-cost basis varies by issuer (by-product vs "
+            "co-product), so cross-miner comparisons need the definitions."
+        ),
+        "cashflow": (
+            "AISC is the quoted cost measure — issuer-defined non-GAAP from "
+            "the MD&A, not derivable from the statements."
+        ),
+    },
+}
+
+_MINER_INDUSTRY_TOKENS = ("gold", "silver", "copper", "mining", "metals", "uranium", "coal")
+
+
+def sector_quote_note(sector, industry) -> dict | None:
+    """The quote-basis note for a yfinance (sector, industry) pair, or None.
+
+    Returns {"valuation": str, "cashflow": str | None}. Conservative:
+    anything unrecognized gets no note rather than a guessed one.
+    """
+    sec = (sector or "").strip().lower()
+    ind = (industry or "").strip().lower()
+    if not sec and not ind:
+        return None
+    if "oil & gas midstream" in ind:
+        return _SECTOR_QUOTE_NOTES["og_midstream"]
+    if "oil & gas refining" in ind:
+        return _SECTOR_QUOTE_NOTES["og_downstream"]
+    if "oil & gas" in ind and ("e&p" in ind or "integrated" in ind or "drilling" in ind):
+        return _SECTOR_QUOTE_NOTES["og_upstream"]
+    if ind.startswith("reit") or "reit -" in ind or "reit—" in ind:
+        return _SECTOR_QUOTE_NOTES["reit"]
+    if "banks" in ind:
+        return _SECTOR_QUOTE_NOTES["bank"]
+    if sec == "basic materials" and any(tok in ind for tok in _MINER_INDUSTRY_TOKENS):
+        return _SECTOR_QUOTE_NOTES["miner"]
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Commodity benchmark overlay (ratified 2026-07-13): resource names get their
+# sector's benchmark futures overlaid on the price chart, indexed. Benchmarks
+# come from industry classification ONLY — sector context, never a
+# filing-evidenced commodity mix (CB-027 discipline: E&Ps get BOTH oil and
+# gas, no primary-commodity claim). Conservative: unknown → [] → chart
+# unchanged. Midstream/downstream deliberately excluded (fee-based / crack-
+# spread economics — a flat-price overlay would mislead).
+# ---------------------------------------------------------------------------
+
+_COMMODITY_BENCHMARKS = {
+    "og_upstream": [("WTI Oil", "CL=F"), ("Nat Gas", "NG=F")],
+    "gold": [("Gold", "GC=F")],
+    "silver": [("Silver", "SI=F")],
+    "copper": [("Copper", "HG=F")],
+}
+
+
+def sector_commodity_benchmarks(sector, industry) -> list:
+    """[(label, yfinance futures symbol)] for a resource name, else []."""
+    sec = (sector or "").strip().lower()
+    ind = (industry or "").strip().lower()
+    if "oil & gas" in ind and ("e&p" in ind or "integrated" in ind):
+        return list(_COMMODITY_BENCHMARKS["og_upstream"])
+    if sec == "basic materials":
+        if "gold" in ind:
+            return list(_COMMODITY_BENCHMARKS["gold"])
+        if "silver" in ind:
+            return list(_COMMODITY_BENCHMARKS["silver"])
+        if "copper" in ind:
+            return list(_COMMODITY_BENCHMARKS["copper"])
+    return []
+
+
+def get_benchmark_history(symbols: list, period: str = "1y") -> dict:
+    """{label: Close series} for benchmark futures. Failures drop silently —
+    honest absence; the chart falls back to plain absolute mode."""
+    out = {}
+    for label, sym in symbols:
+        try:
+            hist = yf.Ticker(sym).history(period=period)
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                out[label] = hist["Close"]
+        except Exception:
+            continue
+    return out
