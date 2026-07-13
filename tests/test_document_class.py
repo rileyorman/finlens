@@ -45,6 +45,23 @@ UNAUDITED_TEXT = (
     "Notes to the Interim Financial Statements\n" + _PAD
 )
 
+# TOU Q1-2026 signature (found live 2026-07-12, the first interim through
+# the gate): a combined MD&A + statements pack whose notes heading orders
+# its qualifiers "Interim Condensed Consolidated" (footers add "Unaudited").
+# The original fixed-order notes regex could not match it, the statement
+# signature failed on notes alone, and the WHOLE pack fell through to the
+# mda class — a false refusal of the filer's standard combined format.
+TOU_INTERIM_COMBINED_TEXT = (
+    "Management's Discussion and Analysis\n"
+    "Condensed Consolidated Balance Sheet (unaudited)\n"
+    "Condensed Consolidated Statements of Income (unaudited)\n"
+    "Condensed Consolidated Statements of Cash Flows (unaudited)\n"
+    "Condensed Consolidated Statements of Changes in Shareholders' Equity\n"
+    "Notes to the Interim Condensed Consolidated Financial Statements\n"
+    "Notes to the Unaudited Interim Condensed Consolidated Financial Statements | 32\n"
+    + _PAD
+)
+
 PRESS_RELEASE_TEXT = (
     "ACME Corp. Reports Record Fourth Quarter Results. TORONTO — ACME "
     "today announced revenue of $1.2 billion, up 12%. Net earnings were "
@@ -71,6 +88,18 @@ def test_cnq_interim_signature_classifies_unaudited():
     assert result["document_class"] == DOC_CLASS_STATEMENTS_UNAUDITED
     assert result["signals"]["auditor_report"] is False
     assert result["signals"]["unaudited_marker_count"] >= 4
+
+
+def test_tou_interim_combined_pack_classifies_unaudited_not_mda():
+    """The live 2026-07-12 false refusal, pinned: qualifier order in the
+    notes heading ("Interim Condensed Consolidated", with an "Unaudited"
+    footer variant) must not defeat the statement signature — the combined
+    MD&A + statements pack is statements_unaudited, never mda."""
+    result = classify_document_text(TOU_INTERIM_COMBINED_TEXT)
+    assert result["document_class"] == DOC_CLASS_STATEMENTS_UNAUDITED
+    assert result["signals"]["notes_to_financial_statements"] is True
+    assert result["signals"]["statement_family_count"] == 4
+    assert result["signals"]["mda_marker"] is True  # present but outranked
 
 
 def test_press_release_refused():

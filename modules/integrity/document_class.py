@@ -83,8 +83,15 @@ _STATEMENT_FAMILY_RES = {
     ),
 }
 
+# Qualifiers appear in ANY order and count: TOU's Q1-2026 interim titles its
+# notes "Notes to the Interim Condensed Consolidated Financial Statements"
+# (footers add "Unaudited"), which the original fixed-order form
+# "(consolidated |condensed )?(interim )?" could not match — the whole
+# combined MD&A+statements pack was then misclassified `mda` and falsely
+# refused (found live 2026-07-12, first interim through the gate). The core
+# phrase "notes to ... financial statements" remains required.
 _NOTES_RE = re.compile(
-    r"notes to (?:the )?(?:consolidated |condensed )?(?:interim )?financial statements"
+    r"notes to (?:the )?(?:(?:unaudited|condensed|consolidated|interim) )*financial statements"
 )
 
 # Corroboration markers — recorded in signals, deliberately NOT used as the
