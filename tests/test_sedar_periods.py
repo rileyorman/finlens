@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from modules.sedar_periods import (
+    honest_period_label,
     parse_period_window,
     sedar_period_keys,
     sedar_statement_rows,
@@ -195,6 +196,19 @@ def test_mapper_feed_agrees_with_row_layer_on_ytd_first_column_order():
     assert select_current_period_value(values) == 25       # NOT 48 (first column)
     current, _prior = sedar_period_keys([{"label": "Revenue", "values": values}])
     assert values[current] == select_current_period_value(values)
+
+
+def test_honest_period_label_prefers_the_interim_window():
+    """Found live on the first in-app interim analysis: the header showed
+    "December 31, 2026" (the company's fiscal year-end + the appended
+    interim year) for a filing covering three months ended March 31."""
+    assert honest_period_label(
+        "Three Months Ended March 31, 2026", "December 31"
+    ) == "Three Months Ended March 31, 2026"
+    # Annual packs keep the existing preference chain.
+    assert honest_period_label("Year Ended Dec 31 2025", "December 31") == "December 31"
+    assert honest_period_label("2025", "December 31") == "December 31"
+    assert honest_period_label("2025", None) == "2025"
 
 
 def test_mapper_feed_annual_selection_unchanged():

@@ -181,9 +181,17 @@ packs and the quarter/TTM derivations.
   annual-calibrated RAG thresholds — an instant-vs-flow calibration
   question, distinct from window mixing; needs its own ruling before
   interim Leverage is trusted.
-  **STILL OPEN:** RILEY'S GROUND-TRUTH STAMP on the TOU Q1-2026
-  extraction per the transcription protocol, and his on-screen
-  flow-verify of the TTM panel (requires analysing the interim PDF
-  in-app so it holds the analysis view).
+  **GROUND-TRUTH STAMP: PASS (Riley, 2026-07-12 — decision 6 CLOSED):**
+  the four TTM input rows transcribed from the source PDF first (both
+  columns, transcription protocol), then compared: 8/8 byte-identical
+  (Commodity sales from production 1,447,049 / 1,457,567 · Net income
+  657,560 / 212,678 · Total cash flow from operating activities
+  942,627 / 1,088,311 · Property, plant and equipment (660,162) /
+  (813,898)). The in-app flow-verify happened the same night (CC drove
+  the full UI run; the TTM panel, interim caption, and receipts were
+  observed live — two display-layer findings fixed and pinned, 605cddf
+  + 72f58f0). The interim shape is the first hand-anchored quarterly
+  filer. Remaining on this spec: the deferred Q2/Q3 differencing
+  (~early Aug 2026) and the interim-Leverage calibration ruling.
 - Ground truth (decision 6) runs with the first live interim; CB-040
   ships with the Stage 1 (first enforcement) commit.
