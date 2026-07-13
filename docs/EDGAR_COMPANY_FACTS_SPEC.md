@@ -194,4 +194,16 @@ unusable for derivation (honest exclusion).
   builders; FMP retires from the Quick tab entirely (its remaining
   surface: Stock Tracker cards + earnings calendar, per CB-038);
   captions + composite receipts; live verification (NVDA mid-year shape).
-- Casebook entry (CB-039) ships with the first enforcement commit.
+  **DONE 2026-07-12: Quarter/TTM route to
+  build_quarterly_financial_data_from_edgar_facts (honest error, never an
+  FMP fallback; the dead FMP import removed from app.py); the TTM caption
+  states the construction; the preview's multi-column branch is
+  data-driven (as-filed Quarter/TTM dicts are single-period).
+  LIVE-VERIFIED server-side against the real SEC API: NVDA Quarter =
+  "Q1 ended 2026-04-26" (revenue $81.615B, every receipt citing 10-Q
+  0001045810-26-000052) and "TTM ended 2026-04-26" (revenue $253.491B;
+  BACK-SOLVE ties — 215.938 + 81.615 − 253.491 = $44.062B, NVDA's actual
+  Q1 FY2026 filed revenue); interest_expense honest-N/A both modes (the
+  retired-tag shape). Riley's on-screen Quarter/TTM flow-verify
+  remaining.**
+- Casebook entry (CB-039) shipped with the Stage 1 commit (9afb10d).

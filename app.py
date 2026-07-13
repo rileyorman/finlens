@@ -120,7 +120,6 @@ from modules.position_tracker import (
     sell_position,
 )
 from modules.market_ticker import get_ticker_data
-from modules.fmp import build_financial_data_from_fmp
 from config import (
     EXTRACTION_MODEL,
     ANALYSIS_MODEL,
@@ -5741,9 +5740,10 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.warning("Enter a ticker symbol first.")
         else:
             # CB-038: the ANNUAL options fetch as-filed XBRL from SEC
-            # company-facts (per-figure receipts; FMP retired from these
-            # load-bearing numbers). Quarter/TTM stay on FMP (badged) until
-            # the Phase-2 quarterly design.
+            # company-facts (per-figure receipts). CB-039 (Phase 2): the
+            # Quarter/TTM options route to the quarterly builders (YTD
+            # differencing / TTM = FY + YTD − prior YTD under the strict
+            # date-chain gate) — FMP is retired from the Quick tab entirely.
             if _quick_period == "annual":
                 with st.spinner(f"Fetching as-filed SEC data for {_quick_ticker}..."):
                     from modules.edgar_fetcher import build_financial_data_from_edgar_facts
@@ -5756,10 +5756,17 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                     )
                     st.stop()
             else:
-                with st.spinner(f"Fetching financial statements for {_quick_ticker}..."):
-                    _quick_fd = build_financial_data_from_fmp(_quick_ticker, period=_quick_period, limit=_quick_limit)
+                _quick_mode = "ttm" if _quick_limit == 4 else "quarter"
+                with st.spinner(f"Deriving as-filed {'TTM' if _quick_mode == 'ttm' else 'quarterly'} figures for {_quick_ticker}..."):
+                    from modules.edgar_fetcher import build_quarterly_financial_data_from_edgar_facts
+                    _quick_fd = build_quarterly_financial_data_from_edgar_facts(_quick_ticker, mode=_quick_mode)
                 if not _quick_fd:
-                    st.error(f"Could not fetch data for {_quick_ticker} — check the ticker symbol and try again")
+                    st.error(
+                        f"Could not derive as-filed {'TTM' if _quick_mode == 'ttm' else 'quarterly'} "
+                        f"figures for {_quick_ticker} — check the ticker symbol (US filers only). "
+                        "Values that fail the strict period date-chain are withheld rather than "
+                        "approximated; Quick Financials never falls back to aggregator data."
+                    )
                     st.stop()
             st.session_state["quick_financial_data"] = _quick_fd
             st.session_state["quick_financial_ticker"] = _quick_ticker
@@ -5773,7 +5780,10 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
         _quick_year = _quick_fd_preview.get("fiscal_year") or "latest fiscal year"
         _quick_preview_scale = _quick_fd_preview.get("scale") or 1
         if selected_period == "Last 4 Quarters (TTM)":
-            st.success(f"Fetched last 4 quarters for {_quick_company}. Analysis will use TTM (trailing twelve months) totals.")
+            if _quick_fd_preview.get("source") == "edgar":
+                st.success(f"Fetched {_quick_year} for {_quick_company} — trailing-twelve-month figures derived from as-filed facts.")
+            else:
+                st.success(f"Fetched last 4 quarters for {_quick_company}. Analysis will use TTM (trailing twelve months) totals.")
         elif selected_period == "Latest Quarter":
             st.success(f"Fetched {_quick_year} data for {_quick_company}.")
         elif selected_period == "Latest Annual":
@@ -5782,7 +5792,9 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.success(f"Fetched 2 years of data for {_quick_company}.")
         else:
             st.success(f"Fetched 4 years of data for {_quick_company}.")
-        if _quick_limit > 1:
+        # Multi-column history only when the data actually carries multiple
+        # periods (as-filed TTM/quarter dicts are single-period; CB-039).
+        if len(_quick_fd_preview.get("period_history") or []) > 1:
             _quick_metric_map = [
                 ("Revenue", "revenue"),
                 ("Gross Profit", "gross_profit"),
@@ -5826,7 +5838,14 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 "and are not part of the verified corpus."
             )
         if selected_period == "Last 4 Quarters (TTM)":
-            st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
+            if _quick_fd_preview.get("source") == "edgar":
+                st.caption(
+                    "TTM = latest fiscal year + current year-to-date − prior-year "
+                    "year-to-date, from as-filed facts (composite receipts above). "
+                    "With no post-FY quarter on file yet, TTM equals FY exactly."
+                )
+            else:
+                st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
         if st.button("Analyse $", type="primary", width='stretch', key="quick_analysis_btn"):
             _quick_fd = _quick_fd_preview
