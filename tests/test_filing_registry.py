@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
-from scripts.build_filing_registry import FILING_MANIFEST
+from modules.integrity.sedar_mapper import map_line_items
+from scripts.build_filing_registry import FILING_MANIFEST, _line_items_from_fixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,45 +21,12 @@ def _fixture_mapped_count(path: Path) -> int:
     return int(((fixture.get("mapping") or {}).get("meta") or {}).get("mapped_count", 0))
 
 
-def _mapper_source_value(values: dict) -> int | float | None:
-    annual_candidates = []
-    for idx, (period, value) in enumerate((values or {}).items()):
-        period_text = str(period)
-        period_lower = period_text.lower()
-        if (
-            "year ended" not in period_lower
-            and "years ended" not in period_lower
-            and not period_lower.startswith("year ")
-        ):
-            continue
-        import re
-
-        match = re.search(r"(\d{4})", period_text)
-        year = int(match.group(1)) if match else -1
-        annual_candidates.append((year, idx, value))
-    if annual_candidates:
-        return sorted(annual_candidates, key=lambda row: (row[0], -row[1]), reverse=True)[0][2]
-    return next(iter((values or {}).values()), None)
-
-
-def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:
-    # Single source of truth in the mapper (CB-021) — no local copy to drift.
-    return mapper_statement_keys(sector)
-
-
-def _line_items_from_fixture(fixture: dict, sector: str | None = None) -> list[dict]:
-    rows = []
-    sector_arg = sector if sector is not None else fixture.get("sector_inferred")
-    for statement_key in _mapping_statement_keys(sector_arg):
-        for item in fixture["statements"][statement_key]:
-            values = item.get("values") or {}
-            rows.append({
-                "label": item["label"],
-                "value": _mapper_source_value(values),
-                "confidence": item.get("confidence"),
-                "statement": statement_key,
-            })
-    return rows
+# CB-040/CB-041-era cleanup (found at the PEY #19 promotion): this file
+# carried its OWN copies of _mapper_source_value (the pre-CB-040 fixed-order
+# picker) and _line_items_from_fixture (without the CB-037 structure
+# pass-through) — a FOURTH copy the Stage-2a de-triplication missed because
+# its audit grep was scoped to one file. Both now import from the script:
+# one source of truth, per CB-021.
 
 
 def _resolved_mapped_count(fixture_path: Path) -> int:
