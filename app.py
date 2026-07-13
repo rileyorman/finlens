@@ -4954,15 +4954,24 @@ if page == "Stock Tracker":
                 unsafe_allow_html=True,
             )
 
-        shares_outstanding = _fiscal_session_cached(
-            "get_shares_outstanding",
-            lambda: get_shares_outstanding(cur_ticker, cur_exchange),
-        )
-        if shares_outstanding:
-            shares_value = shares_outstanding.get("shares_outstanding")
-            share_class = shares_outstanding.get("share_class") or "Shares"
-            share_date = _fmt_month_year(shares_outstanding.get("date"))
-            subtitle_parts = [part for part in [share_class, share_date] if part]
+        # FMP-zero Arc 1 coda (2026-07-13): the shares card reads the
+        # as-filed dei cover-page count FIRST (receipt-carrying — retires
+        # the aggregator on this surface; the two agreed live at 24.2B on
+        # NVDA, ours with the receipt). Fiscal.ai remains only as the
+        # badged fallback for filers with no SEC facts. Reuses the same
+        # session-state snapshot the Financial Snapshot section fetches.
+        _shares_snapshot_key = f"edgar_snapshot_{cur_ticker}"
+        if _shares_snapshot_key not in st.session_state:
+            from modules.edgar_fetcher import build_financial_data_from_edgar_facts
+            with st.spinner(f"Fetching as-filed SEC data for {cur_ticker}…"):
+                st.session_state[_shares_snapshot_key] = (
+                    build_financial_data_from_edgar_facts(cur_ticker, limit=1)
+                )
+        _shares_snap = st.session_state.get(_shares_snapshot_key) or {}
+        _dei_shares_value = _shares_snap.get("shares_outstanding")
+        if _dei_shares_value:
+            _dei_as_of = _fmt_month_year(_shares_snap.get("shares_outstanding_as_of"))
+            subtitle_parts = [part for part in ["Cover-page count", f"as of {_dei_as_of}" if _dei_as_of else None] if part]
             st.markdown(
                 f'''
                 <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
@@ -4973,18 +4982,53 @@ if page == "Stock Tracker":
                         Shares Outstanding
                     </div>
                     <div style="font-size:28px;font-weight:700;color:#F1F5F9;margin-top:0.25rem">
-                        {escape(_fmt_shares_outstanding(shares_value))}
+                        {escape(_fmt_shares_outstanding(_dei_shares_value))}
                     </div>
                     <div style="font-size:12px;color:#94A3B8;margin-top:0.2rem">
                         {escape(" · ".join(subtitle_parts))}
                     </div>
                     <div style="font-size:12px;color:#94A3B8;margin-top:0.65rem">
-                        Source: Fiscal AI
+                        Source: SEC EDGAR — as filed (dei cover-page count)
                     </div>
                 </div>
                 ''',
                 unsafe_allow_html=True,
             )
+            _dei_receipt = (_shares_snap.get("receipts") or {}).get("shares_outstanding")
+            if _dei_receipt:
+                st.caption(f"Receipt: {_dei_receipt}")
+        else:
+            shares_outstanding = _fiscal_session_cached(
+                "get_shares_outstanding",
+                lambda: get_shares_outstanding(cur_ticker, cur_exchange),
+            )
+            if shares_outstanding:
+                shares_value = shares_outstanding.get("shares_outstanding")
+                share_class = shares_outstanding.get("share_class") or "Shares"
+                share_date = _fmt_month_year(shares_outstanding.get("date"))
+                subtitle_parts = [part for part in [share_class, share_date] if part]
+                st.markdown(
+                    f'''
+                    <div style="border:1px solid rgba(148,163,184,0.22);border-radius:8px;
+                                padding:0.85rem 1rem;margin:0.85rem 0;background:rgba(15,23,42,0.28);
+                                max-width:360px">
+                        <div style="font-size:12px;font-weight:700;color:#94A3B8;
+                                    text-transform:uppercase;letter-spacing:0.05em">
+                            Shares Outstanding
+                        </div>
+                        <div style="font-size:28px;font-weight:700;color:#F1F5F9;margin-top:0.25rem">
+                            {escape(_fmt_shares_outstanding(shares_value))}
+                        </div>
+                        <div style="font-size:12px;color:#94A3B8;margin-top:0.2rem">
+                            {escape(" · ".join(subtitle_parts))}
+                        </div>
+                        <div style="font-size:12px;color:#94A3B8;margin-top:0.65rem">
+                            Source: Fiscal AI — unvalidated aggregator (no SEC-filed count available)
+                        </div>
+                    </div>
+                    ''',
+                    unsafe_allow_html=True,
+                )
 
         adjusted_metrics = _fiscal_session_cached(
             "get_adjusted_metrics_with_values",
