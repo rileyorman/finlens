@@ -2052,6 +2052,53 @@ unknown scale means NO comparison, never a guessed magnitude.
   changes, the pin should move with it). LIVE EVIDENCE (2026-07-13):
   CNQ differs / AEM+TECK tie / ENB (no corpus entry) silent.
 
+## CB-044: Interim Leverage is TTM-powered — net debt ÷ TTM EBITDA, annual-calibrated thresholds apply by construction
+
+DECIDED 2026-07-13 (Riley — ratified in the twenty-eighth session's
+evening arc; resolves the interim-Leverage calibration note left open at
+CB-040 and ships CB-041's queued proper fix).
+
+THE RULING: when a loaded interim analysis has a gate-passing stored
+annual (the CB-040 cross-document gates: currency, scale, year chain) and
+all three EBITDA components chain through the TTM construction —
+pretax_income + interest_expense + depletion_depreciation_amortization,
+the CB-023 add-back — Leverage computes as NET DEBT (the interim's own
+instant) ÷ TTM EBITDA, and the ANNUAL-CALIBRATED CB-023 RAG thresholds
+(≤1.0 GREEN / ≤2.0 AMBER) apply UNCHANGED: a trailing-twelve-month window
+is annual-scale by construction, which is the whole calibration question
+answered. The composition is disclosed in a caption (nd_ebitda_basis)
+including the CB-026 D&A basis ("incl. impairment" when the filer prints
+the combined line — TOU's FY2025 DD&A carries the $1.2B Spirit River
+impairment inside the TTM window, disclosed, never silently excluded).
+Every chain failure keeps the honest dash with the reason — including
+TOU's no-cash-line shape (net debt uncomputable), which stays N/A per the
+standing CB-035-session adjudication.
+
+FOUND LIVE AT BUILD (the real-pair pin): TOU prints "Depletion,
+depreciation, amortization and impairment" on the income statement AND as
+the cash-flow add-back with byte-identical values — the unique-row rule
+refused it as ambiguous. REFINEMENT: multiple same-label flow rows
+collapse ONLY when their values are identical (one figure printed twice
+is not ambiguity); differing values remain honest absence. The old
+ambiguity pin was refined to genuine ambiguity (differing values) and the
+collapse got its own pin.
+
+SCOPE: Leverage only. The DCF interim run-rate warning stays (a TTM-FCF
+valuation base is deliberately deferred to the facts-store arc).
+
+- Enforced by: modules/sedar_ttm.py (TTM_FIELDS + the three components,
+  semantics ride with values, identical-duplicate collapse),
+  modules/excel_exporter.py (_calc_summary_metrics CB-044 branch +
+  nd_ebitda_basis), app.py (TTM stash on financial_data — the
+  period_windows ride-with-the-data pattern; Financial Health caption
+  shows the basis when computed, the honest reason when not; TTM panel
+  gains the three component rows). Pins: tests/test_sedar_ttm.py (real
+  TOU-pair chain + semantics + duplicate-collapse rules) and
+  tests/test_mixed_window_suppression.py (computes from TTM, discloses
+  impairment, dashes on incomplete chain / no net debt / annual paths
+  ignore the TTM stash). LIVE (real fixtures): TTM EBITDA = 4,072,257
+  CAD thousands = 923,054 + 109,752 + 3,039,451 (incl. impairment).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications

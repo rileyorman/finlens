@@ -7466,6 +7466,12 @@ if st.session_state.financial_data:
         _ttm_annual = _ttm_find_annual(_ttm_fd, lib_get())
         _ttm = (_build_ttm_from_interim(_ttm_fd["sedar_extraction"], _ttm_annual)
                 if _ttm_annual else None)
+        # CB-044: stash the TTM result on financial_data so downstream
+        # consumers (_calc_summary_metrics' TTM-powered Leverage) can read
+        # it — the same ride-with-the-data pattern as period_windows. No
+        # gate-passing TTM → no stash → the honest dash stands.
+        if _ttm and _ttm["status"] == "ok" and _ttm["fields"]:
+            _ttm_fd["_ttm"] = _ttm
         if _ttm and _ttm["status"] == "ok" and _ttm["fields"]:
             _ttm_ex = _ttm_fd["sedar_extraction"]
             _ttm_labels = {
@@ -7473,6 +7479,9 @@ if st.session_state.financial_data:
                 "net_income": "Net Income",
                 "operating_cash_flow": "Operating Cash Flow",
                 "capex": "Capital Expenditure",
+                "pretax_income": "Pre-Tax Income",
+                "interest_expense": "Interest Expense",
+                "depletion_depreciation_amortization": "DD&A",
             }
             with st.expander(
                 f"📆 Trailing Twelve Months (derived) — through {_ttm_fd.get('fiscal_year')}",
@@ -9095,15 +9104,20 @@ if st.session_state.financial_data:
                         "period lengths (discrete quarter vs year-to-date), "
                         "so cross-statement ratios would mix windows."
                     )
-                # CB-041: same discipline for Leverage on interims — the
-                # net-debt instant over a quarterly EBITDA reads ~4x against
-                # the annual-calibrated thresholds.
-                if metrics.get("interim_flow_window"):
+                # CB-041/CB-044: Leverage on interims is TTM-powered when the
+                # cross-document chain holds (caption discloses the full
+                # composition); otherwise the single-quarter ratio stays
+                # honestly suppressed with the reason.
+                if metrics.get("nd_ebitda_basis"):
+                    st.caption(metrics["nd_ebitda_basis"])
+                elif metrics.get("interim_flow_window"):
                     st.caption(
                         "Leverage suppressed on this interim: net debt over a "
                         "single quarter's EBITDA would read ~4x against the "
-                        "annual-calibrated thresholds. A TTM-based leverage "
-                        "is the queued fix."
+                        "annual-calibrated thresholds, and the TTM chain "
+                        "(CB-044) did not complete for this filing — missing "
+                        "inputs (e.g. no cash line for net debt) or a stored "
+                        "annual that fails the cross-document gates."
                     )
                 # CB-022/CB-023: disclose the composition of the derived
                 # leverage/coverage ratios (receipts principle) — Debt/Equity,

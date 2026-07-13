@@ -154,15 +154,28 @@ def test_unmapped_sides_are_honest_na():
     assert result["fields"] == {}
 
 
-def test_ambiguous_duplicate_label_is_honest_na():
-    """Two flow rows sharing the mapped source label → ambiguity is
-    honest absence, never a guess."""
+def test_ambiguous_duplicate_label_with_differing_values_is_honest_na():
+    """Two flow rows sharing the mapped source label with DIFFERENT values
+    → genuine ambiguity, honest absence, never a guess. (Pin refined at
+    CB-044: identical duplicates collapse — see the next test.)"""
+    interim = _q1_interim()
+    dup = dict(interim["statements"]["income_statement"][0])
+    dup["values"] = {k: v + 1 for k, v in (dup.get("values") or {}).items()}
+    interim["statements"]["cash_flow"].append(dup)
+    result = build_ttm_from_interim(interim, _annual())
+    assert result["unavailable"]["revenue"] == "interim_row_ambiguous_or_missing"
+
+
+def test_identical_duplicate_rows_collapse_to_one_figure():
+    """CB-044, found live on the real TOU pair: a line printed on the
+    income statement AND as the cash-flow add-back with byte-identical
+    values is ONE figure, not an ambiguity."""
     interim = _q1_interim()
     interim["statements"]["cash_flow"].append(
         dict(interim["statements"]["income_statement"][0])
     )
     result = build_ttm_from_interim(interim, _annual())
-    assert result["unavailable"]["revenue"] == "interim_row_ambiguous_or_missing"
+    assert "revenue" in result["fields"]
 
 
 def test_never_raises_on_garbage():
@@ -246,3 +259,30 @@ def test_lookup_returns_none_for_annual_analyses():
     assert find_stored_annual_for_interim(
         annual_fd, [_lib_entry(ticker="TOU", annual_year=2024)]
     ) is None
+
+
+# ---------------------------------------------------------------------------
+# CB-044 — the EBITDA components ride the same TTM chain (pinned on the
+# REAL CI-locked TOU pair: annual FY2025 + Q1-2026 interim fixtures).
+# ---------------------------------------------------------------------------
+
+def test_cb044_ebitda_components_chain_on_the_real_tou_pair():
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
+    annual = json.loads((root / "TOU_FY2025_sedar.json").read_text(encoding="utf-8"))
+    interim = json.loads((root / "TOU_Q1_2026_sedar.json").read_text(encoding="utf-8"))
+
+    result = build_ttm_from_interim(interim, annual)
+
+    assert result["status"] == "ok"
+    fields = result["fields"]
+    for name in ("pretax_income", "interest_expense",
+                 "depletion_depreciation_amortization"):
+        assert name in fields, f"{name} missing from TTM fields"
+        assert isinstance(fields[name]["value"], (int, float))
+        assert "TTM = FY2025" in fields[name]["receipt"]
+    # CB-026 semantics ride with the combined DD&A-and-impairment line.
+    assert fields["depletion_depreciation_amortization"]["semantics"] == {
+        "includes_impairment": True
+    }

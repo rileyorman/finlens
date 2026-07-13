@@ -36,7 +36,13 @@ from modules.sedar_periods import parse_period_window, select_period_pair
 
 # Headline flow fields (income + cash-flow) — balance items are instants
 # and have no TTM. Derived metrics (FCF etc.) belong to consumers, not here.
-TTM_FIELDS = ("revenue", "net_income", "operating_cash_flow", "capex")
+# CB-044 (2026-07-13) extends the set with the EBITDA components (pretax +
+# interest + D&A, the CB-023 add-back) so consumers can compute TRUE
+# trailing-twelve-month Leverage for interims with a gate-passing annual.
+TTM_FIELDS = (
+    "revenue", "net_income", "operating_cash_flow", "capex",
+    "pretax_income", "interest_expense", "depletion_depreciation_amortization",
+)
 
 # Statements that can hold TTM-able flow rows. Balance-sheet rows carry
 # instant column keys (no window words), so they can never produce a YTD
@@ -136,14 +142,26 @@ def _ytd_pair(values: dict, interim_year: int) -> tuple[str, str] | None:
 
 def _interim_flow_row(interim: dict, source_label: str) -> dict | None:
     """The unique flow-statement row carrying the mapped source label.
-    Zero or multiple candidates → None (ambiguity is honest absence)."""
+
+    Multiple candidates collapse ONLY when their values are identical —
+    one figure printed twice is not ambiguity (found live on the real TOU
+    Q1-2026 pair, CB-044: “Depletion, depreciation, amortization and
+    impairment” prints on the income statement AND as the cash-flow
+    add-back with byte-identical values). Differing values remain honest
+    absence, never a guess."""
     statements = interim.get("statements") or {}
     candidates = []
     for statement_key in _FLOW_STATEMENTS:
         for item in statements.get(statement_key) or []:
             if isinstance(item, dict) and str(item.get("label") or "").strip() == source_label:
                 candidates.append(item)
-    return candidates[0] if len(candidates) == 1 else None
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        first_values = candidates[0].get("values")
+        if all(c.get("values") == first_values for c in candidates[1:]):
+            return candidates[0]
+    return None
 
 
 def build_ttm_from_interim(interim: dict, annual: dict) -> dict:
@@ -248,6 +266,13 @@ def build_ttm_from_interim(interim: dict, annual: dict) -> dict:
                 f"[interim: “{source_label}”]"
             ),
         }
+        # Mapping semantics ride with the TTM value (CB-026: a combined
+        # "DD&A and impairment" line must disclose its basis wherever the
+        # figure is consumed — the annual side is authoritative; the
+        # matched labels make the interim's flag identical in practice).
+        semantics = annual_entry.get("semantics") or interim_entry.get("semantics")
+        if semantics:
+            fields[name]["semantics"] = semantics
 
     result["status"] = "ok"
     return result

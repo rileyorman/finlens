@@ -904,12 +904,42 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     # CB-041 (ratified 2026-07-12): Leverage divides an INSTANT (net debt)
     # by an interim FLOW (a 3-month EBITDA) read against ANNUAL-calibrated
     # RAG thresholds (CB-023: ≤1.0 GREEN / ≤2.0 AMBER) — ~4x overstated on
-    # a quarter. Honest "—" on interim analyses until TTM-powered leverage
-    # ships (queued). Flow÷flow same-window and instant÷instant ratios are
+    # a quarter, so the single-quarter ratio is suppressed. CB-044 (ratified
+    # 2026-07-13) ships the proper fix: when the CB-040 cross-document TTM
+    # carries all three EBITDA components (pretax + interest + D&A — the
+    # CB-023 add-back), Leverage computes as net debt ÷ TTM EBITDA, and the
+    # annual-calibrated thresholds apply UNCHANGED (a trailing-twelve-month
+    # window is annual-scale by construction). Composition + D&A basis
+    # disclosed via nd_ebitda_basis; every chain failure keeps the honest
+    # dash. Flow÷flow same-window and instant÷instant ratios are
     # dimensionally honest on a quarter and stay live.
     interim_flow_window = _win_is in ("Q", "H1", "9M")
+    nd_ebitda_basis = None
     if interim_flow_window:
         nd_ebitda = None
+        _ttm = financial_data.get("_ttm") or {}
+        _ttm_f = _ttm.get("fields") or {}
+        if _ttm.get("status") == "ok" and net_debt_c is not None:
+            _ttm_vals = {
+                name: (_ttm_f.get(name) or {}).get("value")
+                for name in ("pretax_income", "interest_expense",
+                             "depletion_depreciation_amortization")
+            }
+            if all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                   for v in _ttm_vals.values()):
+                _ttm_ebitda = sum(_ttm_vals.values())
+                if _ttm_ebitda:
+                    nd_ebitda = _safe_div(net_debt_c, _ttm_ebitda)
+                    _ttm_da_sem = (_ttm_f.get("depletion_depreciation_amortization") or {}).get("semantics") or {}
+                    _ttm_da_basis = ("D&A incl. impairment"
+                                     if _ttm_da_sem.get("includes_impairment") else "D&A")
+                    nd_ebitda_basis = (
+                        f"Leverage (CB-044): net debt as-of the interim date ÷ TTM EBITDA "
+                        f"(TTM pretax + TTM interest + TTM {_ttm_da_basis}; "
+                        f"TTM = FY{_ttm.get('annual_year')} + current YTD − prior-year YTD, "
+                        f"cross-document). Annual-calibrated thresholds apply — a "
+                        f"trailing-twelve-month window is annual-scale by construction."
+                    )
 
     # CB-024: operating netback margin — the O&G analog to gross margin, from the
     # income statement. Net revenue (after royalties) less field operating costs
@@ -983,6 +1013,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "fcf_c": fcf_c,       "fcf_yield": fcf_yield,
         "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
         "da_basis": da_basis,
+        "nd_ebitda_basis": nd_ebitda_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
         "de_ratio": de_ratio,
