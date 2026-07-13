@@ -3405,6 +3405,10 @@ if page == "Portfolio Manager":
                     annotation_font=dict(color='#94A3B8', size=10),
                 )
                 _dark(fig1)
+                # Fiscal years are LABELS, not numbers — an all-numeric label
+                # list otherwise renders a continuous axis with "2,024.5"
+                # ticks (found live 2026-07-13).
+                fig1.update_xaxes(type='category')
                 fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
                 st.plotly_chart(fig1, width='stretch', config={"displayModeBar": False})
 
@@ -3439,6 +3443,13 @@ if page == "Portfolio Manager":
                 fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
                 fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
                 st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
+                # Mixed-trust panel (Trust-Is-Page-Level): the y-axis is
+                # filing-derived, the x-axis is market data.
+                st.caption(
+                    "P/E: yfinance — unvalidated market data; Quality Score: "
+                    "derived from analysed filings. Holdings without a market "
+                    "P/E are omitted."
+                )
 
     # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
     with row2_left:
@@ -3638,7 +3649,13 @@ if page == "Filing Comparison":
                 def _comparison_text_from_library(entry: dict | None, label: str) -> str | None:
                     if not entry:
                         return None
-                    _pdf_path = _pdf_cache_path(
+                    # Change-Propagation fix (found live 2026-07-13): the
+                    # Re-Analyse dead-end fix (b1e8e0b) chained the per-entry
+                    # PDF cache to the registry's campaign PDF, but THIS
+                    # sibling consumer kept the shallow lookup — so a fully
+                    # analysed registry filer (TOU FY2025) got "No data
+                    # found". Same resolver chain now, old path as fallback.
+                    _pdf_path = _reanalyse_pdf_path_for_entry(entry) or _pdf_cache_path(
                         entry.get("ticker") if entry.get("ticker") != "—" else None,
                         _library_period_label(entry),
                     )
@@ -4312,6 +4329,7 @@ if page == "Stock Tracker":
 
                 if summary_rows:
                     st.dataframe(_pd.DataFrame(summary_rows), width='stretch', hide_index=True)
+                    st.caption("Source: yfinance — live market data, unvalidated.")
 
     _render_stock_tracker_sidebar_watchlist()
 
