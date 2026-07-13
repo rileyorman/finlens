@@ -1240,6 +1240,7 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             "eps_basic": _cur(epsb_facts),
             "eps_diluted": _cur(epsd_facts),
             "shares_outstanding": shares_outstanding,
+            "dividends_paid": _cur(div_facts),
             "fiscal_year": fiscal_year,
             "fiscal_year_prior": fiscal_year_prior,
             "fmp_period": "annual",
