@@ -172,3 +172,38 @@ def test_annual_analyses_never_touch_the_ttm_path():
     metrics = _calc_summary_metrics(fd)
     assert metrics["nd_ebitda"] == 250_000 / 150_000   # plain annual EBITDA
     assert metrics["nd_ebitda_basis"] is None
+
+
+# ---------------------------------------------------------------------------
+# Proper-EV exports (2026-07-13): the metrics dict exposes the net-debt
+# internals so the Valuation Snapshot can compute EV = MC + debt − cash
+# under the CB-022 semantics kept in ONE place. debt_found distinguishes
+# genuinely-mapped debt from the unmapped-as-zero default — EV must never
+# silently understate on unmapped debt.
+# ---------------------------------------------------------------------------
+
+def test_metrics_export_net_debt_internals():
+    metrics = _calc_summary_metrics(_leverage_fd())
+    assert metrics["total_debt_c"] == 300_000
+    assert metrics["cash_c"] == 50_000
+    assert metrics["net_debt_c"] == 250_000
+    assert metrics["debt_found"] is True
+    assert "LT debt" in metrics["debt_basis"]
+
+
+def test_unmapped_debt_is_flagged_never_zeroed_silently():
+    fd = _leverage_fd()
+    fd.pop("long_term_debt", None)
+    fd["income_statement"] = []
+    fd["balance_sheet"] = []
+    fd["cash_flow_statement"] = []
+    metrics = _calc_summary_metrics(fd)
+    assert metrics["debt_found"] is False
+    assert metrics["total_debt_c"] is None
+
+
+def test_missing_cash_means_no_net_debt():
+    fd = _leverage_fd()
+    fd.pop("cash", None)
+    metrics = _calc_summary_metrics(fd)
+    assert metrics["net_debt_c"] is None

@@ -124,6 +124,7 @@ def search_ticker(company_name: str):
 
 _EMPTY = {
     "market_cap":          None,
+    "currency":            None,
     "current_price":       None,
     "shares_outstanding":  None,
     "pe_ratio":            None,
@@ -200,6 +201,10 @@ def _fetch_symbol_payload(symbol: str) -> dict | None:
 
     raw_mc = getattr(fi, "market_cap", None)
     market_cap = round(raw_mc / 1_000_000, 2) if raw_mc else None
+    # Listing currency travels WITH the market cap (boundary principle) —
+    # consumers gate cross-currency math on it (the FX-guard discipline:
+    # abstain, never convert).
+    listing_currency = getattr(fi, "currency", None)
 
     # Ratios, classification, and the listing's company name need the heavier
     # info call — best-effort, won't block the rest.
@@ -215,6 +220,7 @@ def _fetch_symbol_payload(symbol: str) -> dict | None:
     resolved_name = None
     try:
         info = t.info
+        listing_currency = listing_currency or info.get("currency")
         pe_ratio = info.get("trailingPE")
         beta = info.get("beta")
         ev_ebitda = info.get("enterpriseToEbitda")
@@ -230,6 +236,7 @@ def _fetch_symbol_payload(symbol: str) -> dict | None:
 
     return {
         "market_cap":          market_cap,
+        "currency":            (str(listing_currency).strip().upper() or None) if listing_currency else None,
         "current_price":       current_price,
         "shares_outstanding":  getattr(fi, "shares", None),
         "pe_ratio":            pe_ratio,
