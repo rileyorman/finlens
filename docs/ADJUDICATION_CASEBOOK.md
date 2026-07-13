@@ -1901,9 +1901,14 @@ an annual pack can never trip it.
   incl. the ambiguous combined header, THE TRAP as a regression case,
   no-comparative → prior None, YTD-only H1 pair, twelve-months beats
   quarters, interim balance-sheet pair; tests/test_prior_column.py —
-  interim skip + annual-unaffected). Stages 2–3 (lift-over-derive,
-  cross-document TTM) queued per the spec; ground truth (decision 6)
-  runs with the first live interim.
+  interim skip + annual-unaffected). Stage 2a (one shared period-column
+  picker — mapper feed / row layer / registry, zero corpus drift) and
+  the Stage 3 CORE (modules/sedar_ttm.py — cross-document TTM under the
+  three ratified gates, largest-YTD-window selection, 9 pins;
+  live-verified on the real TOU Q1-2026 interim vs the stored FY2025
+  annual, all gates PASS) shipped same day; remaining Stage-3b scope
+  (UI surface, Q2/Q3 differencing fallback, the mixed-window ruling,
+  Riley's ground-truth stamp) is recorded in the spec.
 
 ---
 
