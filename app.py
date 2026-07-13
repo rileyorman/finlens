@@ -9293,12 +9293,44 @@ if st.session_state.financial_data:
                 ebitda_c_val = metrics.get("ebitda_c")
                 rev_c_val    = metrics.get("rev_c")
 
+                # Proper EV (queued item, unblocked by CB-022/025/037;
+                # ratified 2026-07-13): EV = market cap + total debt − cash,
+                # computed ONLY when (a) the listing currency matches the
+                # filing currency (the FX-guard discipline — abstain, never
+                # convert), (b) debt was genuinely MAPPED (debt_found — the
+                # unmapped-as-zero default must never silently understate
+                # EV), and (c) cash is present (net debt needs both sides).
+                # Anything else keeps the honest market-cap proxy, with the
+                # reason in the caption.
+                def _snap_ccy(text):
+                    m = re.search(r"\b[A-Z]{3}\b", str(text or "").upper())
+                    return m.group(0) if m else None
+                _listing_ccy = _snap_ccy(market_data.get("currency"))
+                _filing_ccy = _snap_ccy(financial_data.get("currency"))
+                _net_debt_c = metrics.get("net_debt_c")
+                _ev_raw = None
+                _ev_proper = False
+                _ev_proxy_reason = None
+                if mc_val:
+                    if not (_listing_ccy and _filing_ccy and _listing_ccy == _filing_ccy):
+                        _ev_proxy_reason = (
+                            f"listing/filing currencies differ or are unknown "
+                            f"({_listing_ccy or '?'} vs {_filing_ccy or '?'}) — never converted"
+                        )
+                    elif not metrics.get("debt_found") or _net_debt_c is None:
+                        _ev_proxy_reason = "debt or cash not canonically mapped"
+                    if _ev_proxy_reason is None:
+                        _ev_raw = mc_val * 1_000_000 + _net_debt_c
+                        _ev_proper = True
+                    else:
+                        _ev_raw = mc_val * 1_000_000
+
                 ev_ebitda = None
                 ev_rev    = None
-                if mc_val and ebitda_c_val and ebitda_c_val > 0:
-                    ev_ebitda = (mc_val * 1_000_000) / ebitda_c_val
-                if mc_val and rev_c_val and rev_c_val > 0:
-                    ev_rev = (mc_val * 1_000_000) / rev_c_val
+                if _ev_raw and ebitda_c_val and ebitda_c_val > 0:
+                    ev_ebitda = _ev_raw / ebitda_c_val
+                if _ev_raw and rev_c_val and rev_c_val > 0:
+                    ev_rev = _ev_raw / rev_c_val
 
                 _mos_snap = (st.session_state.get("dcf_result") or {}).get("margin_of_safety_pct")
                 for vname, vval in [
@@ -9319,13 +9351,24 @@ if st.session_state.financial_data:
                 # yfinance's trailing market ratio, NOT market cap ÷ filing
                 # net income (TOU 2026-07-12: 33.0x TTM vs ~84x on the
                 # impairment-year filing earnings — a silent 2.5x gap). The
-                # EV multiples use market cap WITHOUT net debt (proxy).
+                # EV basis is dynamic: proper EV when the gates hold, the
+                # market-cap proxy with its reason otherwise.
+                if _ev_proper:
+                    _ev_caption = (
+                        f"EV/EBITDA & EV/Revenue: EV = market cap + total debt − cash "
+                        f"({metrics.get('debt_basis') or 'canonical debt'}; listing and "
+                        f"filing both {_filing_ccy}). EBITDA and revenue from the filing."
+                    )
+                else:
+                    _ev_caption = (
+                        "EV/EBITDA & EV/Revenue: market cap used as the EV proxy "
+                        f"(net debt not added — {_ev_proxy_reason or 'no market cap'}); "
+                        "EBITDA and revenue from the filing."
+                    )
                 st.caption(
                     "P/E: yfinance trailing (market TTM basis — can differ "
                     "materially from filing-year earnings, e.g. impairment "
-                    "years). EV/EBITDA & EV/Revenue: market cap used as the "
-                    "EV proxy (net debt not added); EBITDA and revenue from "
-                    "the filing. MoS: from the DCF inputs above."
+                    f"years). {_ev_caption} MoS: from the DCF inputs above."
                 )
 
         st.divider()

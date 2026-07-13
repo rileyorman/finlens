@@ -1014,6 +1014,15 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "ocf_c": ocf_c,       "capex_c": capex_c,   "capex_basis": capex_basis,
         "da_basis": da_basis,
         "nd_ebitda_basis": nd_ebitda_basis,
+        # Net-debt internals exported for consumers (proper EV, 2026-07-13):
+        # CB-022 pair semantics live HERE, in one place. debt_found
+        # distinguishes genuinely-mapped debt from the unmapped-treated-as-
+        # zero default — EV must never silently understate on unmapped debt.
+        "net_debt_c": net_debt_c,
+        "total_debt_c": total_debt_c,
+        "cash_c": cash_c,
+        "debt_found": _debt_found,
+        "debt_basis": _debt_basis,
         "current_ratio": current_ratio,
         "nd_ebitda": nd_ebitda,
         "de_ratio": de_ratio,
