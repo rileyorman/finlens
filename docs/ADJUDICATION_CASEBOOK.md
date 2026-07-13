@@ -1906,9 +1906,17 @@ an annual pack can never trip it.
   the Stage 3 CORE (modules/sedar_ttm.py — cross-document TTM under the
   three ratified gates, largest-YTD-window selection, 9 pins;
   live-verified on the real TOU Q1-2026 interim vs the stored FY2025
-  annual, all gates PASS) shipped same day; remaining Stage-3b scope
-  (UI surface, Q2/Q3 differencing fallback, the mixed-window ruling,
-  Riley's ground-truth stamp) is recorded in the spec.
+  annual, all gates PASS) shipped same day; Stage 3b (three further
+  rulings, ratified same night) shipped the TTM panel (renders only
+  with a gate-passing stored annual — honest absence otherwise) and the
+  MIXED-WINDOW SUPPRESSION RULING: cross-statement flow ratios
+  (fcf_conv, fcf_yield) are SUPPRESSED — never annotated — when the
+  income and cash-flow statements pair different window classes; a
+  cross-window ratio is a wrong number, not a caveated one. Q2/Q3
+  cross-document differencing DEFERRED to the first real Q2-2026 pack
+  (no live document to verify against — the empirical-evidence bar).
+  Riley's ground-truth stamp on the TOU Q1-2026 extraction remains
+  open; details in the spec.
 
 ---
 

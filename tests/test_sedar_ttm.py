@@ -14,7 +14,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from modules.sedar_ttm import build_ttm_from_interim
+from modules.sedar_ttm import (
+    build_ttm_from_interim,
+    find_stored_annual_for_interim,
+    interim_window,
+)
 
 
 def _annual(revenue=100_000, ocf=50_000, currency="CAD", scale="thousands"):
@@ -164,3 +168,81 @@ def test_ambiguous_duplicate_label_is_honest_na():
 def test_never_raises_on_garbage():
     assert build_ttm_from_interim({}, {})["status"] == "gates_failed"
     assert build_ttm_from_interim(None, None)["status"] == "gates_failed"
+
+
+# ---------------------------------------------------------------------------
+# Stage 3b — interim detection + stored-annual library lookup
+# ---------------------------------------------------------------------------
+
+def test_interim_window_detects_interims_only():
+    assert interim_window({"fiscal_year": "Three Months Ended March 31, 2026"}) == {
+        "window": "Q", "year": 2026,
+    }
+    assert interim_window({"fiscal_year": "Year Ended Dec 31 2025"}) is None   # FY
+    assert interim_window({"fiscal_year": "2025"}) is None                     # bare year (TOU annual)
+    assert interim_window({"fiscal_year": "FY2026"}) is None                   # EDGAR label
+    assert interim_window({}) is None
+    assert interim_window(None) is None
+
+
+def _lib_entry(ticker=None, company="Tourmaline Oil Corp.", annual_year=2025,
+               is_interim=False, sedar=True):
+    fd = {
+        "ticker": ticker,
+        "company_name": company,
+        "fiscal_year": (
+            f"Three Months Ended March 31, {annual_year + 1}" if is_interim
+            else str(annual_year)
+        ),
+    }
+    if sedar:
+        fd["sedar_extraction"] = {
+            "statements": {"income_statement": [
+                {"label": "Revenue", "values": {str(annual_year): 1, str(annual_year - 1): 1}},
+            ]},
+            "mapping": {"mapped": {}},
+        }
+    return {"financial_data": fd}
+
+
+_INTERIM_FD = {
+    "ticker": "TOU",
+    "company_name": "Tourmaline Oil Corp.",
+    "fiscal_year": "Three Months Ended March 31, 2026",
+}
+
+
+def test_lookup_finds_the_matching_annual_by_ticker():
+    entries = [_lib_entry(ticker="TOU", annual_year=2025)]
+    assert find_stored_annual_for_interim(_INTERIM_FD, entries) is not None
+
+
+def test_lookup_falls_back_to_company_name_when_tickers_absent():
+    interim = dict(_INTERIM_FD, ticker=None)
+    entries = [_lib_entry(ticker=None, annual_year=2025)]
+    assert find_stored_annual_for_interim(interim, entries) is not None
+    # a DIFFERENT company never matches
+    entries = [_lib_entry(ticker=None, company="ARC Resources Ltd.", annual_year=2025)]
+    assert find_stored_annual_for_interim(interim, entries) is None
+
+
+def test_lookup_rejects_wrong_year_interims_and_non_sedar():
+    assert find_stored_annual_for_interim(
+        _INTERIM_FD, [_lib_entry(ticker="TOU", annual_year=2024)]      # stale annual
+    ) is None
+    assert find_stored_annual_for_interim(
+        _INTERIM_FD, [_lib_entry(ticker="TOU", annual_year=2025, is_interim=True)]
+    ) is None                                                          # interims never serve
+    assert find_stored_annual_for_interim(
+        _INTERIM_FD, [_lib_entry(ticker="TOU", annual_year=2025, sedar=False)]
+    ) is None                                                          # no extraction attached
+    assert find_stored_annual_for_interim(
+        _INTERIM_FD, [_lib_entry(ticker="ARX", annual_year=2025)]
+    ) is None                                                          # wrong issuer
+
+
+def test_lookup_returns_none_for_annual_analyses():
+    annual_fd = {"ticker": "TOU", "fiscal_year": "2025"}
+    assert find_stored_annual_for_interim(
+        annual_fd, [_lib_entry(ticker="TOU", annual_year=2024)]
+    ) is None
