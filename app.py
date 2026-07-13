@@ -8167,6 +8167,19 @@ if st.session_state.financial_data:
         st.markdown("#### DCF Calculator")
         _learn_more("dcf", "DCF Calculator")
 
+        # CB-041 (ratified 2026-07-12): a DCF over an interim analysis would
+        # feed a SINGLE QUARTER's FCF into annual-growth assumptions — never
+        # a valid annual run-rate. Ratified as a prominent warning (not a
+        # block); TTM-based valuation is the queued fix.
+        if _ttm_interim_window(financial_data or {}):
+            st.warning(
+                "⚠️ This analysis covers a single interim period — the DCF "
+                "base free cash flow is one quarter, NOT an annual run-rate, "
+                "so intrinsic-value and Margin-of-Safety outputs would be "
+                "misleading. Use the annual filing for valuation (a TTM-based "
+                "valuation is the queued fix)."
+            )
+
         _dcf_c1, _dcf_c2, _dcf_c3, _dcf_c4 = st.columns([2, 2, 2, 1])
         with _dcf_c1:
             _wacc = st.number_input(
@@ -8829,6 +8842,16 @@ if st.session_state.financial_data:
                         "statement and cash-flow statement cover different "
                         "period lengths (discrete quarter vs year-to-date), "
                         "so cross-statement ratios would mix windows."
+                    )
+                # CB-041: same discipline for Leverage on interims — the
+                # net-debt instant over a quarterly EBITDA reads ~4x against
+                # the annual-calibrated thresholds.
+                if metrics.get("interim_flow_window"):
+                    st.caption(
+                        "Leverage suppressed on this interim: net debt over a "
+                        "single quarter's EBITDA would read ~4x against the "
+                        "annual-calibrated thresholds. A TTM-based leverage "
+                        "is the queued fix."
                     )
                 # CB-022/CB-023: disclose the composition of the derived
                 # leverage/coverage ratios (receipts principle) — Debt/Equity,

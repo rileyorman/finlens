@@ -1918,6 +1918,43 @@ an annual pack can never trip it.
   Riley's ground-truth stamp on the TOU Q1-2026 extraction remains
   open; details in the spec.
 
+## CB-041: Interim analyses suppress annual-calibrated flow consumers — Leverage honest-dash; DCF carries the run-rate warning
+
+DECIDED 2026-07-12 (Riley — ratified in the twenty-seventh session's
+night extension, immediately after the TOU Q1-2026 ground-truth stamp).
+
+THE CLASS: annual-calibrated consumers of interim flows. Most ratios are
+dimensionally honest on a quarter — flow÷flow same-window (margins,
+interest cover, FCF conversion post-CB-040-suppress, YoY) and
+instant÷instant (D/E, current ratio) need no scoping. Exactly two
+consumers mix an interim flow into an annual-calibrated frame:
+
+1. LEVERAGE (net debt ÷ EBITDA): net debt is an INSTANT, a quarter's
+   EBITDA is a 3-month FLOW, and the RAG thresholds are annual-calibrated
+   (CB-023: ≤1.0 GREEN / ≤2.0 AMBER) — the ratio reads ~4x on an interim.
+   RULING: SUPPRESSED to honest "—" whenever the income statement's
+   window class is Q/H1/9M, with the reason captioned on the Financial
+   Health panel. (The live TOU interim never fired it — no cash line maps
+   on the zero-cash revolver shape — but the class risk is any interim
+   filer WITH a cash line.)
+2. DCF / MARGIN OF SAFETY: a single quarter's FCF fed into annual-growth
+   assumptions is never a valid annual run-rate. RULING: a prominent
+   WARNING on the DCF panel for interim analyses (deliberately not a
+   block — Riley's call), naming the remedy (use the annual filing).
+
+THE QUEUED PROPER FIX (not part of this ruling): TTM-powered Leverage
+and valuation — extend the CB-040 cross-document TTM fields with the
+EBITDA components (pretax, interest, D&A) so an interim with a stored
+annual gets TRUE trailing-twelve-month ratios instead of suppression.
+
+- Enforced by: modules/excel_exporter.py (_calc_summary_metrics —
+  interim_flow_window off financial_data.period_windows, nd_ebitda
+  suppression), app.py (Financial Health caption; DCF interim warning
+  via the same document-driven window test as the header caption).
+  Pins: tests/test_mixed_window_suppression.py (interim suppresses
+  leverage while int_cover/margins stay live; annual paths and FY
+  windows keep leverage — both directions).
+
 ---
 
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
