@@ -2013,6 +2013,47 @@ adjudicates a discrepancy alone.
 
 ---
 
+## CB-043: As-filed EDGAR figures vs corpus canonicals — serve as-filed with its receipt, COMPARE against the corpus, and caption the outcome (never assume agreement or disagreement)
+
+DECIDED 2026-07-13 (Riley ratified option (a) at the batch-map encoding;
+built as Stage 4.2 of FMP-zero Arc 1, same session as the Stage-4 tiers).
+
+THE PROBLEM: Stage 4.1 brings cross-listed Canadian filers' as-filed
+EDGAR facts onto FinLens surfaces — and same-named concepts differ BY
+CONSTRUCTION across sources for the same filer. ifrs-full:Revenue on CNQ
+is the NET-of-royalties line (FY2024: 35,656M CAD), while the corpus
+canonical revenue is GROSS "Product sales" 41,509M (the 2026-06-17
+ground-truth decision; CLAUDE.md SEDAR revenue semantics is the
+enforcement copy). Serving both without comment would show two revenues
+for one filer with no explanation — the Trust-Is-Page-Level failure mode.
+
+THE RULING (option (a)): the as-filed EDGAR figure is SERVED, with its
+tag receipt; when the validated corpus maps the SAME filer + fiscal year,
+a note COMPARES the two and states the outcome. Three outcomes, all
+honest: DIFFERS (definitional split named, neither source wrong), TIES
+(within 0.5% — a free cross-source triangulation of the corpus), or
+INCOMPARABLE_CURRENCY (no FX conversion, ever). The note must COMPARE,
+never assume: the live evidence shows both outcomes on real filers —
+CNQ DIFFERS (net vs gross) while SU's RevenueFromContractsWithCustomers
+IS the gross line (52,377M ties the corpus ground-truth) and AEM/TECK
+tie within tolerance (11,880.6M vs corpus 11,907.9M USD; 10,756M exact).
+
+MECHANICS: the comparison checks EVERY fiscal year the quick dict emits
+(current + prior) — the flagship CNQ case lives in the PRIOR column
+(corpus year FY2024 vs EDGAR current FY2025). Base-ticker matching is
+class/venue-suffix-insensitive (NYSE TECK ↔ corpus TECK.B). Corpus
+values scale from the fixture's declared scale ("millions" etc.); an
+unknown scale means NO comparison, never a guessed magnitude.
+
+- Enforced by: modules/integrity/corpus_compare.py (read-only over the
+  CI-locked registry + fixtures) + the Quick-tab and Stock-Tracker
+  snapshot notes in app.py. Pins: tests/test_corpus_compare.py (6 tests,
+  pinned against the REAL corpus fixtures deliberately — if the corpus
+  changes, the pin should move with it). LIVE EVIDENCE (2026-07-13):
+  CNQ differs / AEM+TECK tie / ENB (no corpus entry) silent.
+
+---
+
 *Backfill status: seeded 2026-07-05 with the eleven adjudications
 recoverable from CLAUDE.md, SESSION_HANDOFF.md, and the 2026-07-05/06 pilot
 session. Older judgment calls found later in the archive should be added

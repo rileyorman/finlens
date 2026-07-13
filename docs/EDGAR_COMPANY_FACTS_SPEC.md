@@ -293,3 +293,27 @@ CB-043 with its enforcement commit.
 - **Stage 4.2 — CB-043:** the corpus-disagreement caption (registry
   detection); casebook entry ships with the enforcement commit; live
   verify CNQ/TRP/SU/TECK/AEM/ENB.
+
+## Stage 4 build record (2026-07-13, same session as ratification)
+
+- **Stage 4.0 hotfix SHIPPED (2de7856):** as specced above.
+- **Stage 4.1 SHIPPED (aa2b451):** tiered resolution + ifrs-full table +
+  Borrowings lift. LIVE FINDING folded in: tiers must COMPETE ON RECENCY
+  like concepts — AEM carries ancient us-gaap facts (FY2009 via a 2010
+  20-F) that would win first-tier-with-an-anchor over its CURRENT
+  ifrs-full facts; the recency rule (most recent revenue-anchor (end,
+  filed) wins, ties → earlier tier) closed it, pinned. LIVE: CNQ
+  ifrs-full CAD 38.762B + Borrowings 16.617B lifted · SU 52.377B (ties
+  corpus gross) · TECK 10.756B · TRP tier-2 CAD 15.239B · AEM ifrs-full
+  USD FY2025 11.881B · ENB tier-1 · NVDA regression byte-identical.
+- **Stage 4.2 SHIPPED (CB-043, this commit):** corpus comparison note on
+  the Quick tab + Stock Tracker snapshot (modules/integrity/
+  corpus_compare.py; checks every emitted fiscal year — the flagship CNQ
+  case lives in the PRIOR column; base-ticker suffix-insensitive;
+  fixture-scale-aware, unknown scale → no comparison). LIVE: CNQ DIFFERS
+  (corpus gross 41,509M vs ifrs-full net 35,656M, FY2024) · AEM + TECK
+  TIE · ENB silent (no corpus entry).
+- QUEUED (noted, not built): extending the cross_validate v3 WITNESS to
+  the ifrs-full tiers — would light cross-validation for SEDAR filers
+  but collides with the net-vs-gross split by construction; needs its
+  own ruling on top of CB-043 before any record is written.

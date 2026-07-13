@@ -5173,6 +5173,25 @@ if page == "Stock Tracker":
             st.markdown(
                 f"##### Financial Snapshot ({_snap.get('fiscal_year') or 'latest annual'} · {_snap_currency})"
             )
+            # CB-043: corpus comparison note (same rules as the Quick tab).
+            try:
+                from modules.integrity.corpus_compare import corpus_revenue_note
+                _snap_cn = corpus_revenue_note(cur_ticker, _snap)
+            except Exception:
+                _snap_cn = None
+            if _snap_cn and _snap_cn["status"] == "differs":
+                st.caption(
+                    f"⚠️ **Corpus note (CB-043):** the validated SEDAR corpus maps "
+                    f"{_snap_cn['corpus_ticker']} {_snap_cn['fiscal_year']} revenue as "
+                    f"{_snap_cn['corpus_value_raw']:,.0f} {_snap_cn['corpus_currency']} "
+                    f"(“{_snap_cn['corpus_label']}”) — a different as-filed definition than "
+                    "the SEC facts here (e.g. gross-of-royalties vs the ifrs-full net line)."
+                )
+            elif _snap_cn and _snap_cn["status"] == "ties":
+                st.caption(
+                    f"✓ {_snap_cn['fiscal_year']} revenue ties the validated SEDAR corpus "
+                    f"(“{_snap_cn['corpus_label']}”) within 0.5%."
+                )
             income_col, balance_col, cash_flow_col = st.columns(3)
             with income_col:
                 st.markdown("**Income**")
@@ -5882,6 +5901,36 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 with st.expander(f"Per-figure receipts ({len(_quick_receipts)})", expanded=False):
                     for _r_name, _r_text in _quick_receipts.items():
                         st.caption(f"**{_r_name}**: {_r_text}")
+            # CB-043: when the validated SEDAR corpus maps the same filer +
+            # fiscal year, compare — same-named concepts differ by
+            # construction across sources (CNQ: ifrs-full net vs corpus
+            # gross-of-royalties), or tie exactly (SU). Never assume.
+            try:
+                from modules.integrity.corpus_compare import corpus_revenue_note
+                _cn = corpus_revenue_note(_quick_preview_ticker, _quick_fd_preview)
+            except Exception:
+                _cn = None
+            if _cn and _cn["status"] == "differs":
+                st.warning(
+                    f"**Corpus note (CB-043):** FinLens's validated SEDAR corpus carries a "
+                    f"different canonical revenue for {_cn['corpus_ticker']} {_cn['fiscal_year']}: "
+                    f"{_cn['corpus_value_raw']:,.0f} {_cn['corpus_currency']} "
+                    f"(“{_cn['corpus_label']}”, as-filed SEDAR statements) vs "
+                    f"{_cn['edgar_value']:,.0f} from the SEC facts shown here. Same filer, "
+                    "different as-filed definition (e.g. gross-of-royalties vs the ifrs-full "
+                    "net line) — neither is wrong; the receipts name each source."
+                )
+            elif _cn and _cn["status"] == "ties":
+                st.caption(
+                    f"✓ The {_cn['fiscal_year']} revenue ties FinLens's validated SEDAR "
+                    f"corpus (“{_cn['corpus_label']}”) within 0.5%."
+                )
+            elif _cn and _cn["status"] == "incomparable_currency":
+                st.caption(
+                    f"Corpus note: the validated SEDAR corpus maps {_cn['corpus_ticker']} "
+                    f"{_cn['fiscal_year']} in {_cn['corpus_currency']}; these SEC facts are in "
+                    f"{_quick_fd_preview.get('currency')} — not directly comparable."
+                )
         else:
             st.caption(
                 "Source: Financial Modeling Prep — unvalidated aggregator data. "
