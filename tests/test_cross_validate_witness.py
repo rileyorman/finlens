@@ -1,3 +1,11 @@
+"""Cross-validate v3 (CB-042): EDGAR company-facts witness.
+
+Covers the witness fetch semantics (success / no_us_filed_source /
+transient_failure), the version-stamped cache (pre-v3 FMP-era entries
+ignored), the unchanged v2 currency gate + advisory-only framing, and the
+legacy fmp_* key naming that keeps log idempotency signatures and
+old-record reads working.
+"""
 import json
 
 from modules.integrity import cross_validate as cv
@@ -22,7 +30,7 @@ def _normalized_data(currency="USD"):
     return data
 
 
-def _fmp_values(
+def _witness_values(
     *,
     reported_currency="USD",
     revenue=100.0,
@@ -39,17 +47,103 @@ def _fmp_values(
     }
 
 
-def test_successful_cross_validation_writes_reason_to_cache(monkeypatch, tmp_path):
+# ---------------------------------------------------------------------------
+# _fetch_witness_raw: EDGAR-side semantics (edgar_fetcher internals mocked)
+# ---------------------------------------------------------------------------
+
+def _companyfacts_payload():
+    """Minimal companyfacts: one 10-K annual revenue fact per year."""
+    def fact(end, val, filed):
+        return {
+            "start": f"{int(end[:4]) - 1}-01-01", "end": end, "val": val,
+            "form": "10-K", "filed": filed, "fp": "FY", "accn": f"acc-{end[:4]}",
+        }
+    return {"facts": {"us-gaap": {
+        "Revenues": {"units": {"USD": [
+            fact("2024-12-31", 90.0, "2025-02-01"),
+            fact("2025-12-31", 100.0, "2026-02-01"),
+        ]}},
+    }}}
+
+
+def test_witness_fetch_matches_fact_end_year(monkeypatch):
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: "0000000123")
+    monkeypatch.setattr("modules.edgar_fetcher._get_companyfacts", lambda _c: _companyfacts_payload())
+
+    vals, success, reason = cv._fetch_witness_raw("TEST", 2025)
+
+    assert success is True
+    assert reason == cv.FMP_FETCH_SUCCESS
+    assert vals["revenue"] == 100.0
+    assert vals[cv.FMP_REPORTED_CURRENCY_KEY] == "USD"
+    # No matching fact for the other statements — honest None, not a failure
+    assert vals["total_assets"] is None
+
+
+def test_witness_year_absent_is_success_with_none_values(monkeypatch):
+    """Period not in the witness = 'not there', never a fetch failure."""
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: "0000000123")
+    monkeypatch.setattr("modules.edgar_fetcher._get_companyfacts", lambda _c: _companyfacts_payload())
+
+    vals, success, reason = cv._fetch_witness_raw("TEST", 2010)
+
+    assert success is True
+    assert reason == cv.FMP_FETCH_SUCCESS
+    assert vals["revenue"] is None
+
+
+def test_witness_no_cik_is_no_us_filed_source(monkeypatch):
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: None)
+
+    vals, success, reason = cv._fetch_witness_raw("TOU", 2025)
+
+    assert vals is None
+    assert success is False
+    assert reason == cv.NO_US_FILED_SOURCE
+
+
+def test_witness_no_us_gaap_annual_facts_is_no_us_filed_source(monkeypatch):
+    """40-F/6-K filer class: a CIK exists but no us-gaap 10-K annual facts."""
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: "0000000123")
+    monkeypatch.setattr(
+        "modules.edgar_fetcher._get_companyfacts",
+        lambda _c: {"facts": {"ifrs-full": {"Revenue": {"units": {"CAD": []}}}}},
+    )
+
+    vals, success, reason = cv._fetch_witness_raw("CNQ", 2025)
+
+    assert vals is None
+    assert success is False
+    assert reason == cv.NO_US_FILED_SOURCE
+
+
+def test_witness_companyfacts_unreachable_is_transient(monkeypatch):
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: "0000000123")
+    monkeypatch.setattr("modules.edgar_fetcher._get_companyfacts", lambda _c: None)
+
+    vals, success, reason = cv._fetch_witness_raw("TEST", 2025)
+
+    assert vals is None
+    assert success is False
+    assert reason == cv.FMP_TRANSIENT_FAILURE
+
+
+# ---------------------------------------------------------------------------
+# cross_validate_filing: record shape, cache, currency gate, framing
+# ---------------------------------------------------------------------------
+
+def test_successful_cross_validation_stamps_version_witness_and_cache(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(),
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(),
         True,
         cv.FMP_FETCH_SUCCESS,
     ))
     monkeypatch.setattr("modules.integrity.log.append_cv_to_log", lambda _result: None)
 
     result = cv.cross_validate_filing(_normalized_data(), "TEST", "FY2025")
+    record = result.to_dict()
 
     assert result.fmp_fetch_success is True
     assert result.fmp_fetch_reason == cv.FMP_FETCH_SUCCESS
@@ -57,9 +151,12 @@ def test_successful_cross_validation_writes_reason_to_cache(monkeypatch, tmp_pat
     assert result.filing_currency == "USD"
     assert result.fmp_reported_currency == "USD"
     assert result.abstention_reason is None
+    assert record["checker_version"] == "3"
+    assert record["witness_source"] == cv.WITNESS_SOURCE_EDGAR
     assert all(field.status == "AGREE" for field in result.fields)
     assert all("severity" not in field.to_dict() for field in result.fields)
     cache = json.loads(cache_file.read_text(encoding="utf-8"))
+    assert cache["TEST|2025"]["cv_version"] == cv.CROSS_VALIDATE_VERSION
     assert cache["TEST|2025"]["fmp_fetch_reason"] == cv.FMP_FETCH_SUCCESS
     assert cache["TEST|2025"]["fmp_reported_currency"] == "USD"
 
@@ -67,9 +164,8 @@ def test_successful_cross_validation_writes_reason_to_cache(monkeypatch, tmp_pat
 def test_sedar_top_level_values_fill_cv_record_when_statement_labels_are_ifrs(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(
-            reported_currency="CAD",
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(
             revenue=72856.8,
             net_income=2592.4,
             total_assets=32367.2,
@@ -130,29 +226,34 @@ def test_edgar_rows_take_precedence_over_top_level_fallback():
     assert values["revenue"] == 100.0
 
 
-def test_premium_block_is_cacheable_with_reason(monkeypatch, tmp_path):
+def test_no_us_filed_source_is_cacheable_with_reason(monkeypatch, tmp_path):
+    """The honest non-US abstention is a stable filer property — cached like
+    the old premium block was, so SEDAR filers never re-hit EDGAR."""
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
         None,
         False,
-        cv.FMP_PREMIUM_BLOCKED,
+        cv.NO_US_FILED_SOURCE,
     ))
     monkeypatch.setattr("modules.integrity.log.append_cv_to_log", lambda _result: None)
 
-    result = cv.cross_validate_filing(_normalized_data(), "O", "FY2025")
+    result = cv.cross_validate_filing(_normalized_data(currency="CAD"), "TOU", "FY2025")
 
     assert result.fmp_fetch_success is False
-    assert result.fmp_fetch_reason == cv.FMP_PREMIUM_BLOCKED
+    assert result.fmp_fetch_reason == cv.NO_US_FILED_SOURCE
+    assert result.overall_status == "partial_unmatched"
+    assert all(field.status == "UNMATCHED" for field in result.fields)
     cache = json.loads(cache_file.read_text(encoding="utf-8"))
-    assert cache["O|2025"]["fmp_fetch_success"] is False
-    assert cache["O|2025"]["fmp_fetch_reason"] == cv.FMP_PREMIUM_BLOCKED
+    assert cache["TOU|2025"]["cv_version"] == cv.CROSS_VALIDATE_VERSION
+    assert cache["TOU|2025"]["fmp_fetch_success"] is False
+    assert cache["TOU|2025"]["fmp_fetch_reason"] == cv.NO_US_FILED_SOURCE
 
 
 def test_transient_failure_is_not_written_to_cache(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
         None,
         False,
         cv.FMP_TRANSIENT_FAILURE,
@@ -166,18 +267,35 @@ def test_transient_failure_is_not_written_to_cache(monkeypatch, tmp_path):
     assert not cache_file.exists()
 
 
-def test_legacy_failed_cache_entries_are_repaired(monkeypatch, tmp_path):
+def test_pre_v3_cache_entries_are_ignored(monkeypatch, tmp_path):
+    """v2 FMP-era entries (no cv_version stamp) are dropped wholesale; the
+    witness re-fetches from EDGAR. Only current-version cacheable entries survive."""
     cache_file = tmp_path / "cv_cache.json"
     cache_file.write_text(
         json.dumps({
-            "COST|2025": {"fmp_vals": None, "fmp_fetch_success": False},
-            "NVDA|2026": {
-                "fmp_vals": {
-                    cv.FMP_REPORTED_CURRENCY_KEY: "USD",
-                    "revenue": 1.0,
-                },
+            "NVDA|2026": {  # v2 success entry — FMP-era value, must be ignored
+                "fmp_vals": {cv.FMP_REPORTED_CURRENCY_KEY: "USD", "revenue": 1.0},
                 "fmp_fetch_success": True,
+                "fmp_fetch_reason": cv.FMP_FETCH_SUCCESS,
                 "fmp_reported_currency": "USD",
+            },
+            "O|2025": {  # v2 premium block — FMP-era reason, must be ignored
+                "fmp_vals": None,
+                "fmp_fetch_success": False,
+                "fmp_fetch_reason": cv.FMP_PREMIUM_BLOCKED,
+            },
+            "TEST|2025": {  # v3 success entry — kept
+                "cv_version": cv.CROSS_VALIDATE_VERSION,
+                "fmp_vals": {cv.FMP_REPORTED_CURRENCY_KEY: "USD", "revenue": 2.0},
+                "fmp_fetch_success": True,
+                "fmp_fetch_reason": cv.FMP_FETCH_SUCCESS,
+                "fmp_reported_currency": "USD",
+            },
+            "BAD|2025": {  # v3 transient (should never persist) — dropped
+                "cv_version": cv.CROSS_VALIDATE_VERSION,
+                "fmp_vals": None,
+                "fmp_fetch_success": False,
+                "fmp_fetch_reason": cv.FMP_TRANSIENT_FAILURE,
             },
         }),
         encoding="utf-8",
@@ -186,16 +304,18 @@ def test_legacy_failed_cache_entries_are_repaired(monkeypatch, tmp_path):
 
     cache = cv._load_cv_cache()
 
-    assert "COST|2025" not in cache
-    assert cache["NVDA|2026"]["fmp_fetch_reason"] == cv.FMP_FETCH_SUCCESS
+    assert set(cache.keys()) == {"TEST|2025"}
 
 
 def test_currency_mismatch_writes_abstention_reason_and_does_not_flag(monkeypatch, tmp_path):
+    """The v2 currency gate is unchanged: a CAD filing vs the USD witness
+    abstains without FX conversion — the live v3 path for any CAD filer
+    that reaches comparison."""
     cache_file = tmp_path / "cv_cache.json"
     captured = []
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(reported_currency="USD", revenue=140.0),
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(revenue=140.0),
         True,
         cv.FMP_FETCH_SUCCESS,
     ))
@@ -218,8 +338,8 @@ def test_currency_mismatch_writes_abstention_reason_and_does_not_flag(monkeypatc
 def test_unknown_currency_writes_abstention_reason(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(reported_currency="USD", revenue=140.0),
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(revenue=140.0),
         True,
         cv.FMP_FETCH_SUCCESS,
     ))
@@ -239,8 +359,8 @@ def test_unknown_currency_writes_abstention_reason(monkeypatch, tmp_path):
 def test_matching_currency_value_mismatch_is_advisory_never_failure(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(reported_currency="USD", revenue=140.0),
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(revenue=140.0),
         True,
         cv.FMP_FETCH_SUCCESS,
     ))
@@ -261,8 +381,8 @@ def test_matching_currency_value_mismatch_is_advisory_never_failure(monkeypatch,
 def test_matching_currency_value_match_preserves_pass_shape(monkeypatch, tmp_path):
     cache_file = tmp_path / "cv_cache.json"
     monkeypatch.setattr(cv, "_CV_CACHE_FILE", cache_file)
-    monkeypatch.setattr(cv, "_fetch_fmp_raw", lambda _ticker, _year: (
-        _fmp_values(reported_currency="USD"),
+    monkeypatch.setattr(cv, "_fetch_witness_raw", lambda _ticker, _year: (
+        _witness_values(),
         True,
         cv.FMP_FETCH_SUCCESS,
     ))
@@ -279,10 +399,14 @@ def test_matching_currency_value_match_preserves_pass_shape(monkeypatch, tmp_pat
     assert all("abstention_reason" not in field for field in record["cv_fields"])
 
 
-def test_append_v2_cv_record_does_not_mutate_pre_existing_log_record(tmp_path):
+def test_append_v3_cv_record_does_not_mutate_pre_existing_log_record(tmp_path):
+    """Legacy v2 records (fmp_* keys, no witness_source) survive untouched;
+    the v3 record appends beside them — the documented key repurpose keeps
+    idempotency signatures working across versions."""
     path = tmp_path / "integrity_log.jsonl"
     legacy_record = {
         "record_type": "cross_validation",
+        "checker_version": "2",
         "timestamp": "2026-07-02T00:00:00+00:00",
         "ticker": "TEST",
         "fiscal_year": "FY2025",
@@ -314,10 +438,10 @@ def test_append_v2_cv_record_does_not_mutate_pre_existing_log_record(tmp_path):
                 status="AGREE",
             )
         ],
-        timestamp="2026-07-03T00:00:00+00:00",
+        timestamp="2026-07-13T00:00:00+00:00",
         ticker="TEST",
         fiscal_year="FY2025",
-        filing_accession="v2",
+        filing_accession="v3",
         fmp_fetch_success=True,
         fmp_fetch_reason=cv.FMP_FETCH_SUCCESS,
         filing_currency="USD",
@@ -332,6 +456,7 @@ def test_append_v2_cv_record_does_not_mutate_pre_existing_log_record(tmp_path):
     assert json.loads(lines[0]) == legacy_record
     assert len(lines) == 2
     appended = json.loads(lines[1])
-    assert appended["checker_version"] == cv.CROSS_VALIDATE_VERSION
+    assert appended["checker_version"] == "3"
+    assert appended["witness_source"] == cv.WITNESS_SOURCE_EDGAR
     assert appended["filing_currency"] == "USD"
     assert appended["fmp_reported_currency"] == "USD"

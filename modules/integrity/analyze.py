@@ -28,6 +28,7 @@ from .cross_validate import (
     CV_ABSTAIN_CURRENCY_UNKNOWN,
     CV_SEVERITY_ADVISORY,
     FMP_PREMIUM_BLOCKED,
+    NO_US_FILED_SOURCE,
 )
 
 
@@ -422,12 +423,15 @@ def _fmt_bn(v: float | None) -> str:
 
 
 def _fmt_cv_fmp_status(rec: dict) -> str:
+    """Witness availability label; handles v3 (EDGAR) and legacy FMP-era records."""
     if rec.get("fmp_fetch_success"):
         if rec.get("abstention_reason"):
             return f"available; abstained: {rec.get('abstention_reason')}"
         return "available"
+    if rec.get("fmp_fetch_reason") == NO_US_FILED_SOURCE:
+        return "no US filed source (abstained)"
     if rec.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED:
-        return "unavailable at current FMP tier"
+        return "unavailable at current FMP tier (legacy)"
     return "transient failure"
 
 
@@ -453,8 +457,8 @@ def _section_divergence(cv_records: list[dict]) -> str:
     if not cv_records:
         return (
             "  No cross-validation runs recorded yet.\n"
-            "  Trigger a cross-validation check from the FinLens UI ($)\n"
-            "  to compare FinLens EDGAR values against FMP."
+            "  Trigger a cross-validation check from the FinLens UI\n"
+            "  to compare FinLens values against the EDGAR company-facts witness."
         )
 
     lines: list[str] = []
@@ -527,6 +531,11 @@ def _section_divergence(cv_records: list[dict]) -> str:
         for r in cv_records
         if r.get("fmp_fetch_reason") == FMP_PREMIUM_BLOCKED
     ]
+    no_us_source = [
+        f"{r.get('ticker')} {r.get('fiscal_year')}"
+        for r in cv_records
+        if r.get("fmp_fetch_reason") == NO_US_FILED_SOURCE
+    ]
     unmatched = [
         f"{r.get('ticker')} {fld.get('field')}"
         for r in cv_records
@@ -545,10 +554,14 @@ def _section_divergence(cv_records: list[dict]) -> str:
         lines.append(f"  Abstained by currency gate              : {_trunc(currency_abstentions)}")
     if premium_blocked:
         lines.append(
-            f"  Corroboration unavailable at current FMP tier: {_trunc(premium_blocked)}"
+            f"  Corroboration unavailable at current FMP tier (legacy records): {_trunc(premium_blocked)}"
+        )
+    if no_us_source:
+        lines.append(
+            f"  No US filed source (honest abstention)  : {_trunc(no_us_source)}"
         )
     if unmatched:
-        lines.append(f"  Unmatched (no FMP period)   : {_trunc(unmatched)}")
+        lines.append(f"  Unmatched (no witness period): {_trunc(unmatched)}")
     if not advisory_disagree and not minor and not currency_abstentions and not unmatched:
         lines.append("  All compared fields agree (<2% divergence).")
 
