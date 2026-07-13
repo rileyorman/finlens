@@ -3405,6 +3405,10 @@ if page == "Portfolio Manager":
                     annotation_font=dict(color='#94A3B8', size=10),
                 )
                 _dark(fig1)
+                # Fiscal years are LABELS, not numbers — an all-numeric label
+                # list otherwise renders a continuous axis with "2,024.5"
+                # ticks (found live 2026-07-13).
+                fig1.update_xaxes(type='category')
                 fig1.update_yaxes(range=[0, 100], title_text='Quality Score')
                 st.plotly_chart(fig1, width='stretch', config={"displayModeBar": False})
 
@@ -3439,6 +3443,13 @@ if page == "Portfolio Manager":
                 fig2.update_xaxes(title_text='P/E ratio', range=[0, max_pe * 1.2])
                 fig2.update_yaxes(title_text='Quality Score', range=[0, 100])
                 st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
+                # Mixed-trust panel (Trust-Is-Page-Level): the y-axis is
+                # filing-derived, the x-axis is market data.
+                st.caption(
+                    "P/E: yfinance — unvalidated market data; Quality Score: "
+                    "derived from analysed filings. Holdings without a market "
+                    "P/E are omitted."
+                )
 
     # ── Panel 3: Risk / Return Matrix ──────────────────────────────────
     with row2_left:
@@ -4318,6 +4329,7 @@ if page == "Stock Tracker":
 
                 if summary_rows:
                     st.dataframe(_pd.DataFrame(summary_rows), width='stretch', hide_index=True)
+                    st.caption("Source: yfinance — live market data, unvalidated.")
 
     _render_stock_tracker_sidebar_watchlist()
 
