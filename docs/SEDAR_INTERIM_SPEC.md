@@ -136,5 +136,32 @@ packs and the quarter/TTM derivations.
 - **Stage 3** — cross-document TTM with the scale/currency gates, PLUS
   (per the Stage-2 scope finding) the cross-document YTD-differencing
   fallback and the mixed-window metric decision.
+  **STAGE 3 CORE DONE 2026-07-12 (Riley waived the deploy-first
+  sequencing; fetch + extraction spend approved):**
+  `modules/sedar_ttm.py` — `build_ttm_from_interim(interim, annual)`
+  assembles the four headline flows (revenue, net_income,
+  operating_cash_flow, capex) under the three ratified gates; per-field
+  chain failures are field-level honest N/A; the YTD component is the
+  LARGEST window printed (9M > H1 > Q — at Q2/Q3 the row layer shows the
+  discrete quarter but TTM consumes the year-to-date column, pinned);
+  same-label ambiguity across flow statements is honest absence. 9 pins
+  (tests/test_sedar_ttm.py). **LIVE-VERIFIED on the real shape same
+  session:** Sterling located the issuer-hosted TOU Q1-2026 combined
+  MD&A+statements PDF (tourmalineoil.com; sha256 8D3F7319…463D, saved
+  to ~/.finlens/pdfs/TOU_Q1_2026.pdf); cold extraction mapped 16 fields
+  (confidence 0.95, quarter-only "Three Months Ended March 31 2026/2025"
+  columns — the CB-040 pairing exercised live); TTM vs the stored FY2025
+  fixture: all gates PASS, revenue 4,929,506 · net_income 707,554 ·
+  OCF 3,241,335 · capex −2,834,859, composite receipts citing both
+  documents.
+  **STILL OPEN (Stage 3b, fresh session):** (a) UI surface — where the
+  TTM panel renders on an interim analysis and how the interim enters
+  the library (design decision); (b) the cross-document YTD-differencing
+  fallback for Q2/Q3 YTD-only statements (needs the prior interim from
+  the library); (c) the MIXED-WINDOW METRICS ruling (suppress vs
+  annotate) before any derived interim metric ships; (d) RILEY'S
+  GROUND-TRUTH STAMP on the TOU Q1-2026 extraction per the transcription
+  protocol (the interim values above are extraction-verified + pinned
+  arithmetic, not yet human-verified against the PDF).
 - Ground truth (decision 6) runs with the first live interim; CB-040
   ships with the Stage 1 (first enforcement) commit.
