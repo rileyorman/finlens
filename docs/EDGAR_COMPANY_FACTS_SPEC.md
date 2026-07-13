@@ -207,3 +207,113 @@ unusable for derivation (honest exclusion).
   retired-tag shape). Riley's on-screen Quarter/TTM flow-verify
   remaining.**
 - Casebook entry (CB-039) shipped with the Stage 1 commit (9afb10d).
+
+
+# STAGE 4 (FMP-zero Arc 1) — Cross-listed Canadian issuers: unit-derived currency + ifrs-full (DESIGN RATIFIED 2026-07-13)
+
+## Empirical grounding (live company-facts probe, 2026-07-13, six filers)
+
+| Filer | Taxonomy | Forms | Units | Behavior before Stage 4 |
+|---|---|---|---|---|
+| ENB | us-gaap | 10-K (dual registrant) + 40-F | CAD | **LIVE BUG: CAD values labeled USD on Quick/Snapshot** |
+| TRP | us-gaap | 40-F only | CAD | honest refusal (10-K form filter) |
+| CNQ | ifrs-full | 40-F | CAD | honest refusal |
+| SU | ifrs-full | 40-F | CAD | honest refusal |
+| TECK | ifrs-full | 40-F | CAD (+ stale USD series) | honest refusal |
+| AEM | ifrs-full | 40-F (+ voluntary 6-K) | USD | honest refusal |
+
+CORRECTION TO THE QUEUE ITEM (empirical-evidence principle): "SU's
+ifrs-full facts END 2017" is FALSE as a filer-level claim — SU is current
+through FY2025 under RevenueFromContractsWithCustomers; only the bare
+ifrs-full:Revenue tag died in 2017. Same shape on TECK (Revenue dead 2018)
+and inverted on CNQ (Revenue live, capex tag dead 2018). This is the NVDA
+phantom class again; the existing RECENCY-COMPETITION rule retires the
+dead tags with no new selection logic.
+
+## Ratified decisions (Riley, 2026-07-13)
+
+1. **Scope: ALL THREE TIERS.** One selection engine, tiered:
+   us-gaap/10-K (today) → us-gaap/{40-F,20-F,+/A} (TRP class) →
+   ifrs-full/{40-F,20-F,+/A} (CNQ class). Amendments included (CB-039
+   precedent).
+2. **Total debt on the ifrs-full path: LIFT `Borrowings`** (the filer's
+   printed grand total — lift-over-derive, one receipt), FALLBACK compose
+   LongtermBorrowings + CurrentPortionOfLongtermBorrowings (CB-022 pair
+   semantics) when Borrowings is absent (AEM). Composition disclosed
+   either way.
+3. **Sequencing: HOTFIX FIRST.** The unit-derived currency fix ships on
+   the EXISTING paths as its own deployable commit (the ENB bug is live);
+   the tiers build on it.
+
+Also standing from the 2026-07-13 batch-map ratification: **option (a)**
+for the net-vs-gross disagreement — serve the as-filed EDGAR figure with
+its tag receipt + a disagreement caption when a corpus mapping exists
+(CNQ: canonical GROSS 41,509M vs ifrs-full:Revenue NET 38,762M). Ships as
+CB-043 with its enforcement commit.
+
+## Fixed design points (follow from ratified principles)
+
+- **Currency is derived from the fact's own unit key, never hardcoded**
+  (Trust-Is-Page-Level; the Accelerant wrong-listing class). The filing
+  currency is the REVENUE ANCHOR's unit; every other field must carry the
+  same unit or go honest-N/A — no mixed-currency composites, no
+  relabeling. Per-share fields use `<currency>/shares`; dei share counts
+  stay unit "shares" (currency-free). Receipts carry the unit.
+- **ifrs-full concept table (probe-grounded):** revenue
+  [RevenueFromContractsWithCustomers, Revenue] · cost CostOfSales · gross
+  GrossProfit · operating income ProfitLossFromOperatingActivities ·
+  net income ProfitLoss (incl. NCI — CB-011-consistent) · pretax
+  ProfitLossBeforeTax · interest [FinanceCosts, InterestExpense] (the
+  CB-035 rollup family) · cash CashAndCashEquivalents · assets Assets ·
+  CurrentAssets/CurrentLiabilities · debt per decision 2 · equity Equity
+  (grand incl. NCI — CB-013-consistent) · OCF
+  CashFlowsFromUsedInOperatingActivities · capex
+  PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities ·
+  dividends [DividendsPaidOrdinaryShares,
+  DividendsPaidClassifiedAsFinancingActivities] · EPS
+  Basic/DilutedEarningsLossPerShare.
+- **Quarter/TTM stays HONESTLY REFUSED for 40-F/20-F names** — 6-K
+  interims are not reliably XBRL-tagged (AEM's voluntary 6-K facts cannot
+  be load-bearing); pinned.
+
+## Stages (Stage 4)
+
+- **Stage 4.0 — HOTFIX (SHIPPED with this spec section):** `_unit_values`
+  annotates every fact with its unit ("_unit"); anchor-derived currency +
+  same-currency gate on the annual builder, quarterly/TTM builders, and
+  the accession-pinned filing path; cross_validate v3 witness currency
+  derived from matched facts' units (a CAD 10-K filer now gets a REAL
+  comparison); Snapshot header + Quick captions display the currency.
+  Pins: ENB-class CAD tests on all three surfaces + receipt-unit pin.
+  LIVE: ENB annual CAD 65.194B / Q1 CAD 22.357B, receipts carry "· CAD";
+  NVDA regression byte-identical.
+- **Stage 4.1 — tiers 2+3:** widened form filter + ifrs-full concept
+  table + Borrowings lift/compose; taxonomy-accurate receipts
+  (ifrs-full: prefix).
+- **Stage 4.2 — CB-043:** the corpus-disagreement caption (registry
+  detection); casebook entry ships with the enforcement commit; live
+  verify CNQ/TRP/SU/TECK/AEM/ENB.
+
+## Stage 4 build record (2026-07-13, same session as ratification)
+
+- **Stage 4.0 hotfix SHIPPED (2de7856):** as specced above.
+- **Stage 4.1 SHIPPED (aa2b451):** tiered resolution + ifrs-full table +
+  Borrowings lift. LIVE FINDING folded in: tiers must COMPETE ON RECENCY
+  like concepts — AEM carries ancient us-gaap facts (FY2009 via a 2010
+  20-F) that would win first-tier-with-an-anchor over its CURRENT
+  ifrs-full facts; the recency rule (most recent revenue-anchor (end,
+  filed) wins, ties → earlier tier) closed it, pinned. LIVE: CNQ
+  ifrs-full CAD 38.762B + Borrowings 16.617B lifted · SU 52.377B (ties
+  corpus gross) · TECK 10.756B · TRP tier-2 CAD 15.239B · AEM ifrs-full
+  USD FY2025 11.881B · ENB tier-1 · NVDA regression byte-identical.
+- **Stage 4.2 SHIPPED (CB-043, this commit):** corpus comparison note on
+  the Quick tab + Stock Tracker snapshot (modules/integrity/
+  corpus_compare.py; checks every emitted fiscal year — the flagship CNQ
+  case lives in the PRIOR column; base-ticker suffix-insensitive;
+  fixture-scale-aware, unknown scale → no comparison). LIVE: CNQ DIFFERS
+  (corpus gross 41,509M vs ifrs-full net 35,656M, FY2024) · AEM + TECK
+  TIE · ENB silent (no corpus entry).
+- QUEUED (noted, not built): extending the cross_validate v3 WITNESS to
+  the ifrs-full tiers — would light cross-validation for SEDAR filers
+  but collides with the net-vs-gross split by construction; needs its
+  own ruling on top of CB-043 before any record is written.

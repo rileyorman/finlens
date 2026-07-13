@@ -460,3 +460,26 @@ def test_append_v3_cv_record_does_not_mutate_pre_existing_log_record(tmp_path):
     assert appended["witness_source"] == cv.WITNESS_SOURCE_EDGAR
     assert appended["filing_currency"] == "USD"
     assert appended["fmp_reported_currency"] == "USD"
+
+
+def test_witness_currency_derived_from_fact_units(monkeypatch):
+    """Stage-4 hotfix (ENB class): a dual registrant files 10-Ks with
+    CAD-unit facts — the witness must declare CAD (from the facts' own
+    units), so a CAD filing gets a REAL comparison instead of a false
+    currency mismatch, and a USD label never masks CAD values."""
+    def fact(end, val, filed):
+        return {
+            "start": f"{int(end[:4]) - 1}-01-01", "end": end, "val": val,
+            "form": "10-K", "filed": filed, "fp": "FY", "accn": f"acc-{end[:4]}",
+        }
+    payload = {"facts": {"us-gaap": {
+        "Revenues": {"units": {"CAD": [fact("2025-12-31", 65_194.0, "2026-02-13")]}},
+    }}}
+    monkeypatch.setattr("modules.edgar_fetcher.get_cik", lambda _t: "0000000123")
+    monkeypatch.setattr("modules.edgar_fetcher._get_companyfacts", lambda _c: payload)
+
+    vals, success, reason = cv._fetch_witness_raw("ENB", 2025)
+
+    assert success is True and reason == cv.FMP_FETCH_SUCCESS
+    assert vals["revenue"] == 65_194.0
+    assert vals[cv.FMP_REPORTED_CURRENCY_KEY] == "CAD"

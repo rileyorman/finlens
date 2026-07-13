@@ -238,3 +238,40 @@ def test_honest_none_without_a_derivable_revenue_anchor(monkeypatch):
 def test_invalid_mode_returns_none(monkeypatch):
     _install(monkeypatch, MIDYEAR_SHAPED)
     assert ef.build_quarterly_financial_data_from_edgar_facts("NVDA", mode="annual") is None
+
+# ---------------------------------------------------------------------------
+# Stage-4 hotfix pins — the ENB trap on the quarterly path: a dual
+# registrant filing 10-Qs with CAD-unit facts. Currency comes from the
+# anchor's own unit; a flow or instant in a different unit goes honest-N/A.
+# ---------------------------------------------------------------------------
+
+def _cad_flow_chain(fy_val, q1_val):
+    return {"units": {"CAD": [
+        _fact("2025-12-31", fy_val, "2026-02-13", form="10-K", start="2025-01-01"),
+        _fact("2026-03-31", q1_val, "2026-05-09", form="10-Q", start="2026-01-01", fp="Q1"),
+    ]}}
+
+
+CAD_QUARTERLY_SHAPED = _facts_payload({
+    "Revenues": _cad_flow_chain(65_194, 12_000),
+    "NetIncomeLoss": _cad_flow_chain(6_000, 1_500),
+    # Mixed-unit trap: a USD-only instant must NOT ride into a CAD anchor.
+    "CashAndCashEquivalentsAtCarryingValue": {"units": {"USD": [
+        _fact("2026-03-31", 999, "2026-05-09", form="10-Q"),
+    ]}},
+    "Assets": {"units": {"CAD": [
+        _fact("2026-03-31", 180_000, "2026-05-09", form="10-Q"),
+    ]}},
+})
+
+
+def test_cad_quarterly_labels_cad_and_gates_mixed_units(monkeypatch):
+    _install(monkeypatch, CAD_QUARTERLY_SHAPED)
+    fd = ef.build_quarterly_financial_data_from_edgar_facts("ENB", mode="quarter")
+    assert fd is not None
+    assert fd["currency"] == "CAD"
+    assert fd["revenue"] == 12_000                    # Q1 YTD lift
+    assert fd["net_income"] == 1_500
+    assert fd["total_assets"] == 180_000              # CAD instant at anchor end
+    assert fd["cash"] is None                         # USD-unit instant gated out
+    assert "cash" not in fd["receipts"]

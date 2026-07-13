@@ -66,9 +66,11 @@ FMP_REPORTED_CURRENCY_KEY = "_reported_currency"
 CV_SEVERITY_ADVISORY = "advisory"
 CV_ABSTAIN_CURRENCY_MISMATCH = "currency_mismatch"
 CV_ABSTAIN_CURRENCY_UNKNOWN = "currency_unknown"
-# us-gaap 10-K facts carry the USD unit (edgar_fetcher's USD-first unit
-# rule), so the witness declares USD and the v2 currency gate keeps working
-# unchanged: a non-USD filing vs the USD witness abstains, never converts.
+# The witness currency is derived from the matched facts' own unit keys
+# (Stage-4 hotfix: a dual registrant can file 10-Ks with CAD-unit facts —
+# the ENB trap); this constant is only the default when no fact matched
+# the target year (values all None, currency moot). The v2 currency gate
+# is unchanged: a filing/witness currency mismatch abstains, never converts.
 _WITNESS_CURRENCY = "USD"
 
 # Divergence thresholds (absolute percentage of the witness value)
@@ -223,8 +225,11 @@ def _fetch_witness_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | 
     -------
     (values_dict, success_bool, reason)
         values_dict   keys: revenue, net_income, total_assets,
-                      operating_cash_flow, plus _reported_currency (always
-                      USD -- us-gaap 10-K facts are USD-unit facts).
+                      operating_cash_flow, plus _reported_currency derived
+                      from the matched facts' own unit keys (USD for most
+                      10-K filers; CAD for dual registrants like ENB;
+                      None when matched units are mixed -- the currency
+                      gate then abstains).
                       None for a field when no fact ends in target_year.
         success_bool  True when the witness was consulted and carries
                       us-gaap 10-K annual facts for this filer -- even if
@@ -263,8 +268,9 @@ def _fetch_witness_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | 
             "total_assets":        TOTAL_ASSETS_CONCEPTS,
             "operating_cash_flow": OPERATING_CASH_FLOW_CONCEPTS,
         }
-        values: dict[str, Any] = {FMP_REPORTED_CURRENCY_KEY: _WITNESS_CURRENCY}
+        values: dict[str, Any] = {}
         any_annual_facts = False
+        matched_units: set = set()
         for field_name, concepts in chains.items():
             _concept, annual = _competing_annual_facts(facts, concepts)
             if annual:
@@ -273,10 +279,25 @@ def _fetch_witness_raw(ticker: str, target_year: int) -> tuple[dict[str, Any] | 
                 (item for item in annual if str(item.get("end", ""))[:4] == str(target_year)),
                 None,
             )
+            if match is not None:
+                matched_units.add(match.get("_unit"))
             values[field_name] = match.get("val") if match else None
 
         if not any_annual_facts:
             return None, False, NO_US_FILED_SOURCE
+
+        # Witness currency comes from the matched facts' own units — never
+        # hardcoded (the ENB trap: CAD-unit 10-K facts). Single unit → that
+        # currency; mixed units → None (the currency gate abstains as
+        # currency_unknown); no matched facts → default (values all None,
+        # currency moot).
+        matched_units.discard(None)
+        if len(matched_units) == 1:
+            values[FMP_REPORTED_CURRENCY_KEY] = next(iter(matched_units))
+        elif matched_units:
+            values[FMP_REPORTED_CURRENCY_KEY] = None
+        else:
+            values[FMP_REPORTED_CURRENCY_KEY] = _WITNESS_CURRENCY
 
         return values, True, FMP_FETCH_SUCCESS
 
