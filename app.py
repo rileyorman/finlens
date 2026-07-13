@@ -5982,37 +5982,30 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.info("ℹ️ MD&A Sentiment not available for Quick Analysis — upload a PDF for full analysis")
             st.rerun()
 
-# Once an analysis is on screen the upload zone collapses out of the way,
+# Once an analysis is on screen the intake zones collapse out of the way,
 # so the loaded company — not the intake plumbing — owns the page. A
-# collapsed expander still renders its widgets, so upload state survives.
+# collapsed expander still renders its widgets, so intake state survives.
 _has_loaded_analysis = bool(st.session_state.get("financial_data"))
+
+# --- CB-028 front door, PROMOTED to its own top-billed section (Riley's
+# call, 2026-07-12 night — it was buried under the upload expander). This
+# is the corpus flywheel's intake: the agent finds the issuer-hosted
+# direct-PDF URL, the app re-fetches the bytes ITSELF (sha256 provenance
+# receipt), and the file converges on the same uploaded_file variable as a
+# manual upload, so every gate fires unchanged (R5). The Filing field is
+# now STRUCTURED (type + fiscal year — encoding exactly the document
+# classes the pipeline accepts; MD&A deliberately absent, its lane is the
+# Economics tab) with a free-text escape hatch for the long tail.
 with st.expander(
-    "📄 Upload Financial Statements (PDF or Word)",
+    "🔎 Agent Fetch — name any company and filing; FinLens finds the issuer-hosted PDF",
     expanded=not _has_loaded_analysis,
 ):
-    uploaded_file = st.file_uploader(
-        "Upload Financial Statements (PDF or Word)",
-        type=["pdf", "docx"],
-        help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
-        key=f"pdf_uploader_{st.session_state.uploader_key}",
-        label_visibility="collapsed",
-    )
-    canadian_filing = st.checkbox(
-        "Canadian filing (SEDAR+ / IFRS)",
-        value=False,
-        help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
-        key="canadian_sedar_upload",
-    )
-
-    # --- CB-028: search-triggered agent fetch (the flywheel front door) ---
-    # The agent finds the issuer-hosted direct-PDF URL; the app re-fetches
-    # the bytes ITSELF (provenance receipt) and converges them on the same
-    # uploaded_file variable below, so every gate fires unchanged (R5).
-    st.markdown("---")
     st.markdown(
-        "**Or fetch from the web** — name the company and filing; the agent "
-        "finds the issuer-hosted PDF and loads it here. Best for Canadian "
-        "filings. Takes 1–3 minutes; the page waits while it runs."
+        "The agent locates the filing on the **issuer's own investor-relations "
+        "site**; FinLens re-fetches the bytes itself and records the sha256 "
+        "provenance receipt. The file then analyzes exactly like a manual "
+        "upload — same pipeline, same gates. Best for Canadian filings. "
+        "Takes 1–3 minutes; the page waits while it runs."
     )
     _af_config = gateway_config()
     if _af_config is None:
@@ -6022,23 +6015,54 @@ with st.expander(
             "OPENCLAW_GATEWAY_SESSION_KEY in the secrets store to enable it."
         )
     else:
-        _af_c1, _af_c2 = st.columns(2)
+        _af_c1, _af_c2, _af_c3 = st.columns([2, 2, 1])
         with _af_c1:
             _af_company = st.text_input(
                 "Company", key="agent_fetch_company",
                 placeholder="e.g. Tourmaline Oil",
             )
         with _af_c2:
+            _af_filing_type = st.selectbox(
+                "Filing",
+                [
+                    "Annual financial statements",
+                    "Q1 interim statements",
+                    "Q2 interim statements",
+                    "Q3 interim statements",
+                ],
+                key="agent_fetch_filing_type",
+                help="The types the pipeline accepts. MD&A metrics have their "
+                     "own lane on the Economics tab once a statements analysis "
+                     "exists.",
+            )
+        with _af_c3:
+            _af_year = st.number_input(
+                "Fiscal year", min_value=1995, max_value=2100,
+                value=datetime.now().year, step=1,
+                key="agent_fetch_filing_year",
+            )
+        _af_custom = st.checkbox(
+            "Describe the filing myself (free text)",
+            key="agent_fetch_custom_toggle",
+            help="Sent to the agent verbatim — useful for the long tail "
+                 "(specific period wording, restated or amended filings).",
+        )
+        if _af_custom:
             _af_filing = st.text_input(
-                "Filing", key="agent_fetch_filing",
+                "Filing description", key="agent_fetch_filing",
                 placeholder="e.g. FY2025 annual financial statements",
             )
+        elif _af_filing_type == "Annual financial statements":
+            _af_filing = f"FY{int(_af_year)} annual financial statements"
+        else:
+            _af_quarter = _af_filing_type.split(" ")[0]
+            _af_filing = f"{_af_quarter} {int(_af_year)} interim financial statements"
         _af_canadian = st.checkbox(
             "Canadian filing (SEDAR+ / IFRS)",
             value=True,
             key="agent_fetch_canadian_flag",
             help="Routes the FETCHED PDF through the SEDAR+ IFRS pipeline — "
-                 "independent of the manual-upload checkbox above.",
+                 "independent of the manual-upload checkbox below.",
         )
         if st.button(
             "🔎 Fetch via agent",
@@ -6054,7 +6078,7 @@ with st.expander(
                 )
                 _af_manual_fallback = (
                     "Fallback: download the PDF in your browser and drop it "
-                    "in the uploader above — same pipeline, same gates."
+                    "in the uploader below — same pipeline, same gates."
                 )
                 if _af_reply["status"] != "found":
                     _af_msgs = {
@@ -6099,9 +6123,15 @@ with st.expander(
                         )
                         _af_status.update(label="✓ Fetched and loaded — ready to analyze", state="complete")
                         st.rerun()
+        # This section now renders BEFORE the uploader widget, so the
+        # manual-upload check reads the uploader's session value directly
+        # (widget values persist in session_state across reruns).
+        _af_manual_upload = st.session_state.get(
+            f"pdf_uploader_{st.session_state.uploader_key}"
+        )
         if (
             st.session_state.get("agent_fetched_upload") is not None
-            and uploaded_file is None
+            and _af_manual_upload is None
         ):
             _af_loaded = st.session_state["agent_fetched_upload"]
             _af_prov = st.session_state.get("agent_fetch_provenance") or {}
@@ -6115,6 +6145,25 @@ with st.expander(
                 st.session_state.pop("agent_fetched_canadian", None)
                 st.session_state.pop("agent_fetch_provenance", None)
                 st.rerun()
+
+# The manual-upload sibling: "I already have the PDF."
+with st.expander(
+    "📄 Upload Financial Statements (PDF or Word)",
+    expanded=not _has_loaded_analysis,
+):
+    uploaded_file = st.file_uploader(
+        "Upload Financial Statements (PDF or Word)",
+        type=["pdf", "docx"],
+        help="Annual reports, 10-K filings, or standalone financial statement PDFs work best. Word (.docx) documents are also accepted.",
+        key=f"pdf_uploader_{st.session_state.uploader_key}",
+        label_visibility="collapsed",
+    )
+    canadian_filing = st.checkbox(
+        "Canadian filing (SEDAR+ / IFRS)",
+        value=False,
+        help="Routes the PDF through the SEDAR+ IFRS extraction pipeline. Use for Canadian filings downloaded from SEDAR+.",
+        key="canadian_sedar_upload",
+    )
 # Clear stored results when the uploaded file changes.
 # When data was loaded from the Filing Library there is no uploaded file,
 # so we must NOT reset — library results should persist until the user
