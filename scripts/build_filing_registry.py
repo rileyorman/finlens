@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
+from modules.sedar_periods import select_current_period_value
 
 
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
@@ -283,24 +284,11 @@ def _stored_field_count(fixture: dict) -> int:
 
 
 def _mapper_source_value(values: dict) -> int | float | None:
-    annual_candidates = []
-    for idx, (period, value) in enumerate((values or {}).items()):
-        period_text = str(period)
-        period_lower = period_text.lower()
-        if (
-            "year ended" not in period_lower
-            and "years ended" not in period_lower
-            and not period_lower.startswith("year ")
-        ):
-            continue
-        import re
-
-        match = re.search(r"(\d{4})", period_text)
-        year = int(match.group(1)) if match else -1
-        annual_candidates.append((year, idx, value))
-    if annual_candidates:
-        return sorted(annual_candidates, key=lambda row: (row[0], -row[1]), reverse=True)[0][2]
-    return next(iter((values or {}).values()), None)
+    # CB-040: delegates to the shared period-column ranking (this was the
+    # third copy of the picker — sedar_extractor._first_statement_value and
+    # the row layer are the others; triplication is the CB-021 drift
+    # pattern. One source of truth now lives in modules/sedar_periods.py).
+    return select_current_period_value(values or {})
 
 
 def _mapping_statement_keys(sector: str | None) -> tuple[str, ...]:

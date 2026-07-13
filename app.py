@@ -120,7 +120,6 @@ from modules.position_tracker import (
     sell_position,
 )
 from modules.market_ticker import get_ticker_data
-from modules.fmp import build_financial_data_from_fmp
 from config import (
     EXTRACTION_MODEL,
     ANALYSIS_MODEL,
@@ -948,6 +947,7 @@ def _financial_data_to_text(financial_data: dict) -> str:
 # it is testable and carries the same annual preference as the canonical
 # mapper (the mixed-period drift fix).
 from modules.sedar_periods import (  # noqa: E402
+    parse_period_window as _parse_period_window,
     sedar_period_keys as _sedar_period_keys,
     sedar_statement_rows as _sedar_statement_rows,
 )
@@ -5741,9 +5741,10 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.warning("Enter a ticker symbol first.")
         else:
             # CB-038: the ANNUAL options fetch as-filed XBRL from SEC
-            # company-facts (per-figure receipts; FMP retired from these
-            # load-bearing numbers). Quarter/TTM stay on FMP (badged) until
-            # the Phase-2 quarterly design.
+            # company-facts (per-figure receipts). CB-039 (Phase 2): the
+            # Quarter/TTM options route to the quarterly builders (YTD
+            # differencing / TTM = FY + YTD − prior YTD under the strict
+            # date-chain gate) — FMP is retired from the Quick tab entirely.
             if _quick_period == "annual":
                 with st.spinner(f"Fetching as-filed SEC data for {_quick_ticker}..."):
                     from modules.edgar_fetcher import build_financial_data_from_edgar_facts
@@ -5756,10 +5757,17 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                     )
                     st.stop()
             else:
-                with st.spinner(f"Fetching financial statements for {_quick_ticker}..."):
-                    _quick_fd = build_financial_data_from_fmp(_quick_ticker, period=_quick_period, limit=_quick_limit)
+                _quick_mode = "ttm" if _quick_limit == 4 else "quarter"
+                with st.spinner(f"Deriving as-filed {'TTM' if _quick_mode == 'ttm' else 'quarterly'} figures for {_quick_ticker}..."):
+                    from modules.edgar_fetcher import build_quarterly_financial_data_from_edgar_facts
+                    _quick_fd = build_quarterly_financial_data_from_edgar_facts(_quick_ticker, mode=_quick_mode)
                 if not _quick_fd:
-                    st.error(f"Could not fetch data for {_quick_ticker} — check the ticker symbol and try again")
+                    st.error(
+                        f"Could not derive as-filed {'TTM' if _quick_mode == 'ttm' else 'quarterly'} "
+                        f"figures for {_quick_ticker} — check the ticker symbol (US filers only). "
+                        "Values that fail the strict period date-chain are withheld rather than "
+                        "approximated; Quick Financials never falls back to aggregator data."
+                    )
                     st.stop()
             st.session_state["quick_financial_data"] = _quick_fd
             st.session_state["quick_financial_ticker"] = _quick_ticker
@@ -5773,7 +5781,10 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
         _quick_year = _quick_fd_preview.get("fiscal_year") or "latest fiscal year"
         _quick_preview_scale = _quick_fd_preview.get("scale") or 1
         if selected_period == "Last 4 Quarters (TTM)":
-            st.success(f"Fetched last 4 quarters for {_quick_company}. Analysis will use TTM (trailing twelve months) totals.")
+            if _quick_fd_preview.get("source") == "edgar":
+                st.success(f"Fetched {_quick_year} for {_quick_company} — trailing-twelve-month figures derived from as-filed facts.")
+            else:
+                st.success(f"Fetched last 4 quarters for {_quick_company}. Analysis will use TTM (trailing twelve months) totals.")
         elif selected_period == "Latest Quarter":
             st.success(f"Fetched {_quick_year} data for {_quick_company}.")
         elif selected_period == "Latest Annual":
@@ -5782,7 +5793,9 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             st.success(f"Fetched 2 years of data for {_quick_company}.")
         else:
             st.success(f"Fetched 4 years of data for {_quick_company}.")
-        if _quick_limit > 1:
+        # Multi-column history only when the data actually carries multiple
+        # periods (as-filed TTM/quarter dicts are single-period; CB-039).
+        if len(_quick_fd_preview.get("period_history") or []) > 1:
             _quick_metric_map = [
                 ("Revenue", "revenue"),
                 ("Gross Profit", "gross_profit"),
@@ -5809,10 +5822,17 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
             ]
         st.dataframe(preview_df, hide_index=True, width='stretch')
         if _quick_fd_preview.get("source") == "edgar":
+            # Source-accurate form note: annual options read 10-Ks only;
+            # Quarter/TTM read 10-Q/10-Q/A + 10-K/10-K/A (CB-039).
+            _quick_form_note = (
+                "10-K and 10-Q filings (amendments included)"
+                if _quick_fd_preview.get("fmp_period") == "quarter"
+                else "10-Ks"
+            )
             st.caption(
                 "Source: **as filed with the SEC** — us-gaap XBRL company "
                 "facts, selected restatement-aware from the filer's own "
-                "10-Ks. Every figure carries a receipt below."
+                f"{_quick_form_note}. Every figure carries a receipt below."
             )
             _quick_receipts = _quick_fd_preview.get("receipts") or {}
             if _quick_receipts:
@@ -5826,7 +5846,14 @@ with quick_analysis_slot.expander("⚡ Quick Analysis — Public Companies (No U
                 "and are not part of the verified corpus."
             )
         if selected_period == "Last 4 Quarters (TTM)":
-            st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
+            if _quick_fd_preview.get("source") == "edgar":
+                st.caption(
+                    "TTM = latest fiscal year + current year-to-date − prior-year "
+                    "year-to-date, from as-filed facts (composite receipts above). "
+                    "With no post-FY quarter on file yet, TTM equals FY exactly."
+                )
+            else:
+                st.caption(" Preview shows individual quarters. Analysis uses TTM totals (sum of all 4 quarters).")
 
         if st.button("Analyse $", type="primary", width='stretch', key="quick_analysis_btn"):
             _quick_fd = _quick_fd_preview
@@ -7012,6 +7039,12 @@ if st.session_state.financial_data:
     # skeptical reader's first two questions are "as of when?" and "in
     # what currency?" — they should never have to hunt for the answers.
     _currency_display = _prettify_currency_label(currency)
+    # CB-040: an interim analysis never renders without its audit-status
+    # caption. The window is parsed from the fiscal_year label's own text
+    # ("Three/Six/Nine Months Ended ..."), so the caption is document-driven
+    # — an annual pack can never trip it.
+    _header_window = _parse_period_window(financial_data.get("fiscal_year"))
+    _header_is_interim = bool(_header_window and _header_window.get("window") != "FY")
     st.markdown(
         f'<div style="color:#CBD5E1;font-size:15px;font-weight:600;'
         f'margin:-6px 0 12px">{escape(_period_str)}'
@@ -7019,6 +7052,11 @@ if st.session_state.financial_data:
             f' <span style="color:#64748B;font-weight:400">·</span> '
             f'<span style="color:#94A3B8">{escape(_currency_display)}</span>'
             if _currency_display else ""
+        )
+        + (
+            ' <span style="color:#64748B;font-weight:400">·</span> '
+            '<span style="color:#FCD34D">unaudited interim</span>'
+            if _header_is_interim else ""
         )
         + '</div>',
         unsafe_allow_html=True,

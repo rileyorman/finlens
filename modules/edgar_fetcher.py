@@ -1220,3 +1220,509 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         return None
 
 
+# ---------------------------------------------------------------------------
+# CB-039 (CB-038 Phase 2): Latest Quarter + TTM from company-facts.
+#
+# Evidence base (NVDA 10-Q probe, 2026-07-12; spec
+# docs/EDGAR_COMPANY_FACTS_SPEC.md Phase-2 section):
+# - Operating cash flow is YTD-ONLY in 10-Qs (cash-flow statements are
+#   presented year-to-date), so TTM = FY + YTD_current − YTD_prior is the
+#   ONLY viable construction — sum-of-4-discrete-quarters is impossible
+#   for cash-flow items from raw facts.
+# - The `fp` field LIES (the 181-day H1 fact carries fp="Q2"). Period
+#   identity comes from date arithmetic ONLY — nothing below reads fp.
+# - Discrete flow quarters come from YTD DIFFERENCING (Q1 = YTD1;
+#   Qn = YTDn − YTDn−1; Q4 = FY − YTD_Q3), each under a STRICT date-chain
+#   gate; any violation → honest N/A with no receipt.
+# - Amendments included: {10-Q, 10-Q/A} (+ {10-K, 10-K/A} for FY
+#   components) — an amendment is the MOST corrected statement of a
+#   period; latest-`filed` prefers it naturally. The v1 ANNUAL path's
+#   10-K-only filter is deliberately untouched (its own pins).
+# ---------------------------------------------------------------------------
+
+_QUARTERLY_FORMS = ("10-Q", "10-Q/A")
+_FY_FORMS = ("10-K", "10-K/A")
+
+
+def _window_days(item: dict) -> int | None:
+    start, end = item.get("start"), item.get("end")
+    if not start or not end:
+        return None
+    try:
+        return (date.fromisoformat(end) - date.fromisoformat(start)).days
+    except ValueError:
+        return None
+
+
+def _window_class(days: int | None) -> str | None:
+    """CB-039 duration taxonomy — day counts ONLY (the fp field lies):
+    discrete quarter 60–120d · H1 150–210d · 9M 240–299d · FY ≥300d
+    (the existing _is_annual_duration threshold). Anything outside every
+    window is unusable for derivation (honest exclusion)."""
+    if days is None:
+        return None
+    if 60 <= days <= 120:
+        return "Q"
+    if 150 <= days <= 210:
+        return "H1"
+    if 240 <= days < 300:
+        return "9M"
+    if days >= 300:
+        return "FY"
+    return None
+
+
+def _day_after(iso: str) -> str | None:
+    try:
+        return (date.fromisoformat(iso) + timedelta(days=1)).isoformat()
+    except ValueError:
+        return None
+
+
+def _days_between(start_iso: str, end_iso: str) -> int | None:
+    try:
+        return (date.fromisoformat(end_iso) - date.fromisoformat(start_iso)).days
+    except ValueError:
+        return None
+
+
+def _concept_window_facts(us_gaap: dict, concept: str, forms: tuple) -> list[dict]:
+    """One concept's dated duration facts from the given forms,
+    restatement-resolved: facts sharing an exact (start, end) window
+    collapse to the latest `filed` — which is how a 10-Q/A amendment
+    naturally outranks the 10-Q it corrects. Sorted newest-first."""
+    concept_data = us_gaap.get(concept)
+    if not concept_data:
+        return []
+    units = concept_data.get("units", {})
+    values = units.get("USD") or next(iter(units.values()), [])
+    dated = [
+        item for item in values
+        if item.get("form") in forms
+        and item.get("val") is not None
+        and item.get("start") and item.get("end")
+    ]
+    by_window: dict[tuple, dict] = {}
+    for item in dated:
+        key = (item.get("start", ""), item.get("end", ""))
+        if key not in by_window or (item.get("filed", "") > by_window[key].get("filed", "")):
+            by_window[key] = item
+    return sorted(by_window.values(), key=lambda i: (i.get("end", ""), i.get("filed", "")), reverse=True)
+
+
+def _concept_instant_facts(us_gaap: dict, concept: str, forms: tuple) -> list[dict]:
+    """One concept's instant (balance-sheet) facts from the given forms,
+    same-`end` duplicates resolved to the latest `filed`, newest-first."""
+    concept_data = us_gaap.get(concept)
+    if not concept_data:
+        return []
+    units = concept_data.get("units", {})
+    values = units.get("USD") or next(iter(units.values()), [])
+    instants = [
+        item for item in values
+        if item.get("form") in forms
+        and item.get("val") is not None
+        and item.get("end") and not item.get("start")
+    ]
+    by_end: dict[str, dict] = {}
+    for item in instants:
+        end = item.get("end", "")
+        if end not in by_end or (item.get("filed", "") > by_end[end].get("filed", "")):
+            by_end[end] = item
+    return sorted(by_end.values(), key=lambda i: (i.get("end", ""), i.get("filed", "")), reverse=True)
+
+
+def _quarterly_bundle(us_gaap: dict, concept: str) -> dict:
+    """A concept's derivation inputs: true YTD/quarter windows from 10-Qs,
+    full-year windows from 10-Ks (amendments included in both)."""
+    ytd = [
+        f for f in _concept_window_facts(us_gaap, concept, _QUARTERLY_FORMS)
+        if _window_class(_window_days(f)) in ("Q", "H1", "9M")
+    ]
+    fy = [
+        f for f in _concept_window_facts(us_gaap, concept, _FY_FORMS)
+        if _window_class(_window_days(f)) == "FY"
+    ]
+    return {"ytd": ytd, "fy": fy}
+
+
+def _competing_quarterly_flow(facts: dict, concept_names: list[str]) -> tuple[str | None, dict | None]:
+    """Recency competition (the CB-038 central rule) over the quarterly
+    derivation pool: the concept whose latest usable duration fact has the
+    most recent (end, filed) wins; ties → earlier-declared concept."""
+    us_gaap = facts.get("facts", {}).get("us-gaap", {})
+    best_key = None
+    best: tuple[str | None, dict | None] = (None, None)
+    for concept in concept_names:
+        bundle = _quarterly_bundle(us_gaap, concept)
+        pool = bundle["ytd"] + bundle["fy"]
+        if not pool:
+            continue
+        latest = max(pool, key=lambda i: (i.get("end", ""), i.get("filed", "")))
+        key = (latest.get("end", ""), latest.get("filed", ""))
+        if best_key is None or key > best_key:
+            best_key = key
+            best = (concept, bundle)
+    return best
+
+
+def _competing_quarterly_instant(facts: dict, concept_names: list[str]) -> tuple[str | None, list[dict]]:
+    """Recency competition over instant (balance-sheet) facts across
+    {10-Q, 10-Q/A, 10-K, 10-K/A}."""
+    us_gaap = facts.get("facts", {}).get("us-gaap", {})
+    best_key = None
+    best: tuple[str | None, list[dict]] = (None, [])
+    for concept in concept_names:
+        instants = _concept_instant_facts(us_gaap, concept, _QUARTERLY_FORMS + _FY_FORMS)
+        if not instants:
+            continue
+        latest = instants[0]
+        key = (latest.get("end", ""), latest.get("filed", ""))
+        if best_key is None or key > best_key:
+            best_key = key
+            best = (concept, instants)
+    return best
+
+
+def _window_ref(fact: dict) -> str:
+    return (
+        f"{fact.get('start', '?')}→{fact.get('end', '?')} "
+        f"[{fact.get('form', '?')} {fact.get('accn', '?')}]"
+    )
+
+
+def _latest_discrete_quarter(concept: str, bundle: dict) -> dict | None:
+    """The latest discrete quarter of a FLOW concept via YTD differencing
+    (CB-039 decision 1) under the strict date-chain gate (decision 2).
+    Returns {"value", "end", "ordinal", "receipt"} or None (chain
+    violation / nothing derivable — honest N/A, never a guess)."""
+    ytd, fy = bundle["ytd"], bundle["fy"]
+    latest_fy = fy[0] if fy else None
+    latest_q_end = ytd[0].get("end", "") if ytd else ""
+
+    # Case B — the newest period on file is the fiscal year itself:
+    # Q4 = FY − YTD_Q3, gated on YTD_Q3.start == FY.start and a 60–120 day
+    # remainder (no Q4 10-Q exists; this is the only route to Q4).
+    if latest_fy and latest_fy.get("end", "") >= latest_q_end:
+        fy_start, fy_end = latest_fy.get("start"), latest_fy.get("end")
+        for fact in ytd:
+            if fact.get("start") != fy_start:
+                continue
+            gap = _days_between(fact.get("end", ""), fy_end or "")
+            if gap is not None and 60 <= gap <= 120:
+                return {
+                    "value": latest_fy["val"] - fact["val"],
+                    "end": fy_end,
+                    "ordinal": 4,
+                    "receipt": (
+                        f"derived Q4: FY {_window_ref(latest_fy)} − "
+                        f"YTD {_window_ref(fact)} (us-gaap:{concept})"
+                    ),
+                }
+        return None
+
+    if not ytd:
+        return None
+
+    # Case A — a post-FY 10-Q window is the newest period. The fiscal-year
+    # start is anchored on the prior FY fact (fp is never trusted):
+    # year_start = prior FY end + 1 day. Dual-tagged DISCRETE facts start
+    # mid-year, so the start filter drops them from the YTD chain.
+    year_start = None
+    for fy_fact in fy:  # newest-first; first FY ending before the latest 10-Q window
+        if fy_fact.get("end", "") < latest_q_end:
+            year_start = _day_after(fy_fact.get("end", ""))
+            break
+    if not year_start:
+        return None  # no prior FY on file — the chain cannot be validated
+    chain = [f for f in ytd if f.get("start") == year_start]
+    if not chain:
+        return None
+    latest = chain[0]
+    cls = _window_class(_window_days(latest))
+    if cls == "Q":
+        return {
+            "value": latest["val"],
+            "end": latest["end"],
+            "ordinal": 1,
+            "receipt": f"YTD Q1 {_window_ref(latest)} (us-gaap:{concept})",
+        }
+    ordinal = {"H1": 2, "9M": 3}.get(cls)
+    if ordinal is None:
+        return None
+    for prev in chain[1:]:
+        gap = _days_between(prev.get("end", ""), latest.get("end", ""))
+        if gap is not None and 60 <= gap <= 120:
+            return {
+                "value": latest["val"] - prev["val"],
+                "end": latest["end"],
+                "ordinal": ordinal,
+                "receipt": (
+                    f"derived Q{ordinal}: YTD {_window_ref(latest)} − "
+                    f"YTD {_window_ref(prev)} (us-gaap:{concept})"
+                ),
+            }
+    return None
+
+
+def _ttm_flow(concept: str, bundle: dict) -> dict | None:
+    """TTM of a FLOW concept: FY + YTD_current − YTD_prior — the only
+    viable construction (OCF is YTD-only in 10-Qs). Strict chain: YTD_current
+    starts FY.end + 1 day; YTD_prior starts FY.start with a day-count within
+    ±7 of YTD_current's (same ordinal without trusting fp). No post-FY 10-Q
+    yet → TTM degenerates to FY exactly, receipted as such."""
+    ytd, fy = bundle["ytd"], bundle["fy"]
+    if not fy:
+        return None
+    latest_fy = fy[0]
+    fy_start, fy_end = latest_fy.get("start"), latest_fy.get("end")
+    fy_ref = f"FY {_window_ref(latest_fy)}"
+    next_start = _day_after(fy_end or "")
+    post = [f for f in ytd if next_start and f.get("start") == next_start]
+    if not post:
+        return {
+            "value": latest_fy["val"],
+            "end": fy_end,
+            "ordinal": None,
+            "receipt": (
+                f"TTM = {fy_ref} — no post-FY quarterly filing yet; "
+                f"TTM equals FY exactly (us-gaap:{concept})"
+            ),
+        }
+    ytd_c = post[0]
+    days_c = _window_days(ytd_c)
+    ytd_p = None
+    for fact in ytd:
+        if fact.get("start") != fy_start:
+            continue
+        days_p = _window_days(fact)
+        if days_p is not None and days_c is not None and abs(days_p - days_c) <= 7:
+            ytd_p = fact
+            break
+    if ytd_p is None:
+        return None  # chain violation — no same-ordinal prior-year YTD
+    return {
+        "value": latest_fy["val"] + ytd_c["val"] - ytd_p["val"],
+        "end": ytd_c["end"],
+        "ordinal": None,
+        "receipt": (
+            f"TTM = {fy_ref} + YTD {_window_ref(ytd_c)} − "
+            f"YTD {_window_ref(ytd_p)} (us-gaap:{concept})"
+        ),
+    }
+
+
+def build_quarterly_financial_data_from_edgar_facts(ticker: str, mode: str = "quarter") -> dict | None:
+    """As-filed Latest-Quarter / TTM quick financials for a US ticker
+    (CB-039 — Phase 2 of CB-038).
+
+    Same output contract as the annual builder: raw dollars (scale=1),
+    source="edgar", per-figure receipts (composite for derived values,
+    naming every component fact), honest N/A for anything the strict
+    date-chain gate rejects. Flow values are anchored on revenue's derived
+    window: every emitted figure describes EXACTLY that period (flows by
+    window end, balance items by as-of instant); anything else is honest
+    N/A. Returns None when no revenue can be derived for the mode — never
+    a partial dict without its anchor.
+    """
+    try:
+        if mode not in ("quarter", "ttm"):
+            return None
+        cik = get_cik(ticker)
+        if not cik:
+            return None
+        facts = _get_companyfacts(cik)
+        if not facts:
+            return None
+
+        flow_fields = [
+            ("revenue", REVENUE_CONCEPTS),
+            ("cost_of_revenue", COST_OF_REVENUE_CONCEPTS),
+            ("gross_profit", GROSS_PROFIT_CONCEPTS),
+            ("operating_income", OPERATING_INCOME_CONCEPTS),
+            ("net_income", NET_INCOME_CONCEPTS),
+            ("rd_expense", RD_EXPENSE_CONCEPTS),
+            ("interest_expense", INTEREST_EXPENSE_CONCEPTS),
+            ("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS),
+            ("capex", CAPEX_CONCEPTS),
+            ("dividends_paid", DIVIDENDS_PAID_CONCEPTS),
+        ]
+        instant_fields = [
+            ("cash", CASH_CONCEPTS),
+            ("total_assets", TOTAL_ASSETS_CONCEPTS),
+            ("total_current_assets", CURRENT_ASSETS_CONCEPTS),
+            ("total_current_liabilities", CURRENT_LIABILITIES_CONCEPTS),
+            ("long_term_debt", LONG_TERM_DEBT_CONCEPTS),
+            ("current_debt", CURRENT_DEBT_CONCEPTS),
+            ("equity", EQUITY_CONCEPTS),
+        ]
+
+        derive = _latest_discrete_quarter if mode == "quarter" else _ttm_flow
+
+        results: dict[str, dict] = {}
+        for name, concepts in flow_fields:
+            concept, bundle = _competing_quarterly_flow(facts, concepts)
+            if not concept:
+                continue
+            derived = derive(concept, bundle)
+            if derived is not None:
+                results[name] = derived
+
+        anchor = results.get("revenue")
+        if anchor is None:
+            return None  # nothing derivable for this mode — honest refusal
+        anchor_end = anchor["end"]
+
+        receipts: dict[str, str] = {}
+        values: dict[str, float | None] = {}
+        # Same-window gate: a flow value whose derived window ends anywhere
+        # but the anchor's end describes a DIFFERENT period — honest N/A,
+        # no receipt (the CB-038 corollary).
+        for name, derived in results.items():
+            if derived["end"] == anchor_end:
+                values[name] = derived["value"]
+                receipts[name] = derived["receipt"]
+
+        # Balance items: the as-of instant must be the anchor period end.
+        for name, concepts in instant_fields:
+            concept, instants = _competing_quarterly_instant(facts, concepts)
+            if not concept:
+                continue
+            for fact in instants:
+                if fact.get("end") == anchor_end:
+                    values[name] = fact.get("val")
+                    receipts[name] = _fact_receipt(concept, fact)
+                    break
+
+        revenue = values.get("revenue")
+        cost_of_revenue = values.get("cost_of_revenue")
+        gross_profit = values.get("gross_profit")
+        if gross_profit is None and revenue is not None and cost_of_revenue is not None:
+            gross_profit = revenue - cost_of_revenue
+            receipts["gross_profit"] = (
+                "derived: revenue − cost of revenue "
+                f"({receipts.get('revenue', '?')} − {receipts.get('cost_of_revenue', '?')})"
+            )
+        net_income = values.get("net_income")
+        operating_cash_flow = values.get("operating_cash_flow")
+        capex = values.get("capex")  # XBRL Payments* facts are positive outflows
+        free_cash_flow = (
+            operating_cash_flow - capex
+            if operating_cash_flow is not None and capex is not None
+            else None
+        )
+        if free_cash_flow is not None:
+            receipts["free_cash_flow"] = (
+                "derived: operating cash flow − capital expenditure "
+                f"({receipts.get('operating_cash_flow', '?')} − {receipts.get('capex', '?')})"
+            )
+
+        # CB-022 pair semantics, identical to the annual builder.
+        ltd = values.get("long_term_debt")
+        current_debt = values.get("current_debt")
+        if ltd is None:
+            total_debt = None
+        else:
+            total_debt = ltd + (current_debt or 0)
+            receipts["total_debt"] = (
+                f"{receipts.get('long_term_debt', '?')}"
+                + (f" + {receipts.get('current_debt')}" if current_debt is not None
+                   else " (long-term only; no current-portion fact)")
+            )
+
+        current_assets = values.get("total_current_assets")
+        current_liabilities = values.get("total_current_liabilities")
+        current_ratio = (
+            current_assets / current_liabilities
+            if current_assets is not None and current_liabilities not in (None, 0)
+            else None
+        )
+        gross_margin = (
+            gross_profit / revenue
+            if gross_profit is not None and revenue not in (None, 0)
+            else None
+        )
+
+        if mode == "ttm":
+            period_label = f"TTM ended {anchor_end}"
+        else:
+            period_label = f"Q{anchor['ordinal']} ended {anchor_end}"
+
+        def _fd_row(label, value, row_type="data"):
+            return {"line_item": label, "value": value, "value_prior": None,
+                    "row_type": row_type}
+
+        return {
+            "ticker": (ticker or "").upper(),
+            "company": facts.get("entityName") or (ticker or "").upper(),
+            "company_name": facts.get("entityName") or (ticker or "").upper(),
+            "period": period_label,
+            "currency": "USD",
+            "scale": 1,                # raw dollars — the ratified basis
+            "_normalized": True,
+            "source": "edgar",         # flips all badging to the trusted branch
+            "revenue": revenue,
+            "revenue_prior": None,
+            "gross_profit": gross_profit,
+            "operating_income": values.get("operating_income"),
+            "net_income": net_income,
+            # ebitda: not an XBRL concept — honestly absent, never derived here
+            "total_assets": values.get("total_assets"),
+            "total_debt": total_debt,
+            "cash": values.get("cash"),
+            "equity": values.get("equity"),
+            "operating_cash_flow": operating_cash_flow,
+            "capex": capex,
+            "free_cash_flow": free_cash_flow,
+            "current_ratio": current_ratio,
+            "interest_expense": values.get("interest_expense"),
+            "rd_expense": values.get("rd_expense"),
+            "gross_margin": gross_margin,
+            "fiscal_year": period_label,
+            "fiscal_year_prior": "Prior",
+            "fmp_period": "quarter",
+            "fmp_limit": 4 if mode == "ttm" else 1,
+            "period_history": [{
+                "label": period_label,
+                "revenue": revenue,
+                "gross_profit": gross_profit,
+                "net_income": net_income,
+                "free_cash_flow": free_cash_flow,
+                "total_debt": total_debt,
+                "cash": values.get("cash"),
+            }],
+            "receipts": receipts,
+            "income_statement": [
+                _fd_row("Revenue", revenue, "total"),
+                _fd_row("Cost of Revenue", cost_of_revenue),
+                _fd_row("Gross Profit", gross_profit, "subtotal"),
+                _fd_row("R&D Expenses", values.get("rd_expense")),
+                _fd_row("Operating Income", values.get("operating_income"), "subtotal"),
+                _fd_row("Interest Expense", values.get("interest_expense")),
+                _fd_row("Net Income", net_income, "total"),
+            ],
+            "balance_sheet": [
+                _section("ASSETS"),
+                _fd_row("Cash and Cash Equivalents", values.get("cash")),
+                _fd_row("Total Current Assets", current_assets, "subtotal"),
+                _fd_row("Total Assets", values.get("total_assets"), "total"),
+                _section("LIABILITIES"),
+                _fd_row("Total Current Liabilities", current_liabilities, "subtotal"),
+                _fd_row("Total Debt", total_debt),
+                _section("SHAREHOLDERS' EQUITY"),
+                _fd_row("Total Stockholders' Equity", values.get("equity"), "total"),
+            ],
+            "cash_flow_statement": [
+                _section("OPERATING ACTIVITIES"),
+                _fd_row("Net Cash from Operating Activities", operating_cash_flow, "subtotal"),
+                _section("INVESTING ACTIVITIES"),
+                _fd_row("Capital Expenditure", capex),
+                _fd_row("Free Cash Flow", free_cash_flow, "total"),
+                _section("FINANCING ACTIVITIES"),
+                _fd_row("Dividends Paid", values.get("dividends_paid")),
+            ],
+        }
+    except Exception:
+        return None
+
+

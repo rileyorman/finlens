@@ -12,6 +12,7 @@ from config import LIBRARY_DIR
 from modules.claude_analyzer import _make_client, log_cache_usage
 from modules.integrity.sedar_mapper import map_line_items, mapper_statement_keys
 from modules.integrity.structure import classify_statement_structure
+from modules.sedar_periods import select_current_period_value
 
 
 SEDAR_MODEL = "claude-sonnet-5"
@@ -489,27 +490,12 @@ def _extraction_confidence(statements: SedarStatements) -> float:
 
 
 def _first_statement_value(item: dict) -> int | float | None:
-    values = item.get("values") or {}
-    if not isinstance(values, dict):
-        return None
-
-    annual_candidates = []
-    for idx, (period, value) in enumerate(values.items()):
-        period_text = str(period)
-        period_lower = period_text.lower()
-        if (
-            "year ended" not in period_lower
-            and "years ended" not in period_lower
-            and not period_lower.startswith("year ")
-        ):
-            continue
-        match = re.search(r"(\d{4})", period_text)
-        year = int(match.group(1)) if match else -1
-        annual_candidates.append((year, idx, value))
-    if annual_candidates:
-        return sorted(annual_candidates, key=lambda row: (row[0], -row[1]), reverse=True)[0][2]
-
-    return next(iter(values.values()), None)
+    # CB-040: delegates to the shared period-column ranking so the mapper
+    # feed and the row layer agree by construction on EVERY pack shape —
+    # including quarter-only interims, where the old first-column fallback
+    # could map a YTD value while the rows showed the discrete quarter
+    # (the CB-016 layer-divergence class).
+    return select_current_period_value(item.get("values") or {})
 
 
 def _annotate_structure(rows: list) -> list:
