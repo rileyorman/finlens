@@ -425,3 +425,51 @@ def sector_quote_note(sector, industry) -> dict | None:
     if sec == "basic materials" and any(tok in ind for tok in _MINER_INDUSTRY_TOKENS):
         return _SECTOR_QUOTE_NOTES["miner"]
     return None
+
+
+# ---------------------------------------------------------------------------
+# Commodity benchmark overlay (ratified 2026-07-13): resource names get their
+# sector's benchmark futures overlaid on the price chart, indexed. Benchmarks
+# come from industry classification ONLY — sector context, never a
+# filing-evidenced commodity mix (CB-027 discipline: E&Ps get BOTH oil and
+# gas, no primary-commodity claim). Conservative: unknown → [] → chart
+# unchanged. Midstream/downstream deliberately excluded (fee-based / crack-
+# spread economics — a flat-price overlay would mislead).
+# ---------------------------------------------------------------------------
+
+_COMMODITY_BENCHMARKS = {
+    "og_upstream": [("WTI Oil", "CL=F"), ("Nat Gas", "NG=F")],
+    "gold": [("Gold", "GC=F")],
+    "silver": [("Silver", "SI=F")],
+    "copper": [("Copper", "HG=F")],
+}
+
+
+def sector_commodity_benchmarks(sector, industry) -> list:
+    """[(label, yfinance futures symbol)] for a resource name, else []."""
+    sec = (sector or "").strip().lower()
+    ind = (industry or "").strip().lower()
+    if "oil & gas" in ind and ("e&p" in ind or "integrated" in ind):
+        return list(_COMMODITY_BENCHMARKS["og_upstream"])
+    if sec == "basic materials":
+        if "gold" in ind:
+            return list(_COMMODITY_BENCHMARKS["gold"])
+        if "silver" in ind:
+            return list(_COMMODITY_BENCHMARKS["silver"])
+        if "copper" in ind:
+            return list(_COMMODITY_BENCHMARKS["copper"])
+    return []
+
+
+def get_benchmark_history(symbols: list, period: str = "1y") -> dict:
+    """{label: Close series} for benchmark futures. Failures drop silently —
+    honest absence; the chart falls back to plain absolute mode."""
+    out = {}
+    for label, sym in symbols:
+        try:
+            hist = yf.Ticker(sym).history(period=period)
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                out[label] = hist["Close"]
+        except Exception:
+            continue
+    return out

@@ -56,3 +56,27 @@ def test_unrecognized_sectors_get_no_note_never_a_guess():
     assert sector_quote_note("Basic Materials", "Specialty Chemicals") is None
     # Insurance deliberately not covered yet (research did not ground it)
     assert sector_quote_note("Financial Services", "Insurance - Property & Casualty") is None
+
+
+# --- Commodity benchmark mapping (the chart overlay's selection rule) ------
+
+from modules.stock_tracker import sector_commodity_benchmarks
+
+
+def test_ep_gets_both_oil_and_gas_no_primary_claim():
+    """CB-027 discipline: both families, never a primary-commodity claim."""
+    b = sector_commodity_benchmarks("Energy", "Oil & Gas E&P")
+    assert [label for label, _ in b] == ["WTI Oil", "Nat Gas"]
+    assert sector_commodity_benchmarks("Energy", "Oil & Gas Integrated") == b
+
+
+def test_gold_miner_gets_gold_only():
+    assert sector_commodity_benchmarks("Basic Materials", "Gold") == [("Gold", "GC=F")]
+
+
+def test_midstream_downstream_and_unknown_get_no_overlay():
+    """Fee-based/crack-spread economics — a flat-price overlay would mislead."""
+    assert sector_commodity_benchmarks("Energy", "Oil & Gas Midstream") == []
+    assert sector_commodity_benchmarks("Energy", "Oil & Gas Refining & Marketing") == []
+    assert sector_commodity_benchmarks("Technology", "Semiconductors") == []
+    assert sector_commodity_benchmarks(None, None) == []

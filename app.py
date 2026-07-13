@@ -4676,28 +4676,67 @@ if page == "Stock Tracker":
             ma200 = closes.rolling(200).mean()
             dates = hist_df.index
 
+            # Commodity benchmark overlay for resource names (ratified
+            # 2026-07-13): the chart switches to indexed mode (start = 100)
+            # so relative performance reads directly. Indexing is linear, so
+            # the MA lines index identically and the golden-cross geometry
+            # is preserved. Benchmarks come from industry classification
+            # only (CB-027: E&Ps get BOTH oil and gas, no primary claim);
+            # no benchmarks → the chart is exactly what it always was.
+            from modules.stock_tracker import (
+                sector_commodity_benchmarks as _bench_for,
+                get_benchmark_history as _bench_hist,
+            )
+            _benchmarks = _bench_for(comp.get("sector"), comp.get("industry"))
+            _bench_series = {}
+            if _benchmarks and len(closes) and float(closes.iloc[0]) != 0.0:
+                _bench_key = f"bench_hist_{cur_ticker}"
+                if _bench_key not in st.session_state:
+                    st.session_state[_bench_key] = _bench_hist(_benchmarks)
+                _bench_series = st.session_state.get(_bench_key) or {}
+            _indexed = bool(_bench_series)
+            _scale = (100.0 / float(closes.iloc[0])) if _indexed else 1.0
+
             fig = go.Figure()
             fig.add_trace(go.Scatter(
-                x=dates, y=closes,
-                name="Close", line=dict(color="#1f77b4", width=2),
+                x=dates, y=closes * _scale,
+                name=(f"{cur_ticker} (indexed)" if _indexed else "Close"),
+                line=dict(color="#1f77b4", width=2),
             ))
             if len(closes) >= 50:
                 fig.add_trace(go.Scatter(
-                    x=dates, y=ma50,
+                    x=dates, y=ma50 * _scale,
                     name="50-Day MA", line=dict(color="#ff7f0e", width=1.5, dash="dot"),
                 ))
             if len(closes) >= 200:
                 fig.add_trace(go.Scatter(
-                    x=dates, y=ma200,
+                    x=dates, y=ma200 * _scale,
                     name="200-Day MA", line=dict(color="#d62728", width=1.5, dash="dash"),
+                ))
+            _bench_colors = ("#9467bd", "#2ca02c", "#8c564b")
+            for _b_i, (_b_label, _b_closes) in enumerate(_bench_series.items()):
+                if _b_closes is None or len(_b_closes) == 0 or float(_b_closes.iloc[0]) == 0.0:
+                    continue
+                fig.add_trace(go.Scatter(
+                    x=_b_closes.index,
+                    y=_b_closes / float(_b_closes.iloc[0]) * 100.0,
+                    name=_b_label,
+                    line=dict(color=_bench_colors[_b_i % 3], width=1.5, dash="dashdot"),
                 ))
             fig.update_layout(
                 height=320, margin=dict(l=0, r=0, t=10, b=0),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 xaxis_rangeslider_visible=False,
-                yaxis_tickprefix="$",
+                yaxis_tickprefix=("" if _indexed else "$"),
             )
             st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
+            if _indexed:
+                st.caption(
+                    "Indexed to 100 at the window start. Benchmark overlay is "
+                    "sector context from the industry classification, not a "
+                    "filing-evidenced commodity mix — Source: yfinance "
+                    "futures, unvalidated."
+                )
 
             # Volume bar chart
             if "Volume" in hist_df.columns:
