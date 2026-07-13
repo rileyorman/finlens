@@ -112,7 +112,29 @@ packs and the quarter/TTM derivations.
   interim_period_not_annual); fiscal_year_recency verified needing no
   scoping. 8 new pins.**
 - **Stage 2** — discrete-quarter lift-over-derive with composite receipts
-  for the derived branch.
-- **Stage 3** — cross-document TTM with the scale/currency gates.
+  for the derived branch. **STAGE 2a DONE 2026-07-12: one shared
+  period-column picker (select_period_pair / select_current_period_value
+  in modules/sedar_periods.py); the mapper feed
+  (sedar_extractor._first_statement_value), the row layer, and the
+  registry script's _mapper_source_value — previously byte-level
+  TRIPLICATES whose first-column fallback could map a YTD value while the
+  rows showed the discrete quarter — now delegate to it and agree by
+  construction. Zero corpus drift machine-proven (value-snapshot suite,
+  all 17 filers + registry sync). This IS the LIFT half: both layers
+  select the printed discrete column wherever it exists.**
+  **SCOPE FINDING (evidence-forced, recorded 2026-07-12): the DERIVE
+  fallback is CROSS-DOCUMENT — a Q2/Q3 pack's YTD-only statement does not
+  print the prior ordinal's YTD (that figure lives in the PREVIOUS
+  quarter's filing; only prior-YEAR comparatives are printed), so YTD
+  differencing needs the library's stored prior interim and folds into
+  Stage 3's cross-document machinery. OPEN DESIGN QUESTION for Stage 3
+  (needs Riley): MIXED-WINDOW METRICS — when income pairs Q columns while
+  a YTD-only cash flow pairs H1 columns, cross-statement derived metrics
+  (e.g. FCF conversion vs quarterly net income) would silently mix
+  windows; decide suppression vs annotation before any derived interim
+  metric ships.**
+- **Stage 3** — cross-document TTM with the scale/currency gates, PLUS
+  (per the Stage-2 scope finding) the cross-document YTD-differencing
+  fallback and the mixed-window metric decision.
 - Ground truth (decision 6) runs with the first live interim; CB-040
   ships with the Stage 1 (first enforcement) commit.

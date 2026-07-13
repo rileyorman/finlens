@@ -16,6 +16,7 @@ from modules.sedar_periods import (
     parse_period_window,
     sedar_period_keys,
     sedar_statement_rows,
+    select_current_period_value,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -175,3 +176,36 @@ def test_interim_balance_sheet_instant_pair_unchanged():
         "Dec 31 2025": 450,
     }}]
     assert sedar_period_keys(items) == ("Jun 30 2026", "Dec 31 2025")
+
+
+def test_mapper_feed_agrees_with_row_layer_on_ytd_first_column_order():
+    """CB-040 layer-agreement pin: the mapper feed
+    (select_current_period_value, consumed by
+    sedar_extractor._first_statement_value and the registry script) picks
+    the SAME column as the row layer even when the filer prints the YTD
+    column FIRST — the old first-column fallback would have mapped the
+    6-month value while the rows showed the discrete quarter (the CB-016
+    layer-divergence class)."""
+    values = {
+        "Six Months Ended Jun 30 2026": 48,
+        "Six Months Ended Jun 30 2025": 41,
+        "Three Months Ended Jun 30 2026": 25,
+        "Three Months Ended Jun 30 2025": 22,
+    }
+    assert select_current_period_value(values) == 25       # NOT 48 (first column)
+    current, _prior = sedar_period_keys([{"label": "Revenue", "values": values}])
+    assert values[current] == select_current_period_value(values)
+
+
+def test_mapper_feed_annual_selection_unchanged():
+    """The delegation preserves the pinned annual behavior byte-for-byte
+    (the corpus-wide proof is the value-snapshot suite)."""
+    values = {
+        "Three Months Ended Dec 31 2024": 11_064,
+        "Three Months Ended Dec 31 2023": 10_002,
+        "Year Ended Dec 31 2024": 41_509,
+        "Year Ended Dec 31 2023": 40_835,
+    }
+    assert select_current_period_value(values) == 41_509
+    assert select_current_period_value({}) is None
+    assert select_current_period_value(None) is None

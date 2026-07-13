@@ -91,52 +91,74 @@ def parse_period_window(key) -> dict | None:
     return {"window": matches[0], "year": year}
 
 
+def select_period_pair(values: dict) -> tuple[str, str | None]:
+    """The single period-column ranking (CB-016 + CB-040) over one values
+    dict: annual-labeled columns win outright; then quarter-only packs pair
+    WITHIN a window class (prior = same class one year earlier, never a
+    different window — the located CB-040 trap); then the year-sort
+    fallback; then column order. Every layer that picks a column — the row
+    layer, the mapper feed (sedar_extractor._first_statement_value), and
+    the registry script — delegates HERE so they agree by construction."""
+    keys = list(values.keys())
+    years = []
+    for idx, key in enumerate(keys):
+        match = re.search(r"(\d{4})", str(key))
+        years.append((int(match.group(1)) if match else None, idx, key))
+    parseable = [row for row in years if row[0] is not None]
+    # CB-016: annual-labeled columns win outright, mirroring the
+    # canonical mapper. Prior comes only from annual columns.
+    annual = [row for row in parseable if _is_annual_period_label(row[2])]
+    if annual:
+        ordered = sorted(annual, key=lambda row: (row[0], -row[1]), reverse=True)
+        current = ordered[0][2]
+        prior = ordered[1][2] if len(ordered) > 1 else None
+        return current, prior
+    # CB-040: quarter-only packs (no annual-labeled columns — the
+    # Q2/Q3 interim shape) pair WITHIN a window class only. Prior is
+    # the same class one year earlier (the IAS 34 comparative), never
+    # a different window of the same year — the located trap. Class
+    # preference: FY (a "twelve months" header the annual predicate
+    # misses) beats quarter windows per CB-016's annual-first spirit;
+    # then the discrete quarter, then H1, then 9M.
+    windowed = [
+        (window, row)
+        for window, row in ((parse_period_window(row[2]), row) for row in parseable)
+        if window is not None
+    ]
+    for cls in ("FY", "Q", "H1", "9M"):
+        cls_rows = [row for window, row in windowed if window["window"] == cls]
+        if not cls_rows:
+            continue
+        ordered = sorted(cls_rows, key=lambda row: (row[0], -row[1]), reverse=True)
+        current = ordered[0]
+        prior = next((row for row in ordered[1:] if row[0] == current[0] - 1), None)
+        return current[2], (prior[2] if prior else None)
+    if parseable:
+        ordered = sorted(parseable, key=lambda row: (row[0], -row[1]), reverse=True)
+        current = ordered[0][2]
+        prior = ordered[1][2] if len(ordered) > 1 else None
+        return current, prior
+    current = keys[0]
+    prior = keys[1] if len(keys) > 1 else None
+    return current, prior
+
+
+def select_current_period_value(values) -> int | float | None:
+    """Shared mapper-feed column picker (CB-040): the mapper's per-item
+    value comes from the SAME ranking as the row layer's current key, so
+    mapping.mapped and the statement rows can never diverge on any pack
+    shape (the CB-016 incident class, closed structurally)."""
+    if not isinstance(values, dict) or not values:
+        return None
+    current, _prior = select_period_pair(values)
+    return values.get(current)
+
+
 def sedar_period_keys(items: list[dict]) -> tuple[str, str | None]:
     for item in items or []:
         values = item.get("values") or {}
         if isinstance(values, dict) and values:
-            keys = list(values.keys())
-            years = []
-            for idx, key in enumerate(keys):
-                match = re.search(r"(\d{4})", str(key))
-                years.append((int(match.group(1)) if match else None, idx, key))
-            parseable = [row for row in years if row[0] is not None]
-            # CB-016: annual-labeled columns win outright, mirroring the
-            # canonical mapper. Prior comes only from annual columns.
-            annual = [row for row in parseable if _is_annual_period_label(row[2])]
-            if annual:
-                ordered = sorted(annual, key=lambda row: (row[0], -row[1]), reverse=True)
-                current = ordered[0][2]
-                prior = ordered[1][2] if len(ordered) > 1 else None
-                return current, prior
-            # CB-040: quarter-only packs (no annual-labeled columns — the
-            # Q2/Q3 interim shape) pair WITHIN a window class only. Prior is
-            # the same class one year earlier (the IAS 34 comparative), never
-            # a different window of the same year — the located trap. Class
-            # preference: FY (a "twelve months" header the annual predicate
-            # misses) beats quarter windows per CB-016's annual-first spirit;
-            # then the discrete quarter, then H1, then 9M.
-            windowed = [
-                (window, row)
-                for window, row in ((parse_period_window(row[2]), row) for row in parseable)
-                if window is not None
-            ]
-            for cls in ("FY", "Q", "H1", "9M"):
-                cls_rows = [row for window, row in windowed if window["window"] == cls]
-                if not cls_rows:
-                    continue
-                ordered = sorted(cls_rows, key=lambda row: (row[0], -row[1]), reverse=True)
-                current = ordered[0]
-                prior = next((row for row in ordered[1:] if row[0] == current[0] - 1), None)
-                return current[2], (prior[2] if prior else None)
-            if parseable:
-                ordered = sorted(parseable, key=lambda row: (row[0], -row[1]), reverse=True)
-                current = ordered[0][2]
-                prior = ordered[1][2] if len(ordered) > 1 else None
-                return current, prior
-            current = keys[0]
-            prior = keys[1] if len(keys) > 1 else None
-            return current, prior
+            return select_period_pair(values)
     return "Current", None
 
 
