@@ -6,7 +6,7 @@
 
 The casebook is the single canonical home for **judgment-class adjudications**:
 decisions where an analyst had to choose what a number *means*, with the
-reasoning and evidence attached. Per the moat analysis (SESSION_HANDOFF.md,
+reasoning and evidence attached. Per the moat analysis (SESSION_REFERENCE.md,
 "Moat thinking", 2026-07-05): data is re-scrapable; judgment history cannot
 be backfilled. This file makes that history citable instead of archaeology
 scattered across commit messages, handoff prose, and session memory.
