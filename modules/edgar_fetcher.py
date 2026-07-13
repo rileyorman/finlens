@@ -504,6 +504,111 @@ _MONETARY_UNITS = ("USD",)
 _PER_SHARE_UNITS = ("USD/shares",)
 _SHARES_UNITS = ("shares",)
 
+# ---------------------------------------------------------------------------
+# Stage 4 (2026-07-13, ratified): ifrs-full concept chains for cross-listed
+# Canadian issuers (40-F/20-F filers). Probe-grounded on CNQ/SU/TECK/AEM —
+# the declared order is only the recency tiebreak; dead tags (SU/TECK's
+# ifrs-full:Revenue ended 2017/2018, CNQ's capex tag ended 2018) lose the
+# recency competition automatically, same as the NVDA phantom class.
+# ---------------------------------------------------------------------------
+IFRS_REVENUE_CONCEPTS = ["RevenueFromContractsWithCustomers", "Revenue"]
+IFRS_COST_OF_REVENUE_CONCEPTS = ["CostOfSales"]
+IFRS_GROSS_PROFIT_CONCEPTS = ["GrossProfit"]
+IFRS_OPERATING_INCOME_CONCEPTS = ["ProfitLossFromOperatingActivities"]
+# ProfitLoss is the consolidated bottom line INCLUDING NCI — consistent
+# with CB-011 (net_income) and deliberately not the attributable-only line.
+IFRS_NET_INCOME_CONCEPTS = ["ProfitLoss"]
+IFRS_RD_EXPENSE_CONCEPTS = ["ResearchAndDevelopmentExpense"]
+# FinanceCosts is the finance-rollup family (CB-035): accepted as
+# interest_expense semantics; InterestExpense is the narrower fallback.
+IFRS_INTEREST_EXPENSE_CONCEPTS = ["FinanceCosts", "InterestExpense"]
+IFRS_CASH_CONCEPTS = ["CashAndCashEquivalents"]
+IFRS_TOTAL_ASSETS_CONCEPTS = ["Assets"]
+IFRS_CURRENT_ASSETS_CONCEPTS = ["CurrentAssets"]
+IFRS_CURRENT_LIABILITIES_CONCEPTS = ["CurrentLiabilities"]
+# Debt (ratified 2026-07-13, decision 2): LIFT the filer's printed grand
+# 'Borrowings' total when present (lift-over-derive, one receipt);
+# otherwise COMPOSE long-term + current portion (CB-022 pair semantics).
+IFRS_TOTAL_BORROWINGS_CONCEPTS = ["Borrowings"]
+IFRS_LONG_TERM_DEBT_CONCEPTS = ["LongtermBorrowings"]
+IFRS_CURRENT_DEBT_CONCEPTS = [
+    "CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings",
+    "CurrentPortionOfLongtermBorrowings",
+    "ShorttermBorrowings",
+]
+# Equity is the grand total INCLUDING NCI — consistent with CB-013.
+IFRS_EQUITY_CONCEPTS = ["Equity"]
+IFRS_OPERATING_CASH_FLOW_CONCEPTS = ["CashFlowsFromUsedInOperatingActivities"]
+IFRS_CAPEX_CONCEPTS = [
+    "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+    "PurchaseOfPropertyPlantAndEquipment",
+]
+IFRS_DIVIDENDS_PAID_CONCEPTS = [
+    "DividendsPaidOrdinaryShares",
+    "DividendsPaidClassifiedAsFinancingActivities",
+]
+IFRS_EPS_BASIC_CONCEPTS = ["BasicEarningsLossPerShare"]
+IFRS_EPS_DILUTED_CONCEPTS = ["DilutedEarningsLossPerShare"]
+
+# Per-taxonomy field→chain tables for the tiered quick path. Field names
+# are identical across taxonomies; only the chains differ.
+_QUICK_CONCEPT_TABLES: dict[str, dict[str, list[str]]] = {
+    "us-gaap": {
+        "revenue": REVENUE_CONCEPTS,
+        "cost_of_revenue": COST_OF_REVENUE_CONCEPTS,
+        "gross_profit": GROSS_PROFIT_CONCEPTS,
+        "operating_income": OPERATING_INCOME_CONCEPTS,
+        "net_income": NET_INCOME_CONCEPTS,
+        "rd_expense": RD_EXPENSE_CONCEPTS,
+        "interest_expense": INTEREST_EXPENSE_CONCEPTS,
+        "cash": CASH_CONCEPTS,
+        "total_assets": TOTAL_ASSETS_CONCEPTS,
+        "total_current_assets": CURRENT_ASSETS_CONCEPTS,
+        "total_current_liabilities": CURRENT_LIABILITIES_CONCEPTS,
+        "long_term_debt": LONG_TERM_DEBT_CONCEPTS,
+        "current_debt": CURRENT_DEBT_CONCEPTS,
+        "total_borrowings": [],   # no grand-total borrowings concept in us-gaap
+        "equity": EQUITY_CONCEPTS,
+        "operating_cash_flow": OPERATING_CASH_FLOW_CONCEPTS,
+        "capex": CAPEX_CONCEPTS,
+        "dividends_paid": DIVIDENDS_PAID_CONCEPTS,
+        "eps_basic": EPS_BASIC_CONCEPTS,
+        "eps_diluted": EPS_DILUTED_CONCEPTS,
+    },
+    "ifrs-full": {
+        "revenue": IFRS_REVENUE_CONCEPTS,
+        "cost_of_revenue": IFRS_COST_OF_REVENUE_CONCEPTS,
+        "gross_profit": IFRS_GROSS_PROFIT_CONCEPTS,
+        "operating_income": IFRS_OPERATING_INCOME_CONCEPTS,
+        "net_income": IFRS_NET_INCOME_CONCEPTS,
+        "rd_expense": IFRS_RD_EXPENSE_CONCEPTS,
+        "interest_expense": IFRS_INTEREST_EXPENSE_CONCEPTS,
+        "cash": IFRS_CASH_CONCEPTS,
+        "total_assets": IFRS_TOTAL_ASSETS_CONCEPTS,
+        "total_current_assets": IFRS_CURRENT_ASSETS_CONCEPTS,
+        "total_current_liabilities": IFRS_CURRENT_LIABILITIES_CONCEPTS,
+        "long_term_debt": IFRS_LONG_TERM_DEBT_CONCEPTS,
+        "current_debt": IFRS_CURRENT_DEBT_CONCEPTS,
+        "total_borrowings": IFRS_TOTAL_BORROWINGS_CONCEPTS,
+        "equity": IFRS_EQUITY_CONCEPTS,
+        "operating_cash_flow": IFRS_OPERATING_CASH_FLOW_CONCEPTS,
+        "capex": IFRS_CAPEX_CONCEPTS,
+        "dividends_paid": IFRS_DIVIDENDS_PAID_CONCEPTS,
+        "eps_basic": IFRS_EPS_BASIC_CONCEPTS,
+        "eps_diluted": IFRS_EPS_DILUTED_CONCEPTS,
+    },
+}
+
+# Tier order (ratified 2026-07-13, decision 1): the filer resolves as a
+# WHOLE to the first tier where a revenue anchor exists — fields never mix
+# tiers. Tier 1 keeps the original exact-10-K contract; the new tiers
+# include amendments (CB-039 precedent).
+_ANNUAL_QUICK_TIERS: tuple = (
+    ("us-gaap", ("10-K",)),
+    ("us-gaap", ("40-F", "40-F/A", "20-F", "20-F/A")),
+    ("ifrs-full", ("40-F", "40-F/A", "20-F", "20-F/A")),
+)
+
 
 def _unit_values(concept_data: dict | None, units: tuple = _MONETARY_UNITS) -> list:
     """Facts in the first matching unit, each annotated with its unit key
@@ -593,19 +698,21 @@ def _section(label: str) -> dict:
     return {"line_item": label, "value": None, "value_prior": None, "row_type": "section_header"}
 
 
-def _concept_annual_facts(us_gaap: dict, concept: str, units: tuple = _MONETARY_UNITS) -> list[dict]:
+def _concept_annual_facts(
+    us_gaap: dict, concept: str, units: tuple = _MONETARY_UNITS, forms: tuple = ("10-K",),
+) -> list[dict]:
     """One concept's annual facts, restatement-resolved: same filters as
-    _annual_facts (10-K, non-null, >=300-day duration via _is_annual_duration),
-    then facts sharing an `end` collapse to the latest `filed` (comparative
-    re-reports produce 2-5 duplicates per period — probe 2026-07-12), sorted
-    newest-first by (end, filed)."""
+    _annual_facts (the given annual forms, non-null, >=300-day duration via
+    _is_annual_duration), then facts sharing an `end` collapse to the latest
+    `filed` (comparative re-reports produce 2-5 duplicates per period —
+    probe 2026-07-12), sorted newest-first by (end, filed)."""
     concept_data = us_gaap.get(concept)
     if not concept_data:
         return []
     values = _unit_values(concept_data, units)
     annual = [
         item for item in values
-        if item.get("form") == "10-K"
+        if item.get("form") in forms
         and item.get("val") is not None
         and _is_annual_duration(item)
     ]
@@ -619,6 +726,7 @@ def _concept_annual_facts(us_gaap: dict, concept: str, units: tuple = _MONETARY_
 
 def _competing_annual_facts(
     facts: dict, concept_names: list[str], units: tuple = _MONETARY_UNITS,
+    taxonomy: str = "us-gaap", forms: tuple = ("10-K",),
 ) -> tuple[str | None, list[dict]]:
     """CB-038 quick-path selection: concept candidates COMPETE ON RECENCY.
 
@@ -631,12 +739,17 @@ def _competing_annual_facts(
     whose LATEST fact has the most recent (end, filed) wins the field; ties
     resolve to the earlier-declared concept. A tag the filer stopped feeding
     loses automatically, for every filer, forever.
+
+    Stage 4 generalization: taxonomy + annual forms are parameters so the
+    tiered quick path (us-gaap/10-K → us-gaap/40-F+20-F → ifrs-full/
+    40-F+20-F) reuses this exact machinery; defaults preserve the original
+    us-gaap/10-K behavior for every existing caller.
     """
-    us_gaap = facts.get("facts", {}).get("us-gaap", {})
+    us_gaap = facts.get("facts", {}).get(taxonomy, {})
     best_key = None
     best: tuple[str | None, list[dict]] = (None, [])
     for concept in concept_names:
-        annual = _concept_annual_facts(us_gaap, concept, units)
+        annual = _concept_annual_facts(us_gaap, concept, units, forms)
         if not annual:
             continue
         latest = annual[0]
@@ -1029,24 +1142,31 @@ def _get_companyfacts(cik: str) -> dict | None:
     return facts
 
 
-def _fact_receipt(concept: str, fact: dict) -> str:
+def _fact_receipt(concept: str, fact: dict, taxonomy: str = "us-gaap") -> str:
     unit = fact.get("_unit")
     return (
-        f"us-gaap:{concept} · {fact.get('form', '?')} {fact.get('accn', '?')} · "
+        f"{taxonomy}:{concept} · {fact.get('form', '?')} {fact.get('accn', '?')} · "
         f"ended {fact.get('end', '?')}" + (f" · {unit}" if unit else "")
     )
 
 
 def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict | None:
-    """As-filed annual quick financials for a US ticker (CB-038).
+    """As-filed annual quick financials for a US-listed ticker (CB-038;
+    Stage 4 extends coverage to cross-listed Canadian issuers).
 
     Drop-in for build_financial_data_from_fmp's ANNUAL shapes, with the
     ratified differences: raw dollars (scale=1), source="edgar" (flips all
     badging to the trusted branch), a `receipts` dict carrying each figure's
-    XBRL tag + accession + form + period end, and honest N/A for any field
-    with no matching fact (CB-021 discipline: derived fields require ALL
-    components). Returns None when the ticker/CIK/revenue anchor is
+    XBRL tag + accession + form + period end + unit, and honest N/A for any
+    field with no matching fact (CB-021 discipline: derived fields require
+    ALL components). Returns None when the ticker/CIK/revenue anchor is
     unavailable — never a partial dict without its anchor.
+
+    Stage 4 tier resolution (ratified 2026-07-13): the filer resolves as a
+    WHOLE to the first tier of _ANNUAL_QUICK_TIERS where a revenue anchor
+    exists (us-gaap/10-K → us-gaap/40-F+20-F → ifrs-full/40-F+20-F);
+    fields never mix tiers, and the output's currency/taxonomy/form basis
+    is disclosed via `currency`, `xbrl_taxonomy`, and `form_note`.
     """
     try:
         limit = max(int(limit or 1), 1)
@@ -1060,13 +1180,46 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         receipts: dict[str, str] = {}
         field_concepts: dict[str, str] = {}
 
+        # --- Tier resolution: tiers COMPETE ON RECENCY, same rule as
+        # concepts (found live 2026-07-13: AEM's ancient us-gaap facts —
+        # FY2009 via a 2010 20-F — would win first-tier-with-an-anchor over
+        # its CURRENT ifrs-full facts; the stale-tag class at tier level).
+        # The tier whose revenue anchor has the most recent (end, filed)
+        # wins the WHOLE filer; ties resolve to the earlier-declared tier.
+        taxonomy: str = "us-gaap"
+        forms: tuple = ("10-K",)
+        table = _QUICK_CONCEPT_TABLES["us-gaap"]
+        revenue_facts: list[dict] = []
+        best_tier_key = None
+        for tier_taxonomy, tier_forms in _ANNUAL_QUICK_TIERS:
+            tier_table = _QUICK_CONCEPT_TABLES[tier_taxonomy]
+            concept, annual = _competing_annual_facts(
+                facts, tier_table["revenue"],
+                taxonomy=tier_taxonomy, forms=tier_forms,
+            )
+            if not annual:
+                continue
+            latest = annual[0]
+            key = (latest.get("end", ""), latest.get("filed", ""))
+            if best_tier_key is None or key > best_tier_key:
+                best_tier_key = key
+                taxonomy, forms, table = tier_taxonomy, tier_forms, tier_table
+                revenue_facts = annual
+                field_concepts["revenue"] = concept
+        if not revenue_facts:
+            return None  # no revenue anchor in any tier — honest refusal
+
         def _field(
             name: str,
-            concepts: list[str],
             units: tuple = _MONETARY_UNITS,
             require_unit: str | None = None,
         ) -> list[dict]:
-            concept, annual = _competing_annual_facts(facts, concepts, units)
+            chain = table.get(name) or []
+            if not chain:
+                return []
+            concept, annual = _competing_annual_facts(
+                facts, chain, units, taxonomy=taxonomy, forms=forms,
+            )
             if require_unit is not None:
                 annual = [f for f in annual if f.get("_unit") == require_unit]
             if concept and annual:
@@ -1079,9 +1232,6 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
                     return fact.get("val")
             return None
 
-        revenue_facts = _field("revenue", REVENUE_CONCEPTS)
-        if not revenue_facts:
-            return None  # no revenue anchor — honest refusal, never a shell
         period_ends = [f.get("end", "") for f in revenue_facts[:limit]]
         # The filing currency is the revenue anchor's unit; every other
         # field must carry the SAME unit or go honest-N/A — never mix, never
@@ -1092,25 +1242,28 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
         _mon = (filing_unit,)
         _ps_unit = f"{filing_unit}/shares"
 
-        cost_facts = _field("cost_of_revenue", COST_OF_REVENUE_CONCEPTS, _mon, filing_unit)
-        gross_facts = _field("gross_profit", GROSS_PROFIT_CONCEPTS, _mon, filing_unit)
-        oi_facts = _field("operating_income", OPERATING_INCOME_CONCEPTS, _mon, filing_unit)
-        ni_facts = _field("net_income", NET_INCOME_CONCEPTS, _mon, filing_unit)
-        rd_facts = _field("rd_expense", RD_EXPENSE_CONCEPTS, _mon, filing_unit)
-        int_facts = _field("interest_expense", INTEREST_EXPENSE_CONCEPTS, _mon, filing_unit)
-        cash_facts = _field("cash", CASH_CONCEPTS, _mon, filing_unit)
-        ta_facts = _field("total_assets", TOTAL_ASSETS_CONCEPTS, _mon, filing_unit)
-        ca_facts = _field("total_current_assets", CURRENT_ASSETS_CONCEPTS, _mon, filing_unit)
-        cl_facts = _field("total_current_liabilities", CURRENT_LIABILITIES_CONCEPTS, _mon, filing_unit)
-        ltd_facts = _field("long_term_debt", LONG_TERM_DEBT_CONCEPTS, _mon, filing_unit)
-        cd_facts = _field("current_debt", CURRENT_DEBT_CONCEPTS, _mon, filing_unit)
-        eq_facts = _field("equity", EQUITY_CONCEPTS, _mon, filing_unit)
-        ocf_facts = _field("operating_cash_flow", OPERATING_CASH_FLOW_CONCEPTS, _mon, filing_unit)
-        capex_facts = _field("capex", CAPEX_CONCEPTS, _mon, filing_unit)
-        div_facts = _field("dividends_paid", DIVIDENDS_PAID_CONCEPTS, _mon, filing_unit)
+        cost_facts = _field("cost_of_revenue", _mon, filing_unit)
+        gross_facts = _field("gross_profit", _mon, filing_unit)
+        oi_facts = _field("operating_income", _mon, filing_unit)
+        ni_facts = _field("net_income", _mon, filing_unit)
+        rd_facts = _field("rd_expense", _mon, filing_unit)
+        int_facts = _field("interest_expense", _mon, filing_unit)
+        cash_facts = _field("cash", _mon, filing_unit)
+        ta_facts = _field("total_assets", _mon, filing_unit)
+        ca_facts = _field("total_current_assets", _mon, filing_unit)
+        cl_facts = _field("total_current_liabilities", _mon, filing_unit)
+        ltd_facts = _field("long_term_debt", _mon, filing_unit)
+        cd_facts = _field("current_debt", _mon, filing_unit)
+        # ifrs-full only: the filer's printed grand 'Borrowings' total
+        # (ratified decision 2 — lift over compose; empty chain on us-gaap).
+        borrow_facts = _field("total_borrowings", _mon, filing_unit)
+        eq_facts = _field("equity", _mon, filing_unit)
+        ocf_facts = _field("operating_cash_flow", _mon, filing_unit)
+        capex_facts = _field("capex", _mon, filing_unit)
+        div_facts = _field("dividends_paid", _mon, filing_unit)
         # FMP-zero batch: as-filed per-share history (<currency>/shares unit).
-        epsb_facts = _field("eps_basic", EPS_BASIC_CONCEPTS, (_ps_unit,), _ps_unit)
-        epsd_facts = _field("eps_diluted", EPS_DILUTED_CONCEPTS, (_ps_unit,), _ps_unit)
+        epsb_facts = _field("eps_basic", (_ps_unit,), _ps_unit)
+        epsd_facts = _field("eps_diluted", (_ps_unit,), _ps_unit)
 
         current_end = period_ends[0]
         prior_end = period_ends[1] if len(period_ends) > 1 else None
@@ -1128,13 +1281,14 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             ("total_assets", ta_facts), ("total_current_assets", ca_facts),
             ("total_current_liabilities", cl_facts),
             ("long_term_debt", ltd_facts), ("current_debt", cd_facts),
+            ("total_borrowings", borrow_facts),
             ("equity", eq_facts), ("operating_cash_flow", ocf_facts),
             ("capex", capex_facts), ("dividends_paid", div_facts),
             ("eps_basic", epsb_facts), ("eps_diluted", epsd_facts),
         ):
             for fact in annual:
                 if fact.get("end") == current_end and name in field_concepts:
-                    receipts[name] = _fact_receipt(field_concepts[name], fact)
+                    receipts[name] = _fact_receipt(field_concepts[name], fact, taxonomy)
                     break
 
         def _cur(annual):
@@ -1166,12 +1320,21 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
                 f"({receipts.get('operating_cash_flow', '?')} − {receipts.get('capex', '?')})"
             )
 
-        # CB-022 pair semantics: total debt = long-term + current portion;
-        # missing LTD → honest None (a current-portion-only total would
-        # understate); missing current portion → LTD alone, disclosed.
+        # Total debt. ifrs-full first: LIFT the filer's printed grand
+        # 'Borrowings' total when it exists at the current period end
+        # (ratified 2026-07-13 decision 2 — lift over derive, one receipt).
+        # Otherwise CB-022 pair semantics: total debt = long-term + current
+        # portion; missing LTD → honest None (a current-portion-only total
+        # would understate); missing current portion → LTD alone, disclosed.
         ltd = _cur(ltd_facts)
         current_debt = _cur(cd_facts)
-        if ltd is None:
+        lifted_borrowings = _cur(borrow_facts)
+        if lifted_borrowings is not None:
+            total_debt = lifted_borrowings
+            receipts["total_debt"] = (
+                f"{receipts.get('total_borrowings', '?')} (printed grand total, lifted)"
+            )
+        elif ltd is None:
             total_debt = None
         else:
             total_debt = ltd + (current_debt or 0)
@@ -1223,8 +1386,12 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
                     else None
                 ),
                 "total_debt": (
-                    _val_at(ltd_facts, end) + (_val_at(cd_facts, end) or 0)
-                    if _val_at(ltd_facts, end) is not None else None
+                    _val_at(borrow_facts, end)
+                    if _val_at(borrow_facts, end) is not None
+                    else (
+                        _val_at(ltd_facts, end) + (_val_at(cd_facts, end) or 0)
+                        if _val_at(ltd_facts, end) is not None else None
+                    )
                 ),
                 "cash": _val_at(cash_facts, end),
             })
@@ -1239,6 +1406,12 @@ def build_financial_data_from_edgar_facts(ticker: str, limit: int = 1) -> dict |
             "company_name": facts.get("entityName") or (ticker or "").upper(),
             "period": fiscal_year,
             "currency": filing_unit,   # the revenue anchor's unit, never hardcoded
+            # Stage 4: the resolved tier, for captions and receipts audits.
+            "xbrl_taxonomy": taxonomy,
+            "form_note": (
+                "10-Ks" if forms == ("10-K",)
+                else "40-F/20-F annual reports (amendments included)"
+            ),
             "scale": 1,                # raw dollars — the ratified basis
             "_normalized": True,
             "source": "edgar",         # flips all badging to the trusted branch
