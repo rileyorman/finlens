@@ -951,6 +951,11 @@ from modules.sedar_periods import (  # noqa: E402
     sedar_period_keys as _sedar_period_keys,
     sedar_statement_rows as _sedar_statement_rows,
 )
+from modules.sedar_ttm import (  # noqa: E402
+    build_ttm_from_interim as _build_ttm_from_interim,
+    find_stored_annual_for_interim as _ttm_find_annual,
+    interim_window as _ttm_interim_window,
+)
 
 
 def _sedar_currency_label(extraction_result: dict) -> str:
@@ -996,6 +1001,15 @@ def _sedar_extraction_to_financial_data(
         "fiscal_year": income_current,
         "fiscal_year_prior": income_prior or "Prior",
         "accounting_standard": extraction_result.get("accounting_standard"),
+        # CB-040 Stage 3b: per-statement window classes ride at the top level
+        # so metric consumers can refuse cross-statement ratios that would
+        # mix windows (a Q2/Q3 interim pairs income at the discrete quarter
+        # while a YTD-only cash flow pairs at H1/9M). Annual packs parse to
+        # FY/None on both — never suppressed.
+        "period_windows": {
+            "income_statement": (_parse_period_window(income_current) or {}).get("window"),
+            "cash_flow": (_parse_period_window(cash_flow_current) or {}).get("window"),
+        },
         # Boundary normalization: the filing's inferred sector must ride at the
         # top level so consumers (peer comparison, inversion panel, library
         # views) never have to dig into sedar_extraction for it.
@@ -7136,6 +7150,45 @@ if st.session_state.financial_data:
     if _fd_check and _fd_check.get("_normalized") is not True:
         st.warning("⚠️ Financial data may not be normalized to raw reporting units.")
 
+    # CB-040 Stage 3b (ratified 2026-07-12): the cross-document TTM panel.
+    # Renders ONLY when the loaded analysis is an interim AND a same-issuer
+    # stored annual passes all three gates (currency, scale, year chain) —
+    # honest absence otherwise, never a half-panel. Values render in the
+    # documents' own presentation basis (never normalized here), with the
+    # permanent derived-not-as-filed caption and per-field composite receipts.
+    _ttm_fd = st.session_state.get("financial_data") or {}
+    if isinstance(_ttm_fd.get("sedar_extraction"), dict) and _ttm_interim_window(_ttm_fd):
+        _ttm_annual = _ttm_find_annual(_ttm_fd, lib_get())
+        _ttm = (_build_ttm_from_interim(_ttm_fd["sedar_extraction"], _ttm_annual)
+                if _ttm_annual else None)
+        if _ttm and _ttm["status"] == "ok" and _ttm["fields"]:
+            _ttm_ex = _ttm_fd["sedar_extraction"]
+            _ttm_labels = {
+                "revenue": "Revenue",
+                "net_income": "Net Income",
+                "operating_cash_flow": "Operating Cash Flow",
+                "capex": "Capital Expenditure",
+            }
+            with st.expander(
+                f"📆 Trailing Twelve Months (derived) — through {_ttm_fd.get('fiscal_year')}",
+                expanded=False,
+            ):
+                st.caption(
+                    f"**Derived cross-document — not an as-filed figure.** This "
+                    f"unaudited interim + the stored FY{_ttm['annual_year']} annual: "
+                    f"TTM = FY + current YTD − prior-year YTD. Values as presented "
+                    f"({_ttm_ex.get('currency')}, {_ttm_ex.get('scale')})."
+                )
+                for _ttm_name, _ttm_field in _ttm["fields"].items():
+                    st.markdown(
+                        f"**{_ttm_labels.get(_ttm_name, _ttm_name)}**: {_ttm_field['value']:,.0f}"
+                    )
+                    st.caption(_ttm_field["receipt"])
+                for _ttm_name, _ttm_reason in (_ttm.get("unavailable") or {}).items():
+                    st.caption(
+                        f"{_ttm_labels.get(_ttm_name, _ttm_name)}: honestly unavailable ({_ttm_reason})"
+                    )
+
     tab_stmts, tab_dash, tab_econ = st.tabs(["📊 Statements", "📈 Dashboard", "🪨 Economics"])
 
     # =====================================================================
@@ -8713,6 +8766,16 @@ if st.session_state.financial_data:
                         f'border-radius:3px;font-size:11px;font-weight:700">{rag_lbl}</span>'
                         f'</span></div>',
                         unsafe_allow_html=True,
+                    )
+                # CB-040 Stage 3b: name WHY the cross-statement ratios are
+                # dashed on a mixed-window interim — an unexplained "—" reads
+                # as missing data rather than a deliberate refusal.
+                if metrics.get("mixed_windows"):
+                    st.caption(
+                        "FCF Conversion suppressed: this interim's income "
+                        "statement and cash-flow statement cover different "
+                        "period lengths (discrete quarter vs year-to-date), "
+                        "so cross-statement ratios would mix windows."
                     )
                 # CB-022/CB-023: disclose the composition of the derived
                 # leverage/coverage ratios (receipts principle) — Debt/Equity,

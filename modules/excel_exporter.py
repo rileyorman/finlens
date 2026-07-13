@@ -887,6 +887,20 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
     fcf_conv      = _pct(_safe_div(fcf_c, ni_c)) if (ni_c and ni_c != 0) else None
     int_cover     = _safe_div(oi_c, int_exp_c)
 
+    # CB-040 Stage 3b (ratified 2026-07-12): cross-statement flow metrics are
+    # SUPPRESSED when the income statement and cash-flow statement pair
+    # DIFFERENT window classes — a Q2/Q3 interim with a YTD-only cash flow
+    # would divide a 6-month FCF by a 3-month net income. That is a wrong
+    # ratio, not a caveated one (zero-silent-errors), so honest "—".
+    # Same-statement metrics stay live; annual and non-SEDAR paths carry no
+    # period_windows and are untouched.
+    _windows = financial_data.get("period_windows") or {}
+    _win_is, _win_cf = _windows.get("income_statement"), _windows.get("cash_flow")
+    mixed_windows = bool(_win_is and _win_cf and _win_is != _win_cf)
+    if mixed_windows:
+        fcf_conv = None
+        fcf_yield = None
+
     # CB-024: operating netback margin — the O&G analog to gross margin, from the
     # income statement. Net revenue (after royalties) less field operating costs
     # (production + transportation), over net revenue. Resource-only: gated on
@@ -965,6 +979,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "rev_growth": yoy_rev,
         "fcf_conv": fcf_conv,
         "int_cover": int_cover,
+        "mixed_windows": mixed_windows,
         "calcs": calcs,
     }
 

@@ -154,14 +154,36 @@ packs and the quarter/TTM derivations.
   fixture: all gates PASS, revenue 4,929,506 · net_income 707,554 ·
   OCF 3,241,335 · capex −2,834,859, composite receipts citing both
   documents.
-  **STILL OPEN (Stage 3b, fresh session):** (a) UI surface — where the
-  TTM panel renders on an interim analysis and how the interim enters
-  the library (design decision); (b) the cross-document YTD-differencing
-  fallback for Q2/Q3 YTD-only statements (needs the prior interim from
-  the library); (c) the MIXED-WINDOW METRICS ruling (suppress vs
-  annotate) before any derived interim metric ships; (d) RILEY'S
-  GROUND-TRUTH STAMP on the TOU Q1-2026 extraction per the transcription
-  protocol (the interim values above are extraction-verified + pinned
-  arithmetic, not yet human-verified against the PDF).
+  **STAGE 3b RATIFIED + BUILT 2026-07-12 (three decisions by Riley):**
+  (1) TTM PANEL — a "Trailing Twelve Months (derived)" expander above
+  the analysis tabs, rendered ONLY when the loaded analysis is an
+  interim AND a same-issuer stored annual passes all three gates
+  (find_stored_annual_for_interim: ticker match, else exact company
+  name; year == interim − 1; interims never serve as the annual side;
+  honest absence otherwise — never a half-panel). Values render in the
+  documents' own presentation basis with the permanent
+  derived-not-as-filed caption + per-field composite receipts.
+  LIVE-VERIFIED against the real 34-entry library: the TOU Q1-2026
+  interim finds the stored annual, all gates pass, values identical to
+  the Stage-3 verification. (2) MIXED-WINDOW METRICS: **SUPPRESS** —
+  per-statement window classes ride in financial_data.period_windows
+  (set at the boundary, rebuilt by the heal path); _calc_summary_metrics
+  suppresses fcf_conv + fcf_yield to honest "—" when income and
+  cash-flow windows BOTH parse and differ, with the reason captioned on
+  the Financial Health panel. Partial window info never suppresses;
+  paths without period_windows (annual SEDAR / EDGAR / FMP) untouched
+  — pinned. (3) Q2/Q3 CROSS-DOCUMENT DIFFERENCING: **DEFERRED to the
+  first real Q2-2026 pack (~early Aug 2026)** — no live document exists
+  to verify the arithmetic against, and the suppress rule keeps any
+  early-loaded Q2 pack honest meanwhile. 9 new pins.
+  OPEN NOTE (flagged at build, NOT in tonight's scope): Leverage
+  (net-debt / EBITDA) on an interim uses a QUARTERLY EBITDA against
+  annual-calibrated RAG thresholds — an instant-vs-flow calibration
+  question, distinct from window mixing; needs its own ruling before
+  interim Leverage is trusted.
+  **STILL OPEN:** RILEY'S GROUND-TRUTH STAMP on the TOU Q1-2026
+  extraction per the transcription protocol, and his on-screen
+  flow-verify of the TTM panel (requires analysing the interim PDF
+  in-app so it holds the analysis view).
 - Ground truth (decision 6) runs with the first live interim; CB-040
   ships with the Stage 1 (first enforcement) commit.

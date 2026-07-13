@@ -53,6 +53,50 @@ def _currency_code(value) -> str:
     return str(value or "").split(",")[0].strip().upper()
 
 
+def interim_window(financial_data: dict) -> dict | None:
+    """The analysis's window parse ({window, year}) when its fiscal_year
+    label declares a non-FY window — the same document-driven test the
+    header's "unaudited interim" caption uses. None for annual (or
+    non-SEDAR) analyses, so an annual can never look like an interim."""
+    window = parse_period_window((financial_data or {}).get("fiscal_year"))
+    if window and window.get("window") != "FY":
+        return window
+    return None
+
+
+def find_stored_annual_for_interim(interim_fd: dict, entries: list) -> dict | None:
+    """The library's stored annual EXTRACTION for a loaded interim
+    analysis: same issuer (ticker match when both sides carry one, else
+    exact company-name match), a SEDAR extraction present, fiscal year ==
+    the interim's year − 1, and not itself an interim. Returns the
+    annual's extraction dict (statements + mapping) or None — the TTM
+    panel simply does not render without one (honest absence)."""
+    window = interim_window(interim_fd)
+    if not window:
+        return None
+    target_year = window["year"] - 1
+    ticker_i = str((interim_fd or {}).get("ticker") or "").strip().upper()
+    company_i = str((interim_fd or {}).get("company_name") or "").strip().lower()
+    for entry in entries or []:
+        fd = (entry or {}).get("financial_data") or {}
+        extraction = fd.get("sedar_extraction")
+        if not isinstance(extraction, dict):
+            continue
+        if interim_window(fd):
+            continue  # another interim can never serve as the annual side
+        ticker_e = str(fd.get("ticker") or "").strip().upper()
+        company_e = str(fd.get("company_name") or "").strip().lower()
+        if ticker_i and ticker_e:
+            if ticker_i != ticker_e:
+                continue
+        elif not company_i or company_i != company_e:
+            continue
+        if _annual_fiscal_year(extraction) != target_year:
+            continue
+        return extraction
+    return None
+
+
 def _year_of(text) -> int | None:
     match = re.search(r"(\d{4})", str(text or ""))
     return int(match.group(1)) if match else None
