@@ -901,6 +901,16 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         fcf_conv = None
         fcf_yield = None
 
+    # CB-041 (ratified 2026-07-12): Leverage divides an INSTANT (net debt)
+    # by an interim FLOW (a 3-month EBITDA) read against ANNUAL-calibrated
+    # RAG thresholds (CB-023: ≤1.0 GREEN / ≤2.0 AMBER) — ~4x overstated on
+    # a quarter. Honest "—" on interim analyses until TTM-powered leverage
+    # ships (queued). Flow÷flow same-window and instant÷instant ratios are
+    # dimensionally honest on a quarter and stay live.
+    interim_flow_window = _win_is in ("Q", "H1", "9M")
+    if interim_flow_window:
+        nd_ebitda = None
+
     # CB-024: operating netback margin — the O&G analog to gross margin, from the
     # income statement. Net revenue (after royalties) less field operating costs
     # (production + transportation), over net revenue. Resource-only: gated on
@@ -980,6 +990,7 @@ def _calc_summary_metrics(financial_data: dict) -> dict:
         "fcf_conv": fcf_conv,
         "int_cover": int_cover,
         "mixed_windows": mixed_windows,
+        "interim_flow_window": interim_flow_window,
         "calcs": calcs,
     }
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-12T19:23:51Z",
+  "generated_at": "2026-07-13T02:31:39Z",
   "filings": [
     {
       "ticker": "CSU",
@@ -324,6 +324,25 @@
       "filing_date": "2026-02-05",
       "commit": null,
       "notes": "First agent-fetched, zero-human-upload filer to reach VERIFIED (Gemini 12/12 AGREE first run, 2026-07-09). Second CB-025 carrier (canonical revenue = 'Commodity sales from production' 5,421.7; printed net 'Total revenue' 6,075.7 suppressed, preserved in unmapped[]). Typographic-apostrophe fold evidence base: 'Total shareholders' equity' 8,264.0 maps only after the U+2019 fold (CB-025 mechanism 5), which arms the balance-sheet identity \u2014 ties exactly (7,046.3 + 8,264.0 = 15,310.3). HUMAN STAMP WAIVED by Riley (2026-07-10, recorded decision; the PDF blocks text copy): CC VISUAL READ instead \u2014 statement pages rendered to pixels (pypdfium2, independent of the extraction's text layer) and all 12 mapped fields + full statement pages verified, incl. the printed net-of-royalties 'Total revenue' 6,075.7 (ties: 5,421.7 \u2212 536.8 + 1,190.8) staying unmapped and the curly-apostrophe equity label in print. Benign observations: unlabeled current-asset/liability subtotals stored under standard names; tax rows stored contextualized ('Current' \u2192 'Current income taxes'). CB-029 (2026-07-10) promoted the deferred alias candidates surfaced at promotion: 'Exploration and evaluation asset expenditures' \u221253.6 \u2192 capitalized_exploration_additions (cash_flow-scoped; FCF capex is now PP&E + E&E per CB-021) and 'Interest and financing' 151.3 \u2192 interest_expense (income_statement-scoped; arms EBIT/EBITDA/interest-cover per CB-023). Stored mapping regenerated 12 \u2192 14 fields."
+    },
+    {
+      "ticker": "TOU",
+      "company_name": "Tourmaline Oil Corp.",
+      "fiscal_year": "Q1 2026",
+      "source": "sedar",
+      "sector": "resource_sector",
+      "validation_status": "campaign_validated",
+      "fixture_path": "tests/fixtures/TOU_Q1_2026_sedar.json",
+      "source_pdf_path": "C:\\Users\\riley\\.finlens\\pdfs\\TOU_Q1_2026.pdf",
+      "provenance": {
+        "issuer_url": "https://tourmaline.cdn.prismic.io/tourmaline/afuec8BOoF08xser_Q12026MDA%26FinancialStatements-FINAL.pdf",
+        "retrieval_method": "Agent-fetched twice independently same day (2026-07-12): Sterling located the issuer-hosted URL over the gateway channel and CC downloaded directly; the in-app CB-028 front door then re-located and re-fetched the bytes itself during the live UI run \u2014 sha256 byte-identical across both paths"
+      },
+      "stored_field_count": 16,
+      "resolved_field_count": 16,
+      "filing_date": "2026-05-06",
+      "commit": null,
+      "notes": "FIRST INTERIM fixture in the corpus (quarter-only IAS 34 pack; sibling of annual #16). CB-040 carrier: quarter-only window-class column pairing exercised live ('Three Months Ended March 31, 2026/2025' on income + cash flow; instant pair 'March 31, 2026'/'December 31, 2025' on the balance sheet); document_class statements_unaudited \u2014 this filer is the evidence base for the CB-015 notes-regex qualifier-order fix (605cddf) and the honest_period_label fix (72f58f0), both found on its first live run. Cross-document TTM live-verified against fixture #16 (all gates PASS: revenue 4,929,506 / net_income 707,554 / OCF 3,241,335 / capex -2,834,859, CAD thousands). Agent-fetched twice independently same day (CC direct download + the in-app CB-028 front door), sha256 byte-identical. HUMAN GROUND-TRUTH: PASS (Riley, 2026-07-12, transcription protocol) \u2014 the four TTM input rows transcribed from the source PDF first, both columns, 8/8 byte-identical (incl. as-presented parenthetical-negative capex)."
     }
   ],
   "registry_notes": [

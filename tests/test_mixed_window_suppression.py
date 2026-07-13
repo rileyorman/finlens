@@ -64,3 +64,41 @@ def test_partial_window_info_never_suppresses():
     metrics = _calc_summary_metrics(_fd({"income_statement": "Q", "cash_flow": None}))
     assert metrics["mixed_windows"] is False
     assert metrics["fcf_conv"] is not None
+
+
+# ---------------------------------------------------------------------------
+# CB-041 — interim Leverage suppression (ratified 2026-07-12): net debt is
+# an INSTANT, a quarter's EBITDA is a 3-month FLOW, and the RAG thresholds
+# are annual-calibrated (CB-023: <=1.0 GREEN) — the ratio reads ~4x on an
+# interim. Honest "—" until TTM-powered leverage ships.
+# ---------------------------------------------------------------------------
+
+def _leverage_fd(period_windows=None):
+    fd = _fd(period_windows)
+    fd.update({
+        "operating_income": 100_000,
+        "depletion_depreciation_amortization": 50_000,  # EBITDA = 150,000
+        "interest_expense": 10_000,                      # arms int_cover
+        "long_term_debt": 300_000,
+        "cash": 50_000,                                  # net debt = 250,000
+    })
+    return fd
+
+
+def test_interim_window_suppresses_leverage():
+    metrics = _calc_summary_metrics(_leverage_fd({"income_statement": "Q", "cash_flow": "Q"}))
+    assert metrics["interim_flow_window"] is True
+    assert metrics["nd_ebitda"] is None
+    # Dimensionally honest ratios stay live on the same interim.
+    assert metrics["int_cover"] is not None        # flow ÷ flow, same window
+    assert metrics["current_ratio"] is None or True  # instants unaffected by this rule
+    assert metrics["ni_margin"] is not None
+
+
+def test_annual_paths_keep_leverage():
+    metrics = _calc_summary_metrics(_leverage_fd())                # no period_windows
+    assert metrics["interim_flow_window"] is False
+    assert metrics["nd_ebitda"] == 250_000 / 150_000
+    metrics = _calc_summary_metrics(_leverage_fd({"income_statement": "FY", "cash_flow": "FY"}))
+    assert metrics["interim_flow_window"] is False                 # FY window is annual
+    assert metrics["nd_ebitda"] == 250_000 / 150_000

@@ -1,0 +1,1294 @@
+{
+  "source": "sedar_pdf",
+  "schema_version": 5,
+  "company_name": "Tourmaline Oil Corp.",
+  "accounting_standard": "IFRS Accounting Standards",
+  "currency": "CAD",
+  "scale": "thousands",
+  "fiscal_year_end": "December 31",
+  "filing_date": "2026-05-06",
+  "sector_inferred": "Upstream Oil & Gas",
+  "statements": {
+    "balance_sheet": [
+      {
+        "label": "Accounts receivable",
+        "values": {
+          "March 31, 2026": 714412,
+          "December 31, 2025": 775328
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Income tax receivable",
+        "values": {
+          "March 31, 2026": 36797,
+          "December 31, 2025": 26809
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Prepaid expenses and deposits",
+        "values": {
+          "March 31, 2026": 146667,
+          "December 31, 2025": 130893
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Fair value of financial instruments",
+        "values": {
+          "March 31, 2026": 766145,
+          "December 31, 2025": 181352
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Assets held for sale",
+        "values": {
+          "March 31, 2026": 0,
+          "December 31, 2025": 862864
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Total current assets",
+        "values": {
+          "March 31, 2026": 1664021,
+          "December 31, 2025": 1977246
+        },
+        "confidence": 0.98,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Long-term asset",
+        "values": {
+          "March 31, 2026": 5770,
+          "December 31, 2025": 17532
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Fair value of financial instruments (non-current)",
+        "values": {
+          "March 31, 2026": 1017013,
+          "December 31, 2025": 502106
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "values": {
+          "March 31, 2026": 130673,
+          "December 31, 2025": 135446
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Property, plant and equipment",
+        "values": {
+          "March 31, 2026": 19878725,
+          "December 31, 2025": 19620271
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Right-of-use asset",
+        "values": {
+          "March 31, 2026": 34477,
+          "December 31, 2025": 36540
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Investment in Topaz",
+        "values": {
+          "March 31, 2026": 329654,
+          "December 31, 2025": 332466
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total Assets",
+        "values": {
+          "March 31, 2026": 23060333,
+          "December 31, 2025": 22621607
+        },
+        "confidence": 0.99,
+        "structure": "data"
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "values": {
+          "March 31, 2026": 1283221,
+          "December 31, 2025": 1362328
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Fair value of financial instruments (current liability)",
+        "values": {
+          "March 31, 2026": 386929,
+          "December 31, 2025": 45676
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Liabilities held for sale",
+        "values": {
+          "March 31, 2026": 0,
+          "December 31, 2025": 105514
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Lease liabilities",
+        "values": {
+          "March 31, 2026": 7406,
+          "December 31, 2025": 8034
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decommissioning obligations",
+        "values": {
+          "March 31, 2026": 64000,
+          "December 31, 2025": 75000
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current debt",
+        "values": {
+          "March 31, 2026": 154632,
+          "December 31, 2025": 800000
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total current liabilities",
+        "values": {
+          "March 31, 2026": 1896188,
+          "December 31, 2025": 2396552
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Fair value of financial instruments (non-current liability)",
+        "values": {
+          "March 31, 2026": 319011,
+          "December 31, 2025": 17088
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Lease liabilities (non-current)",
+        "values": {
+          "March 31, 2026": 29110,
+          "December 31, 2025": 30343
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decommissioning obligations (non-current)",
+        "values": {
+          "March 31, 2026": 773431,
+          "December 31, 2025": 763538
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Long-term debt",
+        "values": {
+          "March 31, 2026": 947664,
+          "December 31, 2025": 1052914
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred taxes",
+        "values": {
+          "March 31, 2026": 3134237,
+          "December 31, 2025": 2924894
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Share capital",
+        "values": {
+          "March 31, 2026": 10723569,
+          "December 31, 2025": 10673117
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Contributed surplus",
+        "values": {
+          "March 31, 2026": 511952,
+          "December 31, 2025": 501768
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Retained earnings",
+        "values": {
+          "March 31, 2026": 4725171,
+          "December 31, 2025": 4261393
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total shareholders' equity",
+        "values": {
+          "March 31, 2026": 15960692,
+          "December 31, 2025": 15436278
+        },
+        "confidence": 0.99,
+        "structure": "data"
+      },
+      {
+        "label": "Total Liabilities and Shareholders' Equity",
+        "values": {
+          "March 31, 2026": 23060333,
+          "December 31, 2025": 22621607
+        },
+        "confidence": 0.99,
+        "structure": "data"
+      }
+    ],
+    "income_statement": [
+      {
+        "label": "Commodity sales from production",
+        "values": {
+          "Three Months Ended March 31, 2026": 1447049,
+          "Three Months Ended March 31, 2025": 1457567
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Premium on risk management activities",
+        "values": {
+          "Three Months Ended March 31, 2026": 257897,
+          "Three Months Ended March 31, 2025": 337609
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Marketing revenue",
+        "values": {
+          "Three Months Ended March 31, 2026": 71248,
+          "Three Months Ended March 31, 2025": 17791
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Royalties",
+        "values": {
+          "Three Months Ended March 31, 2026": -168836,
+          "Three Months Ended March 31, 2025": -179159
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Other income",
+        "values": {
+          "Three Months Ended March 31, 2026": 10272,
+          "Three Months Ended March 31, 2025": 9419
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Realized gain (loss) on financial instruments",
+        "values": {
+          "Three Months Ended March 31, 2026": -11056,
+          "Three Months Ended March 31, 2025": 96417
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized gain (loss) on financial instruments",
+        "values": {
+          "Three Months Ended March 31, 2026": 456524,
+          "Three Months Ended March 31, 2025": -300466
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total revenue",
+        "values": {
+          "Three Months Ended March 31, 2026": 2063098,
+          "Three Months Ended March 31, 2025": 1439178
+        },
+        "confidence": 0.95,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Operating",
+        "values": {
+          "Three Months Ended March 31, 2026": 285015,
+          "Three Months Ended March 31, 2025": 295661
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Transportation",
+        "values": {
+          "Three Months Ended March 31, 2026": 321684,
+          "Three Months Ended March 31, 2025": 317197
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Marketing purchases",
+        "values": {
+          "Three Months Ended March 31, 2026": 63004,
+          "Three Months Ended March 31, 2025": 16302
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "General and administration",
+        "values": {
+          "Three Months Ended March 31, 2026": 50606,
+          "Three Months Ended March 31, 2025": 46862
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Share-based payments",
+        "values": {
+          "Three Months Ended March 31, 2026": 14171,
+          "Three Months Ended March 31, 2025": 17066
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Depletion, depreciation, amortization and impairment",
+        "values": {
+          "Three Months Ended March 31, 2026": 461238,
+          "Three Months Ended March 31, 2025": 422038
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Realized foreign exchange (gain) loss",
+        "values": {
+          "Three Months Ended March 31, 2026": -1855,
+          "Three Months Ended March 31, 2025": 22842
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized foreign exchange (gain) loss",
+        "values": {
+          "Three Months Ended March 31, 2026": 1116,
+          "Three Months Ended March 31, 2025": -2897
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Income on investment in Topaz",
+        "values": {
+          "Three Months Ended March 31, 2026": -5188,
+          "Three Months Ended March 31, 2025": -2187
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "(Gains) on acquisitions and divestitures",
+        "values": {
+          "Three Months Ended March 31, 2026": -10502,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total expenses",
+        "values": {
+          "Three Months Ended March 31, 2026": 1179289,
+          "Three Months Ended March 31, 2025": 1132884
+        },
+        "confidence": 0.98,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Income from operations",
+        "values": {
+          "Three Months Ended March 31, 2026": 883809,
+          "Three Months Ended March 31, 2025": 306294
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Finance expenses",
+        "values": {
+          "Three Months Ended March 31, 2026": 23143,
+          "Three Months Ended March 31, 2025": 24776
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Income before taxes",
+        "values": {
+          "Three Months Ended March 31, 2026": 860666,
+          "Three Months Ended March 31, 2025": 281518
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current tax expense (recovery)",
+        "values": {
+          "Three Months Ended March 31, 2026": -5188,
+          "Three Months Ended March 31, 2025": 37882
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred tax expense",
+        "values": {
+          "Three Months Ended March 31, 2026": 208294,
+          "Three Months Ended March 31, 2025": 30958
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total income taxes",
+        "values": {
+          "Three Months Ended March 31, 2026": 203106,
+          "Three Months Ended March 31, 2025": 68840
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Net income and comprehensive income",
+        "values": {
+          "Three Months Ended March 31, 2026": 657560,
+          "Three Months Ended March 31, 2025": 212678
+        },
+        "confidence": 0.99,
+        "structure": "data"
+      },
+      {
+        "label": "Net income per share - Basic",
+        "values": {
+          "Three Months Ended March 31, 2026": 1.7,
+          "Three Months Ended March 31, 2025": 0.57
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Net income per share - Diluted",
+        "values": {
+          "Three Months Ended March 31, 2026": 1.69,
+          "Three Months Ended March 31, 2025": 0.56
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      }
+    ],
+    "cash_flow": [
+      {
+        "label": "Net income",
+        "values": {
+          "Three Months Ended March 31, 2026": 657560,
+          "Three Months Ended March 31, 2025": 212678
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Depletion, depreciation, amortization and impairment",
+        "values": {
+          "Three Months Ended March 31, 2026": 461238,
+          "Three Months Ended March 31, 2025": 422038
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Accretion",
+        "values": {
+          "Three Months Ended March 31, 2026": 8179,
+          "Three Months Ended March 31, 2025": 7285
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Lease interest expense",
+        "values": {
+          "Three Months Ended March 31, 2026": 485,
+          "Three Months Ended March 31, 2025": 474
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Share-based payments",
+        "values": {
+          "Three Months Ended March 31, 2026": 14171,
+          "Three Months Ended March 31, 2025": 17066
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Current tax expense (recovery)",
+        "values": {
+          "Three Months Ended March 31, 2026": -5188,
+          "Three Months Ended March 31, 2025": 37882
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Deferred tax expense",
+        "values": {
+          "Three Months Ended March 31, 2026": 208294,
+          "Three Months Ended March 31, 2025": 30958
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized (gain) loss on financial instruments",
+        "values": {
+          "Three Months Ended March 31, 2026": -456524,
+          "Three Months Ended March 31, 2025": 300466
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Amortization on long-term asset",
+        "values": {
+          "Three Months Ended March 31, 2026": 748,
+          "Three Months Ended March 31, 2025": 551
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "(Gains) on acquisitions and divestitures",
+        "values": {
+          "Three Months Ended March 31, 2026": -10502,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Income from investment in Topaz",
+        "values": {
+          "Three Months Ended March 31, 2026": -5188,
+          "Three Months Ended March 31, 2025": -2187
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Unrealized foreign exchange (gain) loss",
+        "values": {
+          "Three Months Ended March 31, 2026": 1116,
+          "Three Months Ended March 31, 2025": -2897
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decommissioning expenditures",
+        "values": {
+          "Three Months Ended March 31, 2026": -25194,
+          "Three Months Ended March 31, 2025": -34181
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Cash taxes paid",
+        "values": {
+          "Three Months Ended March 31, 2026": -4800,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Cash paid on restricted share units settled",
+        "values": {
+          "Three Months Ended March 31, 2026": -228,
+          "Three Months Ended March 31, 2025": -6
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Dividends received from Topaz",
+        "values": {
+          "Three Months Ended March 31, 2026": 8000,
+          "Three Months Ended March 31, 2025": 10801
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Changes in non-cash operating working capital",
+        "values": {
+          "Three Months Ended March 31, 2026": 90460,
+          "Three Months Ended March 31, 2025": 87383
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total cash flow from operating activities",
+        "values": {
+          "Three Months Ended March 31, 2026": 942627,
+          "Three Months Ended March 31, 2025": 1088311
+        },
+        "confidence": 0.99,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Issue of common shares",
+        "values": {
+          "Three Months Ended March 31, 2026": 38889,
+          "Three Months Ended March 31, 2025": 27841
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Lease payments",
+        "values": {
+          "Three Months Ended March 31, 2026": -2859,
+          "Three Months Ended March 31, 2025": -2789
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Dividends paid",
+        "values": {
+          "Three Months Ended March 31, 2026": -193782,
+          "Three Months Ended March 31, 2025": -318141
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Decrease in current debt",
+        "values": {
+          "Three Months Ended March 31, 2026": -645368,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.97,
+        "structure": "data"
+      },
+      {
+        "label": "Decrease in revolving credit facility",
+        "values": {
+          "Three Months Ended March 31, 2026": -354354,
+          "Three Months Ended March 31, 2025": -81273
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Increase in senior unsecured notes",
+        "values": {
+          "Three Months Ended March 31, 2026": 249104,
+          "Three Months Ended March 31, 2025": 130
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total cash flow used in financing activities",
+        "values": {
+          "Three Months Ended March 31, 2026": -908370,
+          "Three Months Ended March 31, 2025": -374232
+        },
+        "confidence": 0.99,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Property, plant and equipment",
+        "values": {
+          "Three Months Ended March 31, 2026": -660162,
+          "Three Months Ended March 31, 2025": -813898
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Property acquisitions",
+        "values": {
+          "Three Months Ended March 31, 2026": -1829,
+          "Three Months Ended March 31, 2025": -12143
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Proceeds from divestitures",
+        "values": {
+          "Three Months Ended March 31, 2026": 753275,
+          "Three Months Ended March 31, 2025": 1023
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Changes in non-cash investing working capital",
+        "values": {
+          "Three Months Ended March 31, 2026": -125541,
+          "Three Months Ended March 31, 2025": 110939
+        },
+        "confidence": 0.98,
+        "structure": "data"
+      },
+      {
+        "label": "Total cash flow used in investing activities",
+        "values": {
+          "Three Months Ended March 31, 2026": -34257,
+          "Three Months Ended March 31, 2025": -714079
+        },
+        "confidence": 0.99,
+        "structure": "subtotal"
+      },
+      {
+        "label": "Changes in cash",
+        "values": {
+          "Three Months Ended March 31, 2026": 0,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.95,
+        "structure": "total"
+      },
+      {
+        "label": "Cash, beginning of period",
+        "values": {
+          "Three Months Ended March 31, 2026": 0,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      },
+      {
+        "label": "Cash, end of period",
+        "values": {
+          "Three Months Ended March 31, 2026": 0,
+          "Three Months Ended March 31, 2025": 0
+        },
+        "confidence": 0.95,
+        "structure": "data"
+      }
+    ]
+  },
+  "extraction_confidence": 0.95,
+  "pages_used": {
+    "balance_sheet": [
+      29,
+      30
+    ],
+    "income_statement": [
+      20,
+      21,
+      30,
+      31,
+      39,
+      40,
+      41,
+      42
+    ],
+    "cash_flow": [
+      32,
+      33
+    ]
+  },
+  "mapping": {
+    "mapped": {
+      "revenue": {
+        "value": 1447049,
+        "source_label": "Commodity sales from production",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "royalties": {
+        "value": -168836,
+        "source_label": "Royalties",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "operating_expense": {
+        "value": 285015,
+        "source_label": "Operating",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "transportation_costs": {
+        "value": 321684,
+        "source_label": "Transportation",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "depletion_depreciation_amortization": {
+        "value": 461238,
+        "source_label": "Depletion, depreciation, amortization and impairment",
+        "match_type": "exact",
+        "confidence": 0.98,
+        "semantics": {
+          "includes_impairment": true
+        }
+      },
+      "interest_expense": {
+        "value": 23143,
+        "source_label": "Finance expenses",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "pretax_income": {
+        "value": 860666,
+        "source_label": "Income before taxes",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "net_income": {
+        "value": 657560,
+        "source_label": "Net income",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_current_assets": {
+        "value": 1664021,
+        "source_label": "Total current assets",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_assets": {
+        "value": 23060333,
+        "source_label": "Total Assets",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "short_term_debt": {
+        "value": 154632,
+        "source_label": "Current debt",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_current_liabilities": {
+        "value": 1896188,
+        "source_label": "Total current liabilities",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "long_term_debt": {
+        "value": 947664,
+        "source_label": "Long-term debt",
+        "match_type": "exact",
+        "confidence": 0.98
+      },
+      "total_equity": {
+        "value": 15960692,
+        "source_label": "Total shareholders' equity",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "operating_cash_flow": {
+        "value": 942627,
+        "source_label": "Total cash flow from operating activities",
+        "match_type": "exact",
+        "confidence": 0.99
+      },
+      "capex": {
+        "value": -660162,
+        "source_label": "Property, plant and equipment",
+        "match_type": "exact",
+        "confidence": 0.98
+      }
+    },
+    "unmapped": [
+      {
+        "label": "Premium on risk management activities",
+        "value": 257897
+      },
+      {
+        "label": "Marketing revenue",
+        "value": 71248
+      },
+      {
+        "label": "Other income",
+        "value": 10272
+      },
+      {
+        "label": "Realized gain (loss) on financial instruments",
+        "value": -11056
+      },
+      {
+        "label": "Unrealized gain (loss) on financial instruments",
+        "value": 456524
+      },
+      {
+        "label": "Total revenue",
+        "value": 2063098
+      },
+      {
+        "label": "Marketing purchases",
+        "value": 63004
+      },
+      {
+        "label": "General and administration",
+        "value": 50606
+      },
+      {
+        "label": "Share-based payments",
+        "value": 14171
+      },
+      {
+        "label": "Realized foreign exchange (gain) loss",
+        "value": -1855
+      },
+      {
+        "label": "Unrealized foreign exchange (gain) loss",
+        "value": 1116
+      },
+      {
+        "label": "Income on investment in Topaz",
+        "value": -5188
+      },
+      {
+        "label": "(Gains) on acquisitions and divestitures",
+        "value": -10502
+      },
+      {
+        "label": "Total expenses",
+        "value": 1179289
+      },
+      {
+        "label": "Income from operations",
+        "value": 883809
+      },
+      {
+        "label": "Current tax expense (recovery)",
+        "value": -5188
+      },
+      {
+        "label": "Deferred tax expense",
+        "value": 208294
+      },
+      {
+        "label": "Total income taxes",
+        "value": 203106
+      },
+      {
+        "label": "Net income per share - Basic",
+        "value": 1.7
+      },
+      {
+        "label": "Net income per share - Diluted",
+        "value": 1.69
+      },
+      {
+        "label": "Accounts receivable",
+        "value": 714412
+      },
+      {
+        "label": "Income tax receivable",
+        "value": 36797
+      },
+      {
+        "label": "Prepaid expenses and deposits",
+        "value": 146667
+      },
+      {
+        "label": "Fair value of financial instruments",
+        "value": 766145
+      },
+      {
+        "label": "Assets held for sale",
+        "value": 0
+      },
+      {
+        "label": "Long-term asset",
+        "value": 5770
+      },
+      {
+        "label": "Fair value of financial instruments (non-current)",
+        "value": 1017013
+      },
+      {
+        "label": "Exploration and evaluation assets",
+        "value": 130673
+      },
+      {
+        "label": "Property, plant and equipment",
+        "value": 19878725
+      },
+      {
+        "label": "Right-of-use asset",
+        "value": 34477
+      },
+      {
+        "label": "Investment in Topaz",
+        "value": 329654
+      },
+      {
+        "label": "Accounts payable and accrued liabilities",
+        "value": 1283221
+      },
+      {
+        "label": "Fair value of financial instruments (current liability)",
+        "value": 386929
+      },
+      {
+        "label": "Liabilities held for sale",
+        "value": 0
+      },
+      {
+        "label": "Lease liabilities",
+        "value": 7406
+      },
+      {
+        "label": "Decommissioning obligations",
+        "value": 64000
+      },
+      {
+        "label": "Fair value of financial instruments (non-current liability)",
+        "value": 319011
+      },
+      {
+        "label": "Lease liabilities (non-current)",
+        "value": 29110
+      },
+      {
+        "label": "Decommissioning obligations (non-current)",
+        "value": 773431
+      },
+      {
+        "label": "Deferred taxes",
+        "value": 3134237
+      },
+      {
+        "label": "Share capital",
+        "value": 10723569
+      },
+      {
+        "label": "Contributed surplus",
+        "value": 511952
+      },
+      {
+        "label": "Retained earnings",
+        "value": 4725171
+      },
+      {
+        "label": "Total Liabilities and Shareholders' Equity",
+        "value": 23060333
+      },
+      {
+        "label": "Depletion, depreciation, amortization and impairment",
+        "value": 461238
+      },
+      {
+        "label": "Accretion",
+        "value": 8179
+      },
+      {
+        "label": "Lease interest expense",
+        "value": 485
+      },
+      {
+        "label": "Share-based payments",
+        "value": 14171
+      },
+      {
+        "label": "Current tax expense (recovery)",
+        "value": -5188
+      },
+      {
+        "label": "Deferred tax expense",
+        "value": 208294
+      },
+      {
+        "label": "Unrealized (gain) loss on financial instruments",
+        "value": -456524
+      },
+      {
+        "label": "Amortization on long-term asset",
+        "value": 748
+      },
+      {
+        "label": "(Gains) on acquisitions and divestitures",
+        "value": -10502
+      },
+      {
+        "label": "Income from investment in Topaz",
+        "value": -5188
+      },
+      {
+        "label": "Unrealized foreign exchange (gain) loss",
+        "value": 1116
+      },
+      {
+        "label": "Decommissioning expenditures",
+        "value": -25194
+      },
+      {
+        "label": "Cash taxes paid",
+        "value": -4800
+      },
+      {
+        "label": "Cash paid on restricted share units settled",
+        "value": -228
+      },
+      {
+        "label": "Dividends received from Topaz",
+        "value": 8000
+      },
+      {
+        "label": "Changes in non-cash operating working capital",
+        "value": 90460
+      },
+      {
+        "label": "Issue of common shares",
+        "value": 38889
+      },
+      {
+        "label": "Lease payments",
+        "value": -2859
+      },
+      {
+        "label": "Dividends paid",
+        "value": -193782
+      },
+      {
+        "label": "Decrease in current debt",
+        "value": -645368
+      },
+      {
+        "label": "Decrease in revolving credit facility",
+        "value": -354354
+      },
+      {
+        "label": "Increase in senior unsecured notes",
+        "value": 249104
+      },
+      {
+        "label": "Total cash flow used in financing activities",
+        "value": -908370
+      },
+      {
+        "label": "Property acquisitions",
+        "value": -1829
+      },
+      {
+        "label": "Proceeds from divestitures",
+        "value": 753275
+      },
+      {
+        "label": "Changes in non-cash investing working capital",
+        "value": -125541
+      },
+      {
+        "label": "Total cash flow used in investing activities",
+        "value": -34257
+      },
+      {
+        "label": "Changes in cash",
+        "value": 0
+      },
+      {
+        "label": "Cash, beginning of period",
+        "value": 0
+      },
+      {
+        "label": "Cash, end of period",
+        "value": 0
+      },
+      {
+        "label": "Net income and comprehensive income",
+        "value": 657560
+      }
+    ],
+    "meta": {
+      "accounting_standard": "IFRS Accounting Standards",
+      "sector_profile": "resource_sector",
+      "total": 91,
+      "mapped_count": 16,
+      "unmapped_count": 75,
+      "benign_skipped_count": 0,
+      "benign_duplicates": [],
+      "gross_profit_derived": false,
+      "collisions": [],
+      "resolved_collisions": [
+        {
+          "canonical_field": "net_income",
+          "rule": "prefer_primary_alias",
+          "chosen_label": "Net income",
+          "rejected_labels": [
+            "Net income and comprehensive income"
+          ]
+        }
+      ]
+    }
+  },
+  "source_provenance": {
+    "pdf_origin_url": "https://tourmaline.cdn.prismic.io/tourmaline/afuec8BOoF08xser_Q12026MDA%26FinancialStatements-FINAL.pdf",
+    "sedar_access_note": "issuer-hosted PDF per campaign protocol; SEDAR+ not attempted (CAPTCHA policy)",
+    "retrieval_method": "Agent-fetched twice independently same day (2026-07-12): Sterling located the issuer-hosted URL over the gateway channel and CC downloaded directly; the in-app CB-028 front door then re-located and re-fetched the bytes itself during the live UI run — sha256 byte-identical across both paths",
+    "document_note": "Q1 2026 MD&A + interim condensed consolidated financial statements pack (Q12026MDA&FinancialStatements-FINAL.pdf); document_class statements_unaudited (35 unaudited markers, no auditor's report)",
+    "future_pattern": "first INTERIM corpus fixture; quarter-only IAS 34 pack promoted the same day CB-040 shipped — the window-pairing/TTM machinery's regression anchor",
+    "sha256": "8d3f7319c5b5963d1d62dedd2218369dae1f5f280316da962cae589e9621463d",
+    "byte_size": 684010
+  }
+}

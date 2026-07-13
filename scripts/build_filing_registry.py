@@ -259,6 +259,31 @@ FILING_MANIFEST = {
             "Stored mapping regenerated 12 → 14 fields."
         ),
     },
+    "TOU_Q1_2026_sedar.json": {
+        "order": 18,
+        "ticker": "TOU",
+        "company_name": "Tourmaline Oil Corp.",
+        "fiscal_year": "Q1 2026",
+        "source_pdf_path": r"C:\Users\riley\.finlens\pdfs\TOU_Q1_2026.pdf",
+        "commit": None,
+        "notes": (
+            "FIRST INTERIM fixture in the corpus (quarter-only IAS 34 pack; sibling "
+            "of annual #16). CB-040 carrier: quarter-only window-class column "
+            "pairing exercised live ('Three Months Ended March 31, 2026/2025' on "
+            "income + cash flow; instant pair 'March 31, 2026'/'December 31, 2025' "
+            "on the balance sheet); document_class statements_unaudited — this "
+            "filer is the evidence base for the CB-015 notes-regex qualifier-order "
+            "fix (605cddf) and the honest_period_label fix (72f58f0), both found "
+            "on its first live run. Cross-document TTM live-verified against "
+            "fixture #16 (all gates PASS: revenue 4,929,506 / net_income 707,554 / "
+            "OCF 3,241,335 / capex -2,834,859, CAD thousands). Agent-fetched twice "
+            "independently same day (CC direct download + the in-app CB-028 front "
+            "door), sha256 byte-identical. HUMAN GROUND-TRUTH: PASS (Riley, "
+            "2026-07-12, transcription protocol) — the four TTM input rows "
+            "transcribed from the source PDF first, both columns, 8/8 "
+            "byte-identical (incl. as-presented parenthetical-negative capex)."
+        ),
+    },
 }
 
 
