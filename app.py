@@ -947,6 +947,7 @@ def _financial_data_to_text(financial_data: dict) -> str:
 # it is testable and carries the same annual preference as the canonical
 # mapper (the mixed-period drift fix).
 from modules.sedar_periods import (  # noqa: E402
+    honest_period_label as _honest_period_label,
     parse_period_window as _parse_period_window,
     sedar_period_keys as _sedar_period_keys,
     sedar_statement_rows as _sedar_statement_rows,
@@ -995,7 +996,10 @@ def _sedar_extraction_to_financial_data(
         "ticker": ticker,
         "company_name": company_name or extraction_result.get("company_name") or file_name,
         "company": company_name or extraction_result.get("company_name") or file_name,
-        "period": extraction_result.get("fiscal_year_end") or income_current,
+        # CB-040: an interim's honest period is its window label, never the
+        # company's fiscal year-end (found live: "December 31, 2026" on the
+        # TOU Q1-2026 header). Pure logic + pin in modules/sedar_periods.py.
+        "period": _honest_period_label(income_current, extraction_result.get("fiscal_year_end")),
         "currency": _sedar_currency_label(extraction_result),
         "scale": extraction_result.get("scale"),
         "fiscal_year": income_current,

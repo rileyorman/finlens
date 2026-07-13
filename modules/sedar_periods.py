@@ -162,6 +162,21 @@ def sedar_period_keys(items: list[dict]) -> tuple[str, str | None]:
     return "Current", None
 
 
+def honest_period_label(income_current: str, fiscal_year_end) -> str:
+    """The analysis header's period string (CB-040): an INTERIM's honest
+    period is its own window label ("Three Months Ended March 31, 2026"),
+    never the company's fiscal year-end ("December 31") — which the
+    header's year-fallback would stamp with the interim's year, displaying
+    a period the filing does not cover (found live on the first in-app
+    interim analysis: the TOU Q1-2026 header read "December 31, 2026").
+    Annual packs keep the existing preference: fiscal_year_end, then the
+    current income column."""
+    window = parse_period_window(income_current)
+    if window and window.get("window") != "FY":
+        return income_current
+    return fiscal_year_end or income_current
+
+
 def sedar_statement_rows(items: list[dict], current_period: str, prior_period: str | None) -> list[dict]:
     rows = []
     for item in items or []:
