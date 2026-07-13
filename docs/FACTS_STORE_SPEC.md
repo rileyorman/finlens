@@ -10,7 +10,7 @@ companyfacts under construction" — a per-filer archive of every analyzed
 filing's mapped values, keyed by (canonical field, window, source
 document, filed date). It is the corpus flywheel's data model stated
 precisely and the moat-thinking longitudinal layer made concrete
-(SESSION_HANDOFF.md "Moat thinking"). Once it exists, Q2/Q3 YTD
+(SESSION_REFERENCE.md "Moat thinking"). Once it exists, Q2/Q3 YTD
 differencing, restatement detection, TTM-anything, and every longitudinal
 feature become MECHANICAL queries instead of per-feature plumbing.
 
