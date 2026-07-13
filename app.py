@@ -4567,6 +4567,11 @@ if page == "Stock Tracker":
                 st.metric("Upside / Downside", "—")
         with ac3:
             st.metric("Analysts Covering", str(num_an) if num_an else "—")
+        # Trust-Is-Page-Level: estimates have no filed source — badge permanent.
+        st.caption(
+            "Source: yfinance analyst consensus — unvalidated aggregate of "
+            "broker estimates; no filed source exists."
+        )
 
         # Current vs target bar
         if cur and target:
@@ -4710,6 +4715,12 @@ if page == "Stock Tracker":
 
     st.divider()
 
+    # Trust-Is-Page-Level: market prices have no filed source — badge permanent.
+    st.caption(
+        "Price, momentum, moving averages, RSI, and the chart above: "
+        "Source yfinance — live market data, unvalidated."
+    )
+
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📡 Technicals",
         "📊 Fundamentals",
@@ -4771,6 +4782,10 @@ if page == "Stock Tracker":
             </div>
             ''',
             unsafe_allow_html=True,
+        )
+        st.caption(
+            "Source: yfinance — exchange-reported short interest via an "
+            "aggregator, unvalidated."
         )
 
     with tab4:
@@ -4912,6 +4927,15 @@ if page == "Stock Tracker":
                 st.metric(label, v_str)
                 if note:
                     st.caption(note)
+        # Trust-Is-Page-Level basis caption (same class as the analysis
+        # page's Valuation Snapshot, dcbb241): provider-computed ratios can
+        # differ from filing-basis figures on this very tab.
+        st.caption(
+            "Source: yfinance — provider-computed ratios on a trailing-"
+            "twelve-month basis, unvalidated; may differ from filing-basis "
+            "figures (the as-filed Financial Snapshot below carries the "
+            "receipts). EV/EBITDA is the provider's own construction."
+        )
 
         fiscal_ratio_values = _fiscal_session_cached(
             "get_ratios_with_values",
