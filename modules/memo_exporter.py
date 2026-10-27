@@ -277,7 +277,8 @@ def create_memo(
     bear_pts = (bb.get("bear_case") or [])[:3]
 
     md       = market_data or {}
-    mc       = md.get("market_cap") or 0.0   # millions
+    mc       = md.get("market_cap") or 0.0   # millions (get_market_data divides by 1e6)
+    mc_raw   = mc * 1_000_000                 # raw dollars, same unit as the filing metrics
 
     metrics  = _calc_summary_metrics(financial_data)
     today    = datetime.now(timezone.utc).strftime("%B %d, %Y")
@@ -458,9 +459,9 @@ def create_memo(
 
         val_cols = [_W * 0.34, _W * 0.33, _W * 0.33]
         val_rows = [
-            ("EV / EBITDA",  metrics.get("ebitda_c"), "EBITDA"),
-            ("P / E",        metrics.get("ni_c"),      "Net Income"),
-            ("EV / Revenue", metrics.get("rev_c"),     "Revenue"),
+            ("Mkt Cap / EBITDA",  metrics.get("ebitda_c"), "EBITDA"),
+            ("P / E",             metrics.get("ni_c"),      "Net Income"),
+            ("Mkt Cap / Revenue", metrics.get("rev_c"),     "Revenue"),
             ("P / FCF",      metrics.get("fcf_c"),     "Free Cash Flow"),
         ]
 
@@ -469,7 +470,7 @@ def create_memo(
 
         for i, (label, denom, denom_name) in enumerate(val_rows):
             if denom and denom != 0:
-                multiple = mc / denom
+                multiple = mc_raw / denom
                 mult_str = _mult(multiple)
                 is_neg   = multiple < 0
             else:
@@ -483,7 +484,8 @@ def create_memo(
         note = doc.add_paragraph()
         _tight(note, before=2, after=4)
         _run(note,
-             f"Market cap: ${mc:,.0f}M   ·   Multiples use reporting-unit denominator from filing.",
+             f"Market cap: {mc:,.0f}M {md.get('currency') or ''} (yfinance)   ·   "
+             f"Multiples are market cap over the filing figure in {financial_data.get('currency') or 'filing currency'}; no enterprise-value adjustment.",
              size=8, color=_GREY, italic=True)
 
     # ── 6. BULL / BEAR CASE ───────────────────────────────────────────────────

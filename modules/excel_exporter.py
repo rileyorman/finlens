@@ -1193,9 +1193,9 @@ def _write_summary_sheet(
     # A8 = Revenue, B8 = Gross Profit, C8 = EBITDA, D8 = Net Income, E8 = FCF
     _CARD_ROW = 8
     multiples = [
-        ("EV / EBITDA",  f"$C${_CARD_ROW}", "EBITDA"),
-        ("P / E",        f"$D${_CARD_ROW}", "Net Income"),
-        ("EV / Revenue", f"$A${_CARD_ROW}", "Revenue"),
+        ("Mkt Cap / EBITDA",  f"$C${_CARD_ROW}", "EBITDA"),
+        ("P / E",             f"$D${_CARD_ROW}", "Net Income"),
+        ("Mkt Cap / Revenue", f"$A${_CARD_ROW}", "Revenue"),
         ("P / FCF",      f"$E${_CARD_ROW}", "Free Cash Flow"),
     ]
 
@@ -1203,7 +1203,8 @@ def _write_summary_sheet(
         ws.cell(row=row, column=1, value=label)
         vc = ws.cell(row=row, column=2)
         if market_cap > 0:
-            vc.value         = f"=IFERROR({mc_ref}/{denom_ref},\"—\")"
+            # market cap is stored in $M (B cell); card values are raw dollars, so scale before dividing
+            vc.value         = f"=IFERROR({mc_ref}*1000000/{denom_ref},\"—\")"
             vc.number_format = _FMT_MULT
         else:
             vc.value = "—"

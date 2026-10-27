@@ -18,6 +18,16 @@ Source-traced fundamental analysis. FinLens reads a company's filing, pulls ever
 
 ![Dashboard and framework perspectives](docs/screenshots/04-dashboard.jpg)
 
+## Sample output
+
+You do not need an API key to see what comes out. `docs/samples/` holds one complete run on Agnico Eagle Mines' FY2025 annual report (SEDAR+, IFRS, USD), generated from the saved analysis with no model call:
+
+- [Investment memo, rendered as Markdown](docs/samples/FinLens_Memo_Agnico_Eagle_FY2025.md): signal, thesis, financials at a glance, health checks, valuation multiples, bull and bear cases.
+- [The same memo as Word](docs/samples/FinLens_Memo_Agnico_Eagle_FY2025.docx), the one-page document the app exports.
+- [The Excel report](docs/samples/FinLens_Report_Agnico_Eagle_FY2025.xlsx): summary, key ratios, and the three statements as filed, two years side by side.
+
+Market data in the samples is from the export date, not the filing date, and the caption on the memo says which listing and currency it came from.
+
 ## How it works
 
 ```
