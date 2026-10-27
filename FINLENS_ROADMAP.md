@@ -2,7 +2,7 @@
 
 **Last updated:** June 2026  
 **Goal:** World-class fund manager tool for financial statement analysis  
-**Priority:** Columbia "AI for Business and Finance" certificate (Jul–Sep 2026); family office demo postponed
+**Priority:** Columbia "AI for Business and Finance" certificate (Jul–Sep 2026)
 
 ## Related Documents
 - [Feature specs & tier mapping](docs/FinLens_Roadmap_Addendum.md) — detailed implementation specs for the next 10 priority features, plus 30+ commercial features mapped to pricing tiers ($49 / $199 / $499).
@@ -151,14 +151,6 @@ ANALYSIS_MODEL = "claude-sonnet-4-6" # Student tier (current)
 
 ---
 
-## June Demo Priority List
-
-For the family office meeting, focus on:
-
-1. **One-page Investment Memo** — most impressive, immediately useful to a CFO
-2. **Bear/Bull Case Generator** — tangible AI value-add, nothing else does this from a raw PDF
-3. **Clean Summary tab** — fix N/A issue so metrics display correctly
-4. **Peer benchmarking** — sector context makes the valuation story stronger
 
 ---
 
@@ -166,7 +158,6 @@ For the family office meeting, focus on:
 
 - **GitHub:** rileyorman/finlens
 - **Working branch:** dev (merge to main when stable/demo-ready)
-- **Local path:** C:\Users\riley\OneDrive\Documents\Python Project\finlens
 - **Run locally:** streamlit run app.py
 - **Stack:** Python, Streamlit, Claude API, yfinance, openpyxl, pdfplumber
 

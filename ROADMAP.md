@@ -88,20 +88,6 @@
 
 ---
 
-## June Meeting Prep
-
-**Date:** June 2026
-**Audience:** Family office CEO (ex-top investment banker, 
-$200M+ built) + CFO
-**Goal:** Demonstrate FinLens as a serious investment 
-analysis tool
-**Demo filing:** Mastech Digital (MHH) — known good output
-**Key talking points:**
-- Two-call AI architecture (Haiku + Opus)
-- Fund manager persona — making a call, not a summary
-- Signal Tracker as proprietary methodology (Dalio reference)
-- Phase 2 roadmap — where this goes next
-- Built by Riley as part of FinTelligence platform
 
 ---
 

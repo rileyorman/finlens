@@ -20,7 +20,7 @@ FinLens should be treated as an investment analysis workspace, not just a PDF-to
 This is the durable answer to "how does FinLens scale and defend its data." It is
 recorded HERE (source of truth) because it has needed frequent re-explaining and
 must not live only in chat history (Minimize-Human-Error principle). Downstream
-digests: CODEX_MEMORY.md "Product Vision" and STERLING_BRIEF. Any agent doing
+digests kept outside this repository. Any agent doing
 fetch / ingestion / corpus / commercialization work should read this section.
 
 - **Ingestion is usage-driven, paid once per company.** When a client searches
@@ -1224,7 +1224,7 @@ Before deployment or demo:
 
 ## Communication Preferences
 
-Codex uses `CODEX_MEMORY.md` for project context.
+Codex keeps its project context outside this repository.
 
 Explain changes briefly and clearly.
 
