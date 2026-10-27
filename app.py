@@ -1410,7 +1410,10 @@ def _render_education_page(default_topic: str | None = None) -> None:
 try:
     _APP_PASSWORD = st.secrets["APP_PASSWORD"]
 except (KeyError, FileNotFoundError):
-    _APP_PASSWORD = os.environ.get("APP_PASSWORD", "[dev-password-removed]")
+    _APP_PASSWORD = os.environ.get("APP_PASSWORD")
+if not _APP_PASSWORD:
+    st.error("APP_PASSWORD is not set. Add it to .streamlit/secrets.toml or the environment before starting FinLens.")
+    st.stop()
 
 if os.environ.get("STREAMLIT_ENV") == "dev":
     st.session_state["authenticated"] = True
