@@ -12,6 +12,10 @@ Source-traced fundamental analysis. FinLens reads a company's filing, pulls ever
 4. **Checks the numbers.** The integrity engine is pure arithmetic: subtotals, signs, cross-statement ties, sector-aware rules. It flags and warns. It never changes a figure.
 5. **Then analyses.** Red flags, a quality score, beta, DCF, peer comparison, a scenario simulator, a Munger-style pre-mortem, and three framework readings of the same numbers (Dalio, Lynch, Marks). Export a report or a one-page investment memo to Word.
 
+**Skipping SEDAR+.** Canadian filings live on SEDAR+, which is slow to search and makes you click through a CAPTCHA and download by hand. Name the company instead and an agent finds the statements on the issuer's own site. FinLens downloads the bytes itself, checks they are a PDF, and keeps a sha256 receipt with the URL, the size and the time. On 27 October 2026 it found Advantage Energy's audited 2025 statements on advantageog.com in 45 seconds, and the analysis below was on screen four minutes after the first click.
+
+![Agent fetch: Advantage Energy](docs/screenshots/05-agent-fetch.jpg)
+
 ![Mapping receipt](docs/screenshots/02-receipt.jpg)
 
 ![Statements and red flags](docs/screenshots/03-statements.jpg)
