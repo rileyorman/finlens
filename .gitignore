@@ -17,3 +17,6 @@ setup_service.ps1
 library/analysis/
 .claude/settings.local.json
 candidates/
+
+# Sample output is tracked on purpose
+!docs/samples/*.xlsx
